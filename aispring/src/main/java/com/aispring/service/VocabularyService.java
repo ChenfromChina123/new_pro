@@ -2,13 +2,17 @@ package com.aispring.service;
 
 import com.aispring.entity.*;
 import com.aispring.repository.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * 词汇学习服务
@@ -23,6 +27,10 @@ public class VocabularyService {
     private final UserWordProgressRepository userWordProgressRepository;
     private final PublicVocabularyWordRepository publicVocabularyWordRepository;
     private final UserLearningRecordRepository userLearningRecordRepository;
+    private final AiChatService aiChatService;
+    private final GeneratedArticleRepository generatedArticleRepository;
+    private final ArticleUsedWordRepository articleUsedWordRepository;
+    private final ObjectMapper objectMapper;
     
     /**
      * 创建单词表
@@ -45,7 +53,13 @@ public class VocabularyService {
      * 获取用户的单词表列表
      */
     public List<VocabularyList> getUserVocabularyLists(Long userId) {
-        return vocabularyListRepository.findByUserIdOrPublic(userId);
+        List<VocabularyList> lists = vocabularyListRepository.findByUserIdOrPublic(userId);
+        // 填充单词数量
+        for (VocabularyList list : lists) {
+            long count = vocabularyWordRepository.countByVocabularyListId(list.getId());
+            list.setWordCount(count);
+        }
+        return lists;
     }
     
     /**
@@ -197,5 +211,102 @@ public class VocabularyService {
     public List<PublicVocabularyWord> searchPublicWords(String keyword, String language) {
         return publicVocabularyWordRepository.searchByKeyword(language, keyword);
     }
+    
+    /**
+     * 生成文章主题建议
+     */
+    public List<String> generateArticleTopics(List<String> words, String language) {
+        String wordsStr = String.join(", ", words);
+        String prompt = String.format(
+            "I have a list of %s words: [%s]. Please suggest 6 short article topics (titles) that could incorporate these words. " +
+            "Each topic must be less than 10 characters long. Output only the topics, separated by commas, no numbering.",
+            language, wordsStr
+        );
+        
+        String response = aiChatService.ask(prompt, null, "deepseek-chat", "system");
+        if (response == null) return new ArrayList<>();
+        
+        return Arrays.stream(response.split("[,，\n]"))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .limit(6)
+            .collect(Collectors.toList());
+    }
+    
+    /**
+     * 生成并保存文章
+     */
+    @Transactional
+    public GeneratedArticle generateAndSaveArticle(Long userId, Integer listId, List<Integer> wordIds, 
+                                                  String topic, String difficulty, String length) {
+        // 1. 获取单词信息
+        List<VocabularyWord> words = vocabularyWordRepository.findByIdIn(wordIds);
+        String vocabularyList = words.stream()
+            .map(VocabularyWord::getWord)
+            .collect(Collectors.joining(", "));
+            
+        // 2. 调用AI生成文章
+        String prompt = String.format(
+            "Write a short article (Difficulty: %s, Length: %s) about '%s'. " +
+            "You MUST use the following words in the article: [%s]. " +
+            "Please wrap the used words in double asterisks like **word** so they can be highlighted. " +
+            "Output only the article content.",
+            difficulty, length, topic, vocabularyList
+        );
+        
+        String content = aiChatService.ask(prompt, null, "deepseek-chat", String.valueOf(userId));
+        
+        // 3. 保存文章
+        GeneratedArticle article = GeneratedArticle.builder()
+            .userId(userId)
+            .vocabularyListId(listId)
+            .topic(topic)
+            .difficultyLevel(difficulty)
+            .articleLength(length)
+            .originalText(content)
+            .createdAt(LocalDateTime.now())
+            .build();
+            
+        try {
+            article.setUsedWordIds(objectMapper.writeValueAsString(wordIds));
+        } catch (Exception e) {
+            article.setUsedWordIds("[]");
+        }
+        
+        article = generatedArticleRepository.save(article);
+        
+        // 4. 保存使用的单词记录
+        for (VocabularyWord word : words) {
+            ArticleUsedWord usedWord = ArticleUsedWord.builder()
+                .articleId(article.getId())
+                .wordId(word.getId())
+                .wordText(word.getWord())
+                .occurrenceCount(1) // 简化处理，默认为1，实际可以通过统计content中出现的次数来更新
+                .build();
+            articleUsedWordRepository.save(usedWord);
+        }
+        
+        return article;
+    }
+    
+    /**
+     * 获取用户生成的文章列表
+     */
+    public List<GeneratedArticle> getUserGeneratedArticles(Long userId) {
+        return generatedArticleRepository.findByUserIdOrderByCreatedAtDesc(userId);
+    }
+    
+    /**
+     * 获取文章详情
+     */
+    public GeneratedArticle getGeneratedArticle(Integer articleId) {
+        GeneratedArticle article = generatedArticleRepository.findById(articleId)
+            .orElseThrow(() -> new CustomException("文章不存在"));
+            
+        // 填充使用的单词信息（如果需要详细信息）
+        List<ArticleUsedWord> usedWords = articleUsedWordRepository.findByArticleId(articleId);
+        article.setUsedWords(usedWords);
+        
+        return article;
+    }
 }
-

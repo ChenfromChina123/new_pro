@@ -177,6 +177,24 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
     }
   }
 
+  async function generateTopics(words, language) {
+    try {
+      const response = await request.post(API_ENDPOINTS.vocabulary.generateTopics, { words, language })
+      return { success: true, data: response }
+    } catch (error) {
+      return { success: false, message: error.response?.data?.message || '生成主题失败' }
+    }
+  }
+
+  async function generateArticle(payload) {
+    try {
+      const response = await request.post(API_ENDPOINTS.vocabulary.generateArticle, payload)
+      return { success: true, data: response }
+    } catch (error) {
+      return { success: false, message: error.response?.data?.message || '生成文章失败' }
+    }
+  }
+
   return {
     lists,
     wordsByListId,
@@ -196,6 +214,8 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
     fetchReviewWords,
     fetchStats,
     recordActivity,
-    searchPublic
+    searchPublic,
+    generateTopics,
+    generateArticle
   }
 })

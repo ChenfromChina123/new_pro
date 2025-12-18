@@ -63,6 +63,21 @@ public class VocabularyController {
         private String activityDetails;
         private Integer duration;
     }
+
+    @Data
+    public static class GenerateTopicsRequest {
+        private List<String> words;
+        private String language = "en";
+    }
+
+    @Data
+    public static class GenerateArticleRequest {
+        private Integer listId;
+        private List<Integer> wordIds;
+        private String topic;
+        private String difficulty;
+        private String length;
+    }
     
     /**
      * 创建单词表
@@ -267,5 +282,37 @@ public class VocabularyController {
 
         return ResponseEntity.ok(response);
     }
-}
 
+    @PostMapping("/articles/topics")
+    public ResponseEntity<List<String>> generateTopics(
+            @RequestBody GenerateTopicsRequest request) {
+        List<String> topics = vocabularyService.generateArticleTopics(request.getWords(), request.getLanguage());
+        return ResponseEntity.ok(topics);
+    }
+
+    @PostMapping("/articles/generate")
+    public ResponseEntity<GeneratedArticle> generateArticle(
+            @RequestBody GenerateArticleRequest request,
+            @AuthenticationPrincipal CustomUserDetails customUserDetails) {
+        Long userId = customUserDetails.getUser().getId();
+        GeneratedArticle article = vocabularyService.generateAndSaveArticle(
+            userId, request.getListId(), request.getWordIds(), 
+            request.getTopic(), request.getDifficulty(), request.getLength());
+        return ResponseEntity.ok(article);
+    }
+
+    @GetMapping("/articles")
+    public ResponseEntity<List<GeneratedArticle>> getUserArticles(
+            @AuthenticationPrincipal CustomUserDetails customUserDetails) {
+        Long userId = customUserDetails.getUser().getId();
+        List<GeneratedArticle> articles = vocabularyService.getUserGeneratedArticles(userId);
+        return ResponseEntity.ok(articles);
+    }
+
+    @GetMapping("/articles/{articleId}")
+    public ResponseEntity<GeneratedArticle> getArticle(
+            @PathVariable Integer articleId) {
+        GeneratedArticle article = vocabularyService.getGeneratedArticle(articleId);
+        return ResponseEntity.ok(article);
+    }
+}
