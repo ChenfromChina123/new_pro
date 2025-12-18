@@ -1,0 +1,1454 @@
+<template>
+  <AppLayout>
+    <div class="chat-page">
+      <div class="chat-container">
+        <!-- 侧边栏：会话列表 -->
+        <aside class="chat-sidebar">
+          <div class="sidebar-header">
+            <h3 class="sidebar-title">
+              会话列表
+            </h3>
+            <button
+              class="btn btn-primary"
+              @click="createNewSession"
+            >
+              <span class="btn-icon">
+                <i class="fas fa-plus" />
+              </span>
+              <span class="btn-text">新建对话</span>
+            </button>
+          </div>
+          
+          <div class="session-list">
+            <div
+              v-for="session in chatStore.sessions"
+              :key="session.id"
+              class="session-item"
+              :class="{ active: session.id === chatStore.currentSessionId }"
+              @click="loadSession(session.id)"
+            >
+              <div class="session-info">
+                <div class="session-title">
+                  {{ session.title || '新对话' }}
+                </div>
+                <div class="session-meta">
+                  <span class="session-date">{{ formatSessionDate(session.createdAt) }}</span>
+                </div>
+              </div>
+              <button
+                class="delete-btn"
+                title="删除会话"
+                aria-label="删除会话"
+                @click.stop="deleteSession(session.id)"
+              >
+                <i class="fas fa-trash" />
+              </button>
+            </div>
+          </div>
+        </aside>
+        
+        <!-- 主聊天区域 -->
+        <main class="chat-main">
+          <div class="chat-header">
+            <div class="header-left">
+              <h2 class="chat-title">
+                {{ currentSessionTitle }}
+              </h2>
+            </div>
+            
+            <div class="header-right">
+              <div class="model-selector">
+                <label class="model-label">AI模型：</label>
+                <select
+                  v-model="chatStore.selectedModel"
+                  class="model-select"
+                >
+                  <option value="deepseek-chat">
+                    DeepSeek
+                  </option>
+                  <option value="doubao">
+                    豆包
+                  </option>
+                </select>
+              </div>
+            </div>
+          </div>
+          
+          <div
+            ref="messagesContainer"
+            class="messages-container"
+          >
+            <div
+              v-if="chatStore.messages.length === 0"
+              class="empty-state"
+            >
+              <h3 class="empty-title">
+                开始新的对话
+              </h3>
+              <p class="empty-description">
+                向AI助手提问任何问题，获取专业的解答和帮助
+              </p>
+            </div>
+            
+            <div
+              v-for="(message, index) in chatStore.messages"
+              :key="index"
+              class="message"
+              :class="message.role === 'user' ? 'user' : 'assistant'"
+            >
+              <div class="message-avatar">
+                <i
+                  v-if="message.role === 'user'"
+                  class="fas fa-user"
+                />
+                <i
+                  v-else
+                  class="fas fa-robot"
+                />
+              </div>
+              <div class="message-content">
+                <div class="message-bubble">
+                  <div
+                    class="message-text"
+                    v-html="formatMessage(message.content)"
+                  />
+                </div>
+                <div class="message-time">
+                  {{ formatTime(message.timestamp) }}
+                </div>
+              </div>
+              <!-- 复制按钮 - 位于消息容器外的左下角 -->
+              <button 
+                class="message-copy-button" 
+                title="复制这条消息"
+                @click="copyMessage(message.content)"
+              >
+                <i class="fas fa-copy" />
+                <span class="copy-text">复制</span>
+              </button>
+            </div>
+            
+            <div
+              v-if="chatStore.isLoading"
+              class="loading-indicator"
+            >
+              <div class="loading" />
+              <span>AI正在思考...</span>
+            </div>
+          </div>
+          
+          <div class="chat-input-area">
+            <form
+              class="input-form"
+              @submit.prevent="sendMessage"
+            >
+              <div class="input-wrapper">
+                <textarea
+                  v-model="inputMessage"
+                  class="chat-input"
+                  placeholder="输入你的问题..."
+                  :disabled="chatStore.isLoading"
+                  rows="3"
+                  @keydown.enter.exact.prevent="sendMessage"
+                />
+                <div class="input-actions">
+                  <button
+                    type="submit"
+                    class="btn btn-primary send-btn"
+                    :disabled="!inputMessage.trim() || chatStore.isLoading"
+                  >
+                    <span
+                      v-if="chatStore.isLoading"
+                      class="btn-icon"
+                    >
+                      <i class="fas fa-spinner fa-spin" />
+                    </span>
+                    <span
+                      v-else
+                      class="btn-icon"
+                    >
+                      <i class="fas fa-paper-plane" />
+                    </span>
+                    <span class="btn-text">发送</span>
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </main>
+      </div>
+    </div>
+  </AppLayout>
+</template>
+
+<script setup>
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { useChatStore } from '@/stores/chat'
+import { marked } from 'marked'
+import katex from 'katex'
+import 'katex/dist/katex.min.css'
+import hljs from 'highlight.js'
+import 'highlight.js/styles/github-dark.css'
+import AppLayout from '@/components/AppLayout.vue'
+
+const chatStore = useChatStore()
+const inputMessage = ref('')
+const messagesContainer = ref(null)
+
+// 复制代码到剪贴板 - 改为全局函数，供内联事件调用
+window.copyCodeBlock = (element) => {
+  const code = element.previousElementSibling.textContent
+  const button = element
+  navigator.clipboard.writeText(code)
+    .then(() => {
+      // 显示复制成功的反馈
+      const originalText = button.textContent
+      button.textContent = '已复制!'
+      button.classList.add('copied')
+      setTimeout(() => {
+        button.textContent = originalText
+        button.classList.remove('copied')
+      }, 2000)
+    })
+    .catch(err => {
+      console.error('复制失败:', err)
+    })
+}
+
+// 自定义marked渲染器，直接在渲染时添加复制按钮
+const renderer = new marked.Renderer()
+const originalCode = renderer.code
+renderer.code = function(code, language, escaped) {
+  const originalResult = originalCode.call(this, code, language, escaped)
+  // 在pre标签内添加复制按钮
+  return originalResult.replace('<pre', '<pre style="position: relative">')
+    .replace('</pre>', '<button class="copy-button" onclick="copyCodeBlock(this)">复制</button></pre>')
+}
+
+// 配置marked
+marked.setOptions({
+  highlight: function(code, lang) {
+    const language = hljs.getLanguage(lang) ? lang : 'plaintext'
+    return hljs.highlight(code, { language }).value
+  },
+  breaks: true,
+  gfm: true,
+  renderer: renderer // 使用自定义渲染器
+})
+
+const currentSessionTitle = computed(() => {
+  return chatStore.currentSession?.title || '新对话'
+})
+
+onMounted(async () => {
+  await chatStore.fetchSessions()
+  
+  // 如果没有当前会话，创建一个新的
+  if (!chatStore.currentSessionId && chatStore.sessions.length === 0) {
+    await createNewSession()
+  } else if (chatStore.sessions.length > 0 && !chatStore.currentSessionId) {
+    await loadSession(chatStore.sessions[0].id)
+  }
+})
+
+// 监听消息变化，自动滚动到底部
+watch(() => chatStore.messages, () => {
+  nextTick(() => {
+    scrollToBottom()
+  })
+}, { deep: true })
+
+const createNewSession = async () => {
+  const result = await chatStore.createSession()
+  if (result.success) {
+    inputMessage.value = ''
+  }
+}
+
+const loadSession = async (sessionId) => {
+  await chatStore.fetchSessionMessages(sessionId)
+  scrollToBottom()
+}
+
+const deleteSession = async (sessionId) => {
+  if (confirm('确定要删除这个会话吗？')) {
+    await chatStore.deleteSession(sessionId)
+  }
+}
+
+const sendMessage = async () => {
+  if (!inputMessage.value.trim() || chatStore.isLoading) return
+  
+  // 如果没有当前会话，先创建一个
+  if (!chatStore.currentSessionId) {
+    await createNewSession()
+  }
+  
+  const message = inputMessage.value.trim()
+  inputMessage.value = ''
+  
+  await chatStore.sendMessage(message, () => {
+    nextTick(() => scrollToBottom())
+  })
+}
+
+// 渲染数学公式
+const renderMathFormula = (content, placeholders = []) => {
+  // 1. 先处理特定格式的公式，比如用户提供的截图中的格式
+  let processedContent = content;
+  
+  // 0. 预处理：标准化 LaTeX 定界符和转义符
+  // 处理双反斜杠转义问题 (例如 \\int -> \int, \\( -> \()
+  // 仅处理常见的数学命令和定界符，避免破坏换行符 \\
+  processedContent = processedContent.replace(/\\\\(int|sqrt|frac|left|right|,|d[xyt]|sigma|alpha|beta|gamma|pi|theta|infty|cdot|approx|le|ge|ne|equiv|sum|lim|to)/g, '\\$1');
+  processedContent = processedContent.replace(/\\\\([\[\]()])/g, '\\$1');
+
+  // 辅助函数：清理捕获内容中的HTML标签
+  const cleanTags = (str) => {
+    if (!str) return '';
+    // 移除常见的块级和内联标签，避免破坏公式结构
+    return str.replace(/<\/?(li|ul|ol|p|div|span|br|h\d|strong|em)[^>]*>/gi, "").trim();
+  };
+
+  // 辅助函数：创建占位符并存储KaTeX结果
+  const createPlaceholder = (formula, displayMode) => {
+    try {
+      const html = katex.renderToString(formula, {
+        throwOnError: false,
+        displayMode: displayMode
+      });
+      const index = placeholders.length;
+      placeholders.push(html);
+      return `MATH-PLACEHOLDER-${index}-END`;
+    } catch (error) {
+      console.error('KaTeX渲染错误:', error);
+      return formula;
+    }
+  };
+  
+  // 0.5 优先处理标准 LaTeX 块级和行内公式定界符
+  // 处理 $$ ... $$
+  processedContent = processedContent.replace(/\$\$([\s\S]+?)\$\$/g, (match, formula) => {
+    const cleanedFormula = cleanTags(formula);
+    return createPlaceholder(cleanedFormula, true);
+  });
+
+  // 处理 \[ ... \]
+  processedContent = processedContent.replace(/\\\[([\s\S]+?)\\\]/g, (match, formula) => {
+    const cleanedFormula = cleanTags(formula);
+    return createPlaceholder(cleanedFormula, true);
+  });
+
+  // 处理 \( ... \)
+  processedContent = processedContent.replace(/\\\(([\s\S]+?)\\\)/g, (match, formula) => {
+    const cleanedFormula = cleanTags(formula);
+    return createPlaceholder(cleanedFormula, false);
+  });
+
+  // 处理带有<br>标签的定积分公式
+  const brFormulaRegex = /<br\s*\/?>\\int\s*_{(\d+)}^\{(\d+)}\s*(\d+)x\s*,\s*dx\s*=\s*F\((\d+)\)\s*-\s*F\((\d+)\)\s*=\s*\((\d+)\^2\)\s*-\s*\((\d+)\^2\)\s*=\s*(\d+)\s*-\s*(\d+)\s*=\s*(\d+)<br\s*\/?>/g;
+  processedContent = processedContent.replace(brFormulaRegex, (match, lower, upper, coeff, fUpper, fLower, squareUpper, squareLower, val1, val2, result) => {
+    const formula = `\\int_{${lower}}^{${upper}} ${coeff}x dx = F(${fUpper}) - F(${fLower}) = (${squareUpper}^2) - (${squareLower}^2) = ${val1} - ${val2} = ${result}`;
+    return createPlaceholder(formula, true);
+  });
+  
+  // 2. 处理基本定积分公式
+  const basicIntegralRegex = /\\int\s*_{(\w+)}^\{(\w+)}\s*f\(x\)\s*,\s*dx\s*=\s*F\((\w+)\)\s*-\s*F\((\w+)\)/g;
+  processedContent = processedContent.replace(basicIntegralRegex, (match, lower, upper, fUpper, fLower) => {
+    const formula = `\\int_{${lower}}^{${upper}} f(x) dx = F(${fUpper}) - F(${fLower})`;
+    return createPlaceholder(formula, true);
+  });
+  
+  // 2.5 处理带 \left. ... \right| 的完整积分公式（优先匹配，因为更具体）
+  // 匹配如：\int_{a}^{b} ... dx = \left. ... \right|_{a}^{b} = ...
+  // 支持负号下标，如 \int_{-\pi}^{\pi}
+  const integralWithEvalRegex = /\\int\s*(?:(?:_\{[^}]+\})|(?:_[-a-zA-Z0-9]+))?(?:\^\{[^}]+\}|\^[-a-zA-Z0-9]+)?\s*[^\n]*?d(?:[a-z]+|\\[a-zA-Z]+)\s*=\s*\\left\.[^\n]*?\\right\|(?:(?:_\{[^}]+\})|(?:_[-a-zA-Z0-9]+))?(?:\^\{[^}]+\}|\^[-a-zA-Z0-9]+)?(?:\s*=\s*[^\n]*?)?/g;
+  processedContent = processedContent.replace(integralWithEvalRegex, (match) => {
+    let cleanedMatch = cleanTags(match);
+    const intIndex = cleanedMatch.indexOf('\\int');
+    if (intIndex < 0) return match;
+    let formula = cleanedMatch.substring(intIndex);
+    // 移除末尾的中文和多余标点
+    formula = formula.replace(/[\s\u4e00-\u9fa5：:，,。.；;！!？?]+(?=\s*$)/g, '');
+    formula = formula.replace(/\s*\)\s*\]\s*$/, '').replace(/\s*\]\s*$/, '');
+    if (formula && formula.includes('\\int') && formula.includes('\\left.')) {
+      return createPlaceholder(formula.trim(), true);
+    }
+    return match;
+  });
+  
+  // 3. 处理导数基本公式
+  const derivativeRegex = /\\left\(([^)]+)\\right\)'\s*=\s*([^\n]+?)(?=\s|$|[\u4e00-\u9fa5]|\[|\(|\)|,)/g;
+  processedContent = processedContent.replace(derivativeRegex, (match, func, result) => {
+    let cleanedResult = cleanTags(result);
+    // 移除编号和中文文本，但保留LaTeX命令
+    cleanedResult = cleanedResult.replace(/^[\s\u4e00-\u9fa5：:，,。.；;！!？?]*\d+\.\s*[\s\u4e00-\u9fa5：:，,。.；;！!？?]*/, '');
+    cleanedResult = cleanedResult.replace(/[\s\u4e00-\u9fa5：:，,。.；;！!？?]*\)?\]?[\s\u4e00-\u9fa5：:，,。.；;！!？?]*$/, '');
+    cleanedResult = cleanedResult.replace(/[\u4e00-\u9fa5：:，,。.；;！!？?]+/g, '').trim();
+    if (cleanedResult) {
+    const formula = `\\left(${func}\\right)' = ${cleanedResult}`;
+    return createPlaceholder(formula, false);
+    }
+    return match;
+  });
+  
+  // 4. 处理积分基本公式（带逗号的格式）
+  const integralRegex = /\\int\s*([^,\n]+?)\s*,\s*dx\s*=\s*([^\n]+?)(?=\s|$|[\u4e00-\u9fa5]|\[|\(|\)|,)/g;
+  processedContent = processedContent.replace(integralRegex, (match, integrand, result) => {
+    let cleanedResult = cleanTags(result);
+    // 移除编号和中文文本，但保留LaTeX命令
+    cleanedResult = cleanedResult.replace(/^[\s\u4e00-\u9fa5：:，,。.；;！!？?]*\d+\.\s*[\s\u4e00-\u9fa5：:，,。.；;！!？?]*/, '');
+    cleanedResult = cleanedResult.replace(/[\s\u4e00-\u9fa5：:，,。.；;！!？?]*\)?\]?[\s\u4e00-\u9fa5：:，,。.；;！!？?]*$/, '');
+    cleanedResult = cleanedResult.replace(/[\u4e00-\u9fa5：:，,。.；;！!？?]+/g, '').trim();
+    if (cleanedResult) {
+    const formula = `\\int ${integrand} dx = ${cleanedResult}`;
+    return createPlaceholder(formula, true);
+    }
+    return match;
+  });
+  
+  // 4.5 处理不带逗号的积分公式（\int_{a}^{b} ... dx = ...）
+  // 支持负号下标和等号后面的多个积分
+  const integralNoCommaRegex = /\\int\s*(?:(?:_\{[^}]+\})|(?:_[-a-zA-Z0-9]+))?(?:\^\{[^}]+\}|\^[-a-zA-Z0-9]+)?\s*[^\n]*?\s+dx\s*=\s*[^\n]*?(?:\\int[^\n]*?dx[^\n]*?)?[^\n]+?(?=\s|$|[\u4e00-\u9fa5]|\[|\(|\)|,|\.)/g;
+  processedContent = processedContent.replace(integralNoCommaRegex, (match) => {
+    let cleanedMatch = cleanTags(match);
+    const intIndex = cleanedMatch.indexOf('\\int');
+    if (intIndex < 0) return match;
+    let formula = cleanedMatch.substring(intIndex);
+    formula = formula.replace(/[\s\u4e00-\u9fa5：:，,。.；;！!？?]+(?=\s*$)/g, '').trim();
+    if (formula && formula.includes('\\int') && /\s+dx\s*=/.test(formula)) {
+      return createPlaceholder(formula, true);
+    }
+    return match;
+  });
+  
+  // 4.6 处理简单积分（无上下限的），如 \int x e^x dx
+  const simpleIntegralRegex = /\\int\s+[^\n]+?\s+d(?:[a-z]+|\\[a-zA-Z]+)(?=\s|$|[\u4e00-\u9fa5]|\[|\(|\)|,|\.)/g;
+  processedContent = processedContent.replace(simpleIntegralRegex, (match) => {
+    let cleanedMatch = cleanTags(match);
+    const intIndex = cleanedMatch.indexOf('\\int');
+    if (intIndex < 0) return match;
+    let formula = cleanedMatch.substring(intIndex);
+    // 移除末尾的中文和多余标点
+    formula = formula.replace(/[\s\u4e00-\u9fa5：:，,。.；;！!？?]+(?=\s*$)/g, '');
+    formula = formula.replace(/\s*\)\s*\]\s*$/, '').replace(/\s*\]\s*$/, '');
+    if (formula && formula.includes('\\int') && /\bd[a-z]+\b/.test(formula)) {
+      return createPlaceholder(formula.trim(), true);
+    }
+    return match;
+  });
+  
+  // 5. 处理分式 (已废弃，避免破坏复杂公式结构)
+  // const fracRegex = /\\frac{([^}]+)}{([^}]+)}/g;
+  // processedContent = processedContent.replace(fracRegex, (match, numerator, denominator) => {
+  //   const formula = `\\frac{${numerator}}{${denominator}}`;
+  //   return createPlaceholder(formula, false);
+  // });
+
+  // 6. 新增：通用积分公式匹配 (针对 \int_{a}^{b} x^n dx 这种未被特定规则捕获的情况)
+  // 匹配完整的积分公式，包括：
+  // - \int_{a}^{b} ... dx = ... 的形式
+  // - \int_{-a}^{a} ... dx = 2 \int_{0}^{a} ... dx (包含多个积分)
+  // - \int x e^x dx (无上下限的简单积分)
+  // 使用更宽松的匹配，确保能捕获完整的公式（包括等号后面的所有内容，可能包含多个积分）
+  // 改进：匹配到等号后，继续匹配可能存在的第二个积分
+  const generalIntegralRegex = /\\int\s*(?:(?:_\{[^}]+\})|(?:_[-a-zA-Z0-9]+))?(?:\^\{[^}]+\}|\^[-a-zA-Z0-9]+)?\s*[^\n]*?d(?:[a-z]+|\\[a-zA-Z]+)(?:\s*=\s*[^\n]*?(?:\\int\s*(?:(?:_\{[^}]+\})|(?:_[-a-zA-Z0-9]+))?(?:\^\{[^}]+\}|\^[-a-zA-Z0-9]+)?\s*[^\n]*?d(?:[a-z]+|\\[a-zA-Z]+))?[^\n]*?)?(?=[\s\u4e00-\u9fa5]|$|\[|\(|\)|,|\.\s)/g;
+  processedContent = processedContent.replace(generalIntegralRegex, (match, offset, string) => {
+     // 清理匹配内容：移除HTML标签
+     let cleanedMatch = cleanTags(match);
+     
+     // 找到公式的起始位置（\int的位置）
+     const intIndex = cleanedMatch.indexOf('\\int');
+     if (intIndex < 0) {
+       return match; // 如果没有找到\int，返回原匹配
+     }
+     
+     // 从\int开始提取公式
+     let formula = cleanedMatch.substring(intIndex);
+     
+     // 移除公式末尾的中文和多余标点，但保留公式结构
+     // 找到公式的实际结束位置（最后一个数学符号或括号）
+     formula = formula.replace(/[\s\u4e00-\u9fa5：:，,。.；;！!？?]+(?=\s*$)/g, '');
+     // 移除末尾多余的括号和方括号，但保留公式中的括号
+     formula = formula.replace(/\s*\)\s*\]\s*$/, ''); // 只移除末尾的 )]
+     formula = formula.replace(/\s*\]\s*$/, ''); // 移除末尾的 ]
+     
+     // 确保公式完整（至少包含\int和dx或dt等）
+     if (formula.trim() && formula.includes('\\int') && /\bd[a-z]+\b/.test(formula)) {
+       return createPlaceholder(formula.trim(), true);
+     }
+     return match; // 如果清理后无效，返回原匹配
+  });
+
+  // 7. 新增：处理 \left| ... \right| 绝对值/范数
+  const absRegex = /\\left\|[^\n]+?\\right\|/g;
+  processedContent = processedContent.replace(absRegex, (match) => {
+      let cleanedMatch = cleanTags(match);
+      // 移除编号和中文文本，但保留LaTeX命令
+      cleanedMatch = cleanedMatch.replace(/^[\s\u4e00-\u9fa5：:，,。.；;！!？?]*\d+\.\s*[\s\u4e00-\u9fa5：:，,。.；;！!？?]*/, '');
+      cleanedMatch = cleanedMatch.replace(/[\s\u4e00-\u9fa5：:，,。.；;！!？?]*\)?\]?[\s\u4e00-\u9fa5：:，,。.；;！!？?]*$/, '');
+      cleanedMatch = cleanedMatch.replace(/[\u4e00-\u9fa5：:，,。.；;！!？?]+/g, '').trim();
+      if (cleanedMatch && cleanedMatch.includes('\\left|')) {
+      return createPlaceholder(cleanedMatch, false);
+      }
+      return match;
+  });
+
+  // 8. 新增：处理 \left. ... \right| 代换值
+  const evalRegex = /\\left\.[^\n]+?\\right\|(?:_\{[^}]+\})?(?:\^\{[^}]+\})?/g;
+  processedContent = processedContent.replace(evalRegex, (match) => {
+      let cleanedMatch = cleanTags(match);
+      // 移除编号和中文文本，但保留LaTeX命令
+      cleanedMatch = cleanedMatch.replace(/^[\s\u4e00-\u9fa5：:，,。.；;！!？?]*\d+\.\s*[\s\u4e00-\u9fa5：:，,。.；;！!？?]*/, '');
+      cleanedMatch = cleanedMatch.replace(/[\s\u4e00-\u9fa5：:，,。.；;！!？?]*\)?\]?[\s\u4e00-\u9fa5：:，,。.；;！!？?]*$/, '');
+      cleanedMatch = cleanedMatch.replace(/[\u4e00-\u9fa5：:，,。.；;！!？?]+/g, '').trim();
+      if (cleanedMatch && cleanedMatch.includes('\\left.')) {
+      return createPlaceholder(cleanedMatch, false);
+      }
+      return match;
+  });
+  
+  // 9. 清理HTML标签 (在占位符替换后做)
+  processedContent = processedContent.replace(/<br\s*\/?>/g, ' ');
+  
+  return processedContent;
+};
+
+const restoreMathFormula = (content, placeholders) => {
+  // 1. 先尝试清理被marked错误包裹在代码块中的占位符
+  // 处理 <code>MATH-PLACEHOLDER-0-END</code> 或 <pre><code>...</code></pre>
+  // 更强的正则：匹配带有属性的code标签，以及多行情况
+  let html = content.replace(/<pre[^>]*>\s*<code[^>]*>\s*(MATH-PLACEHOLDER-(\d+)-END)\s*<\/code>\s*<\/pre>/gi, '$1');
+  html = html.replace(/<code[^>]*>\s*(MATH-PLACEHOLDER-(\d+)-END)\s*<\/code>/gi, '$1');
+  
+  // 2. 还原占位符
+  return html.replace(/MATH-PLACEHOLDER-(\d+)-END/g, (match, index) => {
+    return placeholders[parseInt(index)] || match;
+  });
+};
+
+const formatMessage = (content) => {
+  try {
+    // 1. 先清理原始内容中的问题
+    let cleanContent = content;
+
+    // 0. 预处理：移除可能包裹公式的 Markdown 代码标记 (反引号)
+    // AI 有时会输出 `\( x^2 \)` 导致公式被渲染为代码块
+    // 移除包裹 $$ ... $$ 的反引号
+    cleanContent = cleanContent.replace(/`(\$\$[\s\S]+?\$\$)`/g, '$1');
+    // 移除包裹 \[ ... \] 的反引号
+    cleanContent = cleanContent.replace(/`(\\\[[\s\S]+?\\\])`/g, '$1');
+    // 移除包裹 \( ... \) 的反引号
+    cleanContent = cleanContent.replace(/`(\\\([\s\S]+?\\\))`/g, '$1');
+    // 移除包裹 \int ... 的反引号 (需要匹配到对应的结束反引号)
+    // 匹配 `\int ... `，确保内部不包含反引号
+    cleanContent = cleanContent.replace(/`(\\int(?:\\[\s\S]|[^`])+?)`/g, '$1');
+    
+    // 预处理：清理公式行中的编号（如 "5."、"1." 等）
+    // 只处理包含LaTeX命令的行，避免误删正常文本
+    // 匹配模式：行首编号 + 可选中文 + LaTeX命令
+    // 注意：这里只清理行首的编号，不清理公式内部的编号
+    cleanContent = cleanContent.replace(/^(\s*)(\d+\.\s*)([\u4e00-\u9fa5：:，,。.；;！!？?\s]*?)(\\int|\\left|\\right|\\frac|\\sqrt|\\sum|\\lim|\\sin|\\cos|\\tan|\\sec|\\ln|\\log|\\exp)/gm, '$1$4');
+    
+    // 处理列表符号和多余括号
+    cleanContent = cleanContent.replace(/^\s*\s*\(/g, '');
+    cleanContent = cleanContent.replace(/\)\s*$/g, '');
+    
+    // 处理HTML标签问题 - 更强的正则，包含转义字符
+    cleanContent = cleanContent.replace(/&lt;\s*\/?\s*(li|ul|ol|p|br|div|span|strong|em)\s*&gt;/gi, '');
+    cleanContent = cleanContent.replace(/<\s*\/?\s*(li|ul|ol|p|div|span)\s*>/gi, '');
+    // 处理带有空格的标签，如 < br >
+    cleanContent = cleanContent.replace(/<\s*br\s*\/?\s*>/gi, ' ');
+    // 强力清除 strong 和 em 标签及其空格变体 (如 < strong >)
+    cleanContent = cleanContent.replace(/<\s*\/?\s*(strong|em)\s*>/gi, '');
+    
+    // 处理数学符号问题：将错误显示的符号替换为正确的
+    cleanContent = cleanContent.replace(/目/g, '≠');
+    
+    // 移除公式周围的双重括号 ((...)) -> ...
+    // 使用 [\s\S]*? 非贪婪匹配任意字符(包括换行)，直到遇到 ))
+    cleanContent = cleanContent.replace(/\(\(([\s\S]*?)\)\)/g, '$1');
+    // 暴力修复：直接将 (( 替换为 (，将 )) 替换为 )
+    cleanContent = cleanContent.replace(/\(\(/g, '(');
+    cleanContent = cleanContent.replace(/\)\)/g, ')');
+
+    // 处理导数公式 ((...)' = ...)
+    cleanContent = cleanContent.replace(/\(\(([\s\S]*?)\)\)'\s*=/g, "($1)' =");
+    
+    // 去除公式周围的多余括号 ( \int ... ) -> \int ...
+    cleanContent = cleanContent.replace(/\(\s*\\int/g, '\\int');
+    // 去除结尾的多余双括号 (针对 ...)) 的情况)
+    cleanContent = cleanContent.replace(/\)\)\s*$/gm, ')');
+    // 尝试去除单独行的右括号
+    cleanContent = cleanContent.replace(/^\s*\)\s*$/gm, '');
+    // 尝试去除单独行的左括号
+    cleanContent = cleanContent.replace(/^\s*\(\s*$/gm, '');
+    
+    // 处理行尾的多余方括号 ] (通常是AI生成的格式错误)
+    // 匹配非转义的 ] 出现在行尾的情况
+    cleanContent = cleanContent.replace(/([^\\])\]\s*$/gm, '$1');
+    // 处理行首的多余方括号 [
+    cleanContent = cleanContent.replace(/^\s*\[/gm, '');
+
+    // 处理区间表示中的错误：(la, b]) → [a, b]
+    cleanContent = cleanContent.replace(/\(la,\s*b\]\)/g, '[a, b]');
+    cleanContent = cleanContent.replace(/\(a,\s*b\)\)/g, '[a, b]');
+    
+    // 处理函数表示中的多余括号：(f(x)) → f(x)
+    cleanContent = cleanContent.replace(/\(f\(x\)\)/g, 'f(x)');
+    cleanContent = cleanContent.replace(/\(F\(x\)\)/g, 'F(x)');
+    
+    // 处理导数和等式中的多余括号
+    cleanContent = cleanContent.replace(/\(F'\(x\)\s*=\s*/g, "F'(x) = ");
+    cleanContent = cleanContent.replace(/\s*\(f\(x\)\)\)/g, " f(x)");
+    
+    // 处理文本中的多余括号
+    cleanContent = cleanContent.replace(/\(即\s*/g, "即 ");
+    cleanContent = cleanContent.replace(/\(\)/g, "");
+    cleanContent = cleanContent.replace(/\)\)/g, ")");
+    
+    // 处理公式周围的多余括号和方括号
+    cleanContent = cleanContent.replace(/\[\s*\\int/g, '\\int');
+    cleanContent = cleanContent.replace(/dx\s*\]/g, 'dx');
+    
+    // 2. 先识别并保护数学公式 (生成占位符)
+    const placeholders = [];
+    let contentWithPlaceholders = renderMathFormula(cleanContent, placeholders);
+
+    // 3. 使用marked解析Markdown (此时公式已被占位符保护，不会被marked破坏)
+    let html = marked.parse(contentWithPlaceholders);
+    
+    // 4. 还原数学公式 (将占位符替换回KaTeX生成的HTML)
+    html = restoreMathFormula(html, placeholders);
+    
+    // 5. 清理多余的HTML标签和格式问题
+    html = html.replace(/\[\s*<p>\s*/g, '<p>');
+    html = html.replace(/\s*<\/p>\s*\]/g, '</p>');
+    html = html.replace(/<br\s*\/?>\]\s*<\/p>/g, '</p>');
+    html = html.replace(/<br\s*\/?>/g, ' ');
+    
+    // 6. 处理公式周围的多余字符 (仅处理行首行尾的方括号，避免误删数学符号)
+    html = html.replace(/^\s*\[/g, '');
+    html = html.replace(/\]\s*$/g, '');
+    
+    return html;
+  } catch (error) {
+    console.error('消息格式化错误:', error);
+    return content;
+  }
+}
+
+// 复制消息内容
+const copyMessage = (content) => {
+  // 从HTML中提取纯文本
+  const tempDiv = document.createElement('div')
+  tempDiv.innerHTML = content
+  const plainText = tempDiv.textContent || tempDiv.innerText || ''
+  
+  // 复制到剪贴板
+  navigator.clipboard.writeText(plainText)
+    .then(() => {
+      // 显示复制成功的反馈
+      const button = event.target.closest('.message-copy-button')
+      if (button) {
+        const originalText = button.innerHTML
+        button.innerHTML = '<i class="fas fa-check"></i><span class="copy-text">已复制</span>'
+        button.classList.add('copied')
+        setTimeout(() => {
+          button.innerHTML = originalText
+          button.classList.remove('copied')
+        }, 2000)
+      }
+    })
+    .catch(err => {
+      console.error('复制失败:', err)
+    })
+}
+
+const formatTime = (timestamp) => {
+  if (!timestamp) return ''
+  const date = new Date(timestamp)
+  return date.toLocaleTimeString('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+const formatSessionDate = (timestamp) => {
+  if (!timestamp) return ''
+  const date = new Date(timestamp)
+  const now = new Date()
+  const diffTime = Math.abs(now - date)
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+  
+  if (diffDays === 0) {
+    return '今天 '
+  } else if (diffDays === 1) {
+    return '昨天 '
+  } else if (diffDays < 7) {
+    return `${diffDays}天前`
+  } else {
+    return date.toLocaleDateString('zh-CN')
+  }
+}
+
+const scrollToBottom = () => {
+  if (messagesContainer.value) {
+    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+  }
+}
+</script>
+
+<style scoped>
+.chat-page {
+  height: calc(100vh - 68px);
+  overflow: hidden;
+  background-color: var(--bg-primary);
+}
+
+.chat-container {
+  display: flex;
+  height: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  background-color: var(--bg-secondary);
+  box-shadow: var(--shadow-lg);
+  border-radius: var(--border-radius-lg);
+  overflow: hidden;
+}
+
+.chat-sidebar {
+  width: 300px;
+  background-color: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s ease;
+}
+
+.sidebar-header {
+  padding: 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sidebar-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+  letter-spacing: 0.5px;
+}
+
+.sidebar-header .btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.btn-icon {
+  font-size: 14px;
+}
+
+.btn-text {
+  font-size: 14px;
+  letter-spacing: 0.2px;
+}
+
+.session-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.session-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.session-list::-webkit-scrollbar-track {
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+}
+
+.session-list::-webkit-scrollbar-thumb {
+  background: var(--gray-300);
+  border-radius: 3px;
+}
+
+.session-list::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-400);
+}
+
+.session-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  margin-bottom: 4px;
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background-color: var(--bg-secondary);
+  border: 1px solid transparent;
+}
+
+.session-item:hover {
+  background-color: var(--bg-tertiary);
+  border-color: var(--border-color);
+  transform: translateX(2px);
+}
+
+.session-item.active {
+  background-color: var(--bg-tertiary);
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-sm);
+}
+
+.session-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.session-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 4px;
+  letter-spacing: 0.2px;
+}
+
+.session-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.session-date {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.delete-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  opacity: 0;
+  transition: all 0.2s ease;
+  color: var(--text-tertiary);
+  padding: 4px;
+  border-radius: var(--border-radius-sm);
+}
+
+.session-item:hover .delete-btn {
+  opacity: 1;
+}
+
+.delete-btn:hover {
+  color: var(--danger-color);
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+.chat-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-primary);
+  position: relative;
+}
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  z-index: 10;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chat-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.model-selector {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.model-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  letter-spacing: 0.2px;
+}
+
+.model-select {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  min-width: 120px;
+}
+
+.model-select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.1);
+}
+
+.messages-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px 40px;
+  scroll-behavior: smooth;
+  background-color: var(--bg-primary);
+}
+
+.messages-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.messages-container::-webkit-scrollbar-track {
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+}
+
+.messages-container::-webkit-scrollbar-thumb {
+  background: var(--gray-300);
+  border-radius: 4px;
+}
+
+.messages-container::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-400);
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-secondary);
+  padding: 40px 20px;
+}
+
+.empty-icon {
+  font-size: 80px;
+  margin-bottom: 24px;
+  opacity: 0.8;
+}
+
+.empty-title {
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--text-primary);
+  letter-spacing: 0.5px;
+}
+
+.empty-description {
+  font-size: 16px;
+  color: var(--text-secondary);
+  text-align: center;
+  max-width: 400px;
+  line-height: 1.6;
+}
+
+.message {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 28px;
+  animation: slideUp 0.3s ease-out;
+  padding: 0 8px;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message.user {
+  flex-direction: row-reverse;
+}
+
+.message-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--gradient-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+  box-shadow: var(--shadow-md);
+  transition: all 0.2s ease;
+}
+
+.message-avatar:hover {
+  transform: scale(1.05);
+  box-shadow: var(--shadow-lg);
+}
+
+.message.assistant .message-avatar {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.message-content {
+  flex: 1;
+  max-width: 80%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.message-bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.message-text {
+  padding: 16px 20px;
+  border-radius: var(--border-radius-lg);
+  line-height: 1.65;
+  word-wrap: break-word;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+  font-size: 14px;
+  letter-spacing: 0.2px;
+}
+
+.message-text:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.message.assistant .message-text {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-top-left-radius: 4px;
+}
+
+.message.user .message-text {
+  background: var(--gradient-primary);
+  color: white;
+  border-top-right-radius: 4px;
+}
+
+.message-text :deep(pre) {
+    background-color: var(--bg-tertiary); /* 在白天模式下是浅色，夜间模式下是深色 */
+    color: var(--text-primary); /* 在白天模式下是深色，夜间模式下是浅色 */
+    padding: 16px;
+    border-radius: var(--border-radius-md);
+    overflow-x: auto;
+    margin: 12px 0;
+    box-shadow: var(--shadow-sm);
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    position: relative;
+    border: 1px solid var(--border-color); /* 添加边框 */
+  }
+
+.message-text :deep(code) {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 13px;
+    background-color: transparent; /* 行内代码背景透明 */
+    color: var(--text-primary); /* 使用主题文字颜色 */
+    padding: 0;
+    border-radius: 0;
+  }
+
+/* 复制按钮样式 */
+.copy-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background-color: var(--bg-secondary); /* 与页面背景色一致 */
+  color: var(--text-primary);
+  border: 1px solid var(--border-color); /* 添加边框 */
+  border-radius: var(--border-radius-sm);
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  opacity: 0;
+  z-index: 100;
+  /* 确保按钮位于右上角 */
+  margin: 0;
+  transform: none;
+  box-sizing: border-box;
+}
+
+/* 确保代码块是相对定位的容器 */
+.message-text :deep(pre) {
+  position: relative !important;
+}
+
+/* 确保复制按钮样式正确应用 */
+.message-text :deep(pre) .copy-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 100;
+}
+
+.message-text :deep(pre):hover .copy-button {
+  opacity: 1;
+}
+
+.copy-button:hover {
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.copy-button:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+.copy-button.copied {
+  background-color: var(--success-color);
+  color: white;
+  border-color: var(--success-color);
+  animation: pulse 0.5s ease-in-out;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.message-text :deep(a) {
+  color: var(--primary-color);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(29, 78, 216, 0.3);
+  transition: all 0.2s ease;
+}
+
+.message-text :deep(a:hover) {
+  border-bottom-color: var(--primary-color);
+}
+
+.message.user .message-text :deep(a) {
+  color: #a5b4fc;
+  border-bottom-color: rgba(165, 180, 252, 0.5);
+}
+
+.message.user .message-text :deep(a:hover) {
+  color: white;
+  border-bottom-color: white;
+}
+
+/* 表格样式 */
+.message-text :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  border: 1px solid var(--border-color);
+  overflow-x: auto;
+  display: block;
+}
+
+.message-text :deep(th) {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.message-text :deep(td) {
+  border: 1px solid var(--border-color);
+  padding: 12px;
+  vertical-align: top;
+}
+
+.message-text :deep(tr:nth-child(even)) {
+  background-color: var(--bg-tertiary);
+}
+
+.message-text :deep(tr:hover) {
+  background-color: var(--toolbar-btn-bg);
+}
+
+/* 消息复制按钮样式 */
+.message-copy-button {
+  position: absolute;
+  bottom: -24px;
+  background-color: rgba(243, 244, 246, 0.8); /* 浅灰色 */
+  color: var(--text-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  opacity: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  z-index: 10;
+}
+
+/* AI消息（左对齐）的复制按钮在下方靠左，与消息内容左边界对齐 */
+.message.assistant .message-copy-button {
+  left: calc(44px + 16px); /* 头像宽度 + 间距 */
+}
+
+/* 用户消息（右对齐）的复制按钮在下方靠右，与消息内容右边界对齐 */
+.message.user .message-copy-button {
+  right: calc(44px + 16px); /* 头像宽度 + 间距 */
+}
+
+.message:hover .message-copy-button {
+  opacity: 1;
+}
+
+.message-copy-button:hover {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  border-color: var(--primary-color);
+}
+
+/* 复制成功状态样式 */
+.message-copy-button.copied {
+  background-color: var(--success-color);
+  color: white;
+  border-color: var(--success-color);
+  animation: pulse 0.5s ease-in-out;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.message {
+  position: relative;
+  display: flex;
+  gap: 16px;
+  margin-bottom: 40px; /* 增加底部边距，为复制按钮留出空间 */
+  animation: slideUp 0.3s ease-out;
+  padding: 0 8px;
+}
+
+/* 重置message-bubble的相对定位 */
+.message-bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.message-time {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+  padding: 0 4px;
+  align-self: flex-end;
+  letter-spacing: 0.2px;
+}
+
+.loading-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    padding: 16px 24px;
+    background-color: var(--bg-secondary);
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--shadow-sm);
+    margin: 0 auto 24px;
+    max-width: fit-content;
+    position: sticky;
+    top: 20px;
+    z-index: 20;
+  }
+
+.chat-input-area {
+  padding: 24px 32px;
+  background-color: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.input-form {
+  width: 100%;
+}
+
+.input-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chat-input {
+  width: 100%;
+  padding: 16px 20px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 14px;
+  resize: vertical;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  min-height: 100px;
+  box-shadow: var(--shadow-sm);
+  letter-spacing: 0.2px;
+  line-height: 1.6;
+}
+
+.chat-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.1);
+  background-color: var(--bg-secondary);
+}
+
+.input-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.send-btn {
+  padding: 12px 28px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  transition: all 0.2s ease;
+}
+
+.send-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+@media (max-width: 1200px) {
+  .message-content {
+    max-width: 85%;
+  }
+}
+
+@media (max-width: 768px) {
+  .chat-container {
+    border-radius: 0;
+    box-shadow: none;
+  }
+  
+  .chat-sidebar {
+    display: none;
+  }
+  
+  .messages-container {
+    padding: 24px 16px;
+  }
+  
+  .chat-input-area {
+    padding: 16px 16px;
+  }
+  
+  .message-content {
+    max-width: 90%;
+  }
+  
+  .chat-header {
+    padding: 16px 16px;
+  }
+  
+  .sidebar-title {
+    font-size: 14px;
+  }
+  
+  .empty-icon {
+    font-size: 64px;
+  }
+  
+  .empty-title {
+    font-size: 24px;
+  }
+  
+  .empty-description {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .messages-container {
+    padding: 16px 8px;
+  }
+  
+  .message {
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  
+  .message-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+  }
+  
+  .message-text {
+    padding: 12px 16px;
+    font-size: 13px;
+  }
+  
+  .message-content {
+    max-width: 95%;
+  }
+}
+</style>
+

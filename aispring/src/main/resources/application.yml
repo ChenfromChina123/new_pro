@@ -1,0 +1,146 @@
+spring:
+  application:
+    name: ai-smart-tutor
+  
+  # 数据库配置
+  datasource:
+    url: jdbc:mysql://localhost:3306/ipv6_education?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      idle-timeout: 300000
+      connection-timeout: 20000
+  
+  # JPA配置
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        format_sql: true
+    open-in-view: false
+  
+  # 文件上传配置
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 500MB
+      max-request-size: 500MB
+      file-size-threshold: 2KB
+  
+  # 邮件配置
+  mail:
+    host: smtp.qq.com
+    port: 587
+    username: ${SENDER_EMAIL:3301767269@qq.com}
+    password: ${SENDER_PASSWORD:dinasyxqstbodbej}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          ssl:
+            trust: smtp.qq.com
+  
+  # 热部署配置
+  devtools:
+    restart:
+      enabled: true
+      poll-interval: 2000ms
+      quiet-period: 1000ms
+      log-condition-evaluation-delta: false
+      exclude: META-INF/maven/**,META-INF/resources/**,static/**,public/**,templates/**,**/*Test.class,**/*Tests.class
+      additional-exclude: logs/**
+    livereload:
+      enabled: true
+    add-properties: true
+  
+  # Spring AI配置 - DeepSeek (兼容OpenAI API)
+  ai:
+    openai:
+      api-key: ${DEEPSEEK_API_KEY:sk-45021a61b84a4693a1db4deb72cec673}
+      base-url: ${DEEPSEEK_API_URL:${DEEPSEEK_URL:https://api.deepseek.com}}
+      chat:
+        options:
+          model: deepseek-chat
+          temperature: 0.7
+          max-tokens: ${MAX_TOKEN:4096}
+
+# 服务器配置
+server:
+  port: 5000
+  servlet:
+    context-path: /
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+
+# JWT配置
+jwt:
+  secret: ${JWT_SECRET_KEY:default_development_key_change_in_production}
+  expiration: 7200000  # 2小时，单位毫秒
+
+# AI模型配置
+ai:
+  deepseek:
+    api-key: ${DEEPSEEK_API_KEY:45021a61b84a4693a1db4deb72cec673}
+    api-url: ${DEEPSEEK_URL:https://api.deepseek.com}
+  doubao:
+    api-key: ${DOUBAO_KEY:6261fd4e-7ac5-46de-95a6-f68f00243230}
+    api-url: ${DOUBAO_BASEURL:https://api.doubao.com/v1}
+  max-tokens: ${MAX_TOKEN:4096}
+
+# 文件存储配置
+file:
+  upload-dir: ${FILE_UPLOAD_DIR:uploads}
+  cloud-disk-dir: ${CLOUD_DISK_DIR:cloud_disk}
+  max-file-size: ${MAX_FILE_SIZE:524288000}  # 500MB
+  allowed-extensions: jpg,jpeg,png,gif,bmp,svg,webp,txt,md,csv,json,xml,html,css,js,doc,docx,pdf,rtf,xls,xlsx,ppt,pptx,mp4,avi,mov,wmv,flv,mkv,zip,rar,7z,tar,gz
+
+# 验证码配置
+verification:
+  code-expire-minutes: 5
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.aispring: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/application.log
+    max-size: 10MB
+    max-history: 30
+
+# CORS配置
+cors:
+  allowed-origins: http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000
+  allowed-methods: GET,POST,PUT,DELETE,OPTIONS
+  allowed-headers: "*"
+  allow-credentials: true
+  max-age: 3600
+
+# 应用信息
+app:
+  name: AI智能学习导师
+  version: 1.0.0
+  description: 基于Spring Boot的AI智能学习助手
+  storage:
+    root-dir: ${APP_STORAGE_ROOT:./}
+    cloud-disk-dir: ${CLOUD_DISK_DIR:cloud_disk}
+    avatars-dir: ${AVATARS_DIR:avatars}
+  cloud-disk:
+    path: ./cloud_disk
+
