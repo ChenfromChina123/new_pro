@@ -247,10 +247,15 @@ public class AiChatServiceImpl implements AiChatService {
             Prompt promptObj = buildPrompt(prompt, sessionId, userId, options);
             
             final ChatClient finalClient = clientToUse;
+            System.out.println("Sending request to AI. Model: " + actualModel + ", Prompt length: " + prompt.length());
             
             ChatResponse response = finalClient.call(promptObj);
-            return response.getResult().getOutput().getContent();
+            String content = response.getResult().getOutput().getContent();
+            System.out.println("AI Response received. Length: " + (content != null ? content.length() : 0));
+            return content;
         } catch (Exception e) {
+            System.err.println("AI Chat Error in ask(): " + e.getMessage());
+            e.printStackTrace();
             return fallbackAnswer(prompt);
         }
     }
