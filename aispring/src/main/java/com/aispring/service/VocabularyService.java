@@ -147,6 +147,10 @@ public class VocabularyService {
     public List<UserWordProgress> getUserReviewWords(Long userId) {
         return userWordProgressRepository.findDueForReview(userId, LocalDateTime.now());
     }
+
+    public List<UserWordProgress> getUserProgressForList(Long userId, Integer listId) {
+        return userWordProgressRepository.findByUserIdAndVocabularyListId(userId, listId);
+    }
     
     /**
      * 获取用户的学习统计

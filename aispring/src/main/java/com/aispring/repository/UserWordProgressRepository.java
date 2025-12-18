@@ -31,6 +31,9 @@ public interface UserWordProgressRepository extends JpaRepository<UserWordProgre
      */
     @Query("SELECT p FROM UserWordProgress p WHERE p.userId = :userId AND p.nextReviewDate <= :now ORDER BY p.nextReviewDate")
     List<UserWordProgress> findDueForReview(@Param("userId") Long userId, @Param("now") LocalDateTime now);
+
+    @Query("SELECT p FROM UserWordProgress p JOIN p.word w WHERE p.userId = :userId AND w.vocabularyListId = :listId ORDER BY p.updatedAt DESC")
+    List<UserWordProgress> findByUserIdAndVocabularyListId(@Param("userId") Long userId, @Param("listId") Integer listId);
     
     /**
      * 根据用户ID查找困难单词

@@ -253,5 +253,19 @@ public class VocabularyController {
         
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/lists/{listId}/progress")
+    public ResponseEntity<Map<String, Object>> getListProgress(
+            @PathVariable Integer listId,
+            @AuthenticationPrincipal CustomUserDetails customUserDetails) {
+
+        Long userId = customUserDetails.getUser().getId();
+        List<UserWordProgress> progress = vocabularyService.getUserProgressForList(userId, listId);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("progress", progress);
+
+        return ResponseEntity.ok(response);
+    }
 }
 

@@ -54,9 +54,11 @@ public class VocabularyWord {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "vocabulary_list_id", insertable = false, updatable = false)
+    @JsonIgnore
     private VocabularyList vocabularyList;
     
     @OneToMany(mappedBy = "word", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
     private List<UserWordProgress> userProgress;
     
     @PrePersist

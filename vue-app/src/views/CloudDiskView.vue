@@ -4,8 +4,8 @@
       <!-- 移动端侧边栏控制按钮 -->
       <button 
         class="mobile-sidebar-toggle"
-        @click="toggleSidebar"
         title="切换文件夹视图"
+        @click="toggleSidebar"
       >
         📁 文件夹
       </button>
@@ -23,17 +23,28 @@
         >
           <div class="sidebar-header">
             <h3>📁 文件夹</h3>
-            <button @click="showCreateFolderDialog" class="icon-btn" title="新建文件夹">
+            <button
+              class="icon-btn"
+              title="新建文件夹"
+              @click="showCreateFolderDialog"
+            >
               ➕
             </button>
-            <button @click="toggleSidebar" class="icon-btn close-btn" title="关闭">
+            <button
+              class="icon-btn close-btn"
+              title="关闭"
+              @click="toggleSidebar"
+            >
               ✕
             </button>
           </div>
           
           <div class="folder-tree">
             <!-- 渲染根目录 -->
-            <template v-for="rootFolder in cloudDiskStore.folders" :key="rootFolder.id">
+            <template
+              v-for="rootFolder in cloudDiskStore.folders"
+              :key="rootFolder.id"
+            >
               <div
                 class="folder-item root-folder"
                 :class="{ active: rootFolder.folderPath === cloudDiskStore.currentFolder }"
@@ -47,7 +58,10 @@
                   >
                     {{ isFolderExpanded(rootFolder) ? '▼' : '▶' }}
                   </span>
-                  <span v-else class="folder-toggle empty"></span>
+                  <span
+                    v-else
+                    class="folder-toggle empty"
+                  />
                   <span class="folder-icon">📂</span>
                   <span class="folder-name">{{ rootFolder.folderName || '根目录' }}</span>
                 </div>
@@ -72,10 +86,19 @@
                       >
                         {{ isFolderExpanded(folder) ? '▼' : '▶' }}
                       </span>
-                      <span v-else class="folder-toggle empty"></span>
+                      <span
+                        v-else
+                        class="folder-toggle empty"
+                      />
                       <span class="folder-icon">📁</span>
                       <span class="folder-name">{{ folder.folderName || '未命名文件夹' }}</span>
-                      <button class="folder-delete-btn" @click.stop="deleteFolderAction(folder.id)" title="删除文件夹">🗑️</button>
+                      <button
+                        class="folder-delete-btn"
+                        title="删除文件夹"
+                        @click.stop="deleteFolderAction(folder.id)"
+                      >
+                        🗑️
+                      </button>
                     </div>
                     
                     <!-- 渲染二级文件夹 -->
@@ -98,10 +121,19 @@
                           >
                             {{ isFolderExpanded(childFolder) ? '▼' : '▶' }}
                           </span>
-                          <span v-else class="folder-toggle empty"></span>
+                          <span
+                            v-else
+                            class="folder-toggle empty"
+                          />
                           <span class="folder-icon">📁</span>
                           <span class="folder-name">{{ childFolder.folderName || '未命名文件夹' }}</span>
-                          <button class="folder-delete-btn" @click.stop="deleteFolderAction(childFolder.id)" title="删除文件夹">🗑️</button>
+                          <button
+                            class="folder-delete-btn"
+                            title="删除文件夹"
+                            @click.stop="deleteFolderAction(childFolder.id)"
+                          >
+                            🗑️
+                          </button>
                         </div>
                         
                         <!-- 渲染三级文件夹 -->
@@ -117,10 +149,16 @@
                             @click="selectFolder(grandchildFolder.folderPath)"
                           >
                             <div class="folder-header">
-                              <span class="folder-toggle empty"></span>
+                              <span class="folder-toggle empty" />
                               <span class="folder-icon">📁</span>
                               <span class="folder-name">{{ grandchildFolder.folderName || '未命名文件夹' }}</span>
-                              <button class="folder-delete-btn" @click.stop="deleteFolderAction(grandchildFolder.id)" title="删除文件夹">🗑️</button>
+                              <button
+                                class="folder-delete-btn"
+                                title="删除文件夹"
+                                @click.stop="deleteFolderAction(grandchildFolder.id)"
+                              >
+                                🗑️
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -137,50 +175,68 @@
         <main class="file-main">
           <div class="file-header">
             <div class="breadcrumb">
-            <button @click="goToRoot" class="breadcrumb-item">
-              🏠 根目录
-            </button>
-            <!-- 只在有子文件夹时显示斜杠和当前文件夹 -->
-            <template v-if="cloudDiskStore.currentFolder && cloudDiskStore.currentFolder !== ''">
-              <span class="separator">/</span>
-              <span class="breadcrumb-item current">
-                {{ cloudDiskStore.currentFolder.replace(/^\//, '') }}
-              </span>
-            </template>
-          </div>
+              <button
+                class="breadcrumb-item"
+                @click="goToRoot"
+              >
+                🏠 根目录
+              </button>
+              <!-- 只在有子文件夹时显示斜杠和当前文件夹 -->
+              <template v-if="cloudDiskStore.currentFolder && cloudDiskStore.currentFolder !== ''">
+                <span class="separator">/</span>
+                <span class="breadcrumb-item current">
+                  {{ cloudDiskStore.currentFolder.replace(/^\//, '') }}
+                </span>
+              </template>
+            </div>
             
             <div class="toolbar">
               <input
                 ref="fileInput"
                 type="file"
                 multiple
-                @change="handleFileSelect"
                 style="display: none"
-              />
+                @change="handleFileSelect"
+              >
               <input
                 ref="folderInput"
                 type="file"
                 webkitdirectory
                 directory
                 multiple
-                @change="handleFolderSelect"
                 style="display: none"
-              />
-              <button @click="$refs.fileInput.click()" class="btn btn-primary">
+                @change="handleFolderSelect"
+              >
+              <button
+                class="btn btn-primary"
+                @click="$refs.fileInput.click()"
+              >
                 📤 上传文件
               </button>
-              <button @click="$refs.folderInput.click()" class="btn btn-secondary">
+              <button
+                class="btn btn-secondary"
+                @click="$refs.folderInput.click()"
+              >
                 📁 上传文件夹
               </button>
-              <button @click="downloadCurrentFolder" class="btn btn-secondary">
+              <button
+                class="btn btn-secondary"
+                @click="downloadCurrentFolder"
+              >
                 💾 下载文件夹
               </button>
               
               <template v-if="cloudDiskStore.selectedFiles.length > 0">
-                <button @click="downloadSelected" class="btn btn-secondary">
+                <button
+                  class="btn btn-secondary"
+                  @click="downloadSelected"
+                >
                   💾 下载 ({{ cloudDiskStore.selectedFiles.length }})
                 </button>
-                <button @click="deleteSelected" class="btn btn-secondary">
+                <button
+                  class="btn btn-secondary"
+                  @click="deleteSelected"
+                >
                   🗑️ 删除 ({{ cloudDiskStore.selectedFiles.length }})
                 </button>
               </template>
@@ -188,18 +244,29 @@
           </div>
           
           <div class="file-list">
-            <div v-if="cloudDiskStore.isLoading" class="loading-state">
-              <div class="loading"></div>
+            <div
+              v-if="cloudDiskStore.isLoading"
+              class="loading-state"
+            >
+              <div class="loading" />
               <p>加载中...</p>
             </div>
             
-            <div v-else-if="cloudDiskStore.files.length === 0" class="empty-state">
-              <div class="empty-icon">📭</div>
+            <div
+              v-else-if="cloudDiskStore.files.length === 0"
+              class="empty-state"
+            >
+              <div class="empty-icon">
+                📭
+              </div>
               <h3>暂无文件</h3>
               <p>点击上传文件按钮开始上传</p>
             </div>
             
-            <div v-else class="file-table-container">
+            <div
+              v-else
+              class="file-table-container"
+            >
               <table class="file-table">
                 <thead>
                   <tr>
@@ -208,41 +275,67 @@
                         type="checkbox"
                         :checked="areAllFilesSelected"
                         @click="toggleSelectAll"
-                      />
+                      >
                     </th>
-                    <th class="name-column" @click="sortFiles('filename')">
+                    <th
+                      class="name-column"
+                      @click="sortFiles('filename')"
+                    >
                       <div class="column-header">
                         <span>名称</span>
-                        <span v-if="sortField === 'filename'" class="sort-indicator">
+                        <span
+                          v-if="sortField === 'filename'"
+                          class="sort-indicator"
+                        >
                           {{ sortAscending ? '↑' : '↓' }}
                         </span>
                       </div>
                     </th>
-                    <th class="date-column" @click="sortFiles('upload_time')">
+                    <th
+                      class="date-column"
+                      @click="sortFiles('upload_time')"
+                    >
                       <div class="column-header">
                         <span>修改日期</span>
-                        <span v-if="sortField === 'upload_time'" class="sort-indicator">
+                        <span
+                          v-if="sortField === 'upload_time'"
+                          class="sort-indicator"
+                        >
                           {{ sortAscending ? '↑' : '↓' }}
                         </span>
                       </div>
                     </th>
-                    <th class="type-column" @click="sortFiles('file_type')">
+                    <th
+                      class="type-column"
+                      @click="sortFiles('file_type')"
+                    >
                       <div class="column-header">
                         <span>类型</span>
-                        <span v-if="sortField === 'file_type'" class="sort-indicator">
+                        <span
+                          v-if="sortField === 'file_type'"
+                          class="sort-indicator"
+                        >
                           {{ sortAscending ? '↑' : '↓' }}
                         </span>
                       </div>
                     </th>
-                    <th class="size-column" @click="sortFiles('file_size')">
+                    <th
+                      class="size-column"
+                      @click="sortFiles('file_size')"
+                    >
                       <div class="column-header">
                         <span>大小</span>
-                        <span v-if="sortField === 'file_size'" class="sort-indicator">
+                        <span
+                          v-if="sortField === 'file_size'"
+                          class="sort-indicator"
+                        >
                           {{ sortAscending ? '↑' : '↓' }}
                         </span>
                       </div>
                     </th>
-                    <th class="actions-column">操作</th>
+                    <th class="actions-column">
+                      操作
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -257,37 +350,46 @@
                         type="checkbox"
                         :checked="isFileSelected(file.id)"
                         @click="toggleFileSelection(file.id)"
-                      />
+                      >
                     </td>
                     <td class="name-column">
                       <div class="file-cell">
                         <span class="file-icon">{{ getFileIcon(file.filename) }}</span>
-                        <span class="file-name" :title="file.filename">{{ file.filename }}</span>
+                        <span
+                          class="file-name"
+                          :title="file.filename"
+                        >{{ file.filename }}</span>
                       </div>
                     </td>
-                    <td class="date-column">{{ formatDate(file.upload_time) }}</td>
-                    <td class="type-column">{{ getFileTypeLabel(file.filename) }}</td>
-                    <td class="size-column">{{ formatFileSize(file.file_size) }}</td>
+                    <td class="date-column">
+                      {{ formatDate(file.upload_time) }}
+                    </td>
+                    <td class="type-column">
+                      {{ getFileTypeLabel(file.filename) }}
+                    </td>
+                    <td class="size-column">
+                      {{ formatFileSize(file.file_size) }}
+                    </td>
                     <td class="actions-column">
                       <div class="file-actions">
                         <button
-                          @click="previewFile(file)"
                           class="action-btn"
                           title="预览"
+                          @click="previewFile(file)"
                         >
                           👁️
                         </button>
                         <button
-                          @click="downloadFile(file.id)"
                           class="action-btn"
                           title="下载"
+                          @click="downloadFile(file.id)"
                         >
                           💾
                         </button>
                         <button
-                          @click="deleteFile(file.id)"
                           class="action-btn delete"
                           title="删除"
+                          @click="deleteFile(file.id)"
                         >
                           🗑️
                         </button>
@@ -303,7 +405,11 @@
     </div>
     
     <!-- 创建文件夹对话框 -->
-    <div v-if="showCreateFolder" class="modal" @click.self="showCreateFolder = false">
+    <div
+      v-if="showCreateFolder"
+      class="modal"
+      @click.self="showCreateFolder = false"
+    >
       <div class="modal-content">
         <h3>创建新文件夹</h3>
         <input
@@ -312,71 +418,111 @@
           class="input"
           placeholder="输入文件夹名称"
           @keyup.enter="createFolder"
-        />
+        >
         <div class="modal-actions">
-          <button @click="createFolder" class="btn btn-primary">创建</button>
-          <button @click="showCreateFolder = false" class="btn btn-secondary">取消</button>
+          <button
+            class="btn btn-primary"
+            @click="createFolder"
+          >
+            创建
+          </button>
+          <button
+            class="btn btn-secondary"
+            @click="showCreateFolder = false"
+          >
+            取消
+          </button>
         </div>
       </div>
     </div>
     
     <!-- 文件预览对话框 -->
-    <div v-if="previewFileData" class="modal" @click.self="closePreview">
+    <div
+      v-if="previewFileData"
+      class="modal"
+      @click.self="closePreview"
+    >
       <div class="modal-content large">
         <div class="modal-header">
           <h3>{{ previewFileData.filename }}</h3>
-          <button @click="closePreview" class="close-btn">✕</button>
-        </div>
-        <div class="modal-body">
-        <div v-if="isPreviewable(previewFileData.filename)" class="preview-container">
-          <div v-if="!previewUrl" class="loading-preview">
-            <div class="loading"></div>
-            <p>正在加载预览...</p>
-          </div>
-          <template v-else>
-            <img 
-              v-if="getFileType(previewFileData.filename) === 'image'" 
-              :src="previewUrl" 
-              class="preview-content preview-image" 
-              alt="预览图片" 
-            />
-            <video 
-              v-else-if="getFileType(previewFileData.filename) === 'video'" 
-              :src="previewUrl" 
-              controls 
-              class="preview-content preview-video"
-            ></video>
-            <audio 
-              v-else-if="getFileType(previewFileData.filename) === 'audio'" 
-              :src="previewUrl" 
-              controls 
-              class="preview-content preview-audio"
-            ></audio>
-            <div v-else-if="getFileType(previewFileData.filename) === 'text'" class="preview-content preview-text">
-              <pre><code>{{ previewText }}</code></pre>
-            </div>
-            <iframe
-              v-else
-              :src="previewUrl"
-              class="preview-frame"
-              sandbox="allow-scripts allow-same-origin"
-            ></iframe>
-          </template>
-        </div>
-        <div v-else class="not-previewable">
-          <p>此文件类型不支持预览</p>
-          <button @click="downloadFile(previewFileData.id)" class="btn btn-primary">
-            下载文件
+          <button
+            class="close-btn"
+            @click="closePreview"
+          >
+            ✕
           </button>
         </div>
-      </div>
+        <div class="modal-body">
+          <div
+            v-if="isPreviewable(previewFileData.filename)"
+            class="preview-container"
+          >
+            <div
+              v-if="!previewUrl"
+              class="loading-preview"
+            >
+              <div class="loading" />
+              <p>正在加载预览...</p>
+            </div>
+            <template v-else>
+              <img 
+                v-if="getFileType(previewFileData.filename) === 'image'" 
+                :src="previewUrl" 
+                class="preview-content preview-image" 
+                alt="预览图片" 
+              >
+              <video 
+                v-else-if="getFileType(previewFileData.filename) === 'video'" 
+                :src="previewUrl" 
+                controls 
+                class="preview-content preview-video"
+              />
+              <audio 
+                v-else-if="getFileType(previewFileData.filename) === 'audio'" 
+                :src="previewUrl" 
+                controls 
+                class="preview-content preview-audio"
+              />
+              <div
+                v-else-if="getFileType(previewFileData.filename) === 'text'"
+                class="preview-content preview-text"
+              >
+                <pre><code>{{ previewText }}</code></pre>
+              </div>
+              <iframe
+                v-else
+                :src="previewUrl"
+                class="preview-frame"
+                sandbox="allow-scripts allow-same-origin"
+              />
+            </template>
+          </div>
+          <div
+            v-else
+            class="not-previewable"
+          >
+            <p>此文件类型不支持预览</p>
+            <button
+              class="btn btn-primary"
+              @click="downloadFile(previewFileData.id)"
+            >
+              下载文件
+            </button>
+          </div>
+        </div>
       </div>
     </div>
     
     <!-- 上传进度 -->
-    <div v-if="uploadProgress > 0 && uploadProgress < 100" class="upload-progress">
+    <div
+      v-if="uploadProgress > 0 && uploadProgress < 100"
+      class="upload-progress"
+    >
       <div class="progress-bar">
-        <div class="progress-fill" :style="{ width: uploadProgress + '%' }"></div>
+        <div
+          class="progress-fill"
+          :style="{ width: uploadProgress + '%' }"
+        />
       </div>
       <p>上传中... {{ uploadProgress }}%</p>
     </div>
