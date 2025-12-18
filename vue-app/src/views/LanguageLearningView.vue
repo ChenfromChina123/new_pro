@@ -1,103 +1,109 @@
 <template>
   <AppLayout>
     <div class="language-learning-page">
-      <div class="container">
-        <div class="page-header">
-          <h1>📚 语言学习</h1>
-          <p>创建单词表，跟踪学习进度</p>
+      <!-- Sidebar Navigation -->
+      <div class="sidebar">
+        <div class="sidebar-header">
+          <h2>📚 语言学习</h2>
         </div>
+        <nav class="sidebar-nav">
+          <a
+            href="#"
+            class="nav-item"
+            :class="{ active: currentView === 'dashboard' }"
+            @click.prevent="currentView = 'dashboard'"
+          >
+            <span class="icon">📊</span>
+            <span class="label">学习概览</span>
+          </a>
+          <a
+            href="#"
+            class="nav-item"
+            :class="{ active: currentView === 'my-words' }"
+            @click.prevent="currentView = 'my-words'"
+          >
+            <span class="icon">📝</span>
+            <span class="label">我的单词</span>
+          </a>
+          <a
+            href="#"
+            class="nav-item"
+            :class="{ active: currentView === 'public-library' }"
+            @click.prevent="currentView = 'public-library'"
+          >
+            <span class="icon">🔍</span>
+            <span class="label">公共词库</span>
+          </a>
+          <a
+            href="#"
+            class="nav-item"
+            :class="{ active: currentView === 'ai-articles' }"
+            @click.prevent="currentView = 'ai-articles'"
+          >
+            <span class="icon">🤖</span>
+            <span class="label">AI文章</span>
+          </a>
+        </nav>
+      </div>
 
-        <div class="overview-grid">
-          <div class="card">
+      <!-- Main Content Area -->
+      <div class="main-content">
+        
+        <!-- Dashboard View -->
+        <div v-if="currentView === 'dashboard'" class="view-section dashboard-view">
+          <div class="view-header">
+            <h2>学习概览</h2>
+            <p>查看你的学习进度和今日任务</p>
+          </div>
+
+          <div class="stats-card card">
             <div class="card-header">
-              <h2>学习统计</h2>
-              <button
-                class="btn btn-secondary"
-                @click="refreshOverview"
-              >
+              <h3>数据统计</h3>
+              <button class="btn btn-text" @click="refreshOverview">
                 刷新
               </button>
             </div>
             <div class="stats-grid">
               <div class="stat-item">
-                <div class="stat-value">
-                  {{ learningStats?.totalWords ?? 0 }}
-                </div>
-                <div class="stat-label">
-                  已学习单词
-                </div>
+                <div class="stat-value">{{ learningStats?.totalWords ?? 0 }}</div>
+                <div class="stat-label">已学习单词</div>
               </div>
               <div class="stat-item">
-                <div class="stat-value">
-                  {{ learningStats?.masteredWords ?? 0 }}
-                </div>
-                <div class="stat-label">
-                  已掌握
-                </div>
+                <div class="stat-value">{{ learningStats?.masteredWords ?? 0 }}</div>
+                <div class="stat-label">已掌握</div>
               </div>
               <div class="stat-item">
-                <div class="stat-value">
-                  {{ formatDuration(learningStats?.todayDuration ?? 0) }}
-                </div>
-                <div class="stat-label">
-                  今日时长
-                </div>
+                <div class="stat-value">{{ formatDuration(learningStats?.todayDuration ?? 0) }}</div>
+                <div class="stat-label">今日时长</div>
               </div>
               <div class="stat-item">
-                <div class="stat-value">
-                  {{ formatDuration(learningStats?.totalDuration ?? 0) }}
-                </div>
-                <div class="stat-label">
-                  总时长
-                </div>
+                <div class="stat-value">{{ formatDuration(learningStats?.totalDuration ?? 0) }}</div>
+                <div class="stat-label">总时长</div>
               </div>
             </div>
           </div>
 
-          <div class="card">
+          <div class="review-card card mt-4">
             <div class="card-header">
-              <h2>今日复习</h2>
-              <button
-                class="btn btn-secondary"
-                @click="refreshReview"
-              >
+              <h3>今日复习</h3>
+              <button class="btn btn-text" @click="refreshReview">
                 刷新
               </button>
             </div>
-            <div
-              v-if="reviewItems.length === 0"
-              class="empty-state"
-            >
+            <div v-if="reviewItems.length === 0" class="empty-state">
               <p>暂无需要复习的单词</p>
             </div>
-            <div
-              v-else
-              class="review-list"
-            >
-              <div
-                v-for="item in reviewItems"
-                :key="item.id"
-                class="review-item"
-              >
+            <div v-else class="review-list">
+              <div v-for="item in reviewItems" :key="item.id" class="review-item">
                 <div class="review-main">
-                  <div class="review-word">
-                    {{ item.word?.word || item.wordId }}
-                  </div>
-                  <div class="review-definition">
-                    {{ item.word?.definition }}
-                  </div>
+                  <div class="review-word">{{ item.word?.word || item.wordId }}</div>
+                  <div class="review-definition">{{ item.word?.definition }}</div>
                 </div>
                 <div class="review-actions">
-                  <button
-                    class="btn btn-secondary"
-                    @click="quickReview(item.wordId, Math.min((item.masteryLevel ?? 0) + 1, 5))"
-                  >
+                  <button class="btn btn-sm btn-outline" @click="quickReview(item.wordId, Math.min((item.masteryLevel ?? 0) + 1, 5))">
                     认识
                   </button>
-                  <button
-                    class="btn btn-primary"
-                    @click="quickReview(item.wordId, 5)"
-                  >
+                  <button class="btn btn-sm btn-primary" @click="quickReview(item.wordId, 5)">
                     掌握
                   </button>
                 </div>
@@ -105,150 +111,80 @@
             </div>
           </div>
         </div>
-        
-        <div class="content-grid">
-          <div class="vocabulary-lists card">
-            <div class="card-header">
-              <h2>我的单词表</h2>
-              <button
-                class="btn btn-primary"
-                @click="showCreateList = true"
-              >
-                ➕ 新建
-              </button>
-            </div>
-            
-            <div class="list-container">
-              <div
-                v-for="list in vocabularyLists"
-                :key="list.id"
-                class="list-item"
-                :class="{ active: currentListId === list.id }"
-                @click="selectList(list.id)"
-              >
-                <div class="list-info">
-                  <h3>{{ list.name }}</h3>
-                  <p>{{ getListWordCount(list.id) }} 个单词</p>
-                </div>
-                <div class="list-progress">
-                  <div class="progress-circle">
-                    {{ (list.language || 'en').toUpperCase() }}
+
+        <!-- My Words View -->
+        <div v-if="currentView === 'my-words'" class="view-section my-words-view">
+          <div class="two-column-layout">
+            <div class="list-column card">
+              <div class="card-header">
+                <h3>单词表</h3>
+                <button class="btn btn-sm btn-primary" @click="showCreateList = true">
+                  + 新建
+                </button>
+              </div>
+              <div class="list-container">
+                <div
+                  v-for="list in vocabularyLists"
+                  :key="list.id"
+                  class="list-item"
+                  :class="{ active: currentListId === list.id }"
+                  @click="selectList(list.id)"
+                >
+                  <div class="list-info">
+                    <h4>{{ list.name }}</h4>
+                    <span class="badge">{{ (list.language || 'en').toUpperCase() }}</span>
+                    <span class="count">{{ getListWordCount(list.id) }} 词</span>
                   </div>
+                  <button class="btn-icon delete-btn" @click.stop="removeList(list.id)" title="删除">
+                    ×
+                  </button>
                 </div>
-                <button
-                  class="btn btn-secondary list-delete"
-                  @click.stop="removeList(list.id)"
-                >
-                  删除
-                </button>
               </div>
             </div>
-          </div>
-          
-          <div class="word-list card">
-            <div class="card-header">
-              <h2>单词列表</h2>
-              <div class="word-actions">
-                <button
-                  v-if="currentListId"
-                  class="btn btn-secondary"
-                  @click="refreshCurrentList"
-                >
-                  刷新
-                </button>
-                <button
-                  v-if="currentListId"
-                  class="btn btn-primary"
-                  @click="showAddWord = true"
-                >
-                  ➕ 添加单词
-                </button>
+
+            <div class="words-column card">
+              <div class="card-header">
+                <h3>{{ currentList ? currentList.name : '单词列表' }}</h3>
+                <div class="actions">
+                  <button v-if="currentListId" class="btn btn-sm btn-outline" @click="refreshCurrentList">
+                    刷新
+                  </button>
+                  <button v-if="currentListId" class="btn btn-sm btn-primary" @click="showAddWord = true">
+                    + 添加单词
+                  </button>
+                </div>
               </div>
-            </div>
-            
-            <div
-              v-if="!currentListId"
-              class="empty-state"
-            >
-              <p>请先选择一个单词表</p>
-            </div>
-            
-            <div
-              v-else-if="currentWords.length === 0"
-              class="empty-state"
-            >
-              <p>暂无单词，点击添加单词开始学习</p>
-            </div>
-            
-            <div
-              v-else
-              class="words-container"
-            >
-              <div
-                v-for="word in currentWords"
-                :key="word.id"
-                class="word-card"
-              >
-                <div class="word-front">
-                  <h3>{{ word.word }}</h3>
-                  <p class="phonetic">
-                    {{ word.partOfSpeech }}
-                  </p>
-                </div>
-                <div class="word-back">
-                  <p class="translation">
-                    {{ word.definition }}
-                  </p>
-                  <p
-                    v-if="word.example"
-                    class="example"
-                  >
-                    {{ word.example }}
-                  </p>
-                </div>
-                <div class="word-status">
-                  <span :class="['status-badge', getMasteryClass(getWordProgress(word.id).masteryLevel)]">
-                    {{ getMasteryText(getWordProgress(word.id).masteryLevel) }}
-                  </span>
-                  <div class="progress-controls">
-                    <label class="toggle">
-                      <input
-                        type="checkbox"
-                        :checked="!!getWordProgress(word.id).isDifficult"
-                        @change="toggleDifficult(word.id, $event.target.checked)"
+
+              <div v-if="!currentListId" class="empty-state">
+                <p>请选择一个单词表查看详情</p>
+              </div>
+              <div v-else-if="currentWords.length === 0" class="empty-state">
+                <p>暂无单词，点击上方按钮添加</p>
+              </div>
+              <div v-else class="words-grid">
+                <div v-for="word in currentWords" :key="word.id" class="word-card-item">
+                  <div class="word-header">
+                    <h4>{{ word.word }}</h4>
+                    <span class="pos">{{ word.partOfSpeech }}</span>
+                  </div>
+                  <div class="word-body">
+                    <p class="definition">{{ word.definition }}</p>
+                    <p v-if="word.example" class="example">{{ word.example }}</p>
+                  </div>
+                  <div class="word-footer">
+                    <span :class="['status-tag', getMasteryClass(getWordProgress(word.id).masteryLevel)]">
+                      {{ getMasteryText(getWordProgress(word.id).masteryLevel) }}
+                    </span>
+                    <div class="controls">
+                      <select
+                        class="select-sm"
+                        :value="getWordProgress(word.id).masteryLevel ?? 0"
+                        @change="changeMastery(word.id, $event.target.value)"
                       >
-                      <span>难词</span>
-                    </label>
-                    <select
-                      class="input mastery-select"
-                      :value="getWordProgress(word.id).masteryLevel ?? 0"
-                      @change="changeMastery(word.id, $event.target.value)"
-                    >
-                      <option value="0">
-                        0
-                      </option>
-                      <option value="1">
-                        1
-                      </option>
-                      <option value="2">
-                        2
-                      </option>
-                      <option value="3">
-                        3
-                      </option>
-                      <option value="4">
-                        4
-                      </option>
-                      <option value="5">
-                        5
-                      </option>
-                    </select>
-                    <button
-                      class="btn btn-secondary"
-                      @click="removeWord(word.id)"
-                    >
-                      删除
-                    </button>
+                        <option v-for="i in 6" :key="i" :value="i-1">{{ i-1 }}</option>
+                      </select>
+                      <button class="btn-icon delete-btn" @click="removeWord(word.id)">🗑️</button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -256,208 +192,146 @@
           </div>
         </div>
 
-        <div class="card mt-3">
-          <div class="card-header">
+        <!-- Public Library View -->
+        <div v-if="currentView === 'public-library'" class="view-section public-library-view">
+          <div class="view-header">
             <h2>公共词库</h2>
+            <p>搜索并添加单词到你的个人词库</p>
           </div>
-          <div class="public-search">
-            <input
-              v-model="publicKeyword"
-              type="text"
-              class="input"
-              placeholder="搜索公共词库（单词/释义）"
-              :disabled="!currentListId"
-              @keyup.enter="searchPublic"
-            >
-            <button
-              class="btn btn-secondary"
-              :disabled="!currentListId || !publicKeyword.trim()"
-              @click="searchPublic"
-            >
-              搜索
-            </button>
-          </div>
-          <div
-            v-if="publicResults.length === 0"
-            class="empty-state"
-          >
-            <p>搜索后可一键添加到当前单词表</p>
-          </div>
-          <div
-            v-else
-            class="public-results"
-          >
-            <div
-              v-for="w in publicResults"
-              :key="w.id"
-              class="public-item"
-            >
-              <div class="public-main">
-                <div class="public-word">
-                  {{ w.word }}
-                </div>
-                <div class="public-meta">
-                  <span class="public-pos">{{ w.partOfSpeech }}</span>
-                  <span class="public-def">{{ w.definition }}</span>
-                </div>
-              </div>
-              <button
-                class="btn btn-primary"
-                :disabled="!currentListId"
-                @click="addPublicWord(w)"
+
+          <div class="search-bar-container">
+            <div class="search-input-wrapper">
+              <input
+                v-model="publicKeyword"
+                type="text"
+                class="search-input"
+                placeholder="搜索单词、释义..."
+                @keyup.enter="searchPublic"
               >
-                添加
+              <button class="btn btn-primary search-btn" @click="searchPublic">
+                搜索
               </button>
             </div>
+            <div class="search-tips" v-if="!currentListId">
+              ⚠️ 请先在"我的单词"中选择或创建一个目标单词表
+            </div>
+            <div class="search-tips" v-else>
+              添加到: <strong>{{ currentList?.name }}</strong>
+            </div>
           </div>
-        </div>
-        
-        <!-- AI生成文章功能 -->
-        <div class="card mt-3">
-          <div class="card-header">
-            <h2>🤖 AI生成学习文章</h2>
-          </div>
-          
-          <div class="generate-section">
-            <p>根据你的单词表生成个性化学习文章</p>
-            <button
-              class="btn btn-primary"
-              :disabled="!currentListId || isGenerating"
-              @click="generateArticle"
-            >
-              {{ isGenerating ? '生成中...' : '生成文章' }}
-            </button>
-            
-            <div
-              v-if="generatedArticle"
-              class="article-content"
-            >
-              <pre class="article-pre">{{ generatedArticle }}</pre>
+
+          <div class="public-results-grid">
+            <div v-if="publicResults.length === 0" class="empty-state">
+              <p>输入关键词搜索，或直接点击搜索查看推荐词汇</p>
+            </div>
+            <div v-else class="results-list">
+              <div v-for="w in publicResults" :key="w.id" class="result-card">
+                <div class="result-info">
+                  <div class="result-header">
+                    <h4>{{ w.word }}</h4>
+                    <span class="pos-tag">{{ w.partOfSpeech }}</span>
+                  </div>
+                  <p class="result-def">{{ w.definition }}</p>
+                </div>
+                <button
+                  class="btn btn-sm btn-primary"
+                  :disabled="!currentListId"
+                  @click="addPublicWord(w)"
+                >
+                  添加
+                </button>
+              </div>
             </div>
           </div>
         </div>
+
+        <!-- AI Articles View -->
+        <div v-if="currentView === 'ai-articles'" class="view-section ai-articles-view">
+          <div class="view-header">
+            <h2>AI 生成学习文章</h2>
+            <p>基于你的词汇表生成个性化阅读材料</p>
+          </div>
+
+          <div class="article-generator card">
+            <div class="generator-controls">
+              <div class="control-item">
+                <label>来源单词表</label>
+                <select v-model="currentListId" class="select-input">
+                  <option :value="null" disabled>请选择单词表</option>
+                  <option v-for="list in vocabularyLists" :key="list.id" :value="list.id">
+                    {{ list.name }} ({{ getListWordCount(list.id) }}词)
+                  </option>
+                </select>
+              </div>
+              <button
+                class="btn btn-primary generate-btn"
+                :disabled="!currentListId || isGenerating"
+                @click="generateArticle"
+              >
+                <span v-if="isGenerating" class="spinner"></span>
+                {{ isGenerating ? '正在生成...' : '✨ 生成文章' }}
+              </button>
+            </div>
+            
+            <div v-if="generatedArticle" class="article-display">
+              <div class="article-paper">
+                <pre class="article-text">{{ generatedArticle }}</pre>
+              </div>
+            </div>
+            <div v-else class="empty-state large">
+              <div class="illustration">🤖</div>
+              <p>选择一个单词表，AI 将为你生成一篇包含这些词汇的短文，帮助你通过上下文记忆。</p>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
     
-    <!-- 创建单词表对话框 -->
-    <div
-      v-if="showCreateList"
-      class="modal"
-      @click.self="showCreateList = false"
-    >
-      <div class="modal-content">
+    <!-- Dialogs -->
+    <div v-if="showCreateList" class="modal-overlay" @click.self="showCreateList = false">
+      <div class="modal-card">
         <h3>创建单词表</h3>
-        <input
-          v-model="newList.name"
-          type="text"
-          class="input"
-          placeholder="输入单词表名称"
-          @keyup.enter="createList"
-        >
-        <textarea
-          v-model="newList.description"
-          class="input textarea"
-          placeholder="描述（可选）"
-        />
-        <select
-          v-model="newList.language"
-          class="input"
-        >
-          <option value="en">
-            英语
-          </option>
-          <option value="ja">
-            日语
-          </option>
-          <option value="ko">
-            韩语
-          </option>
-          <option value="fr">
-            法语
-          </option>
-          <option value="de">
-            德语
-          </option>
-          <option value="es">
-            西班牙语
-          </option>
-          <option value="zh">
-            中文
-          </option>
+        <input v-model="newList.name" type="text" class="input" placeholder="输入单词表名称" @keyup.enter="createList">
+        <textarea v-model="newList.description" class="input textarea" placeholder="描述（可选）"></textarea>
+        <select v-model="newList.language" class="input">
+          <option value="en">英语</option>
+          <option value="ja">日语</option>
+          <option value="ko">韩语</option>
+          <option value="fr">法语</option>
+          <option value="de">德语</option>
+          <option value="es">西班牙语</option>
+          <option value="zh">中文</option>
         </select>
         <div class="modal-actions">
-          <button
-            class="btn btn-primary"
-            @click="createList"
-          >
-            创建
-          </button>
-          <button
-            class="btn btn-secondary"
-            @click="showCreateList = false"
-          >
-            取消
-          </button>
+          <button class="btn btn-secondary" @click="showCreateList = false">取消</button>
+          <button class="btn btn-primary" @click="createList">创建</button>
         </div>
       </div>
     </div>
     
-    <!-- 添加单词对话框 -->
-    <div
-      v-if="showAddWord"
-      class="modal"
-      @click.self="showAddWord = false"
-    >
-      <div class="modal-content">
+    <div v-if="showAddWord" class="modal-overlay" @click.self="showAddWord = false">
+      <div class="modal-card">
         <h3>添加单词</h3>
         <div class="form-group">
           <label>单词</label>
-          <input
-            v-model="newWord.word"
-            type="text"
-            class="input"
-            placeholder="单词"
-          >
+          <input v-model="newWord.word" type="text" class="input" placeholder="单词">
         </div>
         <div class="form-group">
           <label>释义</label>
-          <input
-            v-model="newWord.definition"
-            type="text"
-            class="input"
-            placeholder="释义"
-          >
+          <input v-model="newWord.definition" type="text" class="input" placeholder="释义">
         </div>
         <div class="form-group">
           <label>词性</label>
-          <input
-            v-model="newWord.partOfSpeech"
-            type="text"
-            class="input"
-            placeholder="词性（可选）"
-          >
+          <input v-model="newWord.partOfSpeech" type="text" class="input" placeholder="例如: n., v., adj.">
         </div>
         <div class="form-group">
           <label>例句</label>
-          <textarea
-            v-model="newWord.example"
-            class="input textarea"
-            placeholder="例句（可选）"
-          />
+          <textarea v-model="newWord.example" class="input textarea" placeholder="例句（可选）"></textarea>
         </div>
         <div class="modal-actions">
-          <button
-            class="btn btn-primary"
-            @click="addWord"
-          >
-            添加
-          </button>
-          <button
-            class="btn btn-secondary"
-            @click="showAddWord = false"
-          >
-            取消
-          </button>
+          <button class="btn btn-secondary" @click="showAddWord = false">取消</button>
+          <button class="btn btn-primary" @click="addWord">添加</button>
         </div>
       </div>
     </div>
@@ -470,6 +344,8 @@ import request from '@/utils/request'
 import { API_ENDPOINTS } from '@/config/api'
 import AppLayout from '@/components/AppLayout.vue'
 import { useVocabularyStore } from '@/stores/vocabulary'
+
+const currentView = ref('dashboard') // dashboard, my-words, public-library, ai-articles
 
 const currentListId = ref(null)
 const showCreateList = ref(false)
@@ -532,6 +408,7 @@ const createList = async () => {
   newList.value = { name: '', description: '', language: 'en' }
   if (result.data?.id) {
     await selectList(result.data.id)
+    currentView.value = 'my-words' // Switch to list view
   }
 }
 
@@ -652,20 +529,6 @@ const changeMastery = async (wordId, value) => {
   await Promise.all([vocabularyStore.fetchStats(), vocabularyStore.fetchReviewWords()])
 }
 
-const toggleDifficult = async (wordId, checked) => {
-  const current = getWordProgress(wordId)
-  const result = await vocabularyStore.updateProgress({
-    wordId,
-    masteryLevel: current.masteryLevel ?? 0,
-    isDifficult: !!checked
-  })
-  if (!result.success) {
-    alert('更新失败: ' + (result.message || '未知错误'))
-    return
-  }
-  await Promise.all([vocabularyStore.fetchStats(), vocabularyStore.fetchReviewWords()])
-}
-
 const removeWord = async (wordId) => {
   if (!currentListId.value) return
   if (!confirm('确定要删除这个单词吗？')) return
@@ -709,9 +572,8 @@ const quickReview = async (wordId, masteryLevel) => {
 }
 
 const searchPublic = async () => {
-  if (!currentListId.value) return
+  // Allow empty search to get random/default words if backend supports it
   const kw = publicKeyword.value.trim()
-  if (!kw) return
   const language = currentList.value?.language || 'en'
   const result = await vocabularyStore.searchPublic(kw, language)
   if (!result.success) {
@@ -720,7 +582,10 @@ const searchPublic = async () => {
 }
 
 const addPublicWord = async (w) => {
-  if (!currentListId.value) return
+  if (!currentListId.value) {
+    alert('请先选择一个单词表')
+    return
+  }
   const result = await vocabularyStore.addWord(currentListId.value, {
     word: w.word,
     definition: w.definition,
@@ -751,106 +616,101 @@ const formatDuration = (seconds) => {
 </script>
 
 <style scoped>
+/* Page Layout */
 .language-learning-page {
-  min-height: calc(100vh - 64px);
-  padding: 32px 0;
+  display: flex;
+  height: calc(100vh - 64px); /* Fixed height */
+  overflow: hidden;
+  background-color: #f5f7fa;
 }
 
-.page-header {
-  text-align: center;
-  margin-bottom: 32px;
-}
-
-.page-header h1 {
-  font-size: 32px;
-  margin-bottom: 8px;
-}
-
-.page-header p {
-  color: var(--text-secondary);
-  font-size: 16px;
-}
-
-.overview-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-  margin-bottom: 24px;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-}
-
-.stat-item {
-  padding: 16px;
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  background-color: var(--bg-primary);
-}
-
-.stat-value {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 6px;
-}
-
-.stat-label {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.review-list {
+/* Sidebar */
+.sidebar {
+  width: 240px;
+  background-color: #ffffff;
+  border-right: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-.review-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 12px 14px;
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  background-color: var(--bg-primary);
-}
-
-.review-main {
-  min-width: 0;
-  flex: 1;
-}
-
-.review-word {
-  font-size: 16px;
-  font-weight: 700;
-  margin-bottom: 4px;
-  color: var(--text-primary);
-}
-
-.review-definition {
-  font-size: 13px;
-  color: var(--text-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.review-actions {
-  display: flex;
-  gap: 10px;
   flex-shrink: 0;
 }
 
-.content-grid {
-  display: grid;
-  grid-template-columns: 350px 1fr;
-  gap: 24px;
-  margin-bottom: 24px;
+.sidebar-header {
+  padding: 24px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.sidebar-header h2 {
+  font-size: 18px;
+  color: #1e293b;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sidebar-nav {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  color: #64748b;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.nav-item:hover {
+  background-color: #f8fafc;
+  color: #3b82f6;
+}
+
+.nav-item.active {
+  background-color: #eff6ff;
+  color: #3b82f6;
+  font-weight: 500;
+}
+
+.nav-item .icon {
+  font-size: 18px;
+}
+
+/* Main Content */
+.main-content {
+  flex: 1;
+  overflow-y: auto; /* Scroll internally */
+  padding: 32px;
+  position: relative;
+}
+
+.view-header {
+  margin-bottom: 32px;
+}
+
+.view-header h2 {
+  font-size: 24px;
+  color: #1e293b;
+  margin: 0 0 8px 0;
+}
+
+.view-header p {
+  color: #64748b;
+  margin: 0;
+}
+
+/* Cards & Stats */
+.card {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
 .card-header {
@@ -860,321 +720,425 @@ const formatDuration = (seconds) => {
   margin-bottom: 20px;
 }
 
-.card-header h2 {
-  font-size: 20px;
+.card-header h3 {
+  font-size: 18px;
   margin: 0;
+  color: #334155;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+}
+
+.stat-item {
+  text-align: center;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 8px;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #3b82f6;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: #64748b;
+}
+
+/* My Words Layout */
+.two-column-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 24px;
+  height: calc(100vh - 160px); /* Fit within main content */
+}
+
+.list-column, .words-column {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .list-container {
+  overflow-y: auto;
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .list-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   padding: 16px;
-  border: 2px solid var(--border-color);
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
 }
 
 .list-item:hover {
-  border-color: var(--primary-color);
-  box-shadow: var(--shadow-soft);
+  border-color: #3b82f6;
+  background-color: #f8fafc;
 }
 
 .list-item.active {
-  border-color: var(--primary-color);
-  background-color: rgba(52, 152, 219, 0.05);
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
 }
 
-.list-delete {
-  margin-left: 10px;
-  flex-shrink: 0;
+.list-info h4 {
+  margin: 0 0 6px 0;
+  font-size: 15px;
+  color: #1e293b;
 }
 
-.list-info h3 {
-  font-size: 16px;
-  margin: 0 0 4px 0;
+.badge {
+  display: inline-block;
+  padding: 2px 6px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  font-size: 10px;
+  color: #64748b;
+  margin-right: 8px;
 }
 
-.list-info p {
-  font-size: 14px;
-  color: var(--text-secondary);
-  margin: 0;
+.count {
+  font-size: 12px;
+  color: #94a3b8;
 }
 
-.progress-circle {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 14px;
-}
-
-.word-actions {
-  display: flex;
-  gap: 10px;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 60px 20px;
-  color: var(--text-secondary);
-}
-
-.words-container {
+.words-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 16px;
+  overflow-y: auto;
+  padding: 4px;
 }
 
-.word-card {
-  padding: 20px;
-  border: 2px solid var(--border-color);
-  border-radius: 12px;
-  transition: all 0.3s ease;
+.word-card-item {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
 }
 
-.word-card:hover {
-  border-color: var(--primary-color);
-  box-shadow: var(--shadow-soft);
-  transform: translateY(-4px);
+.word-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
 }
 
-.word-front h3 {
-  font-size: 24px;
-  margin: 0 0 8px 0;
-  color: var(--primary-color);
+.word-header h4 {
+  margin: 0;
+  font-size: 18px;
+  color: #3b82f6;
 }
 
-.phonetic {
-  color: var(--text-secondary);
+.pos {
+  font-size: 12px;
+  color: #64748b;
+  font-style: italic;
+}
+
+.word-body {
+  flex: 1;
+  margin-bottom: 12px;
+}
+
+.definition {
+  margin: 0 0 4px 0;
   font-size: 14px;
-  margin: 0 0 12px 0;
-}
-
-.translation {
-  font-size: 16px;
-  margin: 0 0 8px 0;
+  color: #334155;
   font-weight: 500;
 }
 
 .example {
-  font-size: 14px;
-  color: var(--text-secondary);
-  font-style: italic;
   margin: 0;
-}
-
-.word-status {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border-color);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.status-badge {
-  padding: 4px 12px;
-  border-radius: 12px;
   font-size: 12px;
-  font-weight: 500;
-  flex-shrink: 0;
+  color: #64748b;
 }
 
-.status-badge.new {
-  background-color: rgba(52, 152, 219, 0.1);
-  color: var(--primary-color);
-}
-
-.status-badge.learning {
-  background-color: rgba(243, 156, 18, 0.1);
-  color: #f39c12;
-}
-
-.status-badge.mastered {
-  background-color: rgba(39, 174, 96, 0.1);
-  color: var(--success-color);
-}
-
-.progress-controls {
+.word-footer {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  padding-top: 12px;
+  border-top: 1px solid #f1f5f9;
 }
 
-.toggle {
-  display: inline-flex;
+.status-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+.status-tag.new { background: #eff6ff; color: #3b82f6; }
+.status-tag.learning { background: #fef3c7; color: #d97706; }
+.status-tag.mastered { background: #dcfce7; color: #16a34a; }
+
+.controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.select-sm {
+  padding: 2px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+/* Public Library */
+.search-bar-container {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  margin-bottom: 24px;
+}
+
+.search-input-wrapper {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.search-input {
+  flex: 1;
+  padding: 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+.search-tips {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.results-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.result-card {
+  background: white;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.result-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.result-header {
+  display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
-  color: var(--text-secondary);
+  margin-bottom: 4px;
 }
 
-.mastery-select {
-  width: 88px;
+.result-header h4 {
+  margin: 0;
+  font-size: 16px;
 }
 
-.public-search {
+.pos-tag {
+  font-size: 11px;
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.result-def {
+  margin: 0;
+  font-size: 14px;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* AI Articles */
+.article-generator {
+  min-height: 500px;
+}
+
+.generator-controls {
   display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.public-results {
-  margin-top: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.public-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   gap: 16px;
-  padding: 14px 16px;
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  background-color: var(--bg-primary);
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #f1f5f9;
 }
 
-.public-main {
-  min-width: 0;
+.control-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   flex: 1;
 }
 
-.public-word {
-  font-size: 16px;
-  font-weight: 700;
-  margin-bottom: 6px;
-  color: var(--text-primary);
+.select-input {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
 }
 
-.public-meta {
+.generate-btn {
+  padding: 10px 24px;
+  font-weight: 600;
   display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  align-items: baseline;
-  color: var(--text-secondary);
-  font-size: 13px;
+  align-items: center;
+  gap: 8px;
 }
 
-.public-pos {
-  padding: 2px 8px;
-  border-radius: 10px;
-  background-color: rgba(52, 152, 219, 0.08);
-  color: var(--primary-color);
-  flex-shrink: 0;
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #ffffff;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
-.public-def {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
-.generate-section {
-  text-align: center;
-  padding: 20px 0;
+.article-paper {
+  background: #fff;
+  padding: 40px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  max-width: 800px;
+  margin: 0 auto;
 }
 
-.generate-section p {
-  margin-bottom: 16px;
-  color: var(--text-secondary);
-}
-
-.article-content {
-  margin-top: 24px;
-  padding: 24px;
-  background-color: var(--chat-bg);
-  border-radius: 12px;
-  text-align: left;
-}
-
-.article-content h3 {
-  margin-bottom: 16px;
-  color: var(--primary-color);
-}
-
-.article-pre {
+.article-text {
+  font-family: 'Georgia', serif;
+  font-size: 18px;
+  line-height: 1.8;
+  color: #1e293b;
   white-space: pre-wrap;
-  word-break: break-word;
   margin: 0;
-  font-family: inherit;
-  color: var(--text-primary);
-  line-height: 1.7;
 }
 
-.modal {
+/* Modals */
+.modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.7);
+  background: rgba(0,0,0,0.5);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 100;
 }
 
-.modal-content {
-  background-color: var(--bg-secondary);
-  border-radius: 12px;
+.modal-card {
+  background: white;
   padding: 24px;
-  min-width: 400px;
-  max-width: 90vw;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 400px;
 }
 
-.modal-content h3 {
-  margin: 0 0 20px 0;
-  font-size: 18px;
+.input, .textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  margin-bottom: 12px;
 }
 
-.form-group {
-  margin-bottom: 16px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 500;
-  font-size: 14px;
+.textarea {
+  min-height: 100px;
+  resize: vertical;
 }
 
 .modal-actions {
   display: flex;
-  gap: 12px;
   justify-content: flex-end;
-  margin-top: 20px;
+  gap: 12px;
+  margin-top: 24px;
 }
 
-@media (max-width: 768px) {
-  .overview-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .content-grid {
-    grid-template-columns: 1fr;
-  }
+/* Buttons */
+.btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
 }
+
+.btn-primary {
+  background: #3b82f6;
+  color: white;
+}
+.btn-primary:hover { background: #2563eb; }
+.btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
+
+.btn-secondary { background: #f1f5f9; color: #475569; }
+.btn-secondary:hover { background: #e2e8f0; }
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+}
+.btn-outline:hover { border-color: #3b82f6; color: #3b82f6; }
+
+.btn-text {
+  background: transparent;
+  color: #64748b;
+  padding: 4px 8px;
+}
+.btn-text:hover { color: #3b82f6; }
+
+.btn-icon {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px;
+  color: #94a3b8;
+  border-radius: 4px;
+}
+.btn-icon:hover { background: #f1f5f9; color: #ef4444; }
+
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: #94a3b8;
+}
+.empty-state.large { padding: 80px; }
+.empty-state .illustration { font-size: 48px; margin-bottom: 16px; }
+
 </style>
