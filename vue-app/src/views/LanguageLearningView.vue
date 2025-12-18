@@ -1418,5 +1418,4 @@ const formatDuration = (seconds) => {
 }
 .empty-state.large { padding: 80px; }
 .empty-state .illustration { font-size: 48px; margin-bottom: 16px; }
-
 </style>
