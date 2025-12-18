@@ -1,6 +1,7 @@
 package com.aispring.service;
 
 import com.aispring.entity.*;
+import com.aispring.exception.CustomException;
 import com.aispring.repository.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
