@@ -165,6 +165,8 @@
 import { ref, onMounted } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
 
+defineOptions({ name: 'UserSettings' })
+
 // 初始化状态管理
 const settingsStore = useSettingsStore()
 

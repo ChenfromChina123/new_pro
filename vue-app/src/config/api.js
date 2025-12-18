@@ -89,6 +89,7 @@ export const API_ENDPOINTS = {
     lists: '/api/vocabulary/lists',
     words: (listId) => `/api/vocabulary/lists/${listId}/words`,
     addWord: (listId) => `/api/vocabulary/lists/${listId}/words`,
+    listProgress: (listId) => `/api/vocabulary/lists/${listId}/progress`,
     deleteList: (listId) => `/api/vocabulary/lists/${listId}`,
     deleteWord: (wordId) => `/api/vocabulary/words/${wordId}`,
     updateProgress: '/api/vocabulary/progress',

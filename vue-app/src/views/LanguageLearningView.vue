@@ -6,9 +6,107 @@
           <h1>📚 语言学习</h1>
           <p>创建单词表，跟踪学习进度</p>
         </div>
+
+        <div class="overview-grid">
+          <div class="card">
+            <div class="card-header">
+              <h2>学习统计</h2>
+              <button
+                class="btn btn-secondary"
+                @click="refreshOverview"
+              >
+                刷新
+              </button>
+            </div>
+            <div class="stats-grid">
+              <div class="stat-item">
+                <div class="stat-value">
+                  {{ learningStats?.totalWords ?? 0 }}
+                </div>
+                <div class="stat-label">
+                  已学习单词
+                </div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-value">
+                  {{ learningStats?.masteredWords ?? 0 }}
+                </div>
+                <div class="stat-label">
+                  已掌握
+                </div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-value">
+                  {{ formatDuration(learningStats?.todayDuration ?? 0) }}
+                </div>
+                <div class="stat-label">
+                  今日时长
+                </div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-value">
+                  {{ formatDuration(learningStats?.totalDuration ?? 0) }}
+                </div>
+                <div class="stat-label">
+                  总时长
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2>今日复习</h2>
+              <button
+                class="btn btn-secondary"
+                @click="refreshReview"
+              >
+                刷新
+              </button>
+            </div>
+            <div
+              v-if="reviewItems.length === 0"
+              class="empty-state"
+            >
+              <p>暂无需要复习的单词</p>
+            </div>
+            <div
+              v-else
+              class="review-list"
+            >
+              <div
+                v-for="item in reviewItems"
+                :key="item.id"
+                class="review-item"
+              >
+                <div class="review-main">
+                  <div class="review-word">
+                    {{ item.word?.word || item.wordId }}
+                  </div>
+                  <div class="review-definition">
+                    {{ item.word?.definition }}
+                  </div>
+                </div>
+                <div class="review-actions">
+                  <button
+                    class="btn btn-secondary"
+                    @click="quickReview(item.wordId, Math.min((item.masteryLevel ?? 0) + 1, 5))"
+                  >
+                    认识
+                  </button>
+                  <button
+                    class="btn btn-primary"
+                    @click="quickReview(item.wordId, 5)"
+                  >
+                    掌握
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         
         <div class="content-grid">
-          <!-- 单词表列表 -->
           <div class="vocabulary-lists card">
             <div class="card-header">
               <h2>我的单词表</h2>
@@ -30,28 +128,42 @@
               >
                 <div class="list-info">
                   <h3>{{ list.name }}</h3>
-                  <p>{{ list.word_count || 0 }} 个单词</p>
+                  <p>{{ getListWordCount(list.id) }} 个单词</p>
                 </div>
                 <div class="list-progress">
                   <div class="progress-circle">
-                    {{ list.progress || 0 }}%
+                    {{ (list.language || 'en').toUpperCase() }}
                   </div>
                 </div>
+                <button
+                  class="btn btn-secondary list-delete"
+                  @click.stop="removeList(list.id)"
+                >
+                  删除
+                </button>
               </div>
             </div>
           </div>
           
-          <!-- 单词列表 -->
           <div class="word-list card">
             <div class="card-header">
               <h2>单词列表</h2>
-              <button
-                v-if="currentListId"
-                class="btn btn-primary"
-                @click="showAddWord = true"
-              >
-                ➕ 添加单词
-              </button>
+              <div class="word-actions">
+                <button
+                  v-if="currentListId"
+                  class="btn btn-secondary"
+                  @click="refreshCurrentList"
+                >
+                  刷新
+                </button>
+                <button
+                  v-if="currentListId"
+                  class="btn btn-primary"
+                  @click="showAddWord = true"
+                >
+                  ➕ 添加单词
+                </button>
+              </div>
             </div>
             
             <div
@@ -62,7 +174,7 @@
             </div>
             
             <div
-              v-else-if="words.length === 0"
+              v-else-if="currentWords.length === 0"
               class="empty-state"
             >
               <p>暂无单词，点击添加单词开始学习</p>
@@ -73,19 +185,19 @@
               class="words-container"
             >
               <div
-                v-for="word in words"
+                v-for="word in currentWords"
                 :key="word.id"
                 class="word-card"
               >
                 <div class="word-front">
                   <h3>{{ word.word }}</h3>
                   <p class="phonetic">
-                    {{ word.phonetic }}
+                    {{ word.partOfSpeech }}
                   </p>
                 </div>
                 <div class="word-back">
                   <p class="translation">
-                    {{ word.translation }}
+                    {{ word.definition }}
                   </p>
                   <p
                     v-if="word.example"
@@ -95,11 +207,107 @@
                   </p>
                 </div>
                 <div class="word-status">
-                  <span :class="['status-badge', word.status]">
-                    {{ getStatusText(word.status) }}
+                  <span :class="['status-badge', getMasteryClass(getWordProgress(word.id).masteryLevel)]">
+                    {{ getMasteryText(getWordProgress(word.id).masteryLevel) }}
                   </span>
+                  <div class="progress-controls">
+                    <label class="toggle">
+                      <input
+                        type="checkbox"
+                        :checked="!!getWordProgress(word.id).isDifficult"
+                        @change="toggleDifficult(word.id, $event.target.checked)"
+                      >
+                      <span>难词</span>
+                    </label>
+                    <select
+                      class="input mastery-select"
+                      :value="getWordProgress(word.id).masteryLevel ?? 0"
+                      @change="changeMastery(word.id, $event.target.value)"
+                    >
+                      <option value="0">
+                        0
+                      </option>
+                      <option value="1">
+                        1
+                      </option>
+                      <option value="2">
+                        2
+                      </option>
+                      <option value="3">
+                        3
+                      </option>
+                      <option value="4">
+                        4
+                      </option>
+                      <option value="5">
+                        5
+                      </option>
+                    </select>
+                    <button
+                      class="btn btn-secondary"
+                      @click="removeWord(word.id)"
+                    >
+                      删除
+                    </button>
+                  </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mt-3">
+          <div class="card-header">
+            <h2>公共词库</h2>
+          </div>
+          <div class="public-search">
+            <input
+              v-model="publicKeyword"
+              type="text"
+              class="input"
+              placeholder="搜索公共词库（单词/释义）"
+              :disabled="!currentListId"
+              @keyup.enter="searchPublic"
+            >
+            <button
+              class="btn btn-secondary"
+              :disabled="!currentListId || !publicKeyword.trim()"
+              @click="searchPublic"
+            >
+              搜索
+            </button>
+          </div>
+          <div
+            v-if="publicResults.length === 0"
+            class="empty-state"
+          >
+            <p>搜索后可一键添加到当前单词表</p>
+          </div>
+          <div
+            v-else
+            class="public-results"
+          >
+            <div
+              v-for="w in publicResults"
+              :key="w.id"
+              class="public-item"
+            >
+              <div class="public-main">
+                <div class="public-word">
+                  {{ w.word }}
+                </div>
+                <div class="public-meta">
+                  <span class="public-pos">{{ w.partOfSpeech }}</span>
+                  <span class="public-def">{{ w.definition }}</span>
+                </div>
+              </div>
+              <button
+                class="btn btn-primary"
+                :disabled="!currentListId"
+                @click="addPublicWord(w)"
+              >
+                添加
+              </button>
             </div>
           </div>
         </div>
@@ -124,8 +332,7 @@
               v-if="generatedArticle"
               class="article-content"
             >
-              <h3>{{ generatedArticle.title }}</h3>
-              <div v-html="generatedArticle.content" />
+              <pre class="article-pre">{{ generatedArticle }}</pre>
             </div>
           </div>
         </div>
@@ -141,12 +348,43 @@
       <div class="modal-content">
         <h3>创建单词表</h3>
         <input
-          v-model="newListName"
+          v-model="newList.name"
           type="text"
           class="input"
           placeholder="输入单词表名称"
           @keyup.enter="createList"
         >
+        <textarea
+          v-model="newList.description"
+          class="input textarea"
+          placeholder="描述（可选）"
+        />
+        <select
+          v-model="newList.language"
+          class="input"
+        >
+          <option value="en">
+            英语
+          </option>
+          <option value="ja">
+            日语
+          </option>
+          <option value="ko">
+            韩语
+          </option>
+          <option value="fr">
+            法语
+          </option>
+          <option value="de">
+            德语
+          </option>
+          <option value="es">
+            西班牙语
+          </option>
+          <option value="zh">
+            中文
+          </option>
+        </select>
         <div class="modal-actions">
           <button
             class="btn btn-primary"
@@ -182,21 +420,21 @@
           >
         </div>
         <div class="form-group">
-          <label>音标</label>
+          <label>释义</label>
           <input
-            v-model="newWord.phonetic"
+            v-model="newWord.definition"
             type="text"
             class="input"
-            placeholder="音标（可选）"
+            placeholder="释义"
           >
         </div>
         <div class="form-group">
-          <label>翻译</label>
+          <label>词性</label>
           <input
-            v-model="newWord.translation"
+            v-model="newWord.partOfSpeech"
             type="text"
             class="input"
-            placeholder="翻译"
+            placeholder="词性（可选）"
           >
         </div>
         <div class="form-group">
@@ -227,111 +465,288 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import request from '@/utils/request'
 import { API_ENDPOINTS } from '@/config/api'
 import AppLayout from '@/components/AppLayout.vue'
+import { useVocabularyStore } from '@/stores/vocabulary'
 
-const vocabularyLists = ref([])
 const currentListId = ref(null)
-const words = ref([])
 const showCreateList = ref(false)
 const showAddWord = ref(false)
-const newListName = ref('')
+const newList = ref({
+  name: '',
+  description: '',
+  language: 'en'
+})
 const newWord = ref({
   word: '',
-  phonetic: '',
-  translation: '',
+  definition: '',
+  partOfSpeech: '',
   example: ''
 })
+const publicKeyword = ref('')
 const isGenerating = ref(false)
-const generatedArticle = ref(null)
+const generatedArticle = ref('')
+
+const vocabularyStore = useVocabularyStore()
+const vocabularyLists = computed(() => vocabularyStore.lists)
+const currentList = computed(() => vocabularyStore.lists.find(l => l.id === currentListId.value) || null)
+const currentWords = computed(() => vocabularyStore.wordsByListId[currentListId.value] || [])
+const reviewItems = computed(() => vocabularyStore.reviewWords)
+const learningStats = computed(() => vocabularyStore.stats)
+const publicResults = computed(() => vocabularyStore.publicSearchResults)
 
 onMounted(async () => {
-  await fetchVocabularyLists()
+  await vocabularyStore.fetchLists()
+  await Promise.all([
+    vocabularyStore.fetchStats(),
+    vocabularyStore.fetchReviewWords()
+  ])
 })
-
-const fetchVocabularyLists = async () => {
-  try {
-    const response = await request.get(API_ENDPOINTS.language.vocabularyLists)
-    vocabularyLists.value = response.lists || []
-  } catch (error) {
-    console.error('获取单词表失败:', error)
-  }
-}
 
 const selectList = async (listId) => {
   currentListId.value = listId
-  try {
-    const response = await request.get(API_ENDPOINTS.language.getWords(listId))
-    words.value = response.words || []
-  } catch (error) {
-    console.error('获取单词失败:', error)
+  if (!vocabularyStore.wordsByListId[listId]) {
+    await vocabularyStore.fetchWords(listId)
   }
+  await vocabularyStore.fetchListProgress(listId)
 }
 
 const createList = async () => {
-  if (!newListName.value.trim()) {
+  if (!newList.value.name.trim()) {
     alert('请输入单词表名称')
     return
   }
   
-  try {
-    await request.post(API_ENDPOINTS.language.createList, {
-      name: newListName.value
-    })
-    
-    showCreateList.value = false
-    newListName.value = ''
-    await fetchVocabularyLists()
-  } catch (error) {
-    alert('创建失败: ' + (error.response?.data?.detail || '未知错误'))
+  const result = await vocabularyStore.createList({
+    name: newList.value.name.trim(),
+    description: newList.value.description?.trim() || '',
+    language: newList.value.language || 'en'
+  })
+  if (!result.success) {
+    alert('创建失败: ' + (result.message || '未知错误'))
+    return
+  }
+  showCreateList.value = false
+  newList.value = { name: '', description: '', language: 'en' }
+  if (result.data?.id) {
+    await selectList(result.data.id)
   }
 }
 
 const addWord = async () => {
-  if (!newWord.value.word.trim() || !newWord.value.translation.trim()) {
-    alert('请填写单词和翻译')
+  if (!currentListId.value) return
+  if (!newWord.value.word.trim() || !newWord.value.definition.trim()) {
+    alert('请填写单词和释义')
     return
   }
-  
-  try {
-    await request.post(API_ENDPOINTS.language.addWord, {
-      list_id: currentListId.value,
-      ...newWord.value
-    })
-    
-    showAddWord.value = false
-    newWord.value = { word: '', phonetic: '', translation: '', example: '' }
-    await selectList(currentListId.value)
-  } catch (error) {
-    alert('添加失败: ' + (error.response?.data?.detail || '未知错误'))
+
+  const result = await vocabularyStore.addWord(currentListId.value, {
+    word: newWord.value.word.trim(),
+    definition: newWord.value.definition.trim(),
+    partOfSpeech: newWord.value.partOfSpeech?.trim() || '',
+    example: newWord.value.example?.trim() || '',
+    language: currentList.value?.language || 'en'
+  })
+  if (!result.success) {
+    alert('添加失败: ' + (result.message || '未知错误'))
+    return
   }
+  showAddWord.value = false
+  newWord.value = { word: '', definition: '', partOfSpeech: '', example: '' }
+  await vocabularyStore.recordActivity({
+    activityType: 'vocabulary_add_word',
+    activityDetails: JSON.stringify({ listId: currentListId.value, wordId: result.data?.id }),
+    duration: 0
+  })
 }
 
 const generateArticle = async () => {
+  if (!currentListId.value) return
   isGenerating.value = true
   
   try {
-    const response = await request.post(API_ENDPOINTS.language.generateArticle, {
-      list_id: currentListId.value
+    if (!vocabularyStore.wordsByListId[currentListId.value]) {
+      await vocabularyStore.fetchWords(currentListId.value)
+    }
+    const ws = (vocabularyStore.wordsByListId[currentListId.value] || []).slice(0, 30)
+    const vocabulary = ws.map(w => w.word).filter(Boolean).join(', ')
+    const prompt = [
+      '你是一名语言学习助教。',
+      `请为我生成一篇 ${(currentList.value?.language || 'en').toUpperCase()} 学习文章：`,
+      '1) 文章长度控制在 250-400 词。',
+      '2) 尽量自然地包含以下词汇（可以变形）：',
+      vocabulary || '（当前单词表为空）',
+      '3) 文章后附：重点词汇清单（给出简短释义）。',
+      '输出使用纯文本，分段清晰。'
+    ].join('\n')
+    const response = await request.post(API_ENDPOINTS.chat.ask, {
+      prompt,
+      session_id: null,
+      model: 'deepseek-chat'
     })
-    
-    generatedArticle.value = response.article
+    generatedArticle.value = response?.data?.answer || response?.answer || ''
+    await vocabularyStore.recordActivity({
+      activityType: 'article_generation',
+      activityDetails: JSON.stringify({ listId: currentListId.value, wordCount: ws.length }),
+      duration: 0
+    })
   } catch (error) {
-    alert('生成失败: ' + (error.response?.data?.detail || '未知错误'))
+    alert('生成失败: ' + (error.response?.data?.message || error.message || '未知错误'))
   } finally {
     isGenerating.value = false
   }
 }
 
-const getStatusText = (status) => {
-  const statusMap = {
-    new: '新单词',
-    learning: '学习中',
-    mastered: '已掌握'
+const refreshCurrentList = async () => {
+  if (!currentListId.value) return
+  await vocabularyStore.fetchWords(currentListId.value)
+  await vocabularyStore.fetchListProgress(currentListId.value)
+}
+
+const refreshOverview = async () => {
+  await vocabularyStore.fetchStats()
+}
+
+const refreshReview = async () => {
+  await vocabularyStore.fetchReviewWords()
+}
+
+const getListWordCount = (listId) => {
+  const ws = vocabularyStore.wordsByListId[listId]
+  return Array.isArray(ws) ? ws.length : 0
+}
+
+const getWordProgress = (wordId) => {
+  return vocabularyStore.progressByWordId[wordId] || { masteryLevel: 0, isDifficult: false }
+}
+
+const getMasteryText = (level) => {
+  const l = Number(level || 0)
+  if (l >= 5) return '完全掌握'
+  if (l >= 4) return '已掌握'
+  if (l >= 2) return '学习中'
+  return '新单词'
+}
+
+const getMasteryClass = (level) => {
+  const l = Number(level || 0)
+  if (l >= 4) return 'mastered'
+  if (l >= 2) return 'learning'
+  return 'new'
+}
+
+const changeMastery = async (wordId, value) => {
+  const masteryLevel = Number(value)
+  const current = getWordProgress(wordId)
+  const result = await vocabularyStore.updateProgress({
+    wordId,
+    masteryLevel,
+    isDifficult: current.isDifficult
+  })
+  if (!result.success) {
+    alert('更新失败: ' + (result.message || '未知错误'))
+    return
   }
-  return statusMap[status] || '未学习'
+  await Promise.all([vocabularyStore.fetchStats(), vocabularyStore.fetchReviewWords()])
+}
+
+const toggleDifficult = async (wordId, checked) => {
+  const current = getWordProgress(wordId)
+  const result = await vocabularyStore.updateProgress({
+    wordId,
+    masteryLevel: current.masteryLevel ?? 0,
+    isDifficult: !!checked
+  })
+  if (!result.success) {
+    alert('更新失败: ' + (result.message || '未知错误'))
+    return
+  }
+  await Promise.all([vocabularyStore.fetchStats(), vocabularyStore.fetchReviewWords()])
+}
+
+const removeWord = async (wordId) => {
+  if (!currentListId.value) return
+  if (!confirm('确定要删除这个单词吗？')) return
+  const result = await vocabularyStore.deleteWord(currentListId.value, wordId)
+  if (!result.success) {
+    alert('删除失败: ' + (result.message || '未知错误'))
+  }
+}
+
+const removeList = async (listId) => {
+  if (!confirm('确定要删除这个单词表吗？')) return
+  const result = await vocabularyStore.deleteList(listId)
+  if (!result.success) {
+    alert('删除失败: ' + (result.message || '未知错误'))
+    return
+  }
+  if (currentListId.value === listId) {
+    currentListId.value = null
+    generatedArticle.value = ''
+    publicKeyword.value = ''
+  }
+}
+
+const quickReview = async (wordId, masteryLevel) => {
+  const current = getWordProgress(wordId)
+  const result = await vocabularyStore.updateProgress({
+    wordId,
+    masteryLevel,
+    isDifficult: current.isDifficult
+  })
+  if (!result.success) {
+    alert('更新失败: ' + (result.message || '未知错误'))
+    return
+  }
+  await vocabularyStore.recordActivity({
+    activityType: 'vocabulary_review',
+    activityDetails: JSON.stringify({ wordId, masteryLevel }),
+    duration: 0
+  })
+  await Promise.all([vocabularyStore.fetchStats(), vocabularyStore.fetchReviewWords()])
+}
+
+const searchPublic = async () => {
+  if (!currentListId.value) return
+  const kw = publicKeyword.value.trim()
+  if (!kw) return
+  const language = currentList.value?.language || 'en'
+  const result = await vocabularyStore.searchPublic(kw, language)
+  if (!result.success) {
+    alert('搜索失败: ' + (result.message || '未知错误'))
+  }
+}
+
+const addPublicWord = async (w) => {
+  if (!currentListId.value) return
+  const result = await vocabularyStore.addWord(currentListId.value, {
+    word: w.word,
+    definition: w.definition,
+    partOfSpeech: w.partOfSpeech,
+    example: w.example,
+    language: w.language || currentList.value?.language || 'en'
+  })
+  if (!result.success) {
+    alert('添加失败: ' + (result.message || '未知错误'))
+    return
+  }
+  await vocabularyStore.recordActivity({
+    activityType: 'vocabulary_add_public_word',
+    activityDetails: JSON.stringify({ listId: currentListId.value, publicWordId: w.id, wordId: result.data?.id }),
+    duration: 0
+  })
+}
+
+const formatDuration = (seconds) => {
+  const s = Math.max(0, Number(seconds || 0))
+  const m = Math.floor(s / 60)
+  const h = Math.floor(m / 60)
+  const mm = m % 60
+  if (h > 0) return `${h}小时${mm}分钟`
+  if (mm > 0) return `${mm}分钟`
+  return `${s}秒`
 }
 </script>
 
@@ -354,6 +769,81 @@ const getStatusText = (status) => {
 .page-header p {
   color: var(--text-secondary);
   font-size: 16px;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.stat-item {
+  padding: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background-color: var(--bg-primary);
+}
+
+.stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.review-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background-color: var(--bg-primary);
+}
+
+.review-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.review-word {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: var(--text-primary);
+}
+
+.review-definition {
+  font-size: 13px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-actions {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
 .content-grid {
@@ -402,6 +892,11 @@ const getStatusText = (status) => {
   background-color: rgba(52, 152, 219, 0.05);
 }
 
+.list-delete {
+  margin-left: 10px;
+  flex-shrink: 0;
+}
+
 .list-info h3 {
   font-size: 16px;
   margin: 0 0 4px 0;
@@ -424,6 +919,11 @@ const getStatusText = (status) => {
   justify-content: center;
   font-weight: 600;
   font-size: 14px;
+}
+
+.word-actions {
+  display: flex;
+  gap: 10px;
 }
 
 .empty-state {
@@ -480,6 +980,10 @@ const getStatusText = (status) => {
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .status-badge {
@@ -487,6 +991,7 @@ const getStatusText = (status) => {
   border-radius: 12px;
   font-size: 12px;
   font-weight: 500;
+  flex-shrink: 0;
 }
 
 .status-badge.new {
@@ -502,6 +1007,85 @@ const getStatusText = (status) => {
 .status-badge.mastered {
   background-color: rgba(39, 174, 96, 0.1);
   color: var(--success-color);
+}
+
+.progress-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.mastery-select {
+  width: 88px;
+}
+
+.public-search {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.public-results {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.public-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background-color: var(--bg-primary);
+}
+
+.public-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.public-word {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: var(--text-primary);
+}
+
+.public-meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.public-pos {
+  padding: 2px 8px;
+  border-radius: 10px;
+  background-color: rgba(52, 152, 219, 0.08);
+  color: var(--primary-color);
+  flex-shrink: 0;
+}
+
+.public-def {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .generate-section {
@@ -525,6 +1109,15 @@ const getStatusText = (status) => {
 .article-content h3 {
   margin-bottom: 16px;
   color: var(--primary-color);
+}
+
+.article-pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+  font-family: inherit;
+  color: var(--text-primary);
+  line-height: 1.7;
 }
 
 .modal {
@@ -572,9 +1165,16 @@ const getStatusText = (status) => {
 }
 
 @media (max-width: 768px) {
+  .overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
   .content-grid {
     grid-template-columns: 1fr;
   }
 }
 </style>
-

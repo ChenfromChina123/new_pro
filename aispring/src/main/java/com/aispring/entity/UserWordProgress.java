@@ -57,7 +57,7 @@ public class UserWordProgress {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
     
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "word_id", insertable = false, updatable = false)
     private VocabularyWord word;
     
