@@ -12,11 +12,28 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
   const publicSearchResults = ref([])
   const isLoading = ref(false)
 
+  function normalizeList(raw) {
+    if (!raw) return raw
+    const wordCount = raw.wordCount ?? raw.word_count ?? 0
+    return { ...raw, wordCount }
+  }
+
+  function updateListWordCount(listId, nextCount) {
+    const idx = lists.value.findIndex(l => l.id === listId)
+    if (idx === -1) return
+    const current = lists.value[idx]
+    lists.value = [
+      ...lists.value.slice(0, idx),
+      { ...current, wordCount: nextCount },
+      ...lists.value.slice(idx + 1)
+    ]
+  }
+
   async function fetchLists() {
     try {
       isLoading.value = true
       const response = await request.get(API_ENDPOINTS.vocabulary.lists)
-      lists.value = response.lists || []
+      lists.value = (response.lists || []).map(normalizeList)
       return { success: true }
     } catch (error) {
       return { success: false, message: error.response?.data?.message || '获取单词表失败' }
@@ -29,7 +46,7 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
     try {
       isLoading.value = true
       const created = await request.post(API_ENDPOINTS.vocabulary.lists, payload)
-      lists.value = [created, ...lists.value]
+      lists.value = [normalizeList(created), ...lists.value]
       return { success: true, data: created }
     } catch (error) {
       return { success: false, message: error.response?.data?.message || '创建单词表失败' }
@@ -60,6 +77,10 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
       const response = await request.get(API_ENDPOINTS.vocabulary.words(listId))
       const words = response.words || []
       wordsByListId.value = { ...wordsByListId.value, [listId]: words }
+      const list = lists.value.find(l => l.id === listId)
+      if (list && (list.wordCount == null || Number.isNaN(list.wordCount))) {
+        updateListWordCount(listId, words.length)
+      }
       return { success: true, data: words }
     } catch (error) {
       return { success: false, message: error.response?.data?.message || '获取单词失败' }
@@ -91,6 +112,10 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
       const created = await request.post(API_ENDPOINTS.vocabulary.addWord(listId), payload)
       const current = wordsByListId.value[listId] || []
       wordsByListId.value = { ...wordsByListId.value, [listId]: [created, ...current] }
+      const list = lists.value.find(l => l.id === listId)
+      if (list) {
+        updateListWordCount(listId, (list.wordCount ?? 0) + 1)
+      }
       return { success: true, data: created }
     } catch (error) {
       return { success: false, message: error.response?.data?.message || '添加单词失败' }
@@ -108,6 +133,10 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
       const nextProgress = { ...progressByWordId.value }
       delete nextProgress[wordId]
       progressByWordId.value = nextProgress
+      const list = lists.value.find(l => l.id === listId)
+      if (list) {
+        updateListWordCount(listId, Math.max(0, (list.wordCount ?? 0) - 1))
+      }
       return { success: true }
     } catch (error) {
       return { success: false, message: error.response?.data?.message || '删除单词失败' }
