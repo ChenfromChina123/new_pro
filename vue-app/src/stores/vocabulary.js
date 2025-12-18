@@ -18,6 +18,43 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
     return { ...raw, wordCount }
   }
 
+  function normalizeWord(raw) {
+    if (!raw) return raw
+    return {
+      ...raw,
+      partOfSpeech: raw.partOfSpeech ?? raw.part_of_speech ?? '',
+      vocabularyListId: raw.vocabularyListId ?? raw.vocabulary_list_id
+    }
+  }
+
+  function normalizeProgress(raw) {
+    if (!raw) return raw
+    return {
+      ...raw,
+      userId: raw.userId ?? raw.user_id,
+      wordId: raw.wordId ?? raw.word_id ?? raw.word?.id ?? raw.word?.wordId ?? raw.word?.word_id,
+      masteryLevel: raw.masteryLevel ?? raw.mastery_level ?? 0,
+      isDifficult: raw.isDifficult ?? raw.is_difficult ?? false,
+      lastReviewed: raw.lastReviewed ?? raw.last_reviewed,
+      nextReviewDate: raw.nextReviewDate ?? raw.next_review_date,
+      reviewCount: raw.reviewCount ?? raw.review_count ?? 0,
+      createdAt: raw.createdAt ?? raw.created_at,
+      updatedAt: raw.updatedAt ?? raw.updated_at,
+      word: normalizeWord(raw.word)
+    }
+  }
+
+  function normalizeStats(raw) {
+    if (!raw) return raw
+    return {
+      ...raw,
+      totalWords: raw.totalWords ?? raw.total_words ?? 0,
+      masteredWords: raw.masteredWords ?? raw.mastered_words ?? 0,
+      totalDuration: raw.totalDuration ?? raw.total_duration ?? 0,
+      todayDuration: raw.todayDuration ?? raw.today_duration ?? 0
+    }
+  }
+
   function updateListWordCount(listId, nextCount) {
     const idx = lists.value.findIndex(l => l.id === listId)
     if (idx === -1) return
@@ -75,7 +112,7 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
     try {
       isLoading.value = true
       const response = await request.get(API_ENDPOINTS.vocabulary.words(listId))
-      const words = response.words || []
+      const words = (response.words || []).map(normalizeWord)
       wordsByListId.value = { ...wordsByListId.value, [listId]: words }
       const list = lists.value.find(l => l.id === listId)
       if (list && (list.wordCount == null || Number.isNaN(list.wordCount))) {
@@ -92,7 +129,7 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
   async function fetchListProgress(listId) {
     try {
       const response = await request.get(API_ENDPOINTS.vocabulary.listProgress(listId))
-      const progress = response.progress || []
+      const progress = (response.progress || []).map(normalizeProgress)
       const map = { ...progressByWordId.value }
       for (const p of progress) {
         if (p && p.wordId != null) {
@@ -109,7 +146,7 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
   async function addWord(listId, payload) {
     try {
       isLoading.value = true
-      const created = await request.post(API_ENDPOINTS.vocabulary.addWord(listId), payload)
+      const created = normalizeWord(await request.post(API_ENDPOINTS.vocabulary.addWord(listId), payload))
       const current = wordsByListId.value[listId] || []
       wordsByListId.value = { ...wordsByListId.value, [listId]: [created, ...current] }
       const list = lists.value.find(l => l.id === listId)
@@ -147,7 +184,11 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
 
   async function updateProgress(payload) {
     try {
-      const response = await request.post(API_ENDPOINTS.vocabulary.updateProgress, payload)
+      const response = normalizeProgress(await request.post(API_ENDPOINTS.vocabulary.updateProgress, {
+        word_id: payload.wordId,
+        mastery_level: payload.masteryLevel,
+        is_difficult: payload.isDifficult
+      }))
       const wordId = response?.wordId ?? payload.wordId
       if (wordId != null) {
         progressByWordId.value = { ...progressByWordId.value, [wordId]: response }
@@ -161,7 +202,7 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
   async function fetchReviewWords() {
     try {
       const response = await request.get(API_ENDPOINTS.vocabulary.review)
-      reviewWords.value = response.words || []
+      reviewWords.value = (response.words || []).map(normalizeProgress)
       const map = { ...progressByWordId.value }
       for (const p of reviewWords.value) {
         if (p && p.wordId != null) {
@@ -178,7 +219,7 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
   async function fetchStats() {
     try {
       const response = await request.get(API_ENDPOINTS.vocabulary.stats)
-      stats.value = response
+      stats.value = normalizeStats(response)
       return { success: true }
     } catch (error) {
       return { success: false, message: error.response?.data?.message || '获取统计失败' }
@@ -187,7 +228,11 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
 
   async function recordActivity(payload) {
     try {
-      await request.post(API_ENDPOINTS.vocabulary.activity, payload)
+      await request.post(API_ENDPOINTS.vocabulary.activity, {
+        activity_type: payload.activityType,
+        activity_details: payload.activityDetails,
+        duration: payload.duration
+      })
       return { success: true }
     } catch (error) {
       return { success: false, message: error.response?.data?.message || '记录学习活动失败' }
@@ -199,7 +244,7 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
       const response = await request.get(API_ENDPOINTS.vocabulary.searchPublic, {
         params: { keyword, language }
       })
-      publicSearchResults.value = response.words || []
+      publicSearchResults.value = (response.words || []).map(normalizeWord)
       return { success: true, data: publicSearchResults.value }
     } catch (error) {
       return { success: false, message: error.response?.data?.message || '搜索公共词库失败' }
@@ -217,7 +262,13 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
 
   async function generateArticle(payload) {
     try {
-      const response = await request.post(API_ENDPOINTS.vocabulary.generateArticle, payload)
+      const response = await request.post(API_ENDPOINTS.vocabulary.generateArticle, {
+        list_id: payload.listId,
+        word_ids: payload.wordIds,
+        topic: payload.topic,
+        difficulty: payload.difficulty,
+        length: payload.length
+      })
       return { success: true, data: response }
     } catch (error) {
       return { success: false, message: error.response?.data?.message || '生成文章失败' }

@@ -175,13 +175,13 @@
                 <div class="review-actions">
                   <button
                     class="btn btn-sm btn-outline"
-                    @click="quickReview(item.wordId, Math.min((item.masteryLevel ?? 0) + 1, 5))"
+                    @click="quickReview(getReviewWordId(item), Math.min((item.masteryLevel ?? 0) + 1, 5))"
                   >
                     认识
                   </button>
                   <button
                     class="btn btn-sm btn-primary"
-                    @click="quickReview(item.wordId, 5)"
+                    @click="quickReview(getReviewWordId(item), 5)"
                   >
                     掌握
                   </button>
@@ -372,7 +372,7 @@
               class="results-list"
             >
               <div
-                v-for="w in publicResults"
+                v-for="w in paginatedResults"
                 :key="w.id"
                 class="result-card"
               >
@@ -392,6 +392,35 @@
                 >
                   添加
                 </button>
+              </div>
+                
+              <!-- 分页组件 -->
+              <div
+                v-if="totalPages > 1"
+                class="pagination-container"
+              >
+                <div class="pagination-info">
+                  显示第 {{ (currentPage - 1) * pageSize + 1 }} - {{ Math.min(currentPage * pageSize, vocabularyStore.publicSearchResults.length) }} 条，共 {{ vocabularyStore.publicSearchResults.length }} 条
+                </div>
+                <div class="pagination-buttons">
+                  <button
+                    class="btn btn-sm btn-outline"
+                    :disabled="currentPage === 1"
+                    @click="goToPage(currentPage - 1)"
+                  >
+                    上一页
+                  </button>
+                  <span class="pagination-page">
+                    第 {{ currentPage }} 页 / 共 {{ totalPages }} 页
+                  </span>
+                  <button
+                    class="btn btn-sm btn-outline"
+                    :disabled="currentPage === totalPages"
+                    @click="goToPage(currentPage + 1)"
+                  >
+                    下一页
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -792,7 +821,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, reactive } from 'vue'
+import { ref, computed, onMounted, onUnmounted, reactive, watch } from 'vue'
 import request from '@/utils/request'
 import { API_ENDPOINTS } from '@/config/api'
 import AppLayout from '@/components/AppLayout.vue'
@@ -818,6 +847,23 @@ const newWord = ref({
 })
 const publicKeyword = ref('')
 const isGenerating = ref(false)
+const currentPage = ref(1)
+const pageSize = ref(50)
+
+const paginatedResults = computed(() => {
+  const startIndex = (currentPage.value - 1) * pageSize.value
+  const endIndex = startIndex + pageSize.value
+  return vocabularyStore.publicSearchResults.slice(startIndex, endIndex)
+})
+
+const totalPages = computed(() => {
+  return Math.ceil(vocabularyStore.publicSearchResults.length / pageSize.value)
+})
+
+const goToPage = (page) => {
+  if (page < 1 || page > totalPages.value) return
+  currentPage.value = page
+}
 
 // AI Article State
 const articleStep = ref(1)
@@ -842,15 +888,101 @@ const isAllSelected = computed(() => {
   return currentWords.value.length > 0 && selectedWordIds.size === currentWords.value.length
 })
 
+const lastActiveAt = ref(Date.now())
+const lastTickAt = ref(Date.now())
+const pendingDuration = ref(0)
+const isFlushingDuration = ref(false)
+let durationTimer = null
+
+const markActive = () => {
+  lastActiveAt.value = Date.now()
+}
+
+const flushDuration = async () => {
+  if (isFlushingDuration.value) return
+  const duration = pendingDuration.value
+  if (duration <= 0) return
+
+  pendingDuration.value = 0
+  isFlushingDuration.value = true
+  try {
+    await vocabularyStore.recordActivity({
+      activityType: 'vocabulary_learning',
+      activityDetails: JSON.stringify({ view: currentView.value, listId: currentListId.value }),
+      duration
+    })
+    await vocabularyStore.fetchStats()
+  } catch (_) {
+    pendingDuration.value += duration
+  } finally {
+    isFlushingDuration.value = false
+  }
+}
+
+const tickDuration = () => {
+  const now = Date.now()
+  const deltaSeconds = Math.floor((now - lastTickAt.value) / 1000)
+  if (deltaSeconds <= 0) return
+  lastTickAt.value = now
+
+  if (document.hidden) return
+  if (now - lastActiveAt.value > 60_000) return
+
+  pendingDuration.value += deltaSeconds
+  if (pendingDuration.value >= 60) {
+    void flushDuration()
+  }
+}
+
+const onVisibilityChange = () => {
+  if (document.hidden) {
+    void flushDuration()
+    return
+  }
+  markActive()
+  lastTickAt.value = Date.now()
+}
+
 onMounted(async () => {
   await vocabularyStore.fetchLists()
   await Promise.all([
     vocabularyStore.fetchStats(),
     vocabularyStore.fetchReviewWords()
   ])
+
+  markActive()
+  lastTickAt.value = Date.now()
+  durationTimer = window.setInterval(tickDuration, 1000)
+  window.addEventListener('mousemove', markActive, { passive: true })
+  window.addEventListener('keydown', markActive)
+  window.addEventListener('scroll', markActive, { passive: true })
+  window.addEventListener('click', markActive, { passive: true })
+  window.addEventListener('focus', markActive)
+  window.addEventListener('blur', flushDuration)
+  document.addEventListener('visibilitychange', onVisibilityChange)
+})
+
+onUnmounted(() => {
+  if (durationTimer) {
+    window.clearInterval(durationTimer)
+    durationTimer = null
+  }
+  window.removeEventListener('mousemove', markActive)
+  window.removeEventListener('keydown', markActive)
+  window.removeEventListener('scroll', markActive)
+  window.removeEventListener('click', markActive)
+  window.removeEventListener('focus', markActive)
+  window.removeEventListener('blur', flushDuration)
+  document.removeEventListener('visibilitychange', onVisibilityChange)
+  void flushDuration()
+})
+
+watch([currentView, currentListId], () => {
+  markActive()
 })
 
 const selectList = async (listId) => {
+  markActive()
   currentListId.value = listId
   if (!vocabularyStore.wordsByListId[listId]) {
     await vocabularyStore.fetchWords(listId)
@@ -860,6 +992,7 @@ const selectList = async (listId) => {
 
 // AI Wizard Methods
 const onListChange = async () => {
+  markActive()
   if (currentListId.value) {
     await vocabularyStore.fetchWords(currentListId.value)
     selectedWordIds.clear()
@@ -867,6 +1000,7 @@ const onListChange = async () => {
 }
 
 const toggleSelectAll = (e) => {
+  markActive()
   if (e.target.checked) {
     currentWords.value.forEach(w => selectedWordIds.add(w.id))
   } else {
@@ -875,6 +1009,7 @@ const toggleSelectAll = (e) => {
 }
 
 const toggleWordSelection = (wordId) => {
+  markActive()
   if (selectedWordIds.has(wordId)) {
     selectedWordIds.delete(wordId)
   } else {
@@ -883,6 +1018,7 @@ const toggleWordSelection = (wordId) => {
 }
 
 const generateTopics = async () => {
+  markActive()
   if (selectedWordIds.size === 0) return
   isGenerating.value = true
   articleStep.value = 3
@@ -902,6 +1038,7 @@ const generateTopics = async () => {
 }
 
 const generateArticle = async () => {
+  markActive()
   if (!articleOptions.topic) return
   isGenerating.value = true
   articleStep.value = 4
@@ -924,6 +1061,7 @@ const generateArticle = async () => {
 }
 
 const resetArticleGenerator = () => {
+  markActive()
   articleStep.value = 1
   selectedWordIds.clear()
   articleOptions.topic = ''
@@ -943,6 +1081,7 @@ const getSelectedWordsDetails = () => {
 }
 
 const downloadHTML = () => {
+  markActive()
   if (!generatedArticle.value) return
   
   const words = getSelectedWordsDetails()
@@ -1000,11 +1139,13 @@ const downloadHTML = () => {
 }
 
 const downloadPDF = () => {
+  markActive()
   window.print()
 }
 
 // Other existing methods
 const createList = async () => {
+  markActive()
   if (!newList.value.name.trim()) {
     alert('请输入单词表名称')
     return
@@ -1028,6 +1169,7 @@ const createList = async () => {
 }
 
 const addWord = async () => {
+  markActive()
   if (!currentListId.value) return
   if (!newWord.value.word.trim() || !newWord.value.definition.trim()) {
     alert('请填写单词和释义')
@@ -1055,16 +1197,19 @@ const addWord = async () => {
 }
 
 const refreshCurrentList = async () => {
+  markActive()
   if (!currentListId.value) return
   await vocabularyStore.fetchWords(currentListId.value)
   await vocabularyStore.fetchListProgress(currentListId.value)
 }
 
 const refreshOverview = async () => {
+  markActive()
   await vocabularyStore.fetchStats()
 }
 
 const refreshReview = async () => {
+  markActive()
   await vocabularyStore.fetchReviewWords()
 }
 
@@ -1079,6 +1224,10 @@ const getListWordCount = (listId) => {
 
 const getWordProgress = (wordId) => {
   return vocabularyStore.progressByWordId[wordId] || { masteryLevel: 0, isDifficult: false }
+}
+
+const getReviewWordId = (item) => {
+  return item?.wordId ?? item?.word?.id ?? item?.word_id ?? item?.word?.wordId ?? item?.word?.word_id ?? null
 }
 
 const getMasteryText = (level) => {
@@ -1097,6 +1246,7 @@ const getMasteryClass = (level) => {
 }
 
 const changeMastery = async (wordId, value) => {
+  markActive()
   const masteryLevel = Number(value)
   const current = getWordProgress(wordId)
   const result = await vocabularyStore.updateProgress({
@@ -1112,6 +1262,7 @@ const changeMastery = async (wordId, value) => {
 }
 
 const removeWord = async (wordId) => {
+  markActive()
   if (!currentListId.value) return
   if (!confirm('确定要删除这个单词吗？')) return
   const result = await vocabularyStore.deleteWord(currentListId.value, wordId)
@@ -1121,6 +1272,7 @@ const removeWord = async (wordId) => {
 }
 
 const removeList = async (listId) => {
+  markActive()
   if (!confirm('确定要删除这个单词表吗？')) return
   const result = await vocabularyStore.deleteList(listId)
   if (!result.success) {
@@ -1135,6 +1287,11 @@ const removeList = async (listId) => {
 }
 
 const quickReview = async (wordId, masteryLevel) => {
+  markActive()
+  if (wordId == null) {
+    alert('单词ID不能为空')
+    return
+  }
   const current = getWordProgress(wordId)
   const result = await vocabularyStore.updateProgress({
     wordId,
@@ -1154,15 +1311,18 @@ const quickReview = async (wordId, masteryLevel) => {
 }
 
 const searchPublic = async () => {
+  markActive()
   const kw = publicKeyword.value.trim()
   const language = currentList.value?.language || 'en'
   const result = await vocabularyStore.searchPublic(kw, language)
   if (!result.success) {
     alert('搜索失败: ' + (result.message || '未知错误'))
   }
+  currentPage.value = 1 // 搜索后回到第一页
 }
 
 const addPublicWord = async (w) => {
+  markActive()
   if (!currentListId.value) {
     alert('请先选择一个单词表')
     return
@@ -1578,8 +1738,9 @@ const formatDuration = (seconds) => {
 
 /* AI Wizard Styles */
 .step-container {
-  max-width: 800px;
+  max-width: 100%;
   margin: 0 auto;
+  padding: 0 24px;
 }
 
 .step-container h3 {
@@ -1587,12 +1748,39 @@ const formatDuration = (seconds) => {
   color: #334155;
 }
 
+.form-group {
+  margin-bottom: 24px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #334155;
+}
+
+.select-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 14px;
+  background-color: #ffffff;
+  transition: border-color 0.2s;
+}
+
+.select-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
 .word-selection {
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 24px;
-  max-height: 400px;
+  max-height: 500px;
   overflow-y: auto;
 }
 
@@ -1622,13 +1810,61 @@ const formatDuration = (seconds) => {
   background-color: #f8fafc;
 }
 
-.step-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
+/* Pagination Styles */
+.pagination-container {
   margin-top: 24px;
   padding-top: 24px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pagination-info {
+  font-size: 14px;
+  color: #64748b;
+  text-align: center;
+}
+
+.pagination-buttons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+}
+
+.pagination-page {
+  font-size: 14px;
+  color: #64748b;
+  padding: 0 12px;
+}
+
+.btn-outline {
+  background-color: transparent;
+  border: 1px solid #cbd5e1;
+  color: #3b82f6;
+  transition: all 0.2s;
+}
+
+.btn-outline:hover:not(:disabled) {
+  background-color: #eff6ff;
+  border-color: #3b82f6;
+}
+
+.btn-outline:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.step-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 24px;
   border-top: 1px solid #f1f5f9;
+  background-color: #f8fafc;
+  border-radius: 0 0 8px 8px;
 }
 
 .topics-grid {
@@ -1925,10 +2161,62 @@ const formatDuration = (seconds) => {
     padding: 0 16px;
   }
 
+  .form-group {
+    margin-bottom: 16px;
+  }
+
+  .select-input {
+    padding: 14px 16px;
+    font-size: 16px;
+  }
+
+  .word-selection {
+    max-height: 400px;
+    padding: 12px;
+  }
+
+  .word-checkboxes {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .word-checkbox {
+    padding: 12px;
+  }
+
+  .step-actions {
+    flex-direction: column;
+    padding: 16px;
+  }
+
   .btn {
     min-height: 48px;
     font-size: 16px;
     padding: 12px 24px;
+  }
+
+  .pagination-container {
+    margin-top: 16px;
+    padding-top: 16px;
+  }
+
+  .pagination-info {
+    font-size: 13px;
+  }
+
+  .pagination-buttons {
+    gap: 8px;
+  }
+
+  .pagination-page {
+    font-size: 13px;
+    padding: 0 8px;
+  }
+
+  .btn-outline {
+    min-height: 40px;
+    font-size: 14px;
+    padding: 8px 16px;
   }
 
   .btn-icon {
