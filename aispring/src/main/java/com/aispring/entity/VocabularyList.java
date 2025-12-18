@@ -58,6 +58,9 @@ public class VocabularyList {
     @OneToMany(mappedBy = "vocabularyList", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
     private List<VocabularyWord> words;
+
+    @Transient
+    private Long wordCount;
     
     @PrePersist
     protected void onCreate() {

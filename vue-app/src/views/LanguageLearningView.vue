@@ -56,34 +56,38 @@
             <p>查看你的学习进度和今日任务</p>
           </div>
 
-          <div class="stats-card card">
-            <div class="card-header">
-              <h3>数据统计</h3>
-              <button class="btn btn-text" @click="refreshOverview">
-                刷新
-              </button>
-            </div>
-            <div class="stats-grid">
-              <div class="stat-item">
+          <div class="dashboard-grid">
+            <div class="stat-card primary">
+              <div class="stat-icon">📚</div>
+              <div class="stat-content">
                 <div class="stat-value">{{ learningStats?.totalWords ?? 0 }}</div>
                 <div class="stat-label">已学习单词</div>
               </div>
-              <div class="stat-item">
+            </div>
+            <div class="stat-card success">
+              <div class="stat-icon">✅</div>
+              <div class="stat-content">
                 <div class="stat-value">{{ learningStats?.masteredWords ?? 0 }}</div>
                 <div class="stat-label">已掌握</div>
               </div>
-              <div class="stat-item">
+            </div>
+            <div class="stat-card warning">
+              <div class="stat-icon">⏱️</div>
+              <div class="stat-content">
                 <div class="stat-value">{{ formatDuration(learningStats?.todayDuration ?? 0) }}</div>
                 <div class="stat-label">今日时长</div>
               </div>
-              <div class="stat-item">
+            </div>
+            <div class="stat-card info">
+              <div class="stat-icon">📈</div>
+              <div class="stat-content">
                 <div class="stat-value">{{ formatDuration(learningStats?.totalDuration ?? 0) }}</div>
                 <div class="stat-label">总时长</div>
               </div>
             </div>
           </div>
 
-          <div class="review-card card mt-4">
+          <div class="review-section card mt-4">
             <div class="card-header">
               <h3>今日复习</h3>
               <button class="btn btn-text" @click="refreshReview">
@@ -91,13 +95,14 @@
               </button>
             </div>
             <div v-if="reviewItems.length === 0" class="empty-state">
-              <p>暂无需要复习的单词</p>
+              <div class="illustration">🎉</div>
+              <p>太棒了！今日复习任务已完成</p>
             </div>
-            <div v-else class="review-list">
-              <div v-for="item in reviewItems" :key="item.id" class="review-item">
-                <div class="review-main">
-                  <div class="review-word">{{ item.word?.word || item.wordId }}</div>
-                  <div class="review-definition">{{ item.word?.definition }}</div>
+            <div v-else class="review-grid">
+              <div v-for="item in reviewItems" :key="item.id" class="review-card-item">
+                <div class="review-content">
+                  <h4 class="review-word">{{ item.word?.word || item.wordId }}</h4>
+                  <p class="review-def">{{ item.word?.definition }}</p>
                 </div>
                 <div class="review-actions">
                   <button class="btn btn-sm btn-outline" @click="quickReview(item.wordId, Math.min((item.masteryLevel ?? 0) + 1, 5))">
@@ -133,7 +138,7 @@
                   <div class="list-info">
                     <h4>{{ list.name }}</h4>
                     <span class="badge">{{ (list.language || 'en').toUpperCase() }}</span>
-                    <span class="count">{{ getListWordCount(list.id) }} 词</span>
+                    <span class="count">{{ list.wordCount || 0 }} 词</span>
                   </div>
                   <button class="btn-icon delete-btn" @click.stop="removeList(list.id)" title="删除">
                     ×
@@ -253,34 +258,130 @@
           </div>
 
           <div class="article-generator card">
-            <div class="generator-controls">
-              <div class="control-item">
+            <!-- Step 1: Select List & Words -->
+            <div v-if="articleStep === 1" class="step-container">
+              <h3>第一步：选择单词</h3>
+              <div class="form-group">
                 <label>来源单词表</label>
-                <select v-model="currentListId" class="select-input">
+                <select v-model="currentListId" class="select-input" @change="onListChange">
                   <option :value="null" disabled>请选择单词表</option>
                   <option v-for="list in vocabularyLists" :key="list.id" :value="list.id">
-                    {{ list.name }} ({{ getListWordCount(list.id) }}词)
+                    {{ list.name }} ({{ list.wordCount || 0 }}词)
                   </option>
                 </select>
               </div>
-              <button
-                class="btn btn-primary generate-btn"
-                :disabled="!currentListId || isGenerating"
-                @click="generateArticle"
-              >
-                <span v-if="isGenerating" class="spinner"></span>
-                {{ isGenerating ? '正在生成...' : '✨ 生成文章' }}
-              </button>
-            </div>
-            
-            <div v-if="generatedArticle" class="article-display">
-              <div class="article-paper">
-                <pre class="article-text">{{ generatedArticle }}</pre>
+              
+              <div v-if="currentListId" class="word-selection">
+                <div class="selection-header">
+                  <label class="checkbox-label">
+                    <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll">
+                    全选 ({{ selectedWordIds.size }})
+                  </label>
+                </div>
+                <div class="word-checkboxes">
+                  <label v-for="word in currentWords" :key="word.id" class="word-checkbox">
+                    <input type="checkbox" :value="word.id" :checked="selectedWordIds.has(word.id)" @change="toggleWordSelection(word.id)">
+                    <span class="word-text">{{ word.word }}</span>
+                  </label>
+                </div>
+              </div>
+              
+              <div class="step-actions">
+                <button class="btn btn-primary" :disabled="selectedWordIds.size === 0" @click="articleStep = 2">
+                  下一步
+                </button>
               </div>
             </div>
-            <div v-else class="empty-state large">
-              <div class="illustration">🤖</div>
-              <p>选择一个单词表，AI 将为你生成一篇包含这些词汇的短文，帮助你通过上下文记忆。</p>
+
+            <!-- Step 2: Configure Options -->
+            <div v-if="articleStep === 2" class="step-container">
+              <h3>第二步：配置选项</h3>
+              <div class="form-group">
+                <label>文章难度</label>
+                <select v-model="articleOptions.difficulty" class="select-input">
+                  <option value="Beginner">初级 (Beginner)</option>
+                  <option value="Intermediate">中级 (Intermediate)</option>
+                  <option value="Advanced">高级 (Advanced)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>文章长度</label>
+                <select v-model="articleOptions.length" class="select-input">
+                  <option value="Short">短篇 (约150词)</option>
+                  <option value="Medium">中篇 (约300词)</option>
+                  <option value="Long">长篇 (约500词)</option>
+                </select>
+              </div>
+              <div class="step-actions">
+                <button class="btn btn-secondary" @click="articleStep = 1">上一步</button>
+                <button class="btn btn-primary" @click="generateTopics">生成主题建议</button>
+              </div>
+            </div>
+
+            <!-- Step 3: Select Topic -->
+            <div v-if="articleStep === 3" class="step-container">
+              <h3>第三步：选择主题</h3>
+              <div v-if="isGenerating" class="loading-state">
+                <div class="spinner"></div>
+                <p>正在生成主题建议...</p>
+              </div>
+              <div v-else class="topics-grid">
+                <label v-for="topic in generatedTopics" :key="topic" class="topic-card" :class="{ selected: articleOptions.topic === topic }">
+                  <input type="radio" v-model="articleOptions.topic" :value="topic" name="topic">
+                  <span class="topic-text">{{ topic }}</span>
+                </label>
+              </div>
+              <div class="step-actions" v-if="!isGenerating">
+                <button class="btn btn-secondary" @click="articleStep = 2">上一步</button>
+                <button class="btn btn-primary" :disabled="!articleOptions.topic" @click="generateArticle">
+                  生成文章
+                </button>
+              </div>
+            </div>
+
+            <!-- Step 4: Result -->
+            <div v-if="articleStep === 4" class="step-container result-step">
+              <div class="result-header">
+                <h3>{{ generatedArticle.topic }}</h3>
+                <div class="result-actions">
+                  <button class="btn btn-outline" @click="downloadHTML">📥 下载 HTML</button>
+                  <button class="btn btn-outline" @click="downloadPDF">📥 打印/PDF</button>
+                  <button class="btn btn-primary" @click="resetArticleGenerator">再来一篇</button>
+                </div>
+              </div>
+              
+              <div v-if="isGenerating" class="loading-state">
+                <div class="spinner"></div>
+                <p>正在创作文章...</p>
+              </div>
+              
+              <div v-else class="article-display-area" id="printable-article">
+                <div class="article-meta print-only">
+                  <h1>{{ generatedArticle.topic }}</h1>
+                  <p>难度: {{ articleOptions.difficulty }} | 长度: {{ articleOptions.length }}</p>
+                </div>
+                <div class="article-content" v-html="renderMarkdown(generatedArticle.originalText)"></div>
+                
+                <div class="vocabulary-list-append print-only">
+                  <h3>📚 重点词汇</h3>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>单词</th>
+                        <th>释义</th>
+                        <th>词性</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="word in getSelectedWordsDetails()" :key="word.id">
+                        <td><strong>{{ word.word }}</strong></td>
+                        <td>{{ word.definition }}</td>
+                        <td>{{ word.partOfSpeech }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -339,11 +440,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, reactive } from 'vue'
 import request from '@/utils/request'
 import { API_ENDPOINTS } from '@/config/api'
 import AppLayout from '@/components/AppLayout.vue'
 import { useVocabularyStore } from '@/stores/vocabulary'
+import { marked } from 'marked'
 
 const currentView = ref('dashboard') // dashboard, my-words, public-library, ai-articles
 
@@ -363,7 +465,17 @@ const newWord = ref({
 })
 const publicKeyword = ref('')
 const isGenerating = ref(false)
-const generatedArticle = ref('')
+
+// AI Article State
+const articleStep = ref(1)
+const selectedWordIds = reactive(new Set())
+const articleOptions = reactive({
+  difficulty: 'Intermediate',
+  length: 'Medium',
+  topic: ''
+})
+const generatedTopics = ref([])
+const generatedArticle = ref(null)
 
 const vocabularyStore = useVocabularyStore()
 const vocabularyLists = computed(() => vocabularyStore.lists)
@@ -372,6 +484,10 @@ const currentWords = computed(() => vocabularyStore.wordsByListId[currentListId.
 const reviewItems = computed(() => vocabularyStore.reviewWords)
 const learningStats = computed(() => vocabularyStore.stats)
 const publicResults = computed(() => vocabularyStore.publicSearchResults)
+
+const isAllSelected = computed(() => {
+  return currentWords.value.length > 0 && selectedWordIds.size === currentWords.value.length
+})
 
 onMounted(async () => {
   await vocabularyStore.fetchLists()
@@ -389,6 +505,152 @@ const selectList = async (listId) => {
   await vocabularyStore.fetchListProgress(listId)
 }
 
+// AI Wizard Methods
+const onListChange = async () => {
+  if (currentListId.value) {
+    await vocabularyStore.fetchWords(currentListId.value)
+    selectedWordIds.clear()
+  }
+}
+
+const toggleSelectAll = (e) => {
+  if (e.target.checked) {
+    currentWords.value.forEach(w => selectedWordIds.add(w.id))
+  } else {
+    selectedWordIds.clear()
+  }
+}
+
+const toggleWordSelection = (wordId) => {
+  if (selectedWordIds.has(wordId)) {
+    selectedWordIds.delete(wordId)
+  } else {
+    selectedWordIds.add(wordId)
+  }
+}
+
+const generateTopics = async () => {
+  if (selectedWordIds.size === 0) return
+  isGenerating.value = true
+  articleStep.value = 3
+  
+  const words = currentWords.value
+    .filter(w => selectedWordIds.has(w.id))
+    .map(w => w.word)
+    
+  const result = await vocabularyStore.generateTopics(words, currentList.value?.language || 'en')
+  if (result.success) {
+    generatedTopics.value = result.data
+  } else {
+    alert(result.message)
+    articleStep.value = 2
+  }
+  isGenerating.value = false
+}
+
+const generateArticle = async () => {
+  if (!articleOptions.topic) return
+  isGenerating.value = true
+  articleStep.value = 4
+  
+  const result = await vocabularyStore.generateArticle({
+    listId: currentListId.value,
+    wordIds: Array.from(selectedWordIds),
+    topic: articleOptions.topic,
+    difficulty: articleOptions.difficulty,
+    length: articleOptions.length
+  })
+  
+  if (result.success) {
+    generatedArticle.value = result.data
+  } else {
+    alert(result.message)
+    articleStep.value = 3
+  }
+  isGenerating.value = false
+}
+
+const resetArticleGenerator = () => {
+  articleStep.value = 1
+  selectedWordIds.clear()
+  articleOptions.topic = ''
+  generatedArticle.value = null
+}
+
+const renderMarkdown = (text) => {
+  if (!text) return ''
+  return marked(text)
+}
+
+const getSelectedWordsDetails = () => {
+  if (!generatedArticle.value) return []
+  // We can filter currentWords if they are still loaded, or parse from usedWordIds if available
+  // Assuming currentWords are still valid for the current list
+  return currentWords.value.filter(w => selectedWordIds.has(w.id))
+}
+
+const downloadHTML = () => {
+  if (!generatedArticle.value) return
+  
+  const words = getSelectedWordsDetails()
+  const wordRows = words.map(w => `
+    <tr>
+      <td><strong>${w.word}</strong></td>
+      <td>${w.definition}</td>
+      <td>${w.partOfSpeech || ''}</td>
+    </tr>
+  `).join('')
+  
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>${generatedArticle.value.topic}</title>
+      <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 40px; line-height: 1.6; }
+        h1 { color: #2c3e50; text-align: center; }
+        .meta { text-align: center; color: #7f8c8d; margin-bottom: 30px; }
+        .content { font-size: 18px; margin-bottom: 50px; text-align: justify; }
+        strong { color: #e74c3c; } /* Highlight bold words */
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #bdc3c7; padding: 10px; text-align: left; }
+        th { background-color: #ecf0f1; }
+      </style>
+    </head>
+    <body>
+      <h1>${generatedArticle.value.topic}</h1>
+      <div class="meta">Difficulty: ${articleOptions.difficulty} | Length: ${articleOptions.length}</div>
+      <div class="content">
+        ${renderMarkdown(generatedArticle.value.originalText)}
+      </div>
+      <div class="vocabulary">
+        <h3>Vocabulary List</h3>
+        <table>
+          <thead><tr><th>Word</th><th>Definition</th><th>Part of Speech</th></tr></thead>
+          <tbody>${wordRows}</tbody>
+        </table>
+      </div>
+    </body>
+    </html>
+  `
+  
+  const blob = new Blob([htmlContent], { type: 'text/html' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${generatedArticle.value.topic}.html`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+const downloadPDF = () => {
+  window.print()
+}
+
+// Other existing methods
 const createList = async () => {
   if (!newList.value.name.trim()) {
     alert('请输入单词表名称')
@@ -439,43 +701,6 @@ const addWord = async () => {
   })
 }
 
-const generateArticle = async () => {
-  if (!currentListId.value) return
-  isGenerating.value = true
-  
-  try {
-    if (!vocabularyStore.wordsByListId[currentListId.value]) {
-      await vocabularyStore.fetchWords(currentListId.value)
-    }
-    const ws = (vocabularyStore.wordsByListId[currentListId.value] || []).slice(0, 30)
-    const vocabulary = ws.map(w => w.word).filter(Boolean).join(', ')
-    const prompt = [
-      '你是一名语言学习助教。',
-      `请为我生成一篇 ${(currentList.value?.language || 'en').toUpperCase()} 学习文章：`,
-      '1) 文章长度控制在 250-400 词。',
-      '2) 尽量自然地包含以下词汇（可以变形）：',
-      vocabulary || '（当前单词表为空）',
-      '3) 文章后附：重点词汇清单（给出简短释义）。',
-      '输出使用纯文本，分段清晰。'
-    ].join('\n')
-    const response = await request.post(API_ENDPOINTS.chat.ask, {
-      prompt,
-      session_id: null,
-      model: 'deepseek-chat'
-    })
-    generatedArticle.value = response?.data?.answer || response?.answer || ''
-    await vocabularyStore.recordActivity({
-      activityType: 'article_generation',
-      activityDetails: JSON.stringify({ listId: currentListId.value, wordCount: ws.length }),
-      duration: 0
-    })
-  } catch (error) {
-    alert('生成失败: ' + (error.response?.data?.message || error.message || '未知错误'))
-  } finally {
-    isGenerating.value = false
-  }
-}
-
 const refreshCurrentList = async () => {
   if (!currentListId.value) return
   await vocabularyStore.fetchWords(currentListId.value)
@@ -491,6 +716,10 @@ const refreshReview = async () => {
 }
 
 const getListWordCount = (listId) => {
+  // Now using list.wordCount from backend if available, fallback to length
+  const list = vocabularyLists.value.find(l => l.id === listId)
+  if (list && list.wordCount !== undefined) return list.wordCount
+  
   const ws = vocabularyStore.wordsByListId[listId]
   return Array.isArray(ws) ? ws.length : 0
 }
@@ -547,7 +776,7 @@ const removeList = async (listId) => {
   }
   if (currentListId.value === listId) {
     currentListId.value = null
-    generatedArticle.value = ''
+    generatedArticle.value = null
     publicKeyword.value = ''
   }
 }
@@ -572,7 +801,6 @@ const quickReview = async (wordId, masteryLevel) => {
 }
 
 const searchPublic = async () => {
-  // Allow empty search to get random/default words if backend supports it
   const kw = publicKeyword.value.trim()
   const language = currentList.value?.language || 'en'
   const result = await vocabularyStore.searchPublic(kw, language)
@@ -704,51 +932,96 @@ const formatDuration = (seconds) => {
   margin: 0;
 }
 
-/* Cards & Stats */
-.card {
-  background: white;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  padding: 24px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.card-header h3 {
-  font-size: 18px;
-  margin: 0;
-  color: #334155;
-}
-
-.stats-grid {
+/* Dashboard Grid - Improved */
+.dashboard-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 24px;
+  margin-bottom: 32px;
 }
 
-.stat-item {
-  text-align: center;
-  padding: 16px;
-  background: #f8fafc;
-  border-radius: 8px;
+.stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+  transition: transform 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+}
+
+.stat-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  background-color: #f8fafc;
+}
+
+.stat-card.primary .stat-icon { background-color: #eff6ff; color: #3b82f6; }
+.stat-card.success .stat-icon { background-color: #dcfce7; color: #22c55e; }
+.stat-card.warning .stat-icon { background-color: #fef3c7; color: #f59e0b; }
+.stat-card.info .stat-icon { background-color: #e0f2fe; color: #0ea5e9; }
+
+.stat-content {
+  flex: 1;
 }
 
 .stat-value {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 700;
-  color: #3b82f6;
-  margin-bottom: 4px;
+  color: #1e293b;
+  line-height: 1.2;
 }
 
 .stat-label {
   font-size: 13px;
   color: #64748b;
+  margin-top: 4px;
+}
+
+/* Review Section */
+.review-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.review-card-item {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.review-word {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 4px 0;
+}
+
+.review-def {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+}
+
+.review-actions {
+  display: flex;
+  gap: 8px;
 }
 
 /* My Words Layout */
@@ -900,150 +1173,155 @@ const formatDuration = (seconds) => {
   font-size: 12px;
 }
 
-/* Public Library */
-.search-bar-container {
-  background: white;
-  padding: 24px;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-  margin-bottom: 24px;
-}
-
-.search-input-wrapper {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.search-input {
-  flex: 1;
-  padding: 12px;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  font-size: 16px;
-}
-
-.search-tips {
-  font-size: 13px;
-  color: #64748b;
-}
-
-.results-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 16px;
-}
-
-.result-card {
-  background: white;
-  padding: 16px;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-}
-
-.result-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.result-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-
-.result-header h4 {
-  margin: 0;
-  font-size: 16px;
-}
-
-.pos-tag {
-  font-size: 11px;
-  background: #f1f5f9;
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-.result-def {
-  margin: 0;
-  font-size: 14px;
-  color: #64748b;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* AI Articles */
-.article-generator {
-  min-height: 500px;
-}
-
-.generator-controls {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  margin-bottom: 24px;
-  padding-bottom: 24px;
-  border-bottom: 1px solid #f1f5f9;
-}
-
-.control-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1;
-}
-
-.select-input {
-  flex: 1;
-  padding: 10px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-}
-
-.generate-btn {
-  padding: 10px 24px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid #ffffff;
-  border-top-color: transparent;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.article-paper {
-  background: #fff;
-  padding: 40px;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+/* AI Wizard Styles */
+.step-container {
   max-width: 800px;
   margin: 0 auto;
 }
 
-.article-text {
-  font-family: 'Georgia', serif;
-  font-size: 18px;
-  line-height: 1.8;
-  color: #1e293b;
-  white-space: pre-wrap;
-  margin: 0;
+.step-container h3 {
+  margin-bottom: 24px;
+  color: #334155;
+}
+
+.word-selection {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 24px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.selection-header {
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 12px;
+}
+
+.word-checkboxes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.word-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.word-checkbox:hover {
+  background-color: #f8fafc;
+}
+
+.step-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.topics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.topic-card {
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.topic-card:hover {
+  border-color: #94a3b8;
+}
+
+.topic-card.selected {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+}
+
+.topic-text {
+  font-weight: 500;
+}
+
+.loading-state {
+  text-align: center;
+  padding: 60px;
+  color: #64748b;
+}
+
+.result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.article-display-area {
+  background: white;
+  padding: 40px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.article-content :deep(strong) {
+  color: #3b82f6;
+  font-weight: 700;
+}
+
+.vocabulary-list-append {
+  margin-top: 40px;
+  padding-top: 40px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.vocabulary-list-append table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.vocabulary-list-append th,
+.vocabulary-list-append td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.print-only {
+  display: none;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-article, #printable-article * {
+    visibility: visible;
+  }
+  #printable-article {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    border: none;
+  }
+  .print-only {
+    display: block;
+  }
 }
 
 /* Modals */
@@ -1142,3 +1420,4 @@ const formatDuration = (seconds) => {
 .empty-state .illustration { font-size: 48px; margin-bottom: 16px; }
 
 </style>
+</toolcall_result>

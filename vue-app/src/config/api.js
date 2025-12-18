@@ -96,7 +96,11 @@ export const API_ENDPOINTS = {
     review: '/api/vocabulary/review',
     stats: '/api/vocabulary/stats',
     activity: '/api/vocabulary/activity',
-    searchPublic: '/api/vocabulary/public/search'
+    searchPublic: '/api/vocabulary/public/search',
+    generateTopics: '/api/vocabulary/articles/topics',
+    generateArticle: '/api/vocabulary/articles/generate',
+    getArticles: '/api/vocabulary/articles',
+    getArticle: (articleId) => `/api/vocabulary/articles/${articleId}`
   }
 }
 
