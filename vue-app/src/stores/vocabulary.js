@@ -10,6 +10,7 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
   const reviewWords = ref([])
   const stats = ref(null)
   const publicSearchResults = ref([])
+  const publicSearchTotal = ref(0)
   const isLoading = ref(false)
 
   function normalizeList(raw) {
@@ -239,12 +240,13 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
     }
   }
 
-  async function searchPublic(keyword, language = 'en') {
+  async function searchPublic(keyword, language = 'en', page = 1, size = 50) {
     try {
       const response = await request.get(API_ENDPOINTS.vocabulary.searchPublic, {
-        params: { keyword, language }
+        params: { keyword, language, page, size }
       })
       publicSearchResults.value = (response.words || []).map(normalizeWord)
+      publicSearchTotal.value = response.total ?? response.totalElements ?? response.total_elements ?? publicSearchResults.value.length
       return { success: true, data: publicSearchResults.value }
     } catch (error) {
       return { success: false, message: error.response?.data?.message || '搜索公共词库失败' }
@@ -282,6 +284,7 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
     reviewWords,
     stats,
     publicSearchResults,
+    publicSearchTotal,
     isLoading,
     fetchLists,
     createList,

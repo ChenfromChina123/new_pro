@@ -1,6 +1,8 @@
 package com.aispring.repository;
 
 import com.aispring.entity.PublicVocabularyWord;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -40,6 +42,11 @@ public interface PublicVocabularyWordRepository extends JpaRepository<PublicVoca
      */
     @Query("SELECT p FROM PublicVocabularyWord p WHERE p.language = :language AND p.word LIKE %:keyword% ORDER BY p.usageCount DESC")
     List<PublicVocabularyWord> searchByKeyword(@Param("language") String language, @Param("keyword") String keyword);
+
+    @Query("SELECT p FROM PublicVocabularyWord p WHERE p.language = :language AND p.word LIKE %:keyword% ORDER BY p.usageCount DESC")
+    Page<PublicVocabularyWord> searchByKeywordPaged(@Param("language") String language, @Param("keyword") String keyword, Pageable pageable);
+
+    Page<PublicVocabularyWord> findByLanguageOrderByUsageCountDesc(String language, Pageable pageable);
     
     /**
      * 获取最常用的单词

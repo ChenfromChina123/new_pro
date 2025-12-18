@@ -258,13 +258,18 @@ public class VocabularyController {
             @RequestParam(required = false) String keyword,
             @RequestParam(name = "q", required = false) String q,
             @RequestParam(defaultValue = "en") String language,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "50") Integer size,
             @AuthenticationPrincipal CustomUserDetails customUserDetails) {
         
         String kw = (keyword != null && !keyword.isEmpty()) ? keyword : (q != null ? q : "");
-        List<PublicVocabularyWord> words = vocabularyService.searchPublicWords(kw, language);
+        VocabularyService.PublicSearchResult result = vocabularyService.searchPublicWordsPaged(kw, language, page, size);
         
         Map<String, Object> response = new HashMap<>();
-        response.put("words", words);
+        response.put("words", result.words());
+        response.put("total", result.total());
+        response.put("page", result.page());
+        response.put("size", result.size());
         
         return ResponseEntity.ok(response);
     }

@@ -400,7 +400,7 @@
                 class="pagination-container"
               >
                 <div class="pagination-info">
-                  显示第 {{ (currentPage - 1) * pageSize + 1 }} - {{ Math.min(currentPage * pageSize, vocabularyStore.publicSearchResults.length) }} 条，共 {{ vocabularyStore.publicSearchResults.length }} 条
+                  显示第 {{ publicStartIndex }} - {{ publicEndIndex }} 条，共 {{ vocabularyStore.publicSearchTotal }} 条
                 </div>
                 <div class="pagination-buttons">
                   <button
@@ -851,18 +851,36 @@ const currentPage = ref(1)
 const pageSize = ref(50)
 
 const paginatedResults = computed(() => {
-  const startIndex = (currentPage.value - 1) * pageSize.value
-  const endIndex = startIndex + pageSize.value
-  return vocabularyStore.publicSearchResults.slice(startIndex, endIndex)
+  return vocabularyStore.publicSearchResults
 })
 
 const totalPages = computed(() => {
-  return Math.ceil(vocabularyStore.publicSearchResults.length / pageSize.value)
+  return Math.ceil((vocabularyStore.publicSearchTotal || 0) / pageSize.value)
 })
 
-const goToPage = (page) => {
+const publicStartIndex = computed(() => {
+  if ((vocabularyStore.publicSearchTotal || 0) <= 0) return 0
+  return (currentPage.value - 1) * pageSize.value + 1
+})
+
+const publicEndIndex = computed(() => {
+  if ((vocabularyStore.publicSearchTotal || 0) <= 0) return 0
+  return (currentPage.value - 1) * pageSize.value + paginatedResults.value.length
+})
+
+const fetchPublicPage = async (page) => {
+  const kw = publicKeyword.value.trim()
+  const language = currentList.value?.language || 'en'
+  const result = await vocabularyStore.searchPublic(kw, language, page, pageSize.value)
+  if (!result.success) {
+    alert('搜索失败: ' + (result.message || '未知错误'))
+  }
+}
+
+const goToPage = async (page) => {
   if (page < 1 || page > totalPages.value) return
   currentPage.value = page
+  await fetchPublicPage(page)
 }
 
 // AI Article State
@@ -979,6 +997,10 @@ onUnmounted(() => {
 
 watch([currentView, currentListId], () => {
   markActive()
+  if (currentView.value === 'public-library') {
+    currentPage.value = 1
+    void fetchPublicPage(1)
+  }
 })
 
 const selectList = async (listId) => {
@@ -1312,13 +1334,8 @@ const quickReview = async (wordId, masteryLevel) => {
 
 const searchPublic = async () => {
   markActive()
-  const kw = publicKeyword.value.trim()
-  const language = currentList.value?.language || 'en'
-  const result = await vocabularyStore.searchPublic(kw, language)
-  if (!result.success) {
-    alert('搜索失败: ' + (result.message || '未知错误'))
-  }
-  currentPage.value = 1 // 搜索后回到第一页
+  currentPage.value = 1
+  await fetchPublicPage(1)
 }
 
 const addPublicWord = async (w) => {
@@ -1365,6 +1382,11 @@ const formatDuration = (seconds) => {
   background-color: #f5f7fa;
 }
 
+/* Dark mode support */
+.dark-mode .language-learning-page {
+  background-color: #0f172a;
+}
+
 /* Mobile Header */
 .mobile-header {
   display: none;
@@ -1374,6 +1396,11 @@ const formatDuration = (seconds) => {
   padding: 16px;
   background-color: #ffffff;
   border-bottom: 1px solid #e2e8f0;
+}
+
+.dark-mode .mobile-header {
+  background-color: #1e293b;
+  border-bottom: 1px solid #334155;
 }
 
 .mobile-menu-btn {
@@ -1407,6 +1434,11 @@ const formatDuration = (seconds) => {
   flex-direction: column;
   flex-shrink: 0;
   transition: transform 0.3s ease;
+}
+
+.dark-mode .sidebar {
+  background-color: #1e293b;
+  border-right: 1px solid #334155;
 }
 
 .sidebar-mobile-open {
@@ -1480,6 +1512,10 @@ const formatDuration = (seconds) => {
   position: relative;
 }
 
+.dark-mode .main-content {
+  background-color: #0f172a;
+}
+
 .view-header {
   margin-bottom: 32px;
 }
@@ -1512,6 +1548,11 @@ const formatDuration = (seconds) => {
   gap: 20px;
   box-shadow: 0 2px 10px rgba(0,0,0,0.03);
   transition: transform 0.2s;
+}
+
+.dark-mode .stat-card {
+  background: #1e293b;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
 
 .stat-card:hover {
