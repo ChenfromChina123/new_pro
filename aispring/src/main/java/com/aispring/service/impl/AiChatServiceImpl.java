@@ -248,11 +248,8 @@ public class AiChatServiceImpl implements AiChatService {
             
             final ChatClient finalClient = clientToUse;
             
-            java.util.concurrent.CompletableFuture<String> fut = java.util.concurrent.CompletableFuture.supplyAsync(() -> {
-                ChatResponse response = finalClient.call(promptObj);
-                return response.getResult().getOutput().getContent();
-            });
-            return fut.get(3, java.util.concurrent.TimeUnit.SECONDS);
+            ChatResponse response = finalClient.call(promptObj);
+            return response.getResult().getOutput().getContent();
         } catch (Exception e) {
             return fallbackAnswer(prompt);
         }

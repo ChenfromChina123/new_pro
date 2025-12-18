@@ -2,6 +2,7 @@ package com.aispring.entity;
 
 import jakarta.persistence.*;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -60,6 +61,7 @@ public class VocabularyList {
     private List<VocabularyWord> words;
 
     @Transient
+    @JsonProperty
     private Long wordCount;
     
     @PrePersist
