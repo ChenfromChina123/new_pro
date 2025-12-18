@@ -1420,4 +1420,3 @@ const formatDuration = (seconds) => {
 .empty-state .illustration { font-size: 48px; margin-bottom: 16px; }
 
 </style>
-</toolcall_result>
