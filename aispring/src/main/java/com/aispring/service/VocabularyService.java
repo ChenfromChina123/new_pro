@@ -5,6 +5,8 @@ import com.aispring.exception.CustomException;
 import com.aispring.repository.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -212,6 +214,26 @@ public class VocabularyService {
     public List<PublicVocabularyWord> searchPublicWords(String keyword, String language) {
         return publicVocabularyWordRepository.searchByKeyword(language, keyword);
     }
+
+    public PublicSearchResult searchPublicWordsPaged(String keyword, String language, Integer page, Integer size) {
+        int safePage = page == null ? 1 : Math.max(1, page);
+        int safeSize = size == null ? 50 : Math.min(Math.max(1, size), 200);
+
+        String kw = keyword == null ? "" : keyword.trim();
+        String lang = (language == null || language.isBlank()) ? "en" : language.trim();
+
+        PageRequest pageable = PageRequest.of(safePage - 1, safeSize);
+        Page<PublicVocabularyWord> result;
+        if (kw.isEmpty()) {
+            result = publicVocabularyWordRepository.findByLanguageOrderByUsageCountDesc(lang, pageable);
+        } else {
+            result = publicVocabularyWordRepository.searchByKeywordPaged(lang, kw, pageable);
+        }
+
+        return new PublicSearchResult(result.getContent(), result.getTotalElements(), safePage, safeSize);
+    }
+
+    public record PublicSearchResult(List<PublicVocabularyWord> words, long total, int page, int size) {}
     
     /**
      * 生成文章主题建议
