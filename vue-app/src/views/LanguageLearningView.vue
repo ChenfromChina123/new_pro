@@ -369,29 +369,40 @@
             </div>
             <div
               v-else
-              class="results-list"
+              class="public-results"
             >
               <div
-                v-for="w in paginatedResults"
-                :key="w.id"
-                class="result-card"
+                class="review-grid"
               >
-                <div class="result-info">
-                  <div class="result-header">
-                    <h4>{{ w.word }}</h4>
-                    <span class="pos-tag">{{ w.partOfSpeech }}</span>
-                  </div>
-                  <p class="result-def">
-                    {{ w.definition }}
-                  </p>
-                </div>
-                <button
-                  class="btn btn-sm btn-primary"
-                  :disabled="!currentListId"
-                  @click="addPublicWord(w)"
+                <div
+                  v-for="w in paginatedResults"
+                  :key="w.id"
+                  class="review-card-item"
                 >
-                  添加
-                </button>
+                  <div class="review-content">
+                    <h4 class="review-word">
+                      {{ w.word }}
+                      <span
+                        v-if="w.partOfSpeech"
+                        class="public-pos"
+                      >
+                        {{ w.partOfSpeech }}
+                      </span>
+                    </h4>
+                    <p class="review-def">
+                      {{ w.definition }}
+                    </p>
+                  </div>
+                  <div class="review-actions">
+                    <button
+                      class="btn btn-sm btn-primary"
+                      :disabled="!currentListId"
+                      @click="addPublicWord(w)"
+                    >
+                      添加
+                    </button>
+                  </div>
+                </div>
               </div>
                 
               <!-- 分页组件 -->
@@ -400,7 +411,7 @@
                 class="pagination-container"
               >
                 <div class="pagination-info">
-                  显示第 {{ publicStartIndex }} - {{ publicEndIndex }} 条，共 {{ vocabularyStore.publicSearchTotal }} 条
+                  显示第 {{ (currentPage - 1) * pageSize + 1 }} - {{ Math.min(currentPage * pageSize, vocabularyStore.publicSearchResults.length) }} 条，共 {{ vocabularyStore.publicSearchResults.length }} 条
                 </div>
                 <div class="pagination-buttons">
                   <button
@@ -851,36 +862,18 @@ const currentPage = ref(1)
 const pageSize = ref(50)
 
 const paginatedResults = computed(() => {
-  return vocabularyStore.publicSearchResults
+  const startIndex = (currentPage.value - 1) * pageSize.value
+  const endIndex = startIndex + pageSize.value
+  return vocabularyStore.publicSearchResults.slice(startIndex, endIndex)
 })
 
 const totalPages = computed(() => {
-  return Math.ceil((vocabularyStore.publicSearchTotal || 0) / pageSize.value)
+  return Math.ceil(vocabularyStore.publicSearchResults.length / pageSize.value)
 })
 
-const publicStartIndex = computed(() => {
-  if ((vocabularyStore.publicSearchTotal || 0) <= 0) return 0
-  return (currentPage.value - 1) * pageSize.value + 1
-})
-
-const publicEndIndex = computed(() => {
-  if ((vocabularyStore.publicSearchTotal || 0) <= 0) return 0
-  return (currentPage.value - 1) * pageSize.value + paginatedResults.value.length
-})
-
-const fetchPublicPage = async (page) => {
-  const kw = publicKeyword.value.trim()
-  const language = currentList.value?.language || 'en'
-  const result = await vocabularyStore.searchPublic(kw, language, page, pageSize.value)
-  if (!result.success) {
-    alert('搜索失败: ' + (result.message || '未知错误'))
-  }
-}
-
-const goToPage = async (page) => {
+const goToPage = (page) => {
   if (page < 1 || page > totalPages.value) return
   currentPage.value = page
-  await fetchPublicPage(page)
 }
 
 // AI Article State
@@ -997,10 +990,6 @@ onUnmounted(() => {
 
 watch([currentView, currentListId], () => {
   markActive()
-  if (currentView.value === 'public-library') {
-    currentPage.value = 1
-    void fetchPublicPage(1)
-  }
 })
 
 const selectList = async (listId) => {
@@ -1334,8 +1323,13 @@ const quickReview = async (wordId, masteryLevel) => {
 
 const searchPublic = async () => {
   markActive()
-  currentPage.value = 1
-  await fetchPublicPage(1)
+  const kw = publicKeyword.value.trim()
+  const language = currentList.value?.language || 'en'
+  const result = await vocabularyStore.searchPublic(kw, language)
+  if (!result.success) {
+    alert('搜索失败: ' + (result.message || '未知错误'))
+  }
+  currentPage.value = 1 // 搜索后回到第一页
 }
 
 const addPublicWord = async (w) => {
@@ -1382,11 +1376,6 @@ const formatDuration = (seconds) => {
   background-color: #f5f7fa;
 }
 
-/* Dark mode support */
-.dark-mode .language-learning-page {
-  background-color: #0f172a;
-}
-
 /* Mobile Header */
 .mobile-header {
   display: none;
@@ -1396,11 +1385,6 @@ const formatDuration = (seconds) => {
   padding: 16px;
   background-color: #ffffff;
   border-bottom: 1px solid #e2e8f0;
-}
-
-.dark-mode .mobile-header {
-  background-color: #1e293b;
-  border-bottom: 1px solid #334155;
 }
 
 .mobile-menu-btn {
@@ -1434,11 +1418,6 @@ const formatDuration = (seconds) => {
   flex-direction: column;
   flex-shrink: 0;
   transition: transform 0.3s ease;
-}
-
-.dark-mode .sidebar {
-  background-color: #1e293b;
-  border-right: 1px solid #334155;
 }
 
 .sidebar-mobile-open {
@@ -1512,10 +1491,6 @@ const formatDuration = (seconds) => {
   position: relative;
 }
 
-.dark-mode .main-content {
-  background-color: #0f172a;
-}
-
 .view-header {
   margin-bottom: 32px;
 }
@@ -1548,11 +1523,6 @@ const formatDuration = (seconds) => {
   gap: 20px;
   box-shadow: 0 2px 10px rgba(0,0,0,0.03);
   transition: transform 0.2s;
-}
-
-.dark-mode .stat-card {
-  background: #1e293b;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
 
 .stat-card:hover {
@@ -1626,6 +1596,14 @@ const formatDuration = (seconds) => {
 .review-actions {
   display: flex;
   gap: 8px;
+}
+
+.public-pos {
+  font-size: 12px;
+  color: #64748b;
+  font-style: italic;
+  font-weight: 400;
+  margin-left: 8px;
 }
 
 /* My Words Layout */
