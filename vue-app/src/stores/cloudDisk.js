@@ -8,9 +8,40 @@ export const useCloudDiskStore = defineStore('cloudDisk', () => {
   const files = ref([])
   const folders = ref([])
   const currentFolder = ref('')
+  const activeFolderPath = ref('')
   const selectedFiles = ref([])
   const isLoading = ref(false)
   let latestFetchToken = 0
+
+  function normalizeFolderPath(folderPath) {
+    return (folderPath || '').replace(/^\//, '').replace(/\/$/, '')
+  }
+
+  function applyActiveFlags(targetPath, targetId) {
+    const walk = (node) => {
+      const matches = targetId
+        ? node?.id === targetId
+        : (node?.folderPath || '') === (targetPath || '')
+
+      node.isActive = Boolean(matches)
+
+      const children = Array.isArray(node?.children) ? node.children : []
+      for (const child of children) {
+        walk(child)
+      }
+    }
+
+    const roots = Array.isArray(folders.value) ? folders.value : []
+    for (const r of roots) {
+      walk(r)
+    }
+  }
+
+  function setActiveFolder({ folderId = null, folderPath = '' } = {}) {
+    const normalizedPath = normalizeFolderPath(folderPath)
+    activeFolderPath.value = normalizedPath
+    applyActiveFlags(normalizedPath, folderId)
+  }
   
   // 初始化用户文件夹结构
   async function initFolderStructure() {
@@ -58,6 +89,7 @@ export const useCloudDiskStore = defineStore('cloudDisk', () => {
       let folderForStore = normalizedPath.replace(/^\//, '').replace(/\/$/, '');
       if (token === latestFetchToken) {
         currentFolder.value = folderForStore;
+        setActiveFolder({ folderPath: folderForStore })
       }
       return { success: true }
     } catch (error) {
@@ -116,6 +148,7 @@ export const useCloudDiskStore = defineStore('cloudDisk', () => {
         folderName: folder.folderName ?? folder.folder_name ?? '',
         folderPath: normalizedPath,
         parentPath: normalizedParentPath,
+        isActive: false,
         originalFolderPath: folder.folderPath ?? folder.folder_path ?? '',
         originalParentPath: folder.parentPath ?? folder.parent_path ?? null,
         createdAt: folder.createdAt ?? folder.created_at ?? null,
@@ -137,6 +170,7 @@ export const useCloudDiskStore = defineStore('cloudDisk', () => {
         folderName: '根目录',
         folderPath: '', // 使用空字符串作为根目录路径，与currentFolder保持一致
         parentPath: null,
+        isActive: false,
         createdAt: new Date().toISOString(),
         children: []
       };
@@ -274,6 +308,7 @@ export const useCloudDiskStore = defineStore('cloudDisk', () => {
       const foldersList = (response && (response.data || response.folders)) || (Array.isArray(response) ? response : [])
       // 构建树形结构
       folders.value = buildFolderTree(foldersList)
+      setActiveFolder({ folderPath: activeFolderPath.value || currentFolder.value || '' })
       return { success: true }
     } catch (error) {
       console.error('Fetch folders error:', error)
@@ -589,11 +624,13 @@ export const useCloudDiskStore = defineStore('cloudDisk', () => {
     files,
     folders,
     currentFolder,
+    activeFolderPath,
     selectedFiles,
     isLoading,
     initFolderStructure,
     fetchFiles,
     fetchFolders,
+    setActiveFolder,
     uploadFile,
     uploadFolderZip,
     uploadFolderStream,
