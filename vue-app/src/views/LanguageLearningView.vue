@@ -36,7 +36,7 @@
             :class="{ active: currentView === 'dashboard' }"
             @click.prevent="currentView = 'dashboard'; showMobileSidebar = false"
           >
-            <span class="icon"></span>
+
             <span class="label">学习概览</span>
           </a>
           <a
@@ -45,7 +45,7 @@
             :class="{ active: currentView === 'my-words' }"
             @click.prevent="currentView = 'my-words'; showMobileSidebar = false"
           >
-            <span class="icon"></span>
+            
             <span class="label">我的单词</span>
           </a>
           <a
@@ -54,7 +54,7 @@
             :class="{ active: currentView === 'public-library' }"
             @click.prevent="currentView = 'public-library'; showMobileSidebar = false"
           >
-            <span class="icon"></span>
+            
             <span class="label">公共词库</span>
           </a>
           <a
@@ -63,7 +63,7 @@
             :class="{ active: currentView === 'ai-articles' }"
             @click.prevent="currentView = 'ai-articles'; showMobileSidebar = false"
           >
-            <span class="icon"></span>
+            
             <span class="label">AI文章</span>
           </a>
         </nav>
@@ -2973,6 +2973,15 @@ body.dark-mode .copy-button {
   background-color: var(--bg-tertiary);
   padding: 16px;
   border-radius: 8px;
+}
+
+.vocab-chip {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: #fef3c7;
+  color: #1d4ed8;
+  font-weight: 700;
 }
 
 .ai-article-modal-title {
