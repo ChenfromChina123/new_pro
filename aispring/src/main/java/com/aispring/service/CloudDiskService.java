@@ -240,9 +240,10 @@ public class CloudDiskService {
         String checkPath = normalizePath(folderPath);
         List<UserFile> allFiles = userFileRepository.findByUser_IdOrderByUploadTimeDesc(userId);
         
+        String currentFilename = originalFilename;
         Optional<UserFile> existingFileOpt = allFiles.stream()
             .filter(f -> normalizePath(f.getFolderPath()).equals(checkPath) && 
-                         (f.getFilename() != null && f.getFilename().equals(originalFilename)))
+                         (f.getFilename() != null && f.getFilename().equals(currentFilename)))
             .findFirst();
 
         if (existingFileOpt.isPresent()) {
