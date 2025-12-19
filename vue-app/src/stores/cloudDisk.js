@@ -175,18 +175,24 @@ export const useCloudDiskStore = defineStore('cloudDisk', () => {
           }
 
           if (!isCycle) {
-            folderMap[parentId].children.push(currentFolder);
-            currentFolder._tempParent = folderMap[parentId];
+            if (parentId !== currentFolder.id) {
+              folderMap[parentId].children.push(currentFolder);
+              currentFolder._tempParent = folderMap[parentId];
+            }
             parentFound = true;
           } else {
             console.warn(`Cycle detected for folder ${currentFolder.folderName} (ID: ${currentFolder.id}), adding to root`);
-            rootFolderNode.children.push(currentFolder);
+            if (rootFolderNode.id !== currentFolder.id) {
+               rootFolderNode.children.push(currentFolder);
+            }
             parentFound = true; // Treated as found (handled)
           }
         } else if (normalizedParentPath === '') {
           // 如果父路径是空字符串（根目录），添加到虚拟根目录
-          rootFolderNode.children.push(currentFolder);
-          currentFolder._tempParent = rootFolderNode;
+          if (rootFolderNode.id !== currentFolder.id) {
+             rootFolderNode.children.push(currentFolder);
+             currentFolder._tempParent = rootFolderNode;
+          }
           parentFound = true;
         } else if (currentFolder.originalParentPath) {
           const op = currentFolder.originalParentPath;
@@ -209,11 +215,15 @@ export const useCloudDiskStore = defineStore('cloudDisk', () => {
             }
 
             if (!isCycle) {
-              folderMap[parentId].children.push(currentFolder);
-              currentFolder._tempParent = folderMap[parentId];
+              if (parentId !== currentFolder.id) {
+                 folderMap[parentId].children.push(currentFolder);
+                 currentFolder._tempParent = folderMap[parentId];
+              }
               parentFound = true;
             } else {
-               rootFolderNode.children.push(currentFolder);
+               if (rootFolderNode.id !== currentFolder.id) {
+                  rootFolderNode.children.push(currentFolder);
+               }
                parentFound = true;
             }
           }
@@ -236,12 +246,14 @@ export const useCloudDiskStore = defineStore('cloudDisk', () => {
         const parentNode = pathMap[parentPath];
         const parentId = parentNode ? parentNode.id : undefined;
         
-        if (parentId) {
+        if (parentId && parentId !== currentFolder.id) {
           folderMap[parentId].children.push(currentFolder);
           parentFound = true;
         } else {
           // 如果找不到父文件夹，直接添加到根目录
-          rootFolderNode.children.push(currentFolder);
+          if (rootFolderNode.id !== currentFolder.id) {
+            rootFolderNode.children.push(currentFolder);
+          }
         }
       }
     });
