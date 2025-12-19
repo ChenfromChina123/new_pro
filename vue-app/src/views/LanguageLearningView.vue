@@ -36,7 +36,7 @@
             :class="{ active: currentView === 'dashboard' }"
             @click.prevent="currentView = 'dashboard'; showMobileSidebar = false"
           >
-            <span class="icon">📊</span>
+            <span class="icon"></span>
             <span class="label">学习概览</span>
           </a>
           <a
@@ -45,7 +45,7 @@
             :class="{ active: currentView === 'my-words' }"
             @click.prevent="currentView = 'my-words'; showMobileSidebar = false"
           >
-            <span class="icon">📝</span>
+            <span class="icon"></span>
             <span class="label">我的单词</span>
           </a>
           <a
@@ -54,7 +54,7 @@
             :class="{ active: currentView === 'public-library' }"
             @click.prevent="currentView = 'public-library'; showMobileSidebar = false"
           >
-            <span class="icon">🔍</span>
+            <span class="icon"></span>
             <span class="label">公共词库</span>
           </a>
           <a
@@ -63,7 +63,7 @@
             :class="{ active: currentView === 'ai-articles' }"
             @click.prevent="currentView = 'ai-articles'; showMobileSidebar = false"
           >
-            <span class="icon">🤖</span>
+            <span class="icon"></span>
             <span class="label">AI文章</span>
           </a>
         </nav>
@@ -540,6 +540,18 @@
                         >
                           <option value="基础英语">
                             基础英语
+                          </option>
+                          <option value="四级">
+                            四级
+                          </option>
+                          <option value="六级">
+                            六级
+                          </option>
+                          <option value="托福">
+                            托福
+                          </option>
+                          <option value="雅思">
+                            雅思
                           </option>
                           <option value="商务英语">
                             商务英语
@@ -2928,6 +2940,63 @@ body.dark-mode .copy-button {
   backdrop-filter: blur(4px);
 }
 
+.modal-card.modal-xxl {
+  max-width: min(1200px, 95vw);
+  width: 1200px;
+}
+
+.ai-article-modal-content {
+  padding: 24px;
+  max-height: calc(85vh - 140px);
+  overflow-y: auto;
+  line-height: 1.8;
+  background-color: var(--bg-primary);
+}
+
+.ai-article-paragraph-pair {
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px dashed var(--border-color);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+}
+
+.ai-article-en {
+  font-size: 18px;
+  color: var(--text-primary);
+}
+
+.ai-article-zh {
+  font-size: 16px;
+  color: var(--text-secondary);
+  background-color: var(--bg-tertiary);
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.ai-article-modal-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.modal-wide-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.ai-article-modal-meta {
+  padding: 12px 24px;
+  background-color: var(--bg-tertiary);
+  font-size: 13px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
 .modal-card {
   background: var(--bg-secondary);
   padding: 24px;
@@ -3207,6 +3276,37 @@ body.dark-mode .copy-button {
   .stat-card {
     padding: 20px;
   }
+
+  .ai-article-paragraph-pair {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .ai-article-en {
+    font-size: 16px;
+  }
+
+  .ai-article-zh {
+    font-size: 14px;
+    padding: 12px;
+  }
+
+  .ai-article-modal-title {
+    font-size: 18px;
+  }
+
+  .modal-wide-header {
+    padding: 12px 16px;
+  }
+
+  .ai-article-modal-meta {
+    padding: 8px 16px;
+  }
+
+  .ai-article-modal-content {
+    padding: 16px;
+  }
+}
 
   .stat-value {
     font-size: 24px;
