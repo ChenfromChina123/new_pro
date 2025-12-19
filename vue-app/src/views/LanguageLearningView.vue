@@ -2979,6 +2979,11 @@ body.dark-mode .copy-button {
   font-size: 24px;
   font-weight: 700;
   color: var(--primary-color);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 24px;
 }
 
 .modal-wide-header {
@@ -2995,6 +3000,78 @@ body.dark-mode .copy-button {
   font-size: 13px;
   color: var(--text-secondary);
   border-bottom: 1px solid var(--border-color);
+}
+
+.ai-article-modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.modal-close-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  font-size: 24px;
+  line-height: 1;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  padding: 0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.modal-close-btn:hover {
+  background-color: #fee2e2;
+  color: #dc2626;
+  border-color: #fecaca;
+  transform: scale(1.05);
+}
+
+:global(body.dark-mode) .modal-close-btn:hover {
+  background-color: rgba(220, 38, 38, 0.2);
+  color: #f87171;
+  border-color: rgba(220, 38, 38, 0.3);
+}
+
+.ai-download {
+  position: relative;
+}
+
+.ai-download-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
+  min-width: 140px;
+  overflow: hidden;
+}
+
+.ai-download-item {
+  width: 100%;
+  padding: 10px 16px;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.ai-download-item:hover {
+  background-color: var(--bg-tertiary);
 }
 
 .modal-card {
@@ -3308,14 +3385,8 @@ body.dark-mode .copy-button {
   }
 }
 
-  .stat-value {
-    font-size: 24px;
-  }
   
-  .stat-label {
-    font-size: 14px;
-  }
-}
+
 
 @media (max-width: 1024px) and (min-width: 769px) {
   .dashboard-grid {
