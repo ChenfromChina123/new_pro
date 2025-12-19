@@ -50,7 +50,7 @@ public class ArticleUsedWord {
     @JsonIgnore
     private GeneratedArticle article;
     
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "word_id", insertable = false, updatable = false)
     private VocabularyWord word;
     
