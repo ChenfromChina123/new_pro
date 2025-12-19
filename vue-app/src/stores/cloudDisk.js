@@ -317,11 +317,12 @@ export const useCloudDiskStore = defineStore('cloudDisk', () => {
   }
   
   // 上传文件
-  async function uploadFile(file, folderPath = '', onProgress) {
+  async function uploadFile(file, folderPath = '', onProgress, conflictStrategy = 'RENAME') {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('folderPath', folderPath)
     formData.append('folder', folderPath)
+    formData.append('conflictStrategy', conflictStrategy)
     
     try {
       const response = await request.post(API_ENDPOINTS.cloudDisk.upload, formData, {

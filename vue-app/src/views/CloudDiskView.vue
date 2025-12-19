@@ -413,6 +413,14 @@
       </div>
       <p>上传中... {{ uploadProgress }}%</p>
     </div>
+
+    <ConflictResolutionDialog
+      :visible="conflictDialogVisible"
+      :files="currentConflictFiles"
+      :batch-mode="pendingUploads.length > 1"
+      @resolve="onConflictResolved"
+      @cancel="onConflictCancelled"
+    />
   </AppLayout>
 </template>
 
@@ -421,6 +429,7 @@ import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useCloudDiskStore } from '@/stores/cloudDisk'
 import AppLayout from '@/components/AppLayout.vue'
 import FolderTreeItem from '@/components/FolderTreeItem.vue'
+import ConflictResolutionDialog from '@/components/ConflictResolutionDialog.vue'
 
 const cloudDiskStore = useCloudDiskStore()
 
@@ -438,6 +447,13 @@ const touchEndX = ref(0)
 const hoveredFolderId = ref(null)
 const expandedFolders = ref(new Set()) // 用于跟踪哪些文件夹是展开的
 const viewportWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1024)
+
+// 冲突处理状态
+const conflictDialogVisible = ref(false)
+const currentConflictFiles = ref([])
+const pendingUploads = ref([])
+const batchStrategy = ref(null)
+
 
 // 排序相关
 const sortField = ref('upload_time')
@@ -614,29 +630,96 @@ const goToRoot = async () => {
 }
 
 const handleFileSelect = async (event) => {
-  const files = event.target.files
+  const files = Array.from(event.target.files)
   if (!files || files.length === 0) return
   
+  // 重置批处理策略和队列
+  batchStrategy.value = null
+  pendingUploads.value = []
+  
+  // 准备上传队列
   for (const file of files) {
-    uploadProgress.value = 0
-    
-    const result = await cloudDiskStore.uploadFile(
-      file,
-      cloudDiskStore.currentFolder,
-      (progress) => {
-        uploadProgress.value = progress
-      }
-    )
-    
-    if (result.success) {
-      console.log('文件上传成功:', file.name)
-    } else {
-      alert(`上传失败: ${result.message}`)
-    }
+      pendingUploads.value.push({ file })
   }
   
-  uploadProgress.value = 0
+  // 开始处理队列
+  await processUploadQueue()
+  
   event.target.value = '' // 重置input
+}
+
+const processUploadQueue = async () => {
+    if (pendingUploads.value.length === 0) {
+        uploadProgress.value = 0
+        return
+    }
+
+    const item = pendingUploads.value[0]
+    const { file } = item
+    
+    // 检查当前文件夹中是否存在同名文件
+    // 注意：如果是批量上传，前一个文件的上传可能会更新列表，但fetchFiles通常是异步的
+    // 这里我们假设cloudDiskStore.files在上传成功后会被更新
+    const exists = cloudDiskStore.files.some(f => 
+        (f.filename === file.name || f.originalFilename === file.name || f.original_filename === file.name)
+    )
+    
+    if (exists) {
+        if (batchStrategy.value) {
+            // 应用批处理策略
+            await performUpload(file, batchStrategy.value)
+            pendingUploads.value.shift()
+            await processUploadQueue()
+        } else {
+            // 显示冲突对话框
+            currentConflictFiles.value = [file]
+            conflictDialogVisible.value = true
+            // 暂停在这里，等待对话框回调
+        }
+    } else {
+        // 无冲突，默认使用重命名（虽然没冲突时后端不care，但保持一致）
+        await performUpload(file, 'RENAME') 
+        pendingUploads.value.shift()
+        await processUploadQueue()
+    }
+}
+
+const performUpload = async (file, strategy) => {
+  uploadProgress.value = 0
+  const folderPath = cloudDiskStore.currentFolder
+  const result = await cloudDiskStore.uploadFile(
+    file, 
+    folderPath, 
+    (progress) => { uploadProgress.value = progress },
+    strategy
+  )
+  
+  if (result.success) {
+    console.log('文件上传成功:', file.name)
+  } else {
+    alert(`上传失败: ${result.message}`)
+  }
+}
+
+const onConflictResolved = ({ strategy, applyToAll }) => {
+    conflictDialogVisible.value = false
+    if (applyToAll) {
+        batchStrategy.value = strategy
+    }
+    
+    // 继续上传当前文件
+    const item = pendingUploads.value[0]
+    performUpload(item.file, strategy).then(() => {
+        pendingUploads.value.shift()
+        processUploadQueue()
+    })
+}
+
+const onConflictCancelled = () => {
+    conflictDialogVisible.value = false
+    // 跳过当前文件
+    pendingUploads.value.shift()
+    processUploadQueue()
 }
 
 // 处理文件夹上传

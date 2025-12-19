@@ -159,10 +159,11 @@ public class CloudDiskController {
             @RequestParam("file") MultipartFile file,
             @RequestParam(required = false) Long folderId,
             @RequestParam String folderPath,
+            @RequestParam(required = false, defaultValue = "RENAME") String conflictStrategy,
             @AuthenticationPrincipal CustomUserDetails customUserDetails) throws IOException {
         
         Long userId = customUserDetails.getUser().getId();
-        UserFile userFile = cloudDiskService.uploadFile(userId, folderId, folderPath, file);
+        UserFile userFile = cloudDiskService.uploadFile(userId, folderId, folderPath, file, conflictStrategy);
         
         return ResponseEntity.ok(ApiResponse.success("文件上传成功", userFile));
     }

@@ -218,17 +218,82 @@ public class CloudDiskService {
     
     /**
      * 上传文件
+     * @param conflictStrategy 冲突处理策略: RENAME (默认), OVERWRITE
      */
     @Transactional(rollbackFor = Exception.class)
     public UserFile uploadFile(Long userId, Long folderId, String folderPath, 
-                               MultipartFile file) throws IOException {
-        // 生成唯一文件名
+                               MultipartFile file, String conflictStrategy) throws IOException {
         String originalFilename = file.getOriginalFilename();
-        String extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+        if (originalFilename == null) originalFilename = "unknown_file";
+        
+        // 规范化 folderPath
+        String normalizedFolderPath = (folderPath != null && !folderPath.isEmpty()) 
+            ? (folderPath.startsWith("/") ? folderPath : "/" + folderPath) 
+            : "/";
+        // 确保不以 / 结尾（除了根目录）
+        if (normalizedFolderPath.length() > 1 && normalizedFolderPath.endsWith("/")) {
+            normalizedFolderPath = normalizedFolderPath.substring(0, normalizedFolderPath.length() - 1);
+        }
+
+        // 检查文件是否存在
+        Optional<UserFile> existingFileOpt = userFileRepository.findByUser_IdAndFolderPathAndFilename(userId, normalizedFolderPath, originalFilename);
+
+        if (existingFileOpt.isPresent()) {
+            if ("OVERWRITE".equalsIgnoreCase(conflictStrategy)) {
+                // 覆盖模式
+                UserFile existingFile = existingFileOpt.get();
+                
+                // 删除旧的物理文件
+                String oldRelPath = existingFile.getFilepath();
+                String oldPhysicalPath = getCloudDiskAbsolutePath() + "/" + userId + (oldRelPath.startsWith("/") ? oldRelPath : "/" + oldRelPath);
+                try { Files.deleteIfExists(Paths.get(oldPhysicalPath)); } catch (Exception ignore) {}
+                
+                // 保存新物理文件
+                String extension = originalFilename.contains(".") ? originalFilename.substring(originalFilename.lastIndexOf(".")) : "";
+                String uniqueFilename = UUID.randomUUID().toString() + extension;
+                
+                String userDiskPath = getCloudDiskAbsolutePath() + "/" + userId + normalizedFolderPath;
+                new File(userDiskPath).mkdirs();
+                
+                String filePath = userDiskPath + "/" + uniqueFilename;
+                Files.copy(file.getInputStream(), Paths.get(filePath), StandardCopyOption.REPLACE_EXISTING);
+                
+                // 更新记录
+                String fileRelPath = normalizedFolderPath.equals("/") ? ("/" + uniqueFilename) : (normalizedFolderPath + "/" + uniqueFilename);
+                existingFile.setFilepath(fileRelPath);
+                existingFile.setFileSize(file.getSize());
+                existingFile.setUploadTime(LocalDateTime.now());
+                
+                String mime = file.getContentType();
+                if (mime == null || mime.isEmpty()) {
+                    try { mime = Files.probeContentType(Paths.get(filePath)); } catch (Exception ignore) {}
+                }
+                existingFile.setFileType(mime);
+                
+                return userFileRepository.save(existingFile);
+                
+            } else {
+                // 智能重命名模式 (默认)
+                String nameWithoutExt = originalFilename.contains(".") ? originalFilename.substring(0, originalFilename.lastIndexOf(".")) : originalFilename;
+                String ext = originalFilename.contains(".") ? originalFilename.substring(originalFilename.lastIndexOf(".")) : "";
+                
+                int counter = 1;
+                String newName = originalFilename;
+                while (userFileRepository.findByUser_IdAndFolderPathAndFilename(userId, normalizedFolderPath, newName).isPresent()) {
+                    newName = nameWithoutExt + "(" + counter + ")" + ext;
+                    counter++;
+                }
+                originalFilename = newName;
+                // 继续执行下方的保存逻辑，使用新的 originalFilename
+            }
+        }
+
+        // 生成唯一文件名
+        String extension = originalFilename.contains(".") ? originalFilename.substring(originalFilename.lastIndexOf(".")) : "";
         String uniqueFilename = UUID.randomUUID().toString() + extension;
         
         // 保存物理文件
-        String userDiskPath = getCloudDiskAbsolutePath() + "/" + userId + (folderPath != null && folderPath.startsWith("/") ? folderPath : ("/" + folderPath));
+        String userDiskPath = getCloudDiskAbsolutePath() + "/" + userId + normalizedFolderPath;
         new File(userDiskPath).mkdirs();
         
         String filePath = userDiskPath + "/" + uniqueFilename;
@@ -240,8 +305,10 @@ public class CloudDiskService {
         userFile.setUser(user);
         userFile.setFilename(originalFilename);
         userFile.setOriginalFilename(originalFilename);
-        String fileRelPath = (folderPath != null && folderPath.endsWith("/")) ? (folderPath + uniqueFilename) : (folderPath + "/" + uniqueFilename);
+        String fileRelPath = normalizedFolderPath.equals("/") ? ("/" + uniqueFilename) : (normalizedFolderPath + "/" + uniqueFilename);
         userFile.setFilepath(fileRelPath);
+        userFile.setFolderPath(normalizedFolderPath); // 显式设置 folderPath
+
         userFile.setFileSize(file.getSize());
         String contentType = file.getContentType();
         if (contentType == null || contentType.isEmpty()) {
