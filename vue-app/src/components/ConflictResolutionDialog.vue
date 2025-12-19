@@ -1,12 +1,12 @@
 <template>
   <div v-if="visible" class="modal-overlay">
     <div class="modal-content">
-      <h3>文件冲突</h3>
+      <h3>{{ isFolder ? '文件夹冲突' : '文件冲突' }}</h3>
       <div class="conflict-info">
-        <p>检测到同名文件：</p>
+        <p>{{ isFolder ? '检测到同名文件夹：' : '检测到同名文件：' }}</p>
         <ul class="file-list">
           <li v-for="file in files" :key="file.name">
-            <span class="file-icon">📄</span>
+            <span class="file-icon">{{ (file.isFolder || isFolder) ? '📁' : '📄' }}</span>
             <span class="file-name">{{ file.name }}</span>
             <span class="file-details">({{ formatSize(file.size) }})</span>
           </li>
@@ -19,7 +19,7 @@
           <div class="radio"></div>
           <div class="text">
             <strong>智能重命名</strong>
-            <small>保留两个文件，新文件将自动重命名 (例如: file(1).txt)</small>
+            <small>保留两个{{ isFolder ? '文件夹' : '文件' }}，新{{ isFolder ? '文件夹' : '文件' }}将自动重命名 (例如: {{ isFolder ? 'folder(1)' : 'file(1).txt' }})</small>
           </div>
         </div>
         
@@ -27,7 +27,7 @@
           <div class="radio"></div>
           <div class="text">
             <strong>覆盖</strong>
-            <small>替换现有文件 (不可撤销)</small>
+            <small>替换现有{{ isFolder ? '文件夹' : '文件' }} (不可撤销)</small>
           </div>
         </div>
       </div>

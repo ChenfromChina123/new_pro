@@ -376,7 +376,7 @@ public class CloudDiskController {
      * Python: PUT /api/cloud_disk/rename-folder
      */
     @PutMapping("/rename-folder")
-    public ResponseEntity<ApiResponse<UserFolder>> renameFolder(
+    public ResponseEntity<?> renameFolder(
             @RequestParam Long folderId,
             @RequestParam(required = false) String newName,
             @RequestBody(required = false) RenameFolderRequest request,
@@ -384,14 +384,35 @@ public class CloudDiskController {
         Long userId = customUserDetails.getUser().getId();
         String name = (request != null && request.getNewName() != null) ? request.getNewName() : newName;
         try {
-            UserFolder folder = cloudDiskService.renameFolder(userId, folderId, name);
-            return ResponseEntity.ok(ApiResponse.success("文件夹重命名成功", folder));
+            java.util.Map<String, Object> result = cloudDiskService.startRenameFolder(userId, folderId, name);
+            if (Boolean.TRUE.equals(result.get("conflict"))) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.success("文件夹重名冲突", result));
+            }
+            return ResponseEntity.ok(ApiResponse.success("文件夹重命名成功", result.get("folder")));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(ApiResponse.error(HttpStatus.BAD_REQUEST.value(), e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "重命名文件夹失败: " + e.getMessage()));
+        }
+    }
+
+    @PutMapping("/resolve-rename-folder")
+    public ResponseEntity<?> resolveRenameFolder(
+            @RequestParam Long folderId,
+            @RequestBody ResolveRenameRequest request,
+            @AuthenticationPrincipal CustomUserDetails customUserDetails) throws IOException {
+        Long userId = customUserDetails.getUser().getId();
+        try {
+            UserFolder folder = cloudDiskService.resolveRenameFolder(userId, folderId, request.getAction(), request.getFinalName());
+            return ResponseEntity.ok(ApiResponse.success("文件夹重命名成功", folder));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error(HttpStatus.BAD_REQUEST.value(), e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "处理文件夹重命名失败: " + e.getMessage()));
         }
     }
 
