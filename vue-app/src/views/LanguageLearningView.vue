@@ -1305,10 +1305,24 @@ const buildSelectedWordMetaMap = () => {
 }
 
 /**
- * 将带 **word** 标记的英文段落渲染为高亮HTML
+ * 将带 **word** 标记的英文段落渲染为高亮HTML，同时支持代码块
  */
 const renderHighlightedParagraph = (paragraph, metaMap) => {
   if (!paragraph) return ''
+  
+  // 处理代码块
+  if (paragraph.startsWith('```') && paragraph.endsWith('```')) {
+    const codeContent = paragraph.slice(3, -3).trim()
+    return `
+      <pre class="code-block"><code>${escapeHtml(codeContent)}</code>
+        <button class="copy-button" onclick="window.copyCodeBlock(this)">
+          <span class="copy-icon">📋</span> 复制
+        </button>
+      </pre>
+    `
+  }
+  
+  // 处理普通段落
   const escaped = escapeHtml(paragraph)
   const html = escaped.replace(/\*\*(.+?)\*\*/g, (_, rawWord) => {
     const raw = String(rawWord || '').trim()
@@ -1323,6 +1337,25 @@ const renderHighlightedParagraph = (paragraph, metaMap) => {
     return `<span class="vocab-chip" title="${escapeHtml(tip)}">${escapeHtml(displayWord)}</span>`
   })
   return `<p>${html}</p>`
+}
+
+/**
+ * 复制代码块内容到剪贴板
+ */
+window.copyCodeBlock = (element) => {
+  const code = element.previousElementSibling.textContent
+  const button = element
+  navigator.clipboard.writeText(code)
+    .then(() => {
+      const originalText = button.innerHTML
+      button.innerHTML = '<span class="copy-icon">✓</span> 已复制'
+      button.classList.add('copied')
+      setTimeout(() => {
+        button.innerHTML = originalText
+        button.classList.remove('copied')
+      }, 2000)
+    })
+    .catch(err => console.error('复制失败:', err))
 }
 
 /**
@@ -1994,6 +2027,87 @@ const formatDuration = (seconds) => {
 .review-actions {
   display: flex;
   gap: 8px;
+}
+
+/* Code Block Styles */
+.code-block {
+  position: relative;
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  padding: 16px;
+  margin: 16px 0;
+  overflow-x: auto;
+  box-shadow: var(--shadow-sm);
+}
+
+.code-block code {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* Copy Button Styles */
+.copy-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background-color: rgba(255, 255, 255, 0.9);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  opacity: 0;
+  z-index: 100;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.code-block:hover .copy-button {
+  opacity: 1;
+}
+
+.copy-button:hover {
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.copy-button:active {
+  transform: translateY(0);
+}
+
+.copy-button.copied {
+  background-color: #10b981;
+  border-color: #10b981;
+  color: white;
+  animation: copiedPulse 0.4s ease;
+}
+
+@keyframes copiedPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.copy-icon {
+  font-size: 14px;
+}
+
+/* Dark Mode Adjustments */
+body.dark-mode .copy-button {
+  background-color: rgba(31, 41, 55, 0.9);
 }
 
 .public-pos {
