@@ -1314,7 +1314,8 @@ const renderHighlightedParagraph = (paragraph, metaMap) => {
   if (paragraph.startsWith('```') && paragraph.endsWith('```')) {
     const codeContent = paragraph.slice(3, -3).trim()
     return `
-      <pre class="code-block"><code>${escapeHtml(codeContent)}</code>
+      <pre class="code-block">
+        <code>${escapeHtml(codeContent)}</code>
         <button class="copy-button" onclick="window.copyCodeBlock(this)">
           <span class="copy-icon">📋</span> 复制
         </button>
@@ -1343,19 +1344,33 @@ const renderHighlightedParagraph = (paragraph, metaMap) => {
  * 复制代码块内容到剪贴板
  */
 window.copyCodeBlock = (element) => {
-  const code = element.previousElementSibling.textContent
-  const button = element
+  // 查找最近的pre标签中的代码元素
+  const preElement = element.closest('.code-block');
+  if (!preElement) {
+    console.error('找不到代码块容器');
+    return;
+  }
+  
+  const codeElement = preElement.querySelector('code');
+  if (!codeElement) {
+    console.error('找不到代码元素');
+    return;
+  }
+  
+  const code = codeElement.textContent;
+  const button = element;
+  
   navigator.clipboard.writeText(code)
     .then(() => {
-      const originalText = button.innerHTML
-      button.innerHTML = '<span class="copy-icon">✓</span> 已复制'
-      button.classList.add('copied')
+      const originalText = button.innerHTML;
+      button.innerHTML = '<span class="copy-icon">✓</span> 已复制';
+      button.classList.add('copied');
       setTimeout(() => {
-        button.innerHTML = originalText
-        button.classList.remove('copied')
-      }, 2000)
+        button.innerHTML = originalText;
+        button.classList.remove('copied');
+      }, 2000);
     })
-    .catch(err => console.error('复制失败:', err))
+    .catch(err => console.error('复制失败:', err));
 }
 
 /**
