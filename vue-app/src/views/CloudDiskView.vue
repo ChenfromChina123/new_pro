@@ -52,6 +52,7 @@
               :toggle-folder-expand="toggleFolderExpand"
               :is-folder-expanded="isFolderExpanded"
               :delete-folder-action="deleteFolderAction"
+              :rename-folder-action="renameFolderAction"
               :depth="0"
               :indent="folderIndentPx"
             />
@@ -322,6 +323,38 @@
         </div>
       </div>
     </div>
+
+    <!-- 重命名文件夹对话框 -->
+    <div
+      v-if="showRenameFolder"
+      class="modal"
+      @click.self="closeRenameFolderDialog"
+    >
+      <div class="modal-content">
+        <h3>重命名文件夹</h3>
+        <input
+          v-model="renameFolderName"
+          type="text"
+          class="input"
+          placeholder="输入新文件夹名称"
+          @keyup.enter="confirmRenameFolder"
+        >
+        <div class="modal-actions">
+          <button
+            class="btn btn-primary"
+            @click="confirmRenameFolder"
+          >
+            确定
+          </button>
+          <button
+            class="btn btn-secondary"
+            @click="closeRenameFolderDialog"
+          >
+            取消
+          </button>
+        </div>
+      </div>
+    </div>
     
     <!-- 文件预览对话框 -->
     <div
@@ -418,6 +451,7 @@
       :visible="conflictDialogVisible"
       :files="currentConflictFiles"
       :batch-mode="pendingUploads.length > 1"
+      :is-folder="!!renamingFolder"
       @resolve="onConflictResolved"
       @cancel="onConflictCancelled"
     />
@@ -436,6 +470,9 @@ const cloudDiskStore = useCloudDiskStore()
 const fileInput = ref(null)
 const folderInput = ref(null)
 const showCreateFolder = ref(false)
+const showRenameFolder = ref(false)
+const renamingFolder = ref(null)
+const renameFolderName = ref('')
 const newFolderName = ref('')
 const previewFileData = ref(null)
 const previewUrl = ref('')
@@ -701,8 +738,26 @@ const performUpload = async (file, strategy) => {
   }
 }
 
-const onConflictResolved = ({ strategy, applyToAll }) => {
+const onConflictResolved = async ({ strategy, applyToAll }) => {
     conflictDialogVisible.value = false
+
+    // 处理文件夹重命名冲突
+    if (renamingFolder.value) {
+        const action = strategy === 'OVERWRITE' ? 'override' : 'rename'
+        const result = await cloudDiskStore.resolveRenameFolder(
+            renamingFolder.value.id,
+            action,
+            renameFolderName.value
+        )
+        
+        if (result.success) {
+             closeRenameFolderDialog()
+        } else {
+             alert(result.message)
+        }
+        return
+    }
+
     if (applyToAll) {
         batchStrategy.value = strategy
     }
@@ -717,6 +772,15 @@ const onConflictResolved = ({ strategy, applyToAll }) => {
 
 const onConflictCancelled = () => {
     conflictDialogVisible.value = false
+    
+    // 如果是重命名文件夹取消，则清除重命名状态
+    if (renamingFolder.value) {
+        // 保持重命名对话框关闭（因为它在冲突对话框出现前已经关闭了，或者我们应该重新打开它？）
+        // 这里简单地重置状态，用户需要重新发起重命名
+        closeRenameFolderDialog()
+        return
+    }
+
     // 跳过当前文件
     pendingUploads.value.shift()
     processUploadQueue()
@@ -804,6 +868,54 @@ const deleteFile = async (fileId) => {
     if (!result.success) {
       alert(`删除失败: ${result.message}`)
     }
+  }
+}
+
+const renameFolderAction = (folder) => {
+  renamingFolder.value = folder
+  renameFolderName.value = folder.folderName || folder.name || ''
+  showRenameFolder.value = true
+}
+
+const closeRenameFolderDialog = () => {
+  showRenameFolder.value = false
+  renamingFolder.value = null
+  renameFolderName.value = ''
+}
+
+const confirmRenameFolder = async () => {
+  if (!renameFolderName.value.trim()) {
+    alert('请输入文件夹名称')
+    return
+  }
+  
+  // 如果名称没变，直接关闭
+  if (renamingFolder.value.folderName === renameFolderName.value) {
+    closeRenameFolderDialog()
+    return
+  }
+  
+  const result = await cloudDiskStore.renameFolder(
+    renamingFolder.value.id,
+    renameFolderName.value
+  )
+  
+  if (result.conflict) {
+    // 关闭重命名输入框
+    showRenameFolder.value = false
+    
+    // 显示冲突解决对话框
+    currentConflictFiles.value = [{
+      name: renameFolderName.value,
+      size: 0,
+      isFolder: true
+    }]
+    conflictDialogVisible.value = true
+    // 注意：不要在这里清空 renamingFolder，因为 onConflictResolved 需要它
+  } else if (result.success) {
+    closeRenameFolderDialog()
+  } else {
+    alert(`重命名失败: ${result.message}`)
   }
 }
 

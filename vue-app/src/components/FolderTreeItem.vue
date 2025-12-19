@@ -21,6 +21,17 @@
       />
       <span class="folder-icon">{{ isRoot ? '📂' : '📁' }}</span>
       <span class="folder-name">{{ displayName }}</span>
+      
+      <!-- 重命名按钮 -->
+      <button
+        v-if="canDelete"
+        class="folder-rename-btn"
+        title="重命名文件夹"
+        @click.stop="renameFolderAction(folder)"
+      >
+        ✏️
+      </button>
+
       <button
         v-if="canDelete"
         class="folder-delete-btn"
@@ -52,6 +63,7 @@
           :toggle-folder-expand="toggleFolderExpand"
           :is-folder-expanded="isFolderExpanded"
           :delete-folder-action="deleteFolderAction"
+          :rename-folder-action="renameFolderAction"
           :depth="depth + 1"
           :indent="indent"
         />
@@ -88,13 +100,17 @@ const props = defineProps({
     type: Function,
     required: true
   },
+  renameFolderAction: {
+    type: Function,
+    required: true
+  },
   depth: {
     type: Number,
     default: 0
   },
   indent: {
     type: Number,
-    default: 14
+    default: 16
   }
 })
 
@@ -269,15 +285,23 @@ const afterLeave = (el) => {
   color: inherit;
 }
 
-.folder-delete-btn {
+.folder-delete-btn,
+.folder-rename-btn {
   background: none;
   border: none;
   color: var(--text-secondary);
   cursor: pointer;
   font-size: 0.9em;
-  /* 始终显示删除按钮，不依赖hover */
   opacity: 1;
   transition: opacity 0.2s ease;
+  padding: 4px;
+}
+
+.folder-delete-btn:hover,
+.folder-rename-btn:hover {
+  color: var(--primary-color);
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
 }
 
 .folder-children {

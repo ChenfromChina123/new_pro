@@ -409,6 +409,279 @@ public class CloudDiskService {
     }
 
     @Transactional(rollbackFor = Exception.class)
+    public java.util.Map<String, Object> startRenameFolder(Long userId, Long folderId, String newName) throws IOException {
+        if (newName == null || newName.trim().isEmpty()) {
+            throw new IllegalArgumentException("新文件夹名称不能为空");
+        }
+        UserFolder folder = userFolderRepository.findByIdAndUser_Id(folderId, userId)
+            .orElseThrow(() -> new IllegalArgumentException("文件夹不存在"));
+        
+        String oldPath = folder.getFolderPath();
+        String parentPath = oldPath.substring(0, oldPath.lastIndexOf('/'));
+        if (parentPath.isEmpty()) parentPath = "/";
+        String targetPath = (parentPath.equals("/") ? "/" : parentPath + "/") + newName.trim();
+        
+        boolean exists = userFolderRepository.existsByUser_IdAndFolderPath(userId, targetPath);
+        
+        if (!exists) {
+            renameFolder(userId, folderId, newName.trim());
+            java.util.Map<String, Object> ok = new java.util.HashMap<>();
+            ok.put("conflict", false);
+            ok.put("folder", userFolderRepository.findById(folderId).orElse(folder));
+            return ok;
+        }
+        
+        java.util.Map<String, Object> payload = new java.util.HashMap<>();
+        payload.put("conflict", true);
+        payload.put("folderId", folderId);
+        payload.put("originalName", folder.getFolderName());
+        payload.put("desiredName", newName.trim());
+        return payload;
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public UserFolder resolveRenameFolder(Long userId, Long folderId, String action, String finalName) throws IOException {
+        if (finalName == null || finalName.trim().isEmpty()) {
+            throw new IllegalArgumentException("新文件夹名称不能为空");
+        }
+        UserFolder folder = userFolderRepository.findByIdAndUser_Id(folderId, userId)
+            .orElseThrow(() -> new IllegalArgumentException("文件夹不存在"));
+            
+        String oldPath = folder.getFolderPath();
+        String parentPath = oldPath.substring(0, oldPath.lastIndexOf('/'));
+        if (parentPath.isEmpty()) parentPath = "/";
+        
+        if ("override".equalsIgnoreCase(action)) {
+            // 合并模式：将源文件夹的内容移动到目标文件夹，然后删除源文件夹
+            String targetPath = (parentPath.equals("/") ? "/" : parentPath + "/") + finalName.trim();
+            UserFolder targetFolder = userFolderRepository.findByUser_IdAndFolderPathStartingWith(userId, targetPath)
+                .stream().filter(f -> f.getFolderPath().equals(targetPath)).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("目标文件夹不存在，无法合并"));
+            
+            // 移动源文件夹下的所有内容到目标文件夹
+            String sourcePrefix = oldPath.endsWith("/") ? oldPath : oldPath + "/";
+            String targetPrefix = targetPath.endsWith("/") ? targetPath : targetPath + "/";
+            
+            // 1. 移动子文件夹
+            List<UserFolder> subFolders = userFolderRepository.findByUser_IdAndFolderPathStartingWith(userId, sourcePrefix);
+            // 排序以确保先处理父级？其实只需要更新路径即可
+            // 注意：如果目标文件夹下也有同名子文件夹，这里会产生深层冲突。
+            // 简化处理：如果目标存在同名子文件夹，则再次递归合并？
+            // 由于递归复杂，这里采用“遇到同名子文件夹则自动重命名子文件夹”的策略，或者简单地更新路径（这可能导致数据库中同一路径有多个记录，这是错误的）。
+            // 正确做法：对每个子项，检查目标是否存在。
+            
+            // 物理移动：整个目录移动是不行的，因为目标已存在。需要逐个移动。
+            String base = getCloudDiskAbsolutePath() + "/" + userId;
+            java.nio.file.Path sourceDir = java.nio.file.Paths.get(base + sourcePrefix).normalize();
+            java.nio.file.Path targetDir = java.nio.file.Paths.get(base + targetPrefix).normalize();
+            
+            // 遍历源目录下的文件和文件夹
+            if (Files.exists(sourceDir)) {
+                try (java.util.stream.Stream<Path> stream = Files.list(sourceDir)) {
+                    for (Path sourceChild : stream.toList()) {
+                        Path targetChild = targetDir.resolve(sourceChild.getFileName());
+                        if (Files.exists(targetChild)) {
+                            // 冲突：如果是文件，覆盖；如果是文件夹，合并（递归？太复杂，这里简化为：如果目标是文件夹，源也是文件夹，则不移动源文件夹本身，而是进入下一层？
+                            // 简化策略：对于文件冲突，直接覆盖。对于文件夹冲突，保留源文件夹内容（不移动），或者报错。
+                            // 但用户要求“覆盖将合并”。
+                            // 使用 Java 的 walkFileTree 来移动/合并
+                             mergeDirectories(sourceChild, targetChild);
+                        } else {
+                            Files.move(sourceChild, targetChild, StandardCopyOption.REPLACE_EXISTING);
+                        }
+                    }
+                }
+                // 移完内容后删除源空目录
+                Files.deleteIfExists(sourceDir);
+            }
+            
+            // 数据库更新：
+            // 这种物理合并会导致数据库路径与物理路径不一致，必须更新数据库。
+            // 对于被移动的文件/文件夹，需要更新它们的 folderPath。
+            // 既然物理上已经合并了，数据库中应该把 oldPath 下的所有东西 update 到 targetPath 下。
+            // 如果 targetPath 下已有同名项？
+            // 比如 oldPath/sub -> targetPath/sub. 如果 targetPath/sub 已存在，那么数据库里会有两个 targetPath/sub 记录。
+            // 这是不允许的（通常逻辑不允许）。
+            // 所以数据库层面也需要“合并”。
+            
+            // 重新扫描目标文件夹可能是最简单的恢复数据库一致性的方法，但我们不能依赖它。
+            // 手动更新：
+            // 找出 oldPath 下的所有直接子文件和子文件夹。
+            // 对于每个子文件：检查 targetPath 下是否有同名文件。有则删除旧记录（被覆盖），更新新记录？不对，物理上是覆盖，所以数据库保留 source 的记录更新路径，删除 target 的记录。
+            
+            // 更新文件记录
+            List<UserFile> sourceFiles = userFileRepository.findByUser_IdAndFolderPathOrderByUploadTimeDesc(userId, oldPath);
+            for (UserFile f : sourceFiles) {
+                // 检查目标是否存在
+                Optional<UserFile> existing = userFileRepository.findByUser_IdAndFolderPathOrderByUploadTimeDesc(userId, targetPath).stream()
+                    .filter(tf -> tf.getFilename().equals(f.getFilename())).findFirst();
+                if (existing.isPresent()) {
+                    userFileRepository.delete(existing.get()); // 删除被覆盖的目标文件记录
+                }
+                f.setFolderPath(targetPath);
+                // filepath 也需要更新
+                String oldRel = f.getFilepath(); // /old/a.txt
+                String fileName = f.getFilename();
+                String newRel = (targetPath.endsWith("/") ? targetPath : targetPath + "/") + fileName; // /target/a.txt
+                f.setFilepath(newRel);
+                userFileRepository.save(f);
+            }
+            
+            // 更新子文件夹记录
+            // 这是一个难点。简单的做法是：如果目标存在同名子文件夹，则把源子文件夹下的内容移到目标子文件夹下，然后删除源子文件夹记录。
+            // 递归处理数据库记录
+            mergeFolderRecords(userId, oldPath, targetPath);
+            
+            // 最后删除源文件夹记录
+            userFolderRepository.delete(folder);
+            
+            return targetFolder;
+            
+        } else {
+            // 智能重命名
+            String targetPath = (parentPath.equals("/") ? "/" : parentPath + "/") + finalName.trim();
+            boolean exists = userFolderRepository.existsByUser_IdAndFolderPath(userId, targetPath);
+            String actualName = finalName.trim();
+            if (exists) {
+                int i = 1;
+                while (true) {
+                    String candidate = finalName.trim() + "(" + i + ")";
+                    String candidatePath = (parentPath.equals("/") ? "/" : parentPath + "/") + candidate;
+                    if (!userFolderRepository.existsByUser_IdAndFolderPath(userId, candidatePath)) {
+                        actualName = candidate;
+                        break;
+                    }
+                    i++;
+                }
+            }
+            return renameFolder(userId, folderId, actualName);
+        }
+    }
+    
+    private void mergeDirectories(Path source, Path target) throws IOException {
+        if (Files.isDirectory(source)) {
+            if (!Files.exists(target)) {
+                Files.createDirectories(target);
+            }
+            try (java.util.stream.Stream<Path> stream = Files.list(source)) {
+                for (Path child : stream.toList()) {
+                    mergeDirectories(child, target.resolve(child.getFileName()));
+                }
+            }
+            Files.deleteIfExists(source);
+        } else {
+            Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+        }
+    }
+    
+    private void mergeFolderRecords(Long userId, String sourcePath, String targetPath) {
+        // 处理直接子文件夹
+        List<UserFolder> sourceSubs = userFolderRepository.findByUser_IdAndFolderPathStartingWith(userId, sourcePath.endsWith("/") ? sourcePath : sourcePath + "/");
+        // 这里的 findBy... 会返回所有后代，我们需要过滤出直接子级
+        // 或者简单点，递归。
+        
+        // 查找 sourcePath 的直接子文件夹
+        // 由于 JPA 没有直接查直接子级的方法，我们用 startWith 过滤
+        String sourcePrefix = sourcePath.endsWith("/") ? sourcePath : sourcePath + "/";
+        
+        // 获取所有源后代文件夹
+        List<UserFolder> allSourceDescendants = userFolderRepository.findByUser_IdAndFolderPathStartingWith(userId, sourcePrefix);
+        
+        // 按层级深度排序（深的先处理？不，浅的先处理）
+        // 其实只需要处理直接子级，因为递归会处理更深层
+        // 但为了避免多次查询，我们可以遍历。
+        
+        // 更好策略：找出所有直接子文件夹
+        List<UserFolder> directChildren = allSourceDescendants.stream()
+            .filter(f -> {
+                String p = f.getFolderPath();
+                String parent = p.substring(0, p.lastIndexOf('/'));
+                if (parent.isEmpty()) parent = "/";
+                return parent.equals(sourcePath);
+            }).toList();
+            
+        for (UserFolder child : directChildren) {
+            String childName = child.getFolderName();
+            String newChildPath = (targetPath.endsWith("/") ? targetPath : targetPath + "/") + childName;
+            
+            // 检查目标是否存在同名文件夹
+            Optional<UserFolder> targetChildOpt = userFolderRepository.findByUser_IdAndFolderPathStartingWith(userId, newChildPath)
+                .stream().filter(f -> f.getFolderPath().equals(newChildPath)).findFirst();
+                
+            if (targetChildOpt.isPresent()) {
+                // 目标存在，递归合并
+                mergeFolderRecords(userId, child.getFolderPath(), newChildPath);
+                // 合并完内容后，删除源子文件夹记录
+                userFolderRepository.delete(child);
+            } else {
+                // 目标不存在，直接更新路径（及其所有后代路径）
+                updateFolderPathRecursive(userId, child, newChildPath);
+            }
+        }
+        
+        // 处理文件（已经在上层处理了？不对，这里是递归调用，需要处理当前 sourcePath 下的文件）
+        // 注意：resolveRenameFolder 中已经处理了顶层的文件。
+        // 但对于递归调用的 mergeFolderRecords，也需要处理文件。
+        List<UserFile> files = userFileRepository.findByUser_IdAndFolderPathOrderByUploadTimeDesc(userId, sourcePath);
+        for (UserFile f : files) {
+             Optional<UserFile> existing = userFileRepository.findByUser_IdAndFolderPathOrderByUploadTimeDesc(userId, targetPath).stream()
+                .filter(tf -> tf.getFilename().equals(f.getFilename())).findFirst();
+            if (existing.isPresent()) {
+                userFileRepository.delete(existing.get());
+            }
+            f.setFolderPath(targetPath);
+            String fileName = f.getFilename();
+            String newRel = (targetPath.endsWith("/") ? targetPath : targetPath + "/") + fileName;
+            f.setFilepath(newRel);
+            userFileRepository.save(f);
+        }
+    }
+    
+    private void updateFolderPathRecursive(Long userId, UserFolder folder, String newPath) {
+        String oldPath = folder.getFolderPath();
+        String oldPrefix = oldPath.endsWith("/") ? oldPath : oldPath + "/";
+        String newPrefix = newPath.endsWith("/") ? newPath : newPath + "/";
+        
+        folder.setFolderPath(newPath);
+        String parent = newPath.substring(0, newPath.lastIndexOf('/'));
+        if (parent.isEmpty()) parent = "/";
+        folder.setParentPath(parent);
+        userFolderRepository.save(folder);
+        
+        // 更新后代文件夹
+        List<UserFolder> descendants = userFolderRepository.findByUser_IdAndFolderPathStartingWith(userId, oldPrefix);
+        for (UserFolder sub : descendants) {
+            String subOldPath = sub.getFolderPath();
+            String subNewPath = newPrefix + subOldPath.substring(oldPrefix.length());
+            sub.setFolderPath(subNewPath);
+            String subParent = subNewPath.substring(0, subNewPath.lastIndexOf('/'));
+            if (subParent.isEmpty()) subParent = "/";
+            sub.setParentPath(subParent);
+            userFolderRepository.save(sub);
+        }
+        
+        // 更新后代文件
+        List<UserFile> allFiles = userFileRepository.findByUser_IdOrderByUploadTimeDesc(userId); // 优化：应该用 SQL 查
+        for (UserFile f : allFiles) {
+            String fp = f.getFolderPath();
+            if (fp != null && (fp.equals(oldPath) || fp.startsWith(oldPrefix))) {
+                String newFP;
+                if (fp.equals(oldPath)) newFP = newPath;
+                else newFP = newPrefix + fp.substring(oldPrefix.length());
+                
+                f.setFolderPath(newFP);
+                String rel = f.getFilepath();
+                if (rel != null) {
+                   int idx = rel.lastIndexOf('/');
+                   String fname = idx >= 0 ? rel.substring(idx + 1) : rel;
+                   f.setFilepath((newFP.endsWith("/") ? newFP : newFP + "/") + fname);
+                }
+                userFileRepository.save(f);
+            }
+        }
+    }
+
+    @Transactional(rollbackFor = Exception.class)
     public java.util.Map<String, Object> startRenameFile(Long userId, Long fileId, String newName) throws IOException {
         if (newName == null || newName.trim().isEmpty()) {
             throw new IllegalArgumentException("新文件名称不能为空");

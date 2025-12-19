@@ -516,10 +516,31 @@ export const useCloudDiskStore = defineStore('cloudDisk', () => {
       // 刷新文件夹树
       await fetchFolders()
       
-      return { success: true, folder: response }
+      return { success: true, folder: response.data || response }
     } catch (error) {
+      if (error.response?.status === 409) {
+          // 冲突，返回冲突数据
+          return { success: false, conflict: true, data: error.response.data.data }
+      }
       console.error('Rename folder error:', error)
       return { success: false, message: error.response?.data?.message || '重命名文件夹失败' }
+    }
+  }
+
+  // 解决重命名文件夹冲突
+  async function resolveRenameFolder(folderId, action, finalName) {
+    try {
+        const response = await request.put('/api/cloud_disk/resolve-rename-folder', {
+            action,
+            finalName
+        }, {
+            params: { folderId }
+        })
+        await fetchFolders()
+        return { success: true, folder: response.data || response }
+    } catch (error) {
+        console.error('Resolve rename folder error:', error)
+        return { success: false, message: error.response?.data?.message || '重命名文件夹失败' }
     }
   }
   
