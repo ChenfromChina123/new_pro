@@ -2975,7 +2975,7 @@ body.dark-mode .copy-button {
   border-radius: 8px;
 }
 
-.vocab-chip {
+.ai-article-en :deep(.vocab-chip) {
   display: inline-block;
   padding: 0 6px;
   border-radius: 6px;
