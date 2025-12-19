@@ -844,15 +844,17 @@
       </div>
     </div>
 
+    <!-- 非阻塞的文章生成状态通知 -->
     <div
-      v-if="isGeneratingArticle"
-      class="modal-overlay"
+      v-if="articleGenerationInProgress || articleGenerationComplete"
+      class="article-generation-notification"
     >
-      <div class="modal-card modal-small-center">
-        <div class="loading-state">
-          <div class="spinner" />
-          <p>正在生成文章...</p>
-        </div>
+      <div v-if="articleGenerationInProgress" class="generation-progress">
+        <div class="spinner small"></div>
+        <span>正在生成文章...</span>
+      </div>
+      <div v-if="articleGenerationComplete" class="generation-complete">
+        <span>✓ 文章生成完成！请在"我的文章"中查看</span>
       </div>
     </div>
 
@@ -1087,6 +1089,8 @@ const newWord = ref({
 const publicKeyword = ref('')
 const isGeneratingTopics = ref(false)
 const isGeneratingArticle = ref(false)
+const articleGenerationInProgress = ref(false)
+const articleGenerationComplete = ref(false)
 const currentPage = ref(1)
 const pageSize = ref(50)
 
@@ -1555,30 +1559,49 @@ const generateTopics = async () => {
 }
 
 /**
- * 生成文章并打开结果弹窗
+ * 生成文章并打开结果弹窗（非阻塞版本）
  */
 const generateArticleNow = async () => {
   markActive()
   if (!currentListId.value || selectedWordIds.size === 0) return
-  isGeneratingArticle.value = true
   
-  const result = await vocabularyStore.generateArticle({
-    listId: currentListId.value,
-    wordIds: Array.from(selectedWordIds),
-    topic: articleOptions.topic,
-    difficulty: articleOptions.difficulty,
-    length: articleOptions.length
-  })
+  // 显示生成状态指示器
+  articleGenerationInProgress.value = true
+  articleGenerationComplete.value = false
   
-  if (result.success) {
-    activeArticle.value = result.data
-    showArticleModal.value = true
-    showDownloadMenu.value = false
-    await loadMyArticles(true)
-  } else {
-    alert(result.message)
+  // 异步执行文章生成，不阻塞主线程
+  const generateArticleAsync = async () => {
+    try {
+      const result = await vocabularyStore.generateArticle({
+        listId: currentListId.value,
+        wordIds: Array.from(selectedWordIds),
+        topic: articleOptions.topic,
+        difficulty: articleOptions.difficulty,
+        length: articleOptions.length
+      })
+      
+      if (result.success) {
+        // 更新文章列表，用户可以在“我的文章”中查看新生成的文章
+        await loadMyArticles(true)
+        articleGenerationComplete.value = true
+        
+        // 3秒后自动隐藏完成提示
+        setTimeout(() => {
+          articleGenerationComplete.value = false
+        }, 3000)
+      } else {
+        alert(result.message)
+      }
+    } catch (error) {
+      console.error('生成文章失败:', error)
+      alert('生成文章失败，请稍后重试')
+    } finally {
+      articleGenerationInProgress.value = false
+    }
   }
-  isGeneratingArticle.value = false
+  
+  // 启动异步生成任务
+  generateArticleAsync()
 }
 
 /**
@@ -1877,6 +1900,48 @@ const formatDuration = (seconds) => {
   height: calc(100vh - 64px); /* Fixed height */
   overflow: hidden;
   background-color: var(--bg-primary);
+  position: relative;
+}
+
+/* Article Generation Notification */
+.article-generation-notification {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 12px 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 300px;
+  justify-content: center;
+}
+
+.generation-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.generation-complete {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--success-color);
+  font-size: 14px;
+}
+
+.spinner.small {
+  width: 20px;
+  height: 20px;
+  border-width: 2px;
 }
 
 /* Mobile Header */
