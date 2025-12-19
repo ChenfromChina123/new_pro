@@ -17,6 +17,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * 词汇学习服务
@@ -242,9 +244,9 @@ public class VocabularyService {
     public List<String> generateArticleTopics(List<String> words, String language) {
         String wordsStr = String.join(", ", words);
         String prompt = String.format(
-            "I have a list of %s words: [%s]. Please suggest 6 short article topics (titles) that could incorporate these words. " +
-            "Each topic must be less than 10 characters long. \n" +
-            "Return ONLY a JSON array of strings, e.g. [\"Topic 1\", \"Topic 2\"]. Do not include markdown formatting.",
+            "我有以下 %s 单词列表：[%s]。请建议 6 个简短的中文文章标题，要求这些标题能涵盖这些单词。 " +
+            "每个标题不得超过 8 个汉字。 " +
+            "仅返回一个 JSON 字符串数组，例如：[\"主题1\", \"主题2\"]。不要包含任何 Markdown 格式或代码块标记。",
             language, wordsStr
         );
         
@@ -280,14 +282,20 @@ public class VocabularyService {
         String vocabularyList = words.stream()
             .map(VocabularyWord::getWord)
             .collect(Collectors.joining(", "));
+        
+        String finalTopic = normalizeTopic(topic);
+        if (finalTopic == null) {
+            finalTopic = generateAutoTopic(words, userId);
+        }
             
         // 2. 调用AI生成文章
+        int targetWords = lengthToTargetWords(length);
         String prompt = String.format(
-            "Write a short article (Difficulty: %s, Length: %s) about '%s'. " +
-            "You MUST use the following words in the article: [%s]. " +
-            "Please wrap the used words in double asterisks like **word** so they can be highlighted. " +
-            "Output only the article content. Do not include 'Title:' or markdown code blocks.",
-            difficulty, length, topic, vocabularyList
+            "请写一篇关于“%s”的英文文章（约 %d 词，难度： %s）。 " +
+            "文章中必须包含以下单词：[%s]。 " +
+            "请用双星号（如 **word**）包裹这些使用的单词，以便突出显示。 " +
+            "仅输出文章正文内容，分 2-4 个段落。不要包含“Title:”字样，也不要包含 Markdown 代码块标记。",
+            finalTopic, targetWords, difficulty, vocabularyList
         );
         
         String content = aiChatService.ask(prompt, null, "deepseek-chat", String.valueOf(userId));
@@ -299,15 +307,18 @@ public class VocabularyService {
                 content = content.substring(content.indexOf("\n") + 1).trim();
             }
         }
+
+        String translated = translateArticleToChinese(content, userId);
         
         // 3. 保存文章
         GeneratedArticle article = GeneratedArticle.builder()
             .userId(userId)
             .vocabularyListId(listId)
-            .topic(topic)
+            .topic(finalTopic)
             .difficultyLevel(difficulty)
             .articleLength(length)
             .originalText(content)
+            .translatedText(translated)
             .createdAt(LocalDateTime.now())
             .build();
             
@@ -320,17 +331,91 @@ public class VocabularyService {
         article = generatedArticleRepository.save(article);
         
         // 4. 保存使用的单词记录
+        List<ArticleUsedWord> usedWords = new ArrayList<>();
         for (VocabularyWord word : words) {
+            int occurrences = countOccurrencesIgnoreCase(content, word.getWord());
             ArticleUsedWord usedWord = ArticleUsedWord.builder()
                 .articleId(article.getId())
                 .wordId(word.getId())
                 .wordText(word.getWord())
-                .occurrenceCount(1) // 简化处理，默认为1，实际可以通过统计content中出现的次数来更新
+                .occurrenceCount(occurrences)
+                .word(word)
                 .build();
-            articleUsedWordRepository.save(usedWord);
+            usedWords.add(articleUsedWordRepository.save(usedWord));
         }
+        article.setUsedWords(usedWords);
         
         return article;
+    }
+
+    private int countOccurrencesIgnoreCase(String text, String word) {
+        if (text == null || text.isBlank() || word == null || word.isBlank()) return 0;
+        String w = word.trim();
+        Pattern pattern = Pattern.compile("\\b" + Pattern.quote(w) + "\\b", Pattern.CASE_INSENSITIVE);
+        Matcher matcher = pattern.matcher(text);
+        int count = 0;
+        while (matcher.find()) {
+            count += 1;
+        }
+        return count;
+    }
+
+    /**
+     * 将文章长度枚举映射为目标词数
+     */
+    private int lengthToTargetWords(String length) {
+        if (length == null) return 400;
+        return switch (length.trim()) {
+            case "Short" -> 200;
+            case "Long" -> 700;
+            default -> 400;
+        };
+    }
+
+    /**
+     * 规范化主题：空字符串视为无主题
+     */
+    private String normalizeTopic(String topic) {
+        if (topic == null) return null;
+        String t = topic.trim();
+        return t.isEmpty() ? null : t;
+    }
+
+    /**
+     * 在用户未填写主题时自动生成一个中文主题
+     */
+    private String generateAutoTopic(List<VocabularyWord> words, Long userId) {
+        String wordsStr = words.stream()
+            .map(VocabularyWord::getWord)
+            .limit(20)
+            .collect(Collectors.joining(", "));
+        String prompt = String.format(
+            "根据这些英文单词：[%s]，提供一个简短的中文文章标题（不超过 8 个汉字）。 " +
+            "仅返回标题文本。不要添加引号或任何 Markdown 格式。",
+            wordsStr
+        );
+        String response = aiChatService.ask(prompt, null, "deepseek-chat", String.valueOf(userId));
+        if (response == null) return "学习文章";
+        String cleaned = response.replaceAll("```", "").trim();
+        cleaned = cleaned.replaceAll("^\"|\"$", "");
+        return cleaned.isBlank() ? "学习文章" : cleaned;
+    }
+
+    /**
+     * 将英文文章翻译为中文，并尽量保持段落结构一致
+     */
+    private String translateArticleToChinese(String content, Long userId) {
+        if (content == null || content.isBlank()) return null;
+        String prompt = "将以下英文文章翻译成中文。 " +
+            "保持段落数量和空行与原文完全一致。 " +
+            "不要包含任何 Markdown 格式。不要包含 ** 标记，保持单词为普通文本。 " +
+            "仅返回中文翻译文本。\n\n" +
+            content;
+        String response = aiChatService.ask(prompt, null, "deepseek-chat", String.valueOf(userId));
+        if (response == null) return null;
+        String cleaned = response.replaceAll("```markdown", "").replaceAll("```", "").trim();
+        cleaned = cleaned.replace("**", "");
+        return cleaned.isBlank() ? null : cleaned;
     }
     
     /**
@@ -348,7 +433,7 @@ public class VocabularyService {
             .orElseThrow(() -> new CustomException("文章不存在"));
             
         // 填充使用的单词信息（如果需要详细信息）
-        List<ArticleUsedWord> usedWords = articleUsedWordRepository.findByArticleId(articleId);
+        List<ArticleUsedWord> usedWords = articleUsedWordRepository.findByArticleIdWithWord(articleId);
         article.setUsedWords(usedWords);
         
         return article;

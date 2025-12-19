@@ -1,5 +1,6 @@
 package com.aispring.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -7,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.List;
 
 /**
@@ -60,6 +62,7 @@ public class GeneratedArticle {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "vocabulary_list_id", insertable = false, updatable = false)
+    @JsonIgnore
     private VocabularyList vocabularyList;
     
     @OneToMany(mappedBy = "article", cascade = CascadeType.ALL, orphanRemoval = true)

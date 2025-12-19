@@ -2,6 +2,8 @@ package com.aispring.repository;
 
 import com.aispring.entity.ArticleUsedWord;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -16,4 +18,7 @@ public interface ArticleUsedWordRepository extends JpaRepository<ArticleUsedWord
      * 根据文章ID查找单词
      */
     List<ArticleUsedWord> findByArticleId(Integer articleId);
+
+    @Query("select auw from ArticleUsedWord auw join fetch auw.word where auw.articleId = :articleId")
+    List<ArticleUsedWord> findByArticleIdWithWord(@Param("articleId") Integer articleId);
 }

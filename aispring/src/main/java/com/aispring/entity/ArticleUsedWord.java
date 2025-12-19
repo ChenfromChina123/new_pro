@@ -1,5 +1,6 @@
 package com.aispring.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -46,6 +47,7 @@ public class ArticleUsedWord {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "article_id", insertable = false, updatable = false)
+    @JsonIgnore
     private GeneratedArticle article;
     
     @ManyToOne(fetch = FetchType.LAZY)
