@@ -32,10 +32,5 @@ public interface UserFileRepository extends JpaRepository<UserFile, Long> {
      * 根据文件路径查找
      */
     Optional<UserFile> findByFilepath(String filepath);
-
-    /**
-     * 根据用户ID、文件夹路径和文件名查找文件
-     */
-    Optional<UserFile> findByUser_IdAndFolderPathAndFilename(Long userId, String folderPath, String filename);
 }
 
