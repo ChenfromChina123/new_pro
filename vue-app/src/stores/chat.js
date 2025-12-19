@@ -83,7 +83,8 @@ export const useChatStore = defineStore('chat', () => {
     const userMessage = {
       role: 'user',
       content,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      model: selectedModel.value
     }
     messages.value.push(userMessage)
     
@@ -98,7 +99,8 @@ export const useChatStore = defineStore('chat', () => {
       const aiMessage = {
         role: 'assistant',
         content: (response?.data?.answer || response?.answer || ''),
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        model: selectedModel.value
       }
       messages.value.push(aiMessage)
       
@@ -127,7 +129,8 @@ export const useChatStore = defineStore('chat', () => {
         ...msg,
         // 确保角色是前端期望的格式：user 或 assistant
         // 后端返回 sender_type: 1 (user), 2 (AI)
-        role: (msg.role === 'user' || msg.sender_type === 1) ? 'user' : 'assistant'
+        role: (msg.role === 'user' || msg.sender_type === 1) ? 'user' : 'assistant',
+        model: msg?.model ?? msg?.model_name ?? msg?.modelName ?? null
       }))
       currentSessionId.value = sessionId
       return { success: true }
@@ -145,7 +148,8 @@ export const useChatStore = defineStore('chat', () => {
     const userMessage = {
       role: 'user',
       content,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      model: selectedModel.value
     }
     messages.value.push(userMessage)
     
@@ -153,7 +157,8 @@ export const useChatStore = defineStore('chat', () => {
     const aiMessage = {
       role: 'assistant',
       content: '',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      model: selectedModel.value
     }
     messages.value.push(aiMessage)
     // 获取响应式对象
@@ -309,4 +314,3 @@ export const useChatStore = defineStore('chat', () => {
     setModel
   }
 })
-

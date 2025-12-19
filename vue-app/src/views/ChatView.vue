@@ -96,9 +96,18 @@
               class="message"
               :class="message.role === 'user' ? 'user' : 'assistant'"
             >
-              <div class="message-avatar">
+              <div
+                class="message-avatar"
+                :class="{ 'has-image': !!getMessageAvatarSrc(message) }"
+              >
+                <img
+                  v-if="getMessageAvatarSrc(message)"
+                  class="message-avatar-img"
+                  :src="getMessageAvatarSrc(message)"
+                  alt=""
+                >
                 <i
-                  v-if="message.role === 'user'"
+                  v-else-if="message.role === 'user'"
                   class="fas fa-user"
                 />
                 <i
@@ -182,18 +191,40 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useChatStore } from '@/stores/chat'
+import { useAuthStore } from '@/stores/auth'
 import { marked } from 'marked'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
 import AppLayout from '@/components/AppLayout.vue'
+import { API_CONFIG } from '@/config/api'
 
 const chatStore = useChatStore()
+const authStore = useAuthStore()
 const inputMessage = ref('')
 const messagesContainer = ref(null)
+
+const userAvatarUrl = ref(null)
+
+/**
+ * 解析并返回消息头像图片地址；无可用图片时返回 `null` 以回退到默认图标
+ */
+const deepseekAvatarUrl = new URL('../../static/image/deepseek-image.png', import.meta.url).href
+const doubaoAvatarUrl = new URL('../../static/image/doubao-imge.png', import.meta.url).href
+
+const getMessageAvatarSrc = (message) => {
+  if (!message) return null
+  if (message.role === 'user') {
+    return userAvatarUrl.value || null
+  }
+  const model = String(message.model || chatStore.selectedModel || '').toLowerCase()
+  if (model.includes('deepseek')) return deepseekAvatarUrl
+  if (model.includes('doubao')) return doubaoAvatarUrl
+  return null
+}
 
 // 复制代码到剪贴板 - 改为全局函数，供内联事件调用
 window.copyCodeBlock = (element) => {
@@ -248,6 +279,35 @@ onMounted(async () => {
     await createNewSession()
   } else if (chatStore.sessions.length > 0 && !chatStore.currentSessionId) {
     await loadSession(chatStore.sessions[0].id)
+  }
+})
+
+watch(
+  () => authStore.userInfo?.avatar,
+  async (path) => {
+    if (userAvatarUrl.value) {
+      URL.revokeObjectURL(userAvatarUrl.value)
+      userAvatarUrl.value = null
+    }
+    if (!path) return
+    try {
+      const res = await fetch(`${API_CONFIG.baseURL}${path}`, {
+        headers: { Authorization: `Bearer ${authStore.token}` }
+      })
+      if (!res.ok) return
+      const blob = await res.blob()
+      userAvatarUrl.value = URL.createObjectURL(blob)
+    } catch {
+      userAvatarUrl.value = null
+    }
+  },
+  { immediate: true }
+)
+
+onUnmounted(() => {
+  if (userAvatarUrl.value) {
+    URL.revokeObjectURL(userAvatarUrl.value)
+    userAvatarUrl.value = null
   }
 })
 
@@ -1011,8 +1071,21 @@ const scrollToBottom = () => {
   justify-content: center;
   font-size: 18px;
   flex-shrink: 0;
+  overflow: hidden;
   box-shadow: var(--shadow-md);
   transition: all 0.2s ease;
+}
+
+.message-avatar.has-image {
+  background: transparent;
+}
+
+.message-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
 }
 
 .message-avatar:hover {
@@ -1478,4 +1551,3 @@ body.dark-mode .message-copy-button {
   }
 }
 </style>
-
