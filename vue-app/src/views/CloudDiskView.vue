@@ -39,135 +39,22 @@
             </button>
           </div>
           
-          <div class="folder-tree">
-            <!-- 渲染根目录 -->
-            <template
+          <div
+            class="folder-tree"
+            :class="{ 'folder-tree-scroll': maxFolderDepth >= 3 }"
+            :style="{ '--folder-indent': `${folderIndentPx}px` }"
+          >
+            <FolderTreeItem
               v-for="rootFolder in cloudDiskStore.folders"
               :key="rootFolder.id"
-            >
-              <div
-                class="folder-item root-folder"
-                :class="{ active: rootFolder.folderPath === cloudDiskStore.currentFolder }"
-                @click="selectFolder(rootFolder.folderPath, $event)"
-              >
-                <div class="folder-header">
-                  <span 
-                    v-if="rootFolder.children && rootFolder.children.length > 0" 
-                    class="folder-toggle"
-                    @click="toggleFolderExpand(rootFolder.id, $event)"
-                  >
-                    {{ isFolderExpanded(rootFolder) ? '▼' : '▶' }}
-                  </span>
-                  <span
-                    v-else
-                    class="folder-toggle empty"
-                  />
-                  <span class="folder-icon">📂</span>
-                  <span class="folder-name">{{ rootFolder.folderName || '根目录' }}</span>
-                </div>
-                
-                <!-- 渲染根目录下的一级文件夹 -->
-                <div 
-                  v-if="rootFolder.children && rootFolder.children.length > 0 && isFolderExpanded(rootFolder)" 
-                  class="folder-children"
-                >
-                  <div
-                    v-for="folder in rootFolder.children"
-                    :key="folder.id"
-                    class="folder-item"
-                    :class="{ active: folder.folderPath === cloudDiskStore.currentFolder }"
-                    @click="selectFolder(folder.folderPath, $event)"
-                  >
-                    <div class="folder-header">
-                      <span 
-                        v-if="folder.children && folder.children.length > 0" 
-                        class="folder-toggle"
-                        @click="toggleFolderExpand(folder.id, $event)"
-                      >
-                        {{ isFolderExpanded(folder) ? '▼' : '▶' }}
-                      </span>
-                      <span
-                        v-else
-                        class="folder-toggle empty"
-                      />
-                      <span class="folder-icon">📁</span>
-                      <span class="folder-name">{{ folder.folderName || '未命名文件夹' }}</span>
-                      <button
-                        class="folder-delete-btn"
-                        title="删除文件夹"
-                        @click.stop="deleteFolderAction(folder.id)"
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                    
-                    <!-- 渲染二级文件夹 -->
-                    <div 
-                      v-if="folder.children && folder.children.length > 0 && isFolderExpanded(folder)" 
-                      class="folder-children"
-                    >
-                      <div
-                        v-for="childFolder in folder.children"
-                        :key="childFolder.id"
-                        class="folder-item"
-                        :class="{ active: childFolder.folderPath === cloudDiskStore.currentFolder }"
-                        @click="selectFolder(childFolder.folderPath, $event)"
-                      >
-                        <div class="folder-header">
-                          <span 
-                            v-if="childFolder.children && childFolder.children.length > 0" 
-                            class="folder-toggle"
-                            @click="toggleFolderExpand(childFolder.id, $event)"
-                          >
-                            {{ isFolderExpanded(childFolder) ? '▼' : '▶' }}
-                          </span>
-                          <span
-                            v-else
-                            class="folder-toggle empty"
-                          />
-                          <span class="folder-icon">📁</span>
-                          <span class="folder-name">{{ childFolder.folderName || '未命名文件夹' }}</span>
-                          <button
-                            class="folder-delete-btn"
-                            title="删除文件夹"
-                            @click.stop="deleteFolderAction(childFolder.id)"
-                          >
-                            🗑️
-                          </button>
-                        </div>
-                        
-                        <!-- 渲染三级文件夹 -->
-                        <div 
-                          v-if="childFolder.children && childFolder.children.length > 0 && isFolderExpanded(childFolder)" 
-                          class="folder-children"
-                        >
-                          <div
-                            v-for="grandchildFolder in childFolder.children"
-                            :key="grandchildFolder.id"
-                            class="folder-item"
-                            :class="{ active: grandchildFolder.folderPath === cloudDiskStore.currentFolder }"
-                            @click="selectFolder(grandchildFolder.folderPath, $event)"
-                          >
-                            <div class="folder-header">
-                              <span class="folder-toggle empty" />
-                              <span class="folder-icon">📁</span>
-                              <span class="folder-name">{{ grandchildFolder.folderName || '未命名文件夹' }}</span>
-                              <button
-                                class="folder-delete-btn"
-                                title="删除文件夹"
-                                @click.stop="deleteFolderAction(grandchildFolder.id)"
-                              >
-                                🗑️
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </template>
+              :folder="rootFolder"
+              :select-folder="selectFolder"
+              :toggle-folder-expand="toggleFolderExpand"
+              :is-folder-expanded="isFolderExpanded"
+              :delete-folder-action="deleteFolderAction"
+              :depth="0"
+              :indent="folderIndentPx"
+            />
           </div>
         </aside>
         
@@ -530,9 +417,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useCloudDiskStore } from '@/stores/cloudDisk'
 import AppLayout from '@/components/AppLayout.vue'
+import FolderTreeItem from '@/components/FolderTreeItem.vue'
 
 const cloudDiskStore = useCloudDiskStore()
 
@@ -549,56 +437,107 @@ const touchStartX = ref(0)
 const touchEndX = ref(0)
 const hoveredFolderId = ref(null)
 const expandedFolders = ref(new Set()) // 用于跟踪哪些文件夹是展开的
+const viewportWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1024)
 
 // 排序相关
 const sortField = ref('upload_time')
 const sortAscending = ref(false)
 
-// 检查文件夹或其子文件夹是否是当前活动的
-const isFolderActiveOrChildActive = (folder) => {
-  // 检查文件夹本身是否是当前活动的
-  if (folder.folderPath === cloudDiskStore.currentFolder) {
-    return true
-  }
-  
-  // 检查子文件夹是否有活动的
-  if (folder.children && folder.children.length > 0) {
-    for (const child of folder.children) {
-      if (isFolderActiveOrChildActive(child)) {
-        return true
-      }
-    }
-  }
-  
-  return false
+const normalizeFolderPath = (folderPath) => {
+  return (folderPath || '').replace(/^\//, '').replace(/\/+$/, '')
 }
 
-// 切换文件夹展开状态
+const findFolderByPath = (folderPath) => {
+  const target = normalizeFolderPath(folderPath)
+  const stack = Array.isArray(cloudDiskStore.folders) ? [...cloudDiskStore.folders] : []
+  while (stack.length) {
+    const node = stack.pop()
+    if (!node) continue
+    if ((node.folderPath || '') === target) return node
+    const children = Array.isArray(node.children) ? node.children : []
+    for (const child of children) {
+      stack.push(child)
+    }
+  }
+  return null
+}
+
+/**
+ * 判断当前路径是否位于指定文件夹下（用于自动展开当前路径链路上的父级）。
+ */
+const isInActiveChain = (folder) => {
+  const folderPath = (folder?.folderPath || '').replace(/\/+$/, '')
+  const current = (cloudDiskStore.currentFolder || '').replace(/\/+$/, '')
+  
+  // 根目录始终展开
+  if (folderPath === '') return true
+  
+  // 仅展开当前路径的父级（严格前缀检查）
+  // 例如：current='a/b', folder='a' -> startWith('a/') -> true
+  // 例如：current='a', folder='a' -> startWith('a/') -> false
+  return current.startsWith(folderPath + '/')
+}
+
+/**
+ * 切换文件夹展开状态（通过替换 Set 触发视图更新）。
+ */
 const toggleFolderExpand = (folderId, event) => {
   // 阻止事件冒泡，避免触发文件夹选择
   event.stopPropagation()
-  
-  if (expandedFolders.value.has(folderId)) {
-    expandedFolders.value.delete(folderId)
+
+  const next = new Set(expandedFolders.value)
+  if (next.has(folderId)) {
+    next.delete(folderId)
   } else {
-    expandedFolders.value.add(folderId)
+    next.add(folderId)
   }
+  expandedFolders.value = next
 }
 
-// 检查文件夹是否应该展开
+/**
+ * 判断文件夹是否展开：手动展开优先，其次自动展开当前路径链路上的父级。
+ */
 const isFolderExpanded = (folder) => {
   // 如果文件夹被手动展开，返回true
   if (expandedFolders.value.has(folder.id)) {
     return true
   }
   
-  // 如果文件夹或其子文件夹是当前活动的，返回true
-  if (isFolderActiveOrChildActive(folder)) {
+  // 自动展开：当前路径链路上的父级
+  if (isInActiveChain(folder)) {
     return true
   }
   
   return false
 }
+
+/**
+ * 计算文件夹树最大深度（用于超过阈值时启用滚动与缩进调整）。
+ */
+const maxFolderDepth = computed(() => {
+  const roots = cloudDiskStore.folders || []
+  let max = 0
+  const stack = roots.map(r => ({ node: r, depth: 0 }))
+  while (stack.length) {
+    const { node, depth } = stack.pop()
+    if (depth > max) max = depth
+    const children = node?.children || []
+    for (const child of children) {
+      stack.push({ node: child, depth: depth + 1 })
+    }
+  }
+  return max
+})
+
+/**
+ * 根据深度与屏幕尺寸动态计算缩进像素，避免深层级挤压布局。
+ */
+const folderIndentPx = computed(() => {
+  const depth = maxFolderDepth.value
+  const isMobile = viewportWidth.value <= 768
+  if (isMobile) return depth > 6 ? 10 : 12
+  return depth > 8 ? 10 : depth > 5 ? 12 : 14
+})
 
 // 切换侧边栏显示
 const toggleSidebar = () => {
@@ -631,15 +570,36 @@ const handleTouchEnd = () => {
   touchEndX.value = 0
 }
 
+/**
+ * 监听窗口尺寸变化，确保深层级文件夹缩进在不同设备上自适应。
+ */
+const handleResize = () => {
+  viewportWidth.value = window.innerWidth
+}
+
 onMounted(async () => {
+  window.addEventListener('resize', handleResize, { passive: true })
   await cloudDiskStore.fetchFolders()
   await cloudDiskStore.fetchFiles()
 })
 
-const selectFolder = async (folderPath, event) => {
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize)
+})
+
+/**
+ * 选择文件夹并刷新文件列表。
+ */
+const selectFolder = async (folderPath, folderId, event) => {
   if (event && typeof event.stopPropagation === 'function') {
     event.stopPropagation()
   }
+  if (folderId !== undefined && folderId !== null) {
+    const next = new Set(expandedFolders.value)
+    next.delete(folderId)
+    expandedFolders.value = next
+  }
+  cloudDiskStore.setActiveFolder({ folderPath, folderId })
   // 查找对应folderPath的文件夹id
   // 注意：这里我们不再传递folderId，而是传递folderPath
   // 后端需要修改为接受folderPath参数，或者前端需要先根据folderPath查找folderId
@@ -648,6 +608,7 @@ const selectFolder = async (folderPath, event) => {
 }
 
 const goToRoot = async () => {
+  cloudDiskStore.setActiveFolder({ folderPath: '', folderId: null })
   await cloudDiskStore.fetchFiles('')
   cloudDiskStore.clearSelection()
 }
@@ -734,6 +695,12 @@ const createFolder = async () => {
   )
   
   if (result.success) {
+    const currentFolderNode = findFolderByPath(cloudDiskStore.currentFolder)
+    if (currentFolderNode?.id) {
+      const next = new Set(expandedFolders.value)
+      next.add(currentFolderNode.id)
+      expandedFolders.value = next
+    }
     showCreateFolder.value = false
     newFolderName.value = ''
   } else {
@@ -1069,7 +1036,13 @@ const toggleSelectAll = () => {
 .folder-tree {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 8px;
+  overscroll-behavior: contain;
+}
+
+.folder-tree.folder-tree-scroll {
+  overflow: auto;
 }
 
 .folder-item {
