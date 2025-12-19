@@ -3,6 +3,7 @@ package com.aispring.service;
 import com.aispring.entity.*;
 import com.aispring.exception.CustomException;
 import com.aispring.repository.*;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -242,18 +243,30 @@ public class VocabularyService {
         String wordsStr = String.join(", ", words);
         String prompt = String.format(
             "I have a list of %s words: [%s]. Please suggest 6 short article topics (titles) that could incorporate these words. " +
-            "Each topic must be less than 10 characters long. Output only the topics, separated by commas, no numbering.",
+            "Each topic must be less than 10 characters long. \n" +
+            "Return ONLY a JSON array of strings, e.g. [\"Topic 1\", \"Topic 2\"]. Do not include markdown formatting.",
             language, wordsStr
         );
         
         String response = aiChatService.ask(prompt, null, "deepseek-chat", "system");
         if (response == null) return new ArrayList<>();
         
-        return Arrays.stream(response.split("[,，\n]"))
-            .map(String::trim)
-            .filter(s -> !s.isEmpty())
-            .limit(6)
-            .collect(Collectors.toList());
+        // Clean response (remove markdown code blocks if any)
+        String json = response.replaceAll("```json", "").replaceAll("```", "").trim();
+        
+        try {
+            return objectMapper.readValue(json, new TypeReference<List<String>>(){});
+        } catch (Exception e) {
+            System.err.println("Failed to parse topics JSON: " + e.getMessage());
+            // Fallback to splitting if JSON parsing fails
+            return Arrays.stream(response.split("[,，\n]"))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .filter(s -> !s.startsWith("[")) // Remove JSON brackets if split
+                .filter(s -> !s.endsWith("]"))
+                .limit(6)
+                .collect(Collectors.toList());
+        }
     }
     
     /**
@@ -273,11 +286,19 @@ public class VocabularyService {
             "Write a short article (Difficulty: %s, Length: %s) about '%s'. " +
             "You MUST use the following words in the article: [%s]. " +
             "Please wrap the used words in double asterisks like **word** so they can be highlighted. " +
-            "Output only the article content.",
+            "Output only the article content. Do not include 'Title:' or markdown code blocks.",
             difficulty, length, topic, vocabularyList
         );
         
         String content = aiChatService.ask(prompt, null, "deepseek-chat", String.valueOf(userId));
+        
+        // Clean content
+        if (content != null) {
+            content = content.replaceAll("```markdown", "").replaceAll("```", "").trim();
+            if (content.startsWith("Title:")) {
+                content = content.substring(content.indexOf("\n") + 1).trim();
+            }
+        }
         
         // 3. 保存文章
         GeneratedArticle article = GeneratedArticle.builder()
