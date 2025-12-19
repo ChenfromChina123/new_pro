@@ -65,7 +65,7 @@ public class GeneratedArticle {
     @JsonIgnore
     private VocabularyList vocabularyList;
     
-    @OneToMany(mappedBy = "article", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "article", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<ArticleUsedWord> usedWords;
     
     @PrePersist

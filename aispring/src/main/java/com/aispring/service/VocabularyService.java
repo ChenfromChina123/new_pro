@@ -421,6 +421,7 @@ public class VocabularyService {
     /**
      * 获取用户生成的文章列表
      */
+    @Transactional(readOnly = true)
     public List<GeneratedArticle> getUserGeneratedArticles(Long userId) {
         return generatedArticleRepository.findByUserIdOrderByCreatedAtDesc(userId);
     }
@@ -428,6 +429,7 @@ public class VocabularyService {
     /**
      * 获取文章详情
      */
+    @Transactional(readOnly = true)
     public GeneratedArticle getGeneratedArticle(Integer articleId) {
         GeneratedArticle article = generatedArticleRepository.findById(articleId)
             .orElseThrow(() -> new CustomException("文章不存在"));
