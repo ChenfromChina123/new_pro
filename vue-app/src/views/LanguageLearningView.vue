@@ -362,10 +362,17 @@
 
           <div class="public-results-grid">
             <div
-              v-if="publicResults.length === 0"
+              v-if="isLoading"
+              class="loading-state"
+            >
+              <div class="spinner" />
+              <p>正在获取词汇...</p>
+            </div>
+            <div
+              v-else-if="publicResults.length === 0"
               class="empty-state"
             >
-              <p>输入关键词搜索，或直接点击搜索查看推荐词汇</p>
+              <p>未找到匹配的词汇，尝试更换关键词</p>
             </div>
             <div
               v-else
@@ -411,7 +418,7 @@
                 class="pagination-container"
               >
                 <div class="pagination-info">
-                  显示第 {{ (currentPage - 1) * pageSize + 1 }} - {{ Math.min(currentPage * pageSize, vocabularyStore.publicSearchResults.length) }} 条，共 {{ vocabularyStore.publicSearchResults.length }} 条
+                  显示第 {{ (currentPage - 1) * pageSize + 1 }} - {{ Math.min(currentPage * pageSize, vocabularyStore.publicSearchTotal) }} 条，共 {{ vocabularyStore.publicSearchTotal }} 条
                 </div>
                 <div class="pagination-buttons">
                   <button
@@ -862,18 +869,20 @@ const currentPage = ref(1)
 const pageSize = ref(50)
 
 const paginatedResults = computed(() => {
-  const startIndex = (currentPage.value - 1) * pageSize.value
-  const endIndex = startIndex + pageSize.value
-  return vocabularyStore.publicSearchResults.slice(startIndex, endIndex)
+  return vocabularyStore.publicSearchResults
 })
 
 const totalPages = computed(() => {
-  return Math.ceil(vocabularyStore.publicSearchResults.length / pageSize.value)
+  return Math.ceil(vocabularyStore.publicSearchTotal / pageSize.value)
 })
 
-const goToPage = (page) => {
+const goToPage = async (page) => {
   if (page < 1 || page > totalPages.value) return
+  markActive()
   currentPage.value = page
+  const kw = publicKeyword.value.trim()
+  const language = currentList.value?.language || 'en'
+  await vocabularyStore.searchPublic(kw, language, page, pageSize.value)
 }
 
 // AI Article State
@@ -894,6 +903,7 @@ const currentWords = computed(() => vocabularyStore.wordsByListId[currentListId.
 const reviewItems = computed(() => vocabularyStore.reviewWords)
 const learningStats = computed(() => vocabularyStore.stats)
 const publicResults = computed(() => vocabularyStore.publicSearchResults)
+const isLoading = computed(() => vocabularyStore.isLoading)
 
 const isAllSelected = computed(() => {
   return currentWords.value.length > 0 && selectedWordIds.size === currentWords.value.length
@@ -961,6 +971,10 @@ onMounted(async () => {
     vocabularyStore.fetchReviewWords()
   ])
 
+  if (currentView.value === 'public-library') {
+    await searchPublic()
+  }
+
   markActive()
   lastTickAt.value = Date.now()
   durationTimer = window.setInterval(tickDuration, 1000)
@@ -988,7 +1002,14 @@ onUnmounted(() => {
   void flushDuration()
 })
 
-watch([currentView, currentListId], () => {
+watch(currentView, async (newView) => {
+  markActive()
+  if (newView === 'public-library' && publicResults.value.length === 0) {
+    await searchPublic()
+  }
+})
+
+watch(currentListId, () => {
   markActive()
 })
 
