@@ -476,193 +476,236 @@
               v-if="aiArticleTab === 'generate'"
               class="ai-generate-panel"
             >
-              <div class="ai-form-row">
-                <div class="form-group">
-                  <label>单词表来源</label>
-                  <select
-                    v-model="currentListId"
-                    class="select-input"
-                    @change="onListChange"
-                  >
-                    <option
-                      :value="null"
-                      disabled
-                    >
-                      请选择单词表
-                    </option>
-                    <option
-                      v-for="list in vocabularyLists"
-                      :key="list.id"
-                      :value="list.id"
-                    >
-                      {{ list.name }} ({{ list.wordCount || 0 }}词)
-                    </option>
-                  </select>
-                </div>
-
-                <div class="form-group ai-topic-group">
-                  <label>文章主题</label>
-                  <div class="ai-topic-input-row">
-                    <input
-                      v-model="articleOptions.topic"
-                      type="text"
-                      class="input"
-                      placeholder="输入文章主题（可选）"
-                    >
-                    <button
-                      class="btn btn-outline btn-sm"
-                      :disabled="!currentListId || selectedWordIds.size === 0 || isGeneratingTopics"
-                      @click="generateTopics"
-                    >
-                      🤖 AI生成主题
-                    </button>
-                  </div>
-                  <div
-                    v-if="generatedTopics.length"
-                    class="ai-topic-suggestions"
-                  >
-                    <div class="ai-topic-suggestions-label">
-                      AI推荐主题（点击选择）：
+              <div class="ai-generate-grid">
+                <div class="ai-card ai-config-card">
+                  <div class="ai-card-header">
+                    <div class="ai-card-title">
+                      生成配置
                     </div>
-                    <div class="ai-topic-suggestions-list">
-                      <button
-                        v-for="topic in generatedTopics"
-                        :key="topic"
-                        class="ai-topic-chip"
-                        type="button"
-                        @click="selectTopic(topic)"
-                      >
-                        {{ topic }}
-                      </button>
+                    <div class="ai-card-subtitle">
+                      选择词表、难度与篇幅，可用 AI 推荐主题
                     </div>
                   </div>
-                </div>
+                  <div class="ai-card-body">
+                    <div class="ai-form-grid">
+                      <!-- 单词表来源 -->
+                      <div class="form-group full-width">
+                        <label>📚 单词表来源</label>
+                        <select
+                          v-model="currentListId"
+                          class="select-input"
+                          @change="onListChange"
+                        >
+                          <option
+                            :value="null"
+                            disabled
+                          >
+                            请选择单词表
+                          </option>
+                          <option
+                            v-for="list in vocabularyLists"
+                            :key="list.id"
+                            :value="list.id"
+                          >
+                            {{ list.name }} ({{ list.wordCount || 0 }}词)
+                          </option>
+                        </select>
+                      </div>
 
-                <div class="form-group">
-                  <label>文章长度</label>
-                  <select
-                    v-model="articleOptions.length"
-                    class="select-input"
-                  >
-                    <option value="Short">
-                      短篇（约200词）
-                    </option>
-                    <option value="Medium">
-                      中篇（约400词）
-                    </option>
-                    <option value="Long">
-                      长篇（约700词）
-                    </option>
-                  </select>
-                </div>
+                      <!-- 文章长度 -->
+                      <div class="form-group">
+                        <label>📏 文章长度</label>
+                        <select
+                          v-model="articleOptions.length"
+                          class="select-input"
+                        >
+                          <option value="Short">
+                            短篇（约200词）
+                          </option>
+                          <option value="Medium">
+                            中篇（约400词）
+                          </option>
+                          <option value="Long">
+                            长篇（约700词）
+                          </option>
+                        </select>
+                      </div>
 
-                <div class="form-group">
-                  <label>难度级别</label>
-                  <select
-                    v-model="articleOptions.difficulty"
-                    class="select-input"
-                  >
-                    <option value="基础英语">
-                      基础英语
-                    </option>
-                    <option value="商务英语">
-                      商务英语
-                    </option>
-                    <option value="学术英语">
-                      学术英语
-                    </option>
-                  </select>
-                </div>
-              </div>
+                      <!-- 难度级别 -->
+                      <div class="form-group">
+                        <label>🎓 难度级别</label>
+                        <select
+                          v-model="articleOptions.difficulty"
+                          class="select-input"
+                        >
+                          <option value="基础英语">
+                            基础英语
+                          </option>
+                          <option value="商务英语">
+                            商务英语
+                          </option>
+                          <option value="学术英语">
+                            学术英语
+                          </option>
+                        </select>
+                      </div>
 
-              <div
-                v-if="currentListId"
-                class="ai-word-section"
-              >
-                <div class="ai-word-section-header">
-                  <div class="ai-word-actions-left">
-                    <label class="checkbox-label">
-                      <input
-                        type="checkbox"
-                        :checked="isAllSelected"
-                        @change="toggleSelectAll"
-                      >
-                      全选/取消全选
-                    </label>
-                    <span class="ai-selected-count">已选择 {{ selectedWordIds.size }} 个单词</span>
+                      <!-- 文章主题 -->
+                      <div class="form-group full-width">
+                        <label>📝 文章主题</label>
+                        <div class="ai-topic-input-group">
+                          <input
+                            v-model="articleOptions.topic"
+                            type="text"
+                            class="input"
+                            placeholder="输入文章主题（可选，留空则自动生成）"
+                          >
+                          <button
+                            class="btn btn-secondary btn-icon-text"
+                            :disabled="!currentListId || selectedWordIds.size === 0 || isGeneratingTopics"
+                            @click="generateTopics"
+                          >
+                            <span
+                              v-if="isGeneratingTopics"
+                              class="spinner-small"
+                            />
+                            <span v-else>✨</span>
+                            AI 推荐主题
+                          </button>
+                        </div>
+                        <div
+                          v-if="generatedTopics.length"
+                          class="ai-topic-suggestions"
+                        >
+                          <div class="ai-topic-suggestions-label">
+                            AI 推荐主题：
+                          </div>
+                          <div class="ai-topic-suggestions-list">
+                            <button
+                              v-for="topic in generatedTopics"
+                              :key="topic"
+                              class="ai-topic-chip"
+                              type="button"
+                              @click="selectTopic(topic)"
+                            >
+                              {{ topic }}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div class="ai-word-actions-right">
-                    <button
-                      class="btn btn-outline btn-sm"
-                      :disabled="selectedWordIds.size === 0"
-                      @click="showSelectedWords = true"
-                    >
-                      📘 查看已选单词
-                    </button>
-                    <button
-                      class="btn btn-primary"
-                      :disabled="!canGenerateArticle"
-                      @click="generateArticleNow"
-                    >
-                      ✨ 生成文章
-                    </button>
-                  </div>
                 </div>
 
-                <div class="ai-words-table-wrapper">
-                  <table class="ai-words-table">
-                    <thead>
-                      <tr>
-                        <th style="width: 60px;">
-                          选择
-                        </th>
-                        <th>单词</th>
-                        <th>释义</th>
-                        <th style="width: 120px;">
-                          词性
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr
-                        v-for="word in currentWords"
-                        :key="word.id"
-                      >
-                        <td>
+                <div class="ai-card ai-words-card">
+                  <div class="ai-card-header">
+                    <div class="ai-card-title">
+                      选词与生成
+                    </div>
+                    <div class="ai-card-subtitle">
+                      <span v-if="currentListId">已加载 {{ currentWords.length }} 个单词</span>
+                      <span v-else>选择词表后可勾选单词生成文章</span>
+                    </div>
+                  </div>
+                  <div class="ai-card-body">
+                    <div
+                      v-if="currentListId"
+                      class="ai-word-selection-section"
+                    >
+                      <div class="ai-toolbar">
+                        <label class="checkbox-label">
                           <input
                             type="checkbox"
-                            :checked="selectedWordIds.has(word.id)"
-                            @change="toggleWordSelection(word.id)"
+                            :checked="isAllSelected"
+                            @change="toggleSelectAll"
                           >
-                        </td>
-                        <td class="ai-word-text">
-                          {{ word.word }}
-                        </td>
-                        <td class="ai-word-definition">
-                          {{ word.definition }}
-                        </td>
-                        <td class="ai-word-pos">
-                          {{ word.partOfSpeech || '-' }}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                          全选/取消全选
+                          <span class="ai-toolbar-meta">已选 {{ selectedWordIds.size }} / {{ currentWords.length }}</span>
+                        </label>
+                        <div class="ai-toolbar-actions">
+                          <button
+                            class="btn btn-outline btn-sm"
+                            :disabled="selectedWordIds.size === 0"
+                            @click="showSelectedWords = true"
+                          >
+                            📘 查看已选
+                          </button>
+                          <button
+                            class="btn btn-primary"
+                            :disabled="!canGenerateArticle"
+                            @click="generateArticleNow"
+                          >
+                            ✨ 生成文章
+                          </button>
+                        </div>
+                      </div>
+
+                      <div class="ai-words-table-wrapper">
+                        <table class="ai-words-table">
+                          <thead>
+                            <tr>
+                              <th style="width: 50px;">
+                                选择
+                              </th>
+                              <th>单词</th>
+                              <th>释义</th>
+                              <th style="width: 100px;">
+                                词性
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr
+                              v-for="word in currentWords"
+                              :key="word.id"
+                              :class="{ 'selected': selectedWordIds.has(word.id) }"
+                              @click="toggleWordSelection(word.id)"
+                            >
+                              <td @click.stop>
+                                <input
+                                  type="checkbox"
+                                  :checked="selectedWordIds.has(word.id)"
+                                  @change="toggleWordSelection(word.id)"
+                                >
+                              </td>
+                              <td class="ai-word-text">
+                                {{ word.word }}
+                              </td>
+                              <td class="ai-word-definition">
+                                {{ word.definition }}
+                              </td>
+                              <td class="ai-word-pos">
+                                <span class="pos-tag">{{ word.partOfSpeech || '-' }}</span>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <div
+                      v-else
+                      class="ai-empty-hint ai-empty-in-card"
+                    >
+                      <div class="empty-icon">
+                        📭
+                      </div>
+                      <p>请先选择一个单词表开始</p>
+                    </div>
+                  </div>
                 </div>
               </div>
-
-              <div
-                v-else
-                class="ai-empty-hint"
-              >
-                请选择一个单词表后开始生成文章
-              </div>
             </div>
+
 
             <div
               v-else
               class="ai-myarticles-panel"
             >
               <div class="ai-myarticles-header">
+                <div class="ai-myarticles-meta">
+                  共 {{ myArticles.length }} 篇
+                </div>
                 <button
                   class="btn btn-outline btn-sm"
                   :disabled="isLoadingArticles"
@@ -1420,13 +1463,17 @@ const buildHtmlForArticle = (article) => {
     <meta charset="UTF-8" />
     <title>${escapeHtml(title)}</title>
     <style>
-      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; max-width: 980px; margin: 0 auto; padding: 32px; line-height: 1.7; }
+      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; max-width: 980px; margin: 0 auto; padding: 32px; line-height: 1.7; color: #0f172a; }
       h1 { margin: 0 0 8px 0; font-size: 28px; }
       .meta { color: #64748b; margin-bottom: 24px; }
-      .pair { margin: 18px 0; padding: 14px 16px; border: 1px solid #e2e8f0; border-radius: 10px; }
+      .pair { margin: 18px 0; padding: 14px 16px; border: 1px solid #e2e8f0; border-radius: 10px; background: #ffffff; }
       .en p { margin: 0; font-size: 16px; }
       .zh { margin-top: 10px; color: #334155; white-space: pre-wrap; }
       .vocab-chip { display: inline-block; padding: 0 6px; border-radius: 6px; background: #fef3c7; color: #1d4ed8; font-weight: 700; }
+      .code-block { position: relative; background: #0b1220; border-radius: 10px; padding: 14px 16px; margin: 14px 0; overflow: auto; }
+      .code-block code { color: #e2e8f0; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 13px; line-height: 1.6; }
+      .copy-button { position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.9); border: 1px solid #e2e8f0; border-radius: 999px; padding: 6px 10px; font-size: 12px; cursor: pointer; }
+      .copy-button.copied { border-color: #10b981; color: #10b981; }
     </style>
   </head>
   <body>
@@ -2283,6 +2330,353 @@ body.dark-mode .copy-button {
   font-size: 12px;
   background-color: var(--bg-secondary);
   color: var(--text-primary);
+}
+
+.ai-articles-view .article-generator {
+  padding: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background-color: var(--bg-primary);
+  overflow: hidden;
+}
+
+.ai-articles-view .ai-article-tabs {
+  display: inline-flex;
+  gap: 8px;
+  padding: 10px;
+  margin: 18px 18px 0 18px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+}
+
+.ai-articles-view .ai-tab-btn {
+  padding: 10px 14px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.ai-articles-view .ai-tab-btn:hover {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.ai-articles-view .ai-tab-btn.active {
+  background-color: var(--chip-bg);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: var(--primary-color);
+}
+
+.ai-articles-view .ai-generate-panel {
+  padding: 18px;
+}
+
+.ai-articles-view .ai-generate-grid {
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.ai-articles-view .ai-card {
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background-color: var(--bg-secondary);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.ai-articles-view .ai-card-header {
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border-color);
+  background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+}
+
+.ai-articles-view .ai-card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.2px;
+}
+
+.ai-articles-view .ai-card-subtitle {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.ai-articles-view .ai-card-body {
+  padding: 18px;
+}
+
+.ai-articles-view .ai-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 14px;
+}
+
+.ai-articles-view .ai-form-grid .full-width {
+  grid-column: span 2;
+}
+
+.ai-articles-view .ai-form-grid .form-group {
+  margin-bottom: 0;
+}
+
+.ai-articles-view .ai-form-grid .form-group label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ai-articles-view .ai-topic-input-group {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.ai-articles-view .ai-topic-input-group .input {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.ai-articles-view .btn-icon-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  padding: 0 14px;
+}
+
+.ai-articles-view .ai-topic-suggestions {
+  margin-top: 12px;
+  padding: 12px 12px;
+  border-radius: 12px;
+  background-color: var(--bg-tertiary);
+  border: 1px dashed var(--border-color);
+}
+
+.ai-articles-view .ai-topic-suggestions-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.ai-articles-view .ai-topic-suggestions-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ai-articles-view .ai-topic-chip {
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-primary);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ai-articles-view .ai-topic-chip:hover {
+  border-color: rgba(59, 130, 246, 0.35);
+  background-color: var(--chip-bg);
+  color: var(--primary-color);
+}
+
+.ai-articles-view .ai-word-selection-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ai-articles-view .ai-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background-color: var(--bg-primary);
+}
+
+.ai-articles-view .ai-toolbar-meta {
+  margin-left: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.ai-articles-view .ai-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ai-words-table-wrapper,
+.ai-articles-table-wrapper,
+.ai-selected-words-table-wrapper {
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
+  background-color: var(--bg-primary);
+}
+
+.ai-words-table-wrapper {
+  max-height: 560px;
+  overflow-y: auto;
+}
+
+.ai-words-table,
+.ai-articles-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.ai-words-table th,
+.ai-articles-table th {
+  background-color: var(--bg-tertiary);
+  padding: 12px 14px;
+  text-align: left;
+  font-weight: 700;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  font-size: 12px;
+  letter-spacing: 0.4px;
+}
+
+.ai-words-table td,
+.ai-articles-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 14px;
+  vertical-align: top;
+  background-color: var(--bg-primary);
+  transition: background-color 0.2s;
+}
+
+.ai-words-table tbody tr:nth-child(even) td,
+.ai-articles-table tbody tr:nth-child(even) td {
+  background-color: rgba(0, 0, 0, 0.01);
+}
+
+.ai-words-table tbody tr:hover td,
+.ai-articles-table tbody tr:hover td {
+  background-color: var(--bg-tertiary);
+  cursor: pointer;
+}
+
+.ai-words-table tr.selected td {
+  background-color: var(--chip-bg);
+}
+
+.ai-word-text {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.ai-word-definition {
+  color: var(--text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.pos-tag {
+  display: inline-flex;
+  padding: 2px 8px;
+  background-color: var(--bg-tertiary);
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.ai-articles-view .ai-empty-hint {
+  text-align: center;
+  padding: 56px 18px;
+  color: var(--text-secondary);
+  background-color: var(--bg-primary);
+  border-radius: 12px;
+  border: 1px dashed var(--border-color);
+}
+
+.ai-articles-view .ai-empty-in-card {
+  margin: 0;
+}
+
+.ai-articles-view .empty-icon {
+  font-size: 46px;
+  margin-bottom: 14px;
+  opacity: 0.55;
+}
+
+.ai-articles-view .ai-myarticles-panel {
+  padding: 18px;
+}
+
+.ai-articles-view .ai-myarticles-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0 0 12px 0;
+  padding: 0 2px;
+}
+
+.ai-articles-view .ai-myarticles-meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.ai-article-title {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+@media (max-width: 1200px) {
+  .ai-articles-view .ai-generate-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .ai-articles-view .ai-article-tabs {
+    width: calc(100% - 36px);
+  }
+
+  .ai-articles-view .ai-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-articles-view .ai-topic-input-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ai-articles-view .ai-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ai-articles-view .ai-toolbar-actions {
+    justify-content: flex-end;
+  }
 }
 
 /* AI Wizard Styles */
