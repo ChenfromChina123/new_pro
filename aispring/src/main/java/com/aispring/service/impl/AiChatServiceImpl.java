@@ -46,23 +46,37 @@ public class AiChatServiceImpl implements AiChatService {
     @Value("${ai.doubao.api-url:}")
     private String doubaoApiUrl;
     
+    @Value("${ai.deepseek.api-key:}")
+    private String deepseekApiKey;
+    
+    @Value("${ai.deepseek.api-url:}")
+    private String deepseekApiUrl;
+    
     private ChatClient doubaoChatClient;
     private StreamingChatClient doubaoStreamingChatClient;
     
+    private ChatClient deepseekChatClient;
+    private StreamingChatClient deepseekStreamingChatClient;
+    
     // 上下文最大消息数
     private static final int MAX_CONTEXT_MESSAGES = 10;
-    
+
     public AiChatServiceImpl(ObjectProvider<ChatClient> chatClientProvider,
                              ObjectProvider<StreamingChatClient> streamingChatClientProvider,
                              ChatRecordRepository chatRecordRepository,
                              @Value("${ai.doubao.api-key:}") String doubaoApiKey,
-                             @Value("${ai.doubao.api-url:}") String doubaoApiUrl) {
+                             @Value("${ai.doubao.api-url:}") String doubaoApiUrl,
+                             @Value("${ai.deepseek.api-key:}") String deepseekApiKey,
+                             @Value("${ai.deepseek.api-url:}") String deepseekApiUrl) {
         this.chatClientProvider = chatClientProvider;
         this.streamingChatClientProvider = streamingChatClientProvider;
         this.chatRecordRepository = chatRecordRepository;
         this.doubaoApiKey = doubaoApiKey;
         this.doubaoApiUrl = doubaoApiUrl;
+        this.deepseekApiKey = deepseekApiKey;
+        this.deepseekApiUrl = deepseekApiUrl;
 
+        // Initialize Doubao Client
         if (doubaoApiKey != null && !doubaoApiKey.isEmpty() && doubaoApiUrl != null && !doubaoApiUrl.isEmpty()) {
             try {
                 OpenAiApi doubaoApi = new OpenAiApi(doubaoApiUrl, doubaoApiKey);
@@ -72,6 +86,19 @@ public class AiChatServiceImpl implements AiChatService {
                 System.out.println("Doubao AI client initialized successfully with URL: " + doubaoApiUrl);
             } catch (Exception e) {
                 System.err.println("Failed to initialize Doubao AI client: " + e.getMessage());
+            }
+        }
+        
+        // Initialize DeepSeek Client
+        if (deepseekApiKey != null && !deepseekApiKey.isEmpty() && deepseekApiUrl != null && !deepseekApiUrl.isEmpty()) {
+            try {
+                OpenAiApi deepseekApi = new OpenAiApi(deepseekApiUrl, deepseekApiKey);
+                OpenAiChatClient client = new OpenAiChatClient(deepseekApi);
+                this.deepseekChatClient = client;
+                this.deepseekStreamingChatClient = client;
+                System.out.println("DeepSeek AI client initialized successfully with URL: " + deepseekApiUrl);
+            } catch (Exception e) {
+                System.err.println("Failed to initialize DeepSeek AI client: " + e.getMessage());
             }
         }
     }
@@ -92,16 +119,21 @@ public class AiChatServiceImpl implements AiChatService {
         if ("doubao".equals(model)) {
             if (doubaoStreamingChatClient != null) {
                 clientToUse = doubaoStreamingChatClient;
-                // 豆包模型名称保持原样，或者如果需要特定Endpoint ID，需用户在前端或配置中指定
-                // 这里假设"doubao"是有效的或者是经过代理映射的
             } else {
-                // 如果豆包客户端未初始化，尝试使用默认客户端（DeepSeek）
+                // 如果豆包客户端未初始化，尝试使用默认客户端
                 System.err.println("Doubao client not initialized, falling back to default.");
                 clientToUse = streamingChatClientProvider.getIfAvailable();
             }
+        } else if ("deepseek".equals(model) || "deepseek-chat".equals(model)) {
+            if (deepseekStreamingChatClient != null) {
+                clientToUse = deepseekStreamingChatClient;
+            } else {
+                clientToUse = streamingChatClientProvider.getIfAvailable();
+            }
+            actualModel = "deepseek-chat";
         } else {
             clientToUse = streamingChatClientProvider.getIfAvailable();
-            if ("deepseek".equals(model) || model == null || model.isEmpty()) {
+            if (model == null || model.isEmpty()) {
                 actualModel = "deepseek-chat";
             }
         }
@@ -223,9 +255,16 @@ public class AiChatServiceImpl implements AiChatService {
                 } else {
                     clientToUse = chatClientProvider.getIfAvailable();
                 }
+            } else if ("deepseek".equals(model) || "deepseek-chat".equals(model)) {
+                if (deepseekChatClient != null) {
+                    clientToUse = deepseekChatClient;
+                } else {
+                    clientToUse = chatClientProvider.getIfAvailable();
+                }
+                actualModel = "deepseek-chat";
             } else {
                 clientToUse = chatClientProvider.getIfAvailable();
-                if ("deepseek".equals(model) || model == null || model.isEmpty()) {
+                if (model == null || model.isEmpty()) {
                     actualModel = "deepseek-chat";
                 }
             }
