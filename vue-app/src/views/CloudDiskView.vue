@@ -644,34 +644,20 @@ const handleFolderSelect = async (event) => {
   const files = event.target.files
   if (!files || files.length === 0) return
   
-  // 获取第一个文件的webkitRelativePath来确定根文件夹名称
-  const rootFolderName = files[0].webkitRelativePath.split('/')[0]
+  uploadProgress.value = 0
   
-  // 遍历所有文件并上传
-  for (const file of files) {
-    // 获取文件相对路径（去除根文件夹名称）
-    const relativePath = file.webkitRelativePath.replace(`${rootFolderName}/`, '')
-    
-    // 创建目标文件夹路径
-    const folderPath = cloudDiskStore.currentFolder
-      ? `${cloudDiskStore.currentFolder}/${rootFolderName}`
-      : rootFolderName
-    
-    uploadProgress.value = 0
-    
-    const result = await cloudDiskStore.uploadFile(
-      file,
-      folderPath,
-      (progress) => {
-        uploadProgress.value = progress
-      }
-    )
-    
-    if (result.success) {
-      console.log('文件上传成功:', file.webkitRelativePath)
-    } else {
-      alert(`上传失败: ${result.message}`)
+  const result = await cloudDiskStore.uploadFolderStream(
+    files,
+    cloudDiskStore.currentFolder,
+    (progress) => {
+      uploadProgress.value = progress
     }
+  )
+  
+  if (result.success) {
+    console.log('文件夹上传成功')
+  } else {
+    alert(`上传失败: ${result.message}`)
   }
   
   uploadProgress.value = 0
