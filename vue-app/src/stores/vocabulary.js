@@ -277,6 +277,30 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
     }
   }
 
+  /**
+   * 获取当前用户生成的文章列表
+   */
+  async function fetchArticles() {
+    try {
+      const response = await request.get(API_ENDPOINTS.vocabulary.getArticles)
+      return { success: true, data: response || [] }
+    } catch (error) {
+      return { success: false, message: error.response?.data?.message || '获取文章列表失败' }
+    }
+  }
+
+  /**
+   * 获取文章详情（包含文章内容与已用单词信息）
+   */
+  async function fetchArticle(articleId) {
+    try {
+      const response = await request.get(API_ENDPOINTS.vocabulary.getArticle(articleId))
+      return { success: true, data: response }
+    } catch (error) {
+      return { success: false, message: error.response?.data?.message || '获取文章详情失败' }
+    }
+  }
+
   return {
     lists,
     wordsByListId,
@@ -299,6 +323,8 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
     recordActivity,
     searchPublic,
     generateTopics,
-    generateArticle
+    generateArticle,
+    fetchArticles,
+    fetchArticle
   }
 })

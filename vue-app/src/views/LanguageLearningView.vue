@@ -455,254 +455,280 @@
           </div>
 
           <div class="article-generator card">
-            <!-- Step 1: Select List & Words -->
+            <div class="ai-article-tabs">
+              <button
+                class="ai-tab-btn"
+                :class="{ active: aiArticleTab === 'generate' }"
+                @click="aiArticleTab = 'generate'"
+              >
+                ✨ 生成文章
+              </button>
+              <button
+                class="ai-tab-btn"
+                :class="{ active: aiArticleTab === 'mine' }"
+                @click="aiArticleTab = 'mine'; loadMyArticles()"
+              >
+                我的文章
+              </button>
+            </div>
+
             <div
-              v-if="articleStep === 1"
-              class="step-container"
+              v-if="aiArticleTab === 'generate'"
+              class="ai-generate-panel"
             >
-              <h3>第一步：选择单词</h3>
-              <div class="form-group">
-                <label>来源单词表</label>
-                <select
-                  v-model="currentListId"
-                  class="select-input"
-                  @change="onListChange"
-                >
-                  <option
-                    :value="null"
-                    disabled
+              <div class="ai-form-row">
+                <div class="form-group">
+                  <label>单词表来源</label>
+                  <select
+                    v-model="currentListId"
+                    class="select-input"
+                    @change="onListChange"
                   >
-                    请选择单词表
-                  </option>
-                  <option
-                    v-for="list in vocabularyLists"
-                    :key="list.id"
-                    :value="list.id"
+                    <option
+                      :value="null"
+                      disabled
+                    >
+                      请选择单词表
+                    </option>
+                    <option
+                      v-for="list in vocabularyLists"
+                      :key="list.id"
+                      :value="list.id"
+                    >
+                      {{ list.name }} ({{ list.wordCount || 0 }}词)
+                    </option>
+                  </select>
+                </div>
+
+                <div class="form-group ai-topic-group">
+                  <label>文章主题</label>
+                  <div class="ai-topic-input-row">
+                    <input
+                      v-model="articleOptions.topic"
+                      type="text"
+                      class="input"
+                      placeholder="输入文章主题（可选）"
+                    >
+                    <button
+                      class="btn btn-outline btn-sm"
+                      :disabled="!currentListId || selectedWordIds.size === 0 || isGeneratingTopics"
+                      @click="generateTopics"
+                    >
+                      🤖 AI生成主题
+                    </button>
+                  </div>
+                  <div
+                    v-if="generatedTopics.length"
+                    class="ai-topic-suggestions"
                   >
-                    {{ list.name }} ({{ list.wordCount || 0 }}词)
-                  </option>
-                </select>
+                    <div class="ai-topic-suggestions-label">
+                      AI推荐主题（点击选择）：
+                    </div>
+                    <div class="ai-topic-suggestions-list">
+                      <button
+                        v-for="topic in generatedTopics"
+                        :key="topic"
+                        class="ai-topic-chip"
+                        type="button"
+                        @click="selectTopic(topic)"
+                      >
+                        {{ topic }}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label>文章长度</label>
+                  <select
+                    v-model="articleOptions.length"
+                    class="select-input"
+                  >
+                    <option value="Short">
+                      短篇（约200词）
+                    </option>
+                    <option value="Medium">
+                      中篇（约400词）
+                    </option>
+                    <option value="Long">
+                      长篇（约700词）
+                    </option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label>难度级别</label>
+                  <select
+                    v-model="articleOptions.difficulty"
+                    class="select-input"
+                  >
+                    <option value="基础英语">
+                      基础英语
+                    </option>
+                    <option value="商务英语">
+                      商务英语
+                    </option>
+                    <option value="学术英语">
+                      学术英语
+                    </option>
+                  </select>
+                </div>
               </div>
-              
+
               <div
                 v-if="currentListId"
-                class="word-selection"
+                class="ai-word-section"
               >
-                <div class="selection-header">
-                  <label class="checkbox-label">
-                    <input
-                      type="checkbox"
-                      :checked="isAllSelected"
-                      @change="toggleSelectAll"
+                <div class="ai-word-section-header">
+                  <div class="ai-word-actions-left">
+                    <label class="checkbox-label">
+                      <input
+                        type="checkbox"
+                        :checked="isAllSelected"
+                        @change="toggleSelectAll"
+                      >
+                      全选/取消全选
+                    </label>
+                    <span class="ai-selected-count">已选择 {{ selectedWordIds.size }} 个单词</span>
+                  </div>
+                  <div class="ai-word-actions-right">
+                    <button
+                      class="btn btn-outline btn-sm"
+                      :disabled="selectedWordIds.size === 0"
+                      @click="showSelectedWords = true"
                     >
-                    全选 ({{ selectedWordIds.size }})
-                  </label>
-                </div>
-                <div class="word-checkboxes">
-                  <label
-                    v-for="word in currentWords"
-                    :key="word.id"
-                    class="word-checkbox"
-                  >
-                    <input
-                      type="checkbox"
-                      :value="word.id"
-                      :checked="selectedWordIds.has(word.id)"
-                      @change="toggleWordSelection(word.id)"
+                      📘 查看已选单词
+                    </button>
+                    <button
+                      class="btn btn-primary"
+                      :disabled="!canGenerateArticle"
+                      @click="generateArticleNow"
                     >
-                    <span class="word-text">{{ word.word }}</span>
-                  </label>
+                      ✨ 生成文章
+                    </button>
+                  </div>
                 </div>
-              </div>
-              
-              <div class="step-actions">
-                <button
-                  class="btn btn-primary"
-                  :disabled="selectedWordIds.size === 0"
-                  @click="articleStep = 2"
-                >
-                  下一步
-                </button>
-              </div>
-            </div>
 
-            <!-- Step 2: Configure Options -->
-            <div
-              v-if="articleStep === 2"
-              class="step-container"
-            >
-              <h3>第二步：配置选项</h3>
-              <div class="form-group">
-                <label>文章难度</label>
-                <select
-                  v-model="articleOptions.difficulty"
-                  class="select-input"
-                >
-                  <option value="Beginner">
-                    初级 (Beginner)
-                  </option>
-                  <option value="Intermediate">
-                    中级 (Intermediate)
-                  </option>
-                  <option value="Advanced">
-                    高级 (Advanced)
-                  </option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>文章长度</label>
-                <select
-                  v-model="articleOptions.length"
-                  class="select-input"
-                >
-                  <option value="Short">
-                    短篇 (约150词)
-                  </option>
-                  <option value="Medium">
-                    中篇 (约300词)
-                  </option>
-                  <option value="Long">
-                    长篇 (约500词)
-                  </option>
-                </select>
-              </div>
-              <div class="step-actions">
-                <button
-                  class="btn btn-secondary"
-                  @click="articleStep = 1"
-                >
-                  上一步
-                </button>
-                <button
-                  class="btn btn-primary"
-                  @click="generateTopics"
-                >
-                  生成主题建议
-                </button>
-              </div>
-            </div>
-
-            <!-- Step 3: Select Topic -->
-            <div
-              v-if="articleStep === 3"
-              class="step-container"
-            >
-              <h3>第三步：选择主题</h3>
-              <div
-                v-if="isGenerating"
-                class="loading-state"
-              >
-                <div class="spinner" />
-                <p>正在生成主题建议...</p>
-              </div>
-              <div
-                v-else
-                class="topics-grid"
-              >
-                <label
-                  v-for="topic in generatedTopics"
-                  :key="topic"
-                  class="topic-card"
-                  :class="{ selected: articleOptions.topic === topic }"
-                >
-                  <input
-                    v-model="articleOptions.topic"
-                    type="radio"
-                    :value="topic"
-                    name="topic"
-                  >
-                  <span class="topic-text">{{ topic }}</span>
-                </label>
-              </div>
-              <div
-                v-if="!isGenerating"
-                class="step-actions"
-              >
-                <button
-                  class="btn btn-secondary"
-                  @click="articleStep = 2"
-                >
-                  上一步
-                </button>
-                <button
-                  class="btn btn-primary"
-                  :disabled="!articleOptions.topic"
-                  @click="generateArticle"
-                >
-                  生成文章
-                </button>
-              </div>
-            </div>
-
-            <!-- Step 4: Result -->
-            <div
-              v-if="articleStep === 4"
-              class="step-container result-step"
-            >
-              <div class="result-header">
-                <h3>{{ generatedArticle.topic }}</h3>
-                <div class="result-actions">
-                  <button
-                    class="btn btn-outline"
-                    @click="downloadHTML"
-                  >
-                    📥 下载 HTML
-                  </button>
-                  <button
-                    class="btn btn-outline"
-                    @click="downloadPDF"
-                  >
-                    📥 打印/PDF
-                  </button>
-                  <button
-                    class="btn btn-primary"
-                    @click="resetArticleGenerator"
-                  >
-                    再来一篇
-                  </button>
-                </div>
-              </div>
-              
-              <div
-                v-if="isGenerating"
-                class="loading-state"
-              >
-                <div class="spinner" />
-                <p>正在创作文章...</p>
-              </div>
-              
-              <div
-                v-else
-                id="printable-article"
-                class="article-display-area"
-              >
-                <div class="article-meta print-only">
-                  <h1>{{ generatedArticle.topic }}</h1>
-                  <p>难度: {{ articleOptions.difficulty }} | 长度: {{ articleOptions.length }}</p>
-                </div>
-                <div
-                  class="article-content"
-                  v-html="renderMarkdown(generatedArticle.originalText)"
-                />
-                
-                <div class="vocabulary-list-append print-only">
-                  <h3>📚 重点词汇</h3>
-                  <table>
+                <div class="ai-words-table-wrapper">
+                  <table class="ai-words-table">
                     <thead>
                       <tr>
+                        <th style="width: 60px;">
+                          选择
+                        </th>
                         <th>单词</th>
                         <th>释义</th>
-                        <th>词性</th>
+                        <th style="width: 120px;">
+                          词性
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr
-                        v-for="word in getSelectedWordsDetails()"
+                        v-for="word in currentWords"
                         :key="word.id"
                       >
-                        <td><strong>{{ word.word }}</strong></td>
-                        <td>{{ word.definition }}</td>
-                        <td>{{ word.partOfSpeech }}</td>
+                        <td>
+                          <input
+                            type="checkbox"
+                            :checked="selectedWordIds.has(word.id)"
+                            @change="toggleWordSelection(word.id)"
+                          >
+                        </td>
+                        <td class="ai-word-text">
+                          {{ word.word }}
+                        </td>
+                        <td class="ai-word-definition">
+                          {{ word.definition }}
+                        </td>
+                        <td class="ai-word-pos">
+                          {{ word.partOfSpeech || '-' }}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div
+                v-else
+                class="ai-empty-hint"
+              >
+                请选择一个单词表后开始生成文章
+              </div>
+            </div>
+
+            <div
+              v-else
+              class="ai-myarticles-panel"
+            >
+              <div class="ai-myarticles-header">
+                <button
+                  class="btn btn-outline btn-sm"
+                  :disabled="isLoadingArticles"
+                  @click="loadMyArticles(true)"
+                >
+                  刷新
+                </button>
+              </div>
+
+              <div
+                v-if="isLoadingArticles"
+                class="loading-state"
+              >
+                <div class="spinner" />
+                <p>正在加载文章列表...</p>
+              </div>
+
+              <div v-else>
+                <div
+                  v-if="myArticles.length === 0"
+                  class="ai-empty-hint"
+                >
+                  暂无文章，先去“生成文章”创建一篇吧
+                </div>
+
+                <div
+                  v-else
+                  class="ai-articles-table-wrapper"
+                >
+                  <table class="ai-articles-table">
+                    <thead>
+                      <tr>
+                        <th>标题</th>
+                        <th style="width: 120px;">
+                          难度
+                        </th>
+                        <th style="width: 120px;">
+                          长度
+                        </th>
+                        <th style="width: 180px;">
+                          创建时间
+                        </th>
+                        <th style="width: 120px;">
+                          操作
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr
+                        v-for="a in myArticles"
+                        :key="a.id"
+                      >
+                        <td class="ai-article-title">
+                          {{ a.topic || '未命名文章' }}
+                        </td>
+                        <td>{{ a.difficulty_level || a.difficultyLevel }}</td>
+                        <td>{{ a.article_length || a.articleLength }}</td>
+                        <td>{{ a.created_at || a.createdAt }}</td>
+                        <td>
+                          <button
+                            class="btn btn-outline btn-sm"
+                            @click="openMyArticle(a.id)"
+                          >
+                            查看
+                          </button>
+                        </td>
                       </tr>
                     </tbody>
                   </table>
@@ -715,6 +741,147 @@
     </div>
     
     <!-- Dialogs -->
+    <div
+      v-if="showSelectedWords"
+      class="modal-overlay"
+      @click.self="showSelectedWords = false"
+    >
+      <div class="modal-card modal-wide">
+        <div class="modal-wide-header">
+          <h3>已选择 {{ selectedWordsDetails.length }} 个单词</h3>
+          <button
+            class="modal-close-btn"
+            @click="showSelectedWords = false"
+          >
+            ×
+          </button>
+        </div>
+
+        <div class="ai-selected-words-table-wrapper">
+          <table class="ai-words-table">
+            <thead>
+              <tr>
+                <th>单词</th>
+                <th>释义</th>
+                <th style="width: 120px;">
+                  词性
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="w in selectedWordsDetails"
+                :key="w.id"
+              >
+                <td class="ai-word-text">
+                  {{ w.word }}
+                </td>
+                <td class="ai-word-definition">
+                  {{ w.definition }}
+                </td>
+                <td class="ai-word-pos">
+                  {{ w.partOfSpeech || '-' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="isGeneratingArticle"
+      class="modal-overlay"
+    >
+      <div class="modal-card modal-small-center">
+        <div class="loading-state">
+          <div class="spinner" />
+          <p>正在生成文章...</p>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="showArticleModal"
+      class="modal-overlay"
+      @click.self="closeArticleModal"
+    >
+      <div class="modal-card modal-xxl">
+        <div class="modal-wide-header">
+          <div class="ai-article-modal-title">
+            {{ activeArticle?.topic || '未命名文章' }}
+          </div>
+          <div class="ai-article-modal-actions">
+            <div class="ai-download">
+              <button
+                class="btn btn-primary btn-sm"
+                @click="toggleDownloadMenu"
+              >
+                📥 下载文章 ▾
+              </button>
+              <div
+                v-if="showDownloadMenu"
+                class="ai-download-menu"
+              >
+                <button
+                  class="ai-download-item"
+                  type="button"
+                  @click="downloadArticle('html')"
+                >
+                  下载 HTML
+                </button>
+                <button
+                  class="ai-download-item"
+                  type="button"
+                  @click="downloadArticle('txt')"
+                >
+                  下载 TXT
+                </button>
+                <button
+                  class="ai-download-item"
+                  type="button"
+                  @click="downloadArticle('pdf')"
+                >
+                  打印/PDF
+                </button>
+              </div>
+            </div>
+            <button
+              class="modal-close-btn"
+              @click="closeArticleModal"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+
+        <div class="ai-article-modal-meta">
+          难度：{{ activeArticle?.difficulty_level || activeArticle?.difficultyLevel }}｜
+          长度：{{ activeArticle?.article_length || activeArticle?.articleLength }}｜
+          使用单词：{{ selectedWordsCountForActive }} 个
+        </div>
+
+        <div
+          id="printable-article"
+          class="ai-article-modal-content"
+        >
+          <div
+            v-for="(p, idx) in articleParagraphPairs"
+            :key="idx"
+            class="ai-article-paragraph-pair"
+          >
+            <div
+              class="ai-article-en"
+              v-html="p.enHtml"
+            />
+            <div class="ai-article-zh">
+              {{ p.zhText }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div
       v-if="showCreateList"
       class="modal-overlay"
@@ -844,7 +1011,6 @@ import request from '@/utils/request'
 import { API_ENDPOINTS } from '@/config/api'
 import AppLayout from '@/components/AppLayout.vue'
 import { useVocabularyStore } from '@/stores/vocabulary'
-import { marked } from 'marked'
 
 const currentView = ref('dashboard') // dashboard, my-words, public-library, ai-articles
 const showMobileSidebar = ref(false)
@@ -864,7 +1030,8 @@ const newWord = ref({
   example: ''
 })
 const publicKeyword = ref('')
-const isGenerating = ref(false)
+const isGeneratingTopics = ref(false)
+const isGeneratingArticle = ref(false)
 const currentPage = ref(1)
 const pageSize = ref(50)
 
@@ -886,15 +1053,20 @@ const goToPage = async (page) => {
 }
 
 // AI Article State
-const articleStep = ref(1)
+const aiArticleTab = ref('generate') // generate | mine
 const selectedWordIds = reactive(new Set())
 const articleOptions = reactive({
-  difficulty: 'Intermediate',
+  difficulty: '商务英语',
   length: 'Medium',
   topic: ''
 })
 const generatedTopics = ref([])
-const generatedArticle = ref(null)
+const showSelectedWords = ref(false)
+const showArticleModal = ref(false)
+const showDownloadMenu = ref(false)
+const activeArticle = ref(null)
+const myArticles = ref([])
+const isLoadingArticles = ref(false)
 
 const vocabularyStore = useVocabularyStore()
 const vocabularyLists = computed(() => vocabularyStore.lists)
@@ -907,6 +1079,49 @@ const isLoading = computed(() => vocabularyStore.isLoading)
 
 const isAllSelected = computed(() => {
   return currentWords.value.length > 0 && selectedWordIds.size === currentWords.value.length
+})
+
+const selectedWordsDetails = computed(() => {
+  return currentWords.value.filter(w => selectedWordIds.has(w.id))
+})
+
+const canGenerateArticle = computed(() => {
+  return !!currentListId.value && selectedWordIds.size > 0 && !isGeneratingArticle.value
+})
+
+const selectedWordsCountForActive = computed(() => {
+  if (!activeArticle.value) return selectedWordIds.size
+  const usedWords = activeArticle.value.used_words || activeArticle.value.usedWords
+  if (Array.isArray(usedWords) && usedWords.length > 0) return usedWords.length
+  const used = activeArticle.value.used_word_ids || activeArticle.value.usedWordIds
+  if (!used) return selectedWordIds.size
+  try {
+    const ids = Array.isArray(used) ? used : JSON.parse(used)
+    return Array.isArray(ids) ? ids.length : selectedWordIds.size
+  } catch (_) {
+    return selectedWordIds.size
+  }
+})
+
+const articleParagraphPairs = computed(() => {
+  const a = activeArticle.value
+  if (!a) return []
+  const original = a.original_text || a.originalText || ''
+  const translated = a.translated_text || a.translatedText || ''
+  const enParts = splitParagraphs(original)
+  const zhParts = splitParagraphs(translated)
+  const metaMap = buildSelectedWordMetaMap()
+  const max = Math.max(enParts.length, zhParts.length)
+  const pairs = []
+  for (let i = 0; i < max; i += 1) {
+    const en = enParts[i] || ''
+    const zh = zhParts[i] || ''
+    pairs.push({
+      enHtml: renderHighlightedParagraph(en, metaMap),
+      zhText: zh
+    })
+  }
+  return pairs
 })
 
 const lastActiveAt = ref(Date.now())
@@ -1007,6 +1222,9 @@ watch(currentView, async (newView) => {
   if (newView === 'public-library' && publicResults.value.length === 0) {
     await searchPublic()
   }
+  if (newView === 'ai-articles') {
+    await initAiArticles()
+  }
 })
 
 watch(currentListId, () => {
@@ -1022,12 +1240,163 @@ const selectList = async (listId) => {
   await vocabularyStore.fetchListProgress(listId)
 }
 
-// AI Wizard Methods
+/**
+ * 初始化AI文章页默认数据
+ */
+const initAiArticles = async () => {
+  markActive()
+  if (!currentListId.value && vocabularyLists.value.length > 0) {
+    currentListId.value = vocabularyLists.value[0].id
+  }
+  if (currentListId.value && !vocabularyStore.wordsByListId[currentListId.value]) {
+    await vocabularyStore.fetchWords(currentListId.value)
+  }
+}
+
+/**
+ * 将文本按空行拆分成段落
+ */
+const splitParagraphs = (text) => {
+  if (!text) return []
+  return String(text)
+    .replace(/\r\n/g, '\n')
+    .split(/\n\s*\n+/)
+    .map(s => s.trim())
+    .filter(Boolean)
+}
+
+/**
+ * HTML转义（用于安全渲染）
+ */
+const escapeHtml = (value) => {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;')
+}
+
+/**
+ * 构建已选单词的元信息映射，用于高亮时的title提示
+ */
+const buildSelectedWordMetaMap = () => {
+  const map = new Map()
+  const usedWords = activeArticle.value?.used_words || activeArticle.value?.usedWords
+  if (Array.isArray(usedWords) && usedWords.length > 0) {
+    for (const uw of usedWords) {
+      const w = uw?.word || null
+      const wordText = uw?.word_text || uw?.wordText || w?.word || ''
+      if (!wordText) continue
+      map.set(String(wordText).toLowerCase(), {
+        word: wordText,
+        definition: w?.definition || '',
+        partOfSpeech: w?.part_of_speech || w?.partOfSpeech || ''
+      })
+    }
+    return map
+  }
+
+  for (const w of selectedWordsDetails.value) {
+    if (!w?.word) continue
+    map.set(String(w.word).toLowerCase(), w)
+  }
+  return map
+}
+
+/**
+ * 将带 **word** 标记的英文段落渲染为高亮HTML
+ */
+const renderHighlightedParagraph = (paragraph, metaMap) => {
+  if (!paragraph) return ''
+  const escaped = escapeHtml(paragraph)
+  const html = escaped.replace(/\*\*(.+?)\*\*/g, (_, rawWord) => {
+    const raw = String(rawWord || '').trim()
+    if (!raw) return ''
+    const normalized = raw.replace(/^[^a-zA-Z]+|[^a-zA-Z]+$/g, '')
+    const displayWord = normalized || raw
+    const key = displayWord.toLowerCase()
+    const meta = metaMap?.get(key)
+    const tip = meta
+      ? `${meta.word}${meta.partOfSpeech ? ` (${meta.partOfSpeech})` : ''}：${meta.definition || ''}`
+      : displayWord
+    return `<span class="vocab-chip" title="${escapeHtml(tip)}">${escapeHtml(displayWord)}</span>`
+  })
+  return `<p>${html}</p>`
+}
+
+/**
+ * 触发浏览器下载
+ */
+const downloadBlob = (filename, content, mime) => {
+  const blob = new Blob([content], { type: mime })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+/**
+ * 构建文章导出HTML（中英对照 + 高亮词）
+ */
+const buildHtmlForArticle = (article) => {
+  const title = article?.topic || '未命名文章'
+  const original = article?.original_text || article?.originalText || ''
+  const translated = article?.translated_text || article?.translatedText || ''
+  const enParts = splitParagraphs(original)
+  const zhParts = splitParagraphs(translated)
+  const metaMap = buildSelectedWordMetaMap()
+  const max = Math.max(enParts.length, zhParts.length)
+  const blocks = []
+  for (let i = 0; i < max; i += 1) {
+    const enHtml = renderHighlightedParagraph(enParts[i] || '', metaMap)
+    const zhText = escapeHtml(zhParts[i] || '')
+    blocks.push(`
+      <div class="pair">
+        <div class="en">${enHtml}</div>
+        <div class="zh">${zhText}</div>
+      </div>
+    `)
+  }
+
+  const difficulty = article?.difficulty_level || article?.difficultyLevel || ''
+  const length = article?.article_length || article?.articleLength || ''
+
+  return `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>${escapeHtml(title)}</title>
+    <style>
+      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; max-width: 980px; margin: 0 auto; padding: 32px; line-height: 1.7; }
+      h1 { margin: 0 0 8px 0; font-size: 28px; }
+      .meta { color: #64748b; margin-bottom: 24px; }
+      .pair { margin: 18px 0; padding: 14px 16px; border: 1px solid #e2e8f0; border-radius: 10px; }
+      .en p { margin: 0; font-size: 16px; }
+      .zh { margin-top: 10px; color: #334155; white-space: pre-wrap; }
+      .vocab-chip { display: inline-block; padding: 0 6px; border-radius: 6px; background: #fef3c7; color: #1d4ed8; font-weight: 700; }
+    </style>
+  </head>
+  <body>
+    <h1>${escapeHtml(title)}</h1>
+    <div class="meta">难度：${escapeHtml(difficulty)} ｜ 长度：${escapeHtml(length)}</div>
+    ${blocks.join('\n')}
+  </body>
+</html>`
+}
+
+// AI Article Methods
 const onListChange = async () => {
   markActive()
   if (currentListId.value) {
     await vocabularyStore.fetchWords(currentListId.value)
     selectedWordIds.clear()
+    generatedTopics.value = []
+    articleOptions.topic = ''
   }
 }
 
@@ -1049,11 +1418,21 @@ const toggleWordSelection = (wordId) => {
   }
 }
 
+/**
+ * 选择AI推荐主题
+ */
+const selectTopic = (topic) => {
+  markActive()
+  articleOptions.topic = topic
+}
+
+/**
+ * 生成主题建议
+ */
 const generateTopics = async () => {
   markActive()
   if (selectedWordIds.size === 0) return
-  isGenerating.value = true
-  articleStep.value = 3
+  isGeneratingTopics.value = true
   
   const words = currentWords.value
     .filter(w => selectedWordIds.has(w.id))
@@ -1064,16 +1443,17 @@ const generateTopics = async () => {
     generatedTopics.value = result.data
   } else {
     alert(result.message)
-    articleStep.value = 2
   }
-  isGenerating.value = false
+  isGeneratingTopics.value = false
 }
 
-const generateArticle = async () => {
+/**
+ * 生成文章并打开结果弹窗
+ */
+const generateArticleNow = async () => {
   markActive()
-  if (!articleOptions.topic) return
-  isGenerating.value = true
-  articleStep.value = 4
+  if (!currentListId.value || selectedWordIds.size === 0) return
+  isGeneratingArticle.value = true
   
   const result = await vocabularyStore.generateArticle({
     listId: currentListId.value,
@@ -1084,177 +1464,89 @@ const generateArticle = async () => {
   })
   
   if (result.success) {
-    generatedArticle.value = result.data
+    activeArticle.value = result.data
+    showArticleModal.value = true
+    showDownloadMenu.value = false
+    await loadMyArticles(true)
   } else {
     alert(result.message)
-    articleStep.value = 3
   }
-  isGenerating.value = false
+  isGeneratingArticle.value = false
 }
 
-const resetArticleGenerator = () => {
+/**
+ * 拉取“我的文章”列表
+ */
+const loadMyArticles = async (force = false) => {
   markActive()
-  articleStep.value = 1
-  selectedWordIds.clear()
-  articleOptions.topic = ''
-  generatedArticle.value = null
+  if (!force && myArticles.value.length > 0) return
+  isLoadingArticles.value = true
+  const result = await vocabularyStore.fetchArticles()
+  if (result.success) {
+    myArticles.value = result.data || []
+  } else {
+    alert(result.message)
+  }
+  isLoadingArticles.value = false
 }
 
-const renderMarkdown = (text) => {
-  if (!text) return ''
-  return marked(text)
-}
-
-const getSelectedWordsDetails = () => {
-  if (!generatedArticle.value) return []
-  // We can filter currentWords if they are still loaded, or parse from usedWordIds if available
-  // Assuming currentWords are still valid for the current list
-  return currentWords.value.filter(w => selectedWordIds.has(w.id))
-}
-
-const downloadHTML = () => {
+/**
+ * 打开历史文章详情
+ */
+const openMyArticle = async (articleId) => {
   markActive()
-  if (!generatedArticle.value) return
-  
-  const words = getSelectedWordsDetails()
-  const wordRows = words.map(w => `
-    <tr>
-      <td><strong>${w.word}</strong></td>
-      <td>${w.definition}</td>
-      <td>${w.partOfSpeech || ''}</td>
-    </tr>
-  `).join('')
-  
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <title>${generatedArticle.value.topic}</title>
-      <style>
-        body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 40px; line-height: 1.6; }
-        h1 { color: #2c3e50; text-align: center; }
-        .meta { text-align: center; color: #7f8c8d; margin-bottom: 30px; }
-        .content { font-size: 18px; margin-bottom: 50px; text-align: justify; }
-        strong { color: #e74c3c; } /* Highlight bold words */
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #bdc3c7; padding: 10px; text-align: left; }
-        th { background-color: #ecf0f1; }
-      /* Dark Mode Refinements */
-:global(body.dark-mode) .stat-card {
-  background-color: var(--bg-secondary);
-  border-color: var(--border-color);
+  if (!articleId) return
+  isGeneratingArticle.value = true
+  const result = await vocabularyStore.fetchArticle(articleId)
+  if (result.success) {
+    activeArticle.value = result.data
+    showArticleModal.value = true
+    showDownloadMenu.value = false
+  } else {
+    alert(result.message)
+  }
+  isGeneratingArticle.value = false
 }
 
-:global(body.dark-mode) .stat-card.primary .stat-icon { background-color: rgba(29, 78, 216, 0.2); color: #60a5fa; }
-:global(body.dark-mode) .stat-card.success .stat-icon { background-color: rgba(16, 185, 129, 0.2); color: #34d399; }
-:global(body.dark-mode) .stat-card.warning .stat-icon { background-color: rgba(245, 158, 11, 0.2); color: #fbbf24; }
-:global(body.dark-mode) .stat-card.info .stat-icon { background-color: rgba(59, 130, 246, 0.2); color: #60a5fa; }
-
-:global(body.dark-mode) .review-card-item,
-:global(body.dark-mode) .word-card-item,
-:global(body.dark-mode) .list-item,
-:global(body.dark-mode) .article-display-area,
-:global(body.dark-mode) .modal-card,
-:global(body.dark-mode) .topic-card {
-  background-color: var(--bg-secondary);
-  border-color: var(--border-color);
-  color: var(--text-primary);
-}
-
-:global(body.dark-mode) .nav-item:hover {
-  background-color: var(--bg-tertiary);
-}
-
-:global(body.dark-mode) .nav-item.active {
-  background-color: var(--chip-bg);
-  color: var(--primary-light);
-}
-
-:global(body.dark-mode) .status-tag.new { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
-:global(body.dark-mode) .status-tag.learning { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
-:global(body.dark-mode) .status-tag.mastered { background: rgba(16, 185, 129, 0.2); color: #34d399; }
-
-:global(body.dark-mode) .input, 
-:global(body.dark-mode) .textarea,
-:global(body.dark-mode) .select-input,
-:global(body.dark-mode) .select-sm {
-  background-color: var(--bg-tertiary);
-  border-color: var(--border-color);
-  color: var(--text-primary);
-}
-
-:global(body.dark-mode) .btn-secondary {
-  background-color: var(--bg-tertiary);
-  color: var(--text-primary);
-  border-color: var(--border-color);
-}
-
-:global(body.dark-mode) .btn-outline {
-  border-color: var(--border-color);
-  color: var(--text-secondary);
-}
-
-:global(body.dark-mode) .btn-outline:hover {
-  background-color: var(--bg-tertiary);
-  border-color: var(--primary-light);
-  color: var(--primary-light);
-}
-
-:global(body.dark-mode) .step-actions {
-  background-color: var(--bg-secondary);
-  border-color: var(--border-color);
-}
-
-:global(body.dark-mode) .vocabulary-list-append th {
-  background-color: var(--bg-tertiary);
-}
-
-:global(body.dark-mode) .article-content :deep(strong) {
-  color: #60a5fa;
-}
-
-:global(body.dark-mode) .search-tips {
-  color: var(--text-secondary);
-}
-
-:global(body.dark-mode) .pagination-info,
-:global(body.dark-mode) .pagination-page {
-  color: var(--text-secondary);
-}
-</style>
-    </head>
-    <body>
-      <h1>${generatedArticle.value.topic}</h1>
-      <div class="meta">Difficulty: ${articleOptions.difficulty} | Length: ${articleOptions.length}</div>
-      <div class="content">
-        ${renderMarkdown(generatedArticle.value.originalText)}
-      </div>
-      <div class="vocabulary">
-        <h3>Vocabulary List</h3>
-        <table>
-          <thead><tr><th>Word</th><th>Definition</th><th>Part of Speech</th></tr></thead>
-          <tbody>${wordRows}</tbody>
-        </table>
-      </div>
-    </body>
-    </html>
-  `
-  
-  const blob = new Blob([htmlContent], { type: 'text/html' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `${generatedArticle.value.topic}.html`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
-}
-
-const downloadPDF = () => {
+/**
+ * 关闭文章弹窗
+ */
+const closeArticleModal = () => {
   markActive()
-  window.print()
+  showDownloadMenu.value = false
+  showArticleModal.value = false
+  activeArticle.value = null
+}
+
+/**
+ * 切换下载菜单显示状态
+ */
+const toggleDownloadMenu = () => {
+  markActive()
+  showDownloadMenu.value = !showDownloadMenu.value
+}
+
+/**
+ * 下载文章（HTML/TXT）或打印（PDF）
+ */
+const downloadArticle = (type) => {
+  markActive()
+  if (!activeArticle.value) return
+  showDownloadMenu.value = false
+  if (type === 'pdf') {
+    window.print()
+    return
+  }
+  const title = activeArticle.value.topic || '未命名文章'
+  if (type === 'txt') {
+    const original = activeArticle.value.original_text || activeArticle.value.originalText || ''
+    const translated = activeArticle.value.translated_text || activeArticle.value.translatedText || ''
+    const content = `${title}\n\n${original}\n\n---\n\n${translated}\n`
+    downloadBlob(`${title}.txt`, content, 'text/plain;charset=utf-8')
+    return
+  }
+  const html = buildHtmlForArticle(activeArticle.value)
+  downloadBlob(`${title}.html`, html, 'text/html;charset=utf-8')
 }
 
 // Other existing methods
@@ -1395,7 +1687,8 @@ const removeList = async (listId) => {
   }
   if (currentListId.value === listId) {
     currentListId.value = null
-    generatedArticle.value = null
+    activeArticle.value = null
+    showArticleModal.value = false
     publicKeyword.value = ''
   }
 }

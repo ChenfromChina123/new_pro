@@ -1095,20 +1095,32 @@ const scrollToBottom = () => {
   position: absolute;
   top: 8px;
   right: 8px;
-  background-color: var(--bg-secondary); /* 与页面背景色一致 */
+  background-color: rgba(255, 255, 255, 0.9); /* 半透明白色背景 */
   color: var(--text-primary);
   border: 1px solid var(--border-color); /* 添加边框 */
-  border-radius: var(--border-radius-sm);
-  padding: 6px 12px;
-  font-size: 12px;
+  border-radius: var(--border-radius-md); /* 使用更大的圆角 */
+  padding: 8px 16px; /* 增加内边距 */
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   opacity: 0;
   z-index: 100;
   /* 确保按钮位于右上角 */
   margin: 0;
   transform: none;
   box-sizing: border-box;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 深色模式下的复制按钮样式 */
+body.dark-mode .copy-button {
+  background-color: rgba(31, 41, 55, 0.95); /* 深色背景 */
+  color: var(--text-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 /* 确保代码块是相对定位的容器 */
@@ -1132,31 +1144,38 @@ const scrollToBottom = () => {
   background-color: var(--primary-color);
   color: white;
   border-color: var(--primary-color);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   box-shadow: var(--shadow-md);
+  opacity: 1 !important;
 }
 
 .copy-button:active {
   transform: translateY(0);
   box-shadow: var(--shadow-sm);
+  background-color: var(--primary-dark);
+  border-color: var(--primary-dark);
 }
 
 .copy-button.copied {
   background-color: var(--success-color);
   color: white;
   border-color: var(--success-color);
-  animation: pulse 0.5s ease-in-out;
+  animation: copiedPulse 0.6s ease-in-out;
+  box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.2);
 }
 
-@keyframes pulse {
+@keyframes copiedPulse {
   0% {
     transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.4);
   }
   50% {
-    transform: scale(1.1);
+    transform: scale(1.05);
+    box-shadow: 0 0 0 8px rgba(74, 222, 128, 0);
   }
   100% {
     transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0);
   }
 }
 
@@ -1219,19 +1238,28 @@ const scrollToBottom = () => {
 .message-copy-button {
   position: absolute;
   bottom: -24px;
-  background-color: rgba(243, 244, 246, 0.8); /* 浅灰色 */
-  color: var(--text-tertiary);
+  background-color: rgba(255, 255, 255, 0.9); /* 半透明白色背景 */
+  color: var(--text-primary);
   border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-sm);
-  padding: 6px 12px;
-  font-size: 12px;
+  border-radius: var(--border-radius-md); /* 使用更大的圆角 */
+  padding: 8px 16px; /* 增加内边距 */
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   opacity: 0;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   z-index: 10;
+  box-shadow: var(--shadow-sm);
+}
+
+/* 深色模式下的消息复制按钮样式 */
+body.dark-mode .message-copy-button {
+  background-color: rgba(31, 41, 55, 0.95); /* 深色背景 */
+  color: var(--text-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 /* AI消息（左对齐）的复制按钮在下方靠左，与消息内容左边界对齐 */
@@ -1249,9 +1277,19 @@ const scrollToBottom = () => {
 }
 
 .message-copy-button:hover {
-  background-color: var(--bg-tertiary);
-  color: var(--text-primary);
+  background-color: var(--primary-color);
+  color: white;
   border-color: var(--primary-color);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+  opacity: 1 !important;
+}
+
+.message-copy-button:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+  background-color: var(--primary-dark);
+  border-color: var(--primary-dark);
 }
 
 /* 复制成功状态样式 */
@@ -1259,19 +1297,8 @@ const scrollToBottom = () => {
   background-color: var(--success-color);
   color: white;
   border-color: var(--success-color);
-  animation: pulse 0.5s ease-in-out;
-}
-
-@keyframes pulse {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
-  100% {
-    transform: scale(1);
-  }
+  animation: copiedPulse 0.6s ease-in-out;
+  box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.2);
 }
 
 .message {
