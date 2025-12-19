@@ -227,17 +227,23 @@ public class CloudDiskService {
         String originalFilename = file.getOriginalFilename();
         if (originalFilename == null) originalFilename = "unknown_file";
         
-        // 规范化 folderPath
-        String normalizedFolderPath = (folderPath != null && !folderPath.isEmpty()) 
+        // 规范化 folderPath (用于保存到数据库)
+        String saveFolderPath = (folderPath != null && !folderPath.isEmpty()) 
             ? (folderPath.startsWith("/") ? folderPath : "/" + folderPath) 
             : "/";
         // 确保不以 / 结尾（除了根目录）
-        if (normalizedFolderPath.length() > 1 && normalizedFolderPath.endsWith("/")) {
-            normalizedFolderPath = normalizedFolderPath.substring(0, normalizedFolderPath.length() - 1);
+        if (saveFolderPath.length() > 1 && saveFolderPath.endsWith("/")) {
+            saveFolderPath = saveFolderPath.substring(0, saveFolderPath.length() - 1);
         }
 
-        // 检查文件是否存在
-        Optional<UserFile> existingFileOpt = userFileRepository.findByUser_IdAndFolderPathAndFilename(userId, normalizedFolderPath, originalFilename);
+        // 检查文件是否存在 (使用更稳健的内存匹配，兼容不同的路径格式)
+        String checkPath = normalizePath(folderPath);
+        List<UserFile> allFiles = userFileRepository.findByUser_IdOrderByUploadTimeDesc(userId);
+        
+        Optional<UserFile> existingFileOpt = allFiles.stream()
+            .filter(f -> normalizePath(f.getFolderPath()).equals(checkPath) && 
+                         (f.getFilename() != null && f.getFilename().equals(originalFilename)))
+            .findFirst();
 
         if (existingFileOpt.isPresent()) {
             if ("OVERWRITE".equalsIgnoreCase(conflictStrategy)) {
@@ -253,17 +259,18 @@ public class CloudDiskService {
                 String extension = originalFilename.contains(".") ? originalFilename.substring(originalFilename.lastIndexOf(".")) : "";
                 String uniqueFilename = UUID.randomUUID().toString() + extension;
                 
-                String userDiskPath = getCloudDiskAbsolutePath() + "/" + userId + normalizedFolderPath;
+                String userDiskPath = getCloudDiskAbsolutePath() + "/" + userId + saveFolderPath;
                 new File(userDiskPath).mkdirs();
                 
                 String filePath = userDiskPath + "/" + uniqueFilename;
                 Files.copy(file.getInputStream(), Paths.get(filePath), StandardCopyOption.REPLACE_EXISTING);
                 
                 // 更新记录
-                String fileRelPath = normalizedFolderPath.equals("/") ? ("/" + uniqueFilename) : (normalizedFolderPath + "/" + uniqueFilename);
+                String fileRelPath = saveFolderPath.equals("/") ? ("/" + uniqueFilename) : (saveFolderPath + "/" + uniqueFilename);
                 existingFile.setFilepath(fileRelPath);
                 existingFile.setFileSize(file.getSize());
                 existingFile.setUploadTime(LocalDateTime.now());
+                existingFile.setFolderPath(saveFolderPath); // 确保更新folderPath
                 
                 String mime = file.getContentType();
                 if (mime == null || mime.isEmpty()) {
@@ -280,7 +287,16 @@ public class CloudDiskService {
                 
                 int counter = 1;
                 String newName = originalFilename;
-                while (userFileRepository.findByUser_IdAndFolderPathAndFilename(userId, normalizedFolderPath, newName).isPresent()) {
+                
+                // 在内存中检查重名
+                while (true) {
+                    String candidate = newName;
+                    boolean exists = allFiles.stream().anyMatch(f -> 
+                        normalizePath(f.getFolderPath()).equals(checkPath) && 
+                        (f.getFilename() != null && f.getFilename().equals(candidate))
+                    );
+                    if (!exists) break;
+                    
                     newName = nameWithoutExt + "(" + counter + ")" + ext;
                     counter++;
                 }
@@ -294,7 +310,7 @@ public class CloudDiskService {
         String uniqueFilename = UUID.randomUUID().toString() + extension;
         
         // 保存物理文件
-        String userDiskPath = getCloudDiskAbsolutePath() + "/" + userId + normalizedFolderPath;
+        String userDiskPath = getCloudDiskAbsolutePath() + "/" + userId + saveFolderPath;
         new File(userDiskPath).mkdirs();
         
         String filePath = userDiskPath + "/" + uniqueFilename;
@@ -306,9 +322,9 @@ public class CloudDiskService {
         userFile.setUser(user);
         userFile.setFilename(originalFilename);
         userFile.setOriginalFilename(originalFilename);
-        String fileRelPath = normalizedFolderPath.equals("/") ? ("/" + uniqueFilename) : (normalizedFolderPath + "/" + uniqueFilename);
+        String fileRelPath = saveFolderPath.equals("/") ? ("/" + uniqueFilename) : (saveFolderPath + "/" + uniqueFilename);
         userFile.setFilepath(fileRelPath);
-        userFile.setFolderPath(normalizedFolderPath); // 显式设置 folderPath
+        userFile.setFolderPath(saveFolderPath); // 显式设置 folderPath
 
         userFile.setFileSize(file.getSize());
         String contentType = file.getContentType();
