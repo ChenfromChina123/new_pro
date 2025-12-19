@@ -1,30 +1,49 @@
 <template>
-  <div v-if="visible" class="modal-overlay">
+  <div
+    v-if="visible"
+    class="modal-overlay"
+  >
     <div class="modal-content">
       <h3>{{ isFolder ? '文件夹冲突' : '文件冲突' }}</h3>
       <div class="conflict-info">
         <p>{{ isFolder ? '检测到同名文件夹：' : '检测到同名文件：' }}</p>
         <ul class="file-list">
-          <li v-for="file in files" :key="file.name">
+          <li
+            v-for="file in files"
+            :key="file.name"
+          >
             <span class="file-icon">{{ (file.isFolder || isFolder) ? '📁' : '📄' }}</span>
             <span class="file-name">{{ file.name }}</span>
             <span class="file-details">({{ formatSize(file.size) }})</span>
           </li>
         </ul>
-        <p class="warning" v-if="isFolder">注意：文件夹覆盖将合并内容。</p>
+        <p
+          v-if="isFolder"
+          class="warning"
+        >
+          注意：文件夹覆盖将合并内容。
+        </p>
       </div>
       
       <div class="actions">
-        <div class="option" @click="selectStrategy('RENAME')" :class="{ active: strategy === 'RENAME' }">
-          <div class="radio"></div>
+        <div
+          class="option"
+          :class="{ active: strategy === 'RENAME' }"
+          @click="selectStrategy('RENAME')"
+        >
+          <div class="radio" />
           <div class="text">
             <strong>智能重命名</strong>
             <small>保留两个{{ isFolder ? '文件夹' : '文件' }}，新{{ isFolder ? '文件夹' : '文件' }}将自动重命名 (例如: {{ isFolder ? 'folder(1)' : 'file(1).txt' }})</small>
           </div>
         </div>
         
-        <div class="option" @click="selectStrategy('OVERWRITE')" :class="{ active: strategy === 'OVERWRITE' }">
-          <div class="radio"></div>
+        <div
+          class="option"
+          :class="{ active: strategy === 'OVERWRITE' }"
+          @click="selectStrategy('OVERWRITE')"
+        >
+          <div class="radio" />
           <div class="text">
             <strong>覆盖</strong>
             <small>替换现有{{ isFolder ? '文件夹' : '文件' }} (不可撤销)</small>
@@ -33,13 +52,29 @@
       </div>
 
       <div class="footer">
-        <label class="checkbox-label" v-if="files.length > 1 || batchMode">
-          <input type="checkbox" v-model="applyToAll">
+        <label
+          v-if="files.length > 1 || batchMode"
+          class="checkbox-label"
+        >
+          <input
+            v-model="applyToAll"
+            type="checkbox"
+          >
           应用到所有冲突文件
         </label>
         <div class="buttons">
-          <button class="btn btn-secondary" @click="$emit('cancel')">取消</button>
-          <button class="btn btn-primary" @click="confirm">确定</button>
+          <button
+            class="btn btn-secondary"
+            @click="$emit('cancel')"
+          >
+            取消
+          </button>
+          <button
+            class="btn btn-primary"
+            @click="confirm"
+          >
+            确定
+          </button>
         </div>
       </div>
     </div>
