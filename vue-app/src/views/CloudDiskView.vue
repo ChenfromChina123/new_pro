@@ -48,7 +48,7 @@
               <div
                 class="folder-item root-folder"
                 :class="{ active: rootFolder.folderPath === cloudDiskStore.currentFolder }"
-                @click="selectFolder(rootFolder.folderPath)"
+                @click="selectFolder(rootFolder.folderPath, $event)"
               >
                 <div class="folder-header">
                   <span 
@@ -76,7 +76,7 @@
                     :key="folder.id"
                     class="folder-item"
                     :class="{ active: folder.folderPath === cloudDiskStore.currentFolder }"
-                    @click="selectFolder(folder.folderPath)"
+                    @click="selectFolder(folder.folderPath, $event)"
                   >
                     <div class="folder-header">
                       <span 
@@ -111,7 +111,7 @@
                         :key="childFolder.id"
                         class="folder-item"
                         :class="{ active: childFolder.folderPath === cloudDiskStore.currentFolder }"
-                        @click="selectFolder(childFolder.folderPath)"
+                        @click="selectFolder(childFolder.folderPath, $event)"
                       >
                         <div class="folder-header">
                           <span 
@@ -146,7 +146,7 @@
                             :key="grandchildFolder.id"
                             class="folder-item"
                             :class="{ active: grandchildFolder.folderPath === cloudDiskStore.currentFolder }"
-                            @click="selectFolder(grandchildFolder.folderPath)"
+                            @click="selectFolder(grandchildFolder.folderPath, $event)"
                           >
                             <div class="folder-header">
                               <span class="folder-toggle empty" />
@@ -636,7 +636,10 @@ onMounted(async () => {
   await cloudDiskStore.fetchFiles()
 })
 
-const selectFolder = async (folderPath) => {
+const selectFolder = async (folderPath, event) => {
+  if (event && typeof event.stopPropagation === 'function') {
+    event.stopPropagation()
+  }
   // 查找对应folderPath的文件夹id
   // 注意：这里我们不再传递folderId，而是传递folderPath
   // 后端需要修改为接受folderPath参数，或者前端需要先根据folderPath查找folderId
@@ -1663,4 +1666,3 @@ input[type="checkbox"] {
   }
 }
 </style>
-
