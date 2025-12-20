@@ -9,6 +9,7 @@ import com.aispring.repository.UserRepository;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import lombok.NoArgsConstructor;
 import com.aispring.config.StorageProperties;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -79,11 +80,17 @@ public class CloudDiskService {
     }
 
     @Data
-    @AllArgsConstructor
+    @NoArgsConstructor
     public static class QuotaInfo {
         private long usedSize;
         private long limitSize;
         private boolean isAdmin;
+
+        public QuotaInfo(long usedSize, long limitSize, boolean isAdmin) {
+            this.usedSize = usedSize;
+            this.limitSize = limitSize;
+            this.isAdmin = isAdmin;
+        }
     }
 
     /**
