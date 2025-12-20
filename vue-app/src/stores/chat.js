@@ -10,6 +10,7 @@ export const useChatStore = defineStore('chat', () => {
   const currentSessionId = ref(null)
   const messages = ref([])
   const isLoading = ref(false)
+  const abortController = ref(null)
   const selectedModel = ref(localStorage.getItem('selectedModel') || 'deepseek-chat')
 
   const normalizeStreamChunk = (chunk) => {
@@ -158,6 +159,7 @@ export const useChatStore = defineStore('chat', () => {
   // 发送消息（流式）
   async function sendMessage(content, onChunk) {
     isLoading.value = true
+    abortController.value = new AbortController()
     
     // 添加用户消息
     const userMessage = {
@@ -185,6 +187,7 @@ export const useChatStore = defineStore('chat', () => {
       const authStore = useAuthStore()
       const response = await fetch(`${request.defaults.baseURL}${API_ENDPOINTS.chat.askStream}`, {
         method: 'POST',
+        signal: abortController.value.signal,
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'text/event-stream',
@@ -291,6 +294,14 @@ export const useChatStore = defineStore('chat', () => {
       
       return { success: true }
     } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log('Generation aborted by user')
+        // 被用户中止时，也要尝试保存已生成的内容
+        if (activeAiMessage.content || activeAiMessage.reasoning_content) {
+          await saveMessages(userMessage, activeAiMessage)
+        }
+        return { success: true, aborted: true }
+      }
       console.error('Send message error:', error)
       messages.value.pop() // 移除AI消息占位符
       return { 
@@ -302,6 +313,15 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
   
+  // 停止生成
+  function stopGeneration() {
+    if (abortController.value) {
+      abortController.value.abort()
+      abortController.value = null
+    }
+    isLoading.value = false
+  }
+
   // 保存消息记录
   async function saveMessages(userMessage, aiMessage) {
     try {
@@ -349,6 +369,7 @@ export const useChatStore = defineStore('chat', () => {
     createSession,
     fetchSessionMessages,
     sendMessage,
+    stopGeneration,
     deleteSession,
     setModel
   }
