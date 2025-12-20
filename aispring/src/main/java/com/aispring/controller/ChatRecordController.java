@@ -1,6 +1,5 @@
 package com.aispring.controller;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
 import com.aispring.entity.ChatRecord;
 import com.aispring.service.ChatRecordService;
 import com.aispring.dto.response.MessageResponse;
@@ -46,16 +45,11 @@ public class ChatRecordController {
     
     @Data
     public static class SaveRecordRequest {
-        @JsonAlias({"session_id"})
-        private String sessionId;
-        
-        @JsonAlias({"user_message"})
-        private String userMessage;
-        
-        @JsonAlias({"ai_response"})
-        private String aiResponse;
-        
+        private String session_id;
+        private String user_message;
+        private String ai_response;
         private String model;
+        private String sessionId;
         private String role; // "user" or "assistant"
         private String content;
         private Long timestamp;
@@ -78,12 +72,12 @@ public class ChatRecordController {
         // 获取当前用户ID
         String userId = customUserDetails.getUser().getId().toString();
         
-        String session = request.getSessionId();
+        String session = request.getSession_id() != null ? request.getSession_id() : request.getSessionId();
         String model = request.getModel();
         
-        if (request.getUserMessage() != null || request.getAiResponse() != null) {
+        if (request.getUser_message() != null || request.getAi_response() != null) {
             ChatRecord userRecord = chatRecordService.createChatRecord(
-                request.getUserMessage(),
+                request.getUser_message(),
                 1,
                 userId,
                 session,
@@ -91,7 +85,7 @@ public class ChatRecordController {
                 "completed"
             );
             ChatRecord aiRecord = chatRecordService.createChatRecord(
-                request.getAiResponse(),
+                request.getAi_response(),
                 2,
                 userId,
                 session,

@@ -210,19 +210,11 @@ const messagesContainer = ref(null)
 const userAvatarUrl = ref(null)
 
 /**
- * 构建公共资源 URL；优先从 `/` (public 目录) 获取
- */
-const buildPublicUrl = (path) => {
-  if (!path) return ''
-  return path.startsWith('/') ? path : `/${path}`
-}
-
-const deepseekAvatarUrl = buildPublicUrl('image/deepseek-image.png')
-const doubaoAvatarUrl = buildPublicUrl('image/doubao-imge.png')
-
-/**
  * 解析并返回消息头像图片地址；无可用图片时返回 `null` 以回退到默认图标
  */
+const deepseekAvatarUrl = new URL('../../static/image/deepseek-image.png', import.meta.url).href
+const doubaoAvatarUrl = new URL('../../static/image/doubao-imge.png', import.meta.url).href
+
 const getMessageAvatarSrc = (message) => {
   if (!message) return null
   if (message.role === 'user') {
