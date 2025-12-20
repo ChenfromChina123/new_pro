@@ -22,24 +22,23 @@
       <span class="folder-icon">{{ isRoot ? '📂' : '📁' }}</span>
       <span class="folder-name">{{ displayName }}</span>
       
-      <!-- 重命名按钮 -->
-      <button
-        v-if="canDelete"
-        class="folder-rename-btn"
-        title="重命名文件夹"
-        @click.stop="renameFolderAction(folder)"
-      >
-        ✏️
-      </button>
-
-      <button
-        v-if="canDelete"
-        class="folder-delete-btn"
-        title="删除文件夹"
-        @click.stop="deleteFolderAction(folder)"
-      >
-        🗑️
-      </button>
+      <!-- 操作按钮 -->
+      <div v-if="canDelete" class="folder-actions">
+        <button
+          class="folder-rename-btn"
+          title="重命名文件夹"
+          @click.stop="renameFolderAction(folder)"
+        >
+          ✏️
+        </button>
+        <button
+          class="folder-delete-btn"
+          title="删除文件夹"
+          @click.stop="deleteFolderAction(folder)"
+        >
+          🗑️
+        </button>
+      </div>
     </div>
 
     <Transition
@@ -294,6 +293,27 @@ const afterLeave = (el) => {
   letter-spacing: 0.2px;
 }
 
+.folder-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background-color: var(--bg-primary);
+  padding: 2px 4px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  opacity: 0;
+  transform: translateX(10px);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  border: 1px solid var(--bg-tertiary);
+}
+
+.folder-header:hover .folder-actions {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: all;
+}
+
 .folder-delete-btn,
 .folder-rename-btn {
   background: none;
@@ -301,24 +321,18 @@ const afterLeave = (el) => {
   color: var(--text-tertiary);
   cursor: pointer;
   font-size: 14px;
-  opacity: 0.6;
-  transition: all 0.2s ease;
-  padding: 4px;
+  padding: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.folder-header:hover .folder-delete-btn,
-.folder-header:hover .folder-rename-btn {
-  opacity: 1;
+  transition: all 0.2s ease;
+  border-radius: 4px;
 }
 
 .folder-delete-btn:hover,
 .folder-rename-btn:hover {
   color: var(--primary-color);
-  background-color: var(--bg-secondary);
-  border-radius: 6px;
+  background-color: var(--bg-tertiary);
 }
 
 .folder-delete-btn:hover {
