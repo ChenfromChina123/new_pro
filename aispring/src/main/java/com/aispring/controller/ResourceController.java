@@ -3,13 +3,9 @@ package com.aispring.controller;
 import com.aispring.dto.request.ResourceRequest;
 import com.aispring.dto.response.ApiResponse;
 import com.aispring.entity.Resource;
-import com.aispring.service.CategoryService;
 import com.aispring.service.ResourceService;
-import com.aispring.service.UserFavoriteService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,8 +20,6 @@ import java.util.List;
 public class ResourceController {
     
     private final ResourceService resourceService;
-    private final CategoryService categoryService;
-    private final UserFavoriteService userFavoriteService;
     
     /**
      * 添加资源

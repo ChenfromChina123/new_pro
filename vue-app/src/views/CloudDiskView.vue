@@ -786,10 +786,6 @@ const toggleSelectAll = () => {
   background-color: var(--bg-secondary);
   box-shadow: var(--shadow-md);
 }
-  border-color: var(--border-color);
-  color: var(--text-primary);
-  transform: none;
-}
 
 .toolbar .btn-action {
   background-color: var(--bg-secondary);

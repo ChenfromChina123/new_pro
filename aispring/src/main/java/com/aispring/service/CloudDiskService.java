@@ -463,7 +463,6 @@ public class CloudDiskService {
             String targetPrefix = targetPath.endsWith("/") ? targetPath : targetPath + "/";
             
             // 1. 移动子文件夹
-            List<UserFolder> subFolders = userFolderRepository.findByUser_IdAndFolderPathStartingWith(userId, sourcePrefix);
             // 排序以确保先处理父级？其实只需要更新路径即可
             // 注意：如果目标文件夹下也有同名子文件夹，这里会产生深层冲突。
             // 简化处理：如果目标存在同名子文件夹，则再次递归合并？
@@ -520,7 +519,6 @@ public class CloudDiskService {
                 }
                 f.setFolderPath(targetPath);
                 // filepath 也需要更新
-                String oldRel = f.getFilepath(); // /old/a.txt
                 String fileName = f.getFilename();
                 String newRel = (targetPath.endsWith("/") ? targetPath : targetPath + "/") + fileName; // /target/a.txt
                 f.setFilepath(newRel);
@@ -576,7 +574,6 @@ public class CloudDiskService {
     
     private void mergeFolderRecords(Long userId, String sourcePath, String targetPath) {
         // 处理直接子文件夹
-        List<UserFolder> sourceSubs = userFolderRepository.findByUser_IdAndFolderPathStartingWith(userId, sourcePath.endsWith("/") ? sourcePath : sourcePath + "/");
         // 这里的 findBy... 会返回所有后代，我们需要过滤出直接子级
         // 或者简单点，递归。
         

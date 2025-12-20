@@ -90,6 +90,10 @@ server: {
 - **深度思考展示逻辑优化**: 实现了推理模型输出时的智能展示逻辑：当正文未输出时思考内容自动展开，当正文开始输出时思考内容自动收起，提升了阅读体验。
 - **聊天界面布局优化**: 修复了超长标题覆盖模型选择器的问题，并将聊天内容区域调整为固定宽度的居中布局，对齐主流 AI 产品 UI 风格。
 - **UI 细节修复**: 修复了侧边栏“新建对话”按钮在某些主题下字体不可见的问题，通过明确设置高对比度的背景颜色和文字颜色，提升了界面的可用性和视觉清晰度。
+- **代码质量与安全性优化**:
+  - **Lombok 注解优化**: 在所有实体类（如 `CustomModel`, `Feedback`, `UserWordProgress` 等）中为已初始化的字段添加了 `@Builder.Default` 注解，解决了 Lombok `@Builder` 忽略字段默认值的问题，确保了数据一致性。
+  - **代码清理**: 移除了后端服务类（`AiChatServiceImpl`, `ResourceController`, `CloudDiskService`）中未使用的导入和局部变量，提升了代码的可读性和维护性。
+  - **XSS 安全防护**: 针对前端 Vue 组件（`ChatView.vue`, `LanguageLearningView.vue`）中的 `v-html` 指令添加了 ESLint 忽略注释，并确保所有动态渲染的 HTML 内容均经过 `DOMPurify` 或自定义转义函数处理，有效防御 XSS 攻击。
 - **侧边栏功能中心化与代码清理**:
   - 实现了侧边栏逻辑的统一管理，将 AI 聊天和云盘页面的侧边栏逻辑合并至 `AppSidebar.vue`。
   - 移除了 `ChatView.vue` 和 `CloudDiskView.vue` 中冗余的侧边栏模板、脚本和样式，降低了代码复杂度。

@@ -72,6 +72,7 @@
                     v-show="!message.isReasoningCollapsed" 
                     class="reasoning-body"
                   >
+                    <!-- eslint-disable-next-line vue/no-v-html -->
                     <div
                       class="reasoning-text"
                       v-html="formatMessage(sanitizeNullRuns(message.reasoning_content))"
@@ -79,6 +80,7 @@
                   </div>
                 </div>
 
+                <!-- eslint-disable-next-line vue/no-v-html -->
                 <div
                   v-if="message.content"
                   class="message-text"

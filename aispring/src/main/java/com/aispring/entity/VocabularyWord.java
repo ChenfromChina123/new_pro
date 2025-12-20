@@ -47,6 +47,7 @@ public class VocabularyWord {
     @Column(name = "example", columnDefinition = "TEXT")
     private String example;
     
+    @Builder.Default
     @Column(name = "language", length = 10, nullable = false)
     private String language = "en";
     

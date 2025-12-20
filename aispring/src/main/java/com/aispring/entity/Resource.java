@@ -26,6 +26,7 @@ public class Resource {
     @Column(name = "user_id", nullable = false)
     private Long userId;
     
+    @Builder.Default
     @Column(name = "type", length = 50, nullable = false)
     private String type = "article";
     
@@ -42,6 +43,7 @@ public class Resource {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
     
+    @Builder.Default
     @Column(name = "is_public", nullable = false, columnDefinition = "int default 1")
     private Integer isPublic = 1;  // 0: 私有, 1: 公共
     

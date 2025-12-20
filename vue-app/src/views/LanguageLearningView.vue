@@ -933,6 +933,7 @@
             :key="idx"
             class="ai-article-paragraph-pair"
           >
+            <!-- eslint-disable-next-line vue/no-v-html -->
             <div
               class="ai-article-en"
               v-html="p.enHtml"

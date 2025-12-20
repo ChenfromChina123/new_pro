@@ -135,7 +135,7 @@ public class CustomModelController {
             @AuthenticationPrincipal CustomUserDetails customUserDetails) {
         
         Long userId = customUserDetails.getUser().getId();
-        CustomModel model = customModelService.getModelById(userId, modelId);
+        customModelService.getModelById(userId, modelId);
         
         // TODO: 实现模型测试逻辑
         

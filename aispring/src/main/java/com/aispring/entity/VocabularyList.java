@@ -38,12 +38,15 @@ public class VocabularyList {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
     
+    @Builder.Default
     @Column(name = "language", length = 10, nullable = false)
     private String language = "en";  // 语言代码：en, zh, ja, ko, fr, de, es等
     
+    @Builder.Default
     @Column(name = "is_preset", nullable = false)
     private Boolean isPreset = false;
     
+    @Builder.Default
     @Column(name = "is_public", nullable = false)
     private Boolean isPublic = false;
     

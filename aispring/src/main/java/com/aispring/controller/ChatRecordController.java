@@ -10,7 +10,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -76,7 +75,7 @@ public class ChatRecordController {
         String model = request.getModel();
         
         if (request.getUser_message() != null || request.getAi_response() != null) {
-            ChatRecord userRecord = chatRecordService.createChatRecord(
+            chatRecordService.createChatRecord(
                 request.getUser_message(),
                 1,
                 userId,
@@ -84,7 +83,7 @@ public class ChatRecordController {
                 model,
                 "completed"
             );
-            ChatRecord aiRecord = chatRecordService.createChatRecord(
+            chatRecordService.createChatRecord(
                 request.getAi_response(),
                 2,
                 userId,
@@ -95,7 +94,7 @@ public class ChatRecordController {
         } else {
             Integer senderType = (request.getRole() != null && request.getRole().equalsIgnoreCase("user")) ? 1 : 2;
             String content = request.getContent();
-            ChatRecord record = chatRecordService.createChatRecord(
+            chatRecordService.createChatRecord(
                 content,
                 senderType,
                 userId,

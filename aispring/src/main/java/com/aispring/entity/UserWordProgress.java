@@ -36,6 +36,7 @@ public class UserWordProgress {
     @Column(name = "word_id", nullable = false)
     private Integer wordId;
     
+    @Builder.Default
     @Column(name = "mastery_level", nullable = false)
     private Integer masteryLevel = 0;  // 0-5 表示掌握程度
     
@@ -45,9 +46,11 @@ public class UserWordProgress {
     @Column(name = "next_review_date")
     private LocalDateTime nextReviewDate;
     
+    @Builder.Default
     @Column(name = "review_count", nullable = false)
     private Integer reviewCount = 0;
     
+    @Builder.Default
     @Column(name = "is_difficult", nullable = false)
     private Boolean isDifficult = false;
     
