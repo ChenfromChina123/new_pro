@@ -64,10 +64,16 @@
                   class="model-select"
                 >
                   <option value="deepseek-chat">
-                    DeepSeek
+                    DeepSeek Chat
+                  </option>
+                  <option value="deepseek-reasoner">
+                    DeepSeek Reasoner
                   </option>
                   <option value="doubao">
                     豆包
+                  </option>
+                  <option value="doubao-reasoner">
+                    豆包-reasoner
                   </option>
                 </select>
               </div>
@@ -117,10 +123,47 @@
               </div>
               <div class="message-content">
                 <div class="message-bubble">
+                  <!-- 深度思考区域 -->
+                  <div 
+                    v-if="message.reasoning_content" 
+                    class="reasoning-container"
+                  >
+                    <div 
+                      class="reasoning-header" 
+                      @click="toggleReasoning(message)"
+                    >
+                      <div class="reasoning-title-wrapper">
+                        <i class="fas fa-brain reasoning-icon"></i>
+                        <span class="reasoning-title">深度思考</span>
+                      </div>
+                      <i 
+                        class="fas reasoning-toggle-icon" 
+                        :class="message.isReasoningCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'" 
+                      />
+                    </div>
+                    <div 
+                      v-show="!message.isReasoningCollapsed" 
+                      class="reasoning-body"
+                    >
+                      <div
+                        class="message-text reasoning-text"
+                        v-html="formatMessage(message.reasoning_content)"
+                      />
+                    </div>
+                  </div>
+
                   <div
+                    v-if="message.content"
                     class="message-text"
                     v-html="formatMessage(message.content)"
                   />
+                  <!-- 如果没有内容但有reasoning_content，显示占位符或仅显示reasoning -->
+                  <div
+                    v-else-if="!message.reasoning_content"
+                    class="message-text"
+                  >
+                    <span class="typing-cursor"></span>
+                  </div>
                 </div>
                 <div class="message-time">
                   {{ formatTime(message.timestamp) }}
@@ -334,6 +377,10 @@ const deleteSession = async (sessionId) => {
   if (confirm('确定要删除这个会话吗？')) {
     await chatStore.deleteSession(sessionId)
   }
+}
+
+const toggleReasoning = (message) => {
+  message.isReasoningCollapsed = !message.isReasoningCollapsed
 }
 
 const sendMessage = async () => {
@@ -1549,5 +1596,96 @@ body.dark-mode .message-copy-button {
   .message-content {
     max-width: 95%;
   }
+}
+
+.reasoning-container {
+  margin-bottom: 8px;
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-tertiary);
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.reasoning-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  cursor: pointer;
+  background-color: rgba(0, 0, 0, 0.02);
+  user-select: none;
+  transition: background-color 0.2s;
+}
+
+.reasoning-header:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.reasoning-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.reasoning-icon {
+  font-size: 14px;
+  color: var(--primary-color);
+  opacity: 0.8;
+}
+
+.reasoning-toggle-icon {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  transition: transform 0.2s;
+}
+
+.reasoning-body {
+  padding: 0;
+  border-top: 1px solid var(--border-color);
+  background-color: var(--bg-secondary);
+}
+
+.reasoning-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding: 12px 16px;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  line-height: 1.6;
+}
+
+.reasoning-text :deep(p) {
+  margin-bottom: 8px;
+}
+
+.reasoning-text :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+/* 调整reasoning-text内部的pre样式 */
+.reasoning-text :deep(pre) {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  margin: 8px 0;
+  padding: 12px;
+}
+
+.typing-cursor::after {
+  content: '▋';
+  display: inline-block;
+  vertical-align: middle;
+  animation: blink 1s step-end infinite;
+  color: var(--primary-color);
+  margin-left: 2px;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
 </style>
