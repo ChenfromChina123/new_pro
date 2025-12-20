@@ -65,7 +65,7 @@ spring:
   # Spring AI配置 - DeepSeek (兼容OpenAI API)
   ai:
     openai:
-      api-key: ${DEEPSEEK_API_KEY:sk-45021a61b84a4693a1db4deb72cec673}
+      api-key: ${DEEPSEEK_API_KEY:}
       base-url: ${DEEPSEEK_API_URL:${DEEPSEEK_URL:https://api.deepseek.com}}
       chat:
         options:
@@ -90,12 +90,12 @@ jwt:
 # AI模型配置
 ai:
   deepseek:
-    api-key: ${DEEPSEEK_API_KEY:sk-45021a61b84a4693a1db4deb72cec673}
+    api-key: ${DEEPSEEK_API_KEY:}
     api-url: ${DEEPSEEK_URL:https://api.deepseek.com}
   doubao:
-    api-key: ${DOUBAO_KEY:6261fd4e-7ac5-46de-95a6-f68f00243230}
-    api-url: ${DOUBAO_BASEURL:https://api.doubao.com/v1}
-    model: ${DOUBAO_MODEL:doubao-pro-32k}
+    api-key: ${DOUBAO_API_KEY:}
+    api-url: ${DOUBAO_BASEURL:https://ark.cn-beijing.volces.com/api/v3}
+    model: ${DOUBAO_MODEL:}
   max-tokens: ${MAX_TOKEN:4096}
 
 # 文件存储配置
