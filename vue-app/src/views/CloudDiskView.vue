@@ -6,16 +6,23 @@
         <div class="file-header">
           <div class="breadcrumb">
             <button
-              class="breadcrumb-item"
-              @click="goToRoot"
+              v-if="breadcrumbSegments.length === 0"
+              class="breadcrumb-item current"
             >
               全部文件
             </button>
-            <template v-if="cloudDiskStore.currentFolder && cloudDiskStore.currentFolder !== ''">
-              <span class="separator">></span>
-              <span class="breadcrumb-item current">
-                {{ cloudDiskStore.currentFolder.split('/').pop() }}
-              </span>
+            <template v-else>
+              <!-- 根目录(全部文件)在进入子目录后可以选择隐藏，直接显示子路径 -->
+              <template v-for="(segment, index) in breadcrumbSegments" :key="index">
+                <span v-if="index > 0" class="separator">></span>
+                <button
+                  class="breadcrumb-item"
+                  :class="{ current: index === breadcrumbSegments.length - 1 }"
+                  @click="index < breadcrumbSegments.length - 1 ? selectFolder(segment.path) : null"
+                >
+                  {{ segment.name }}
+                </button>
+              </template>
             </template>
           </div>
           
@@ -297,6 +304,29 @@ const pendingUploads = ref([])
 // 排序相关
 const sortField = ref('upload_time')
 const sortAscending = ref(false)
+
+/**
+ * 计算面包屑路径分段
+ */
+const breadcrumbSegments = computed(() => {
+  const folderPath = cloudDiskStore.currentFolder
+  if (!folderPath) return []
+  
+  const segments = []
+  const parts = folderPath.split('/')
+  let currentPath = ''
+  
+  for (const part of parts) {
+    if (part) {
+      currentPath = currentPath ? `${currentPath}/${part}` : part
+      segments.push({
+        name: part,
+        path: currentPath
+      })
+    }
+  }
+  return segments
+})
 
 /**
  * 监听窗口尺寸变化
