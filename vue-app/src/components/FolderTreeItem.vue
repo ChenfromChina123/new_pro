@@ -36,7 +36,7 @@
         v-if="canDelete"
         class="folder-delete-btn"
         title="删除文件夹"
-        @click.stop="deleteFolderAction(folder.id)"
+        @click.stop="deleteFolderAction(folder)"
       >
         🗑️
       </button>
