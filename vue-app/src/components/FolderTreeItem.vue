@@ -284,12 +284,13 @@ const afterLeave = (el) => {
 
 .folder-name {
   flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 15px;
   display: block;
   color: inherit;
   letter-spacing: 0.2px;
-  word-break: break-all;
-  line-height: 1.4;
 }
 
 .folder-actions {
