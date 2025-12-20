@@ -328,6 +328,35 @@ const currentSessionTitle = computed(() => {
   return chatStore.currentSession?.title || '新对话'
 })
 
+const scrollToBottom = (behavior = 'smooth') => {
+  if (messagesContainer.value) {
+    // 优先使用 scrollTop 直接设置，这样最可靠
+    if (behavior === 'auto') {
+      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+    } else {
+      messagesContainer.value.scrollTo({
+        top: messagesContainer.value.scrollHeight,
+        behavior: behavior
+      })
+    }
+  }
+}
+
+/**
+ * 统一的滚动到底部触发函数
+ * @param {number} delay 延迟时间
+ */
+const triggerScrollToBottom = (delay = 100) => {
+  nextTick(() => {
+    // 第一次尝试：立即执行
+    scrollToBottom('auto')
+    // 第二次尝试：短延迟
+    setTimeout(() => scrollToBottom('auto'), delay)
+    // 第三次尝试：长延迟，确保公式渲染
+    setTimeout(() => scrollToBottom('auto'), delay + 200)
+  })
+}
+
 onMounted(async () => {
   // 0. 确保会话列表已加载
   if (chatStore.sessions.length === 0) {
@@ -339,8 +368,7 @@ onMounted(async () => {
   if (querySessionId) {
     chatStore.currentSessionId = querySessionId
     await chatStore.fetchSessionMessages(querySessionId)
-    // 使用 setTimeout 确保在内容渲染完成后滚动，且首次加载使用 auto 避免平滑滚动延迟
-    setTimeout(() => scrollToBottom('auto'), 100)
+    triggerScrollToBottom(100)
     return
   }
 
@@ -348,14 +376,14 @@ onMounted(async () => {
   if (!chatStore.currentSessionId && chatStore.sessions.length > 0) {
     chatStore.currentSessionId = chatStore.sessions[0].id
     await chatStore.fetchSessionMessages(chatStore.sessions[0].id)
-    setTimeout(() => scrollToBottom('auto'), 100)
+    triggerScrollToBottom(100)
     // 更新 URL
     router.replace(`/chat?session=${chatStore.sessions[0].id}`)
   } 
   // 3. 如果没有任何会话，创建一个新的
   else if (!chatStore.currentSessionId && chatStore.sessions.length === 0) {
     await chatStore.createSession()
-    setTimeout(() => scrollToBottom('auto'), 100)
+    triggerScrollToBottom(100)
   }
 })
 
@@ -365,13 +393,13 @@ watch(
   async (newSessionId) => {
     if (newSessionId) {
       await chatStore.fetchSessionMessages(newSessionId)
-      setTimeout(() => scrollToBottom('auto'), 100)
+      triggerScrollToBottom(100)
     } else {
       // 如果没有会话 ID，可能回到了 /chat 根路径，尝试加载最近的会话或显示空状态
       if (chatStore.sessions.length > 0) {
         chatStore.currentSessionId = chatStore.sessions[0].id
         await chatStore.fetchSessionMessages(chatStore.sessions[0].id)
-        setTimeout(() => scrollToBottom('auto'), 100)
+        triggerScrollToBottom(100)
       } else {
         chatStore.currentSessionId = null
         chatStore.messages = []
@@ -380,14 +408,15 @@ watch(
   }
 )
 
-// 监听当前会话 ID 变化 (例如切换会话时)
+// 监听当前会话 ID 变化
 watch(
   () => chatStore.currentSessionId,
   async (newId, oldId) => {
     if (newId && newId !== oldId) {
-      // 避免重复加载 (如果路由 watch 已经触发了)
+      // 只有当路由中的 session 与 newId 不一致时才加载，避免与路由监听冲突
       if (newId !== route.query.session) {
         await chatStore.fetchSessionMessages(newId)
+        triggerScrollToBottom(100)
       }
     }
   }
@@ -852,15 +881,6 @@ const formatSessionDate = (timestamp) => {
     return `${diffDays}天前`
   } else {
     return date.toLocaleDateString('zh-CN')
-  }
-}
-
-const scrollToBottom = (behavior = 'smooth') => {
-  if (messagesContainer.value) {
-    messagesContainer.value.scrollTo({
-      top: messagesContainer.value.scrollHeight,
-      behavior: behavior
-    })
   }
 }
 
