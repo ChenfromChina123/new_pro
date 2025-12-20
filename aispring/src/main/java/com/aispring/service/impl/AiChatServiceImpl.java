@@ -46,6 +46,9 @@ public class AiChatServiceImpl implements AiChatService {
     @Value("${ai.doubao.api-url:}")
     private String doubaoApiUrl;
     
+    @Value("${ai.doubao.model:doubao-pro-32k}")
+    private String doubaoModel;
+    
     @Value("${ai.deepseek.api-key:}")
     private String deepseekApiKey;
     
@@ -66,6 +69,7 @@ public class AiChatServiceImpl implements AiChatService {
                              ChatRecordRepository chatRecordRepository,
                              @Value("${ai.doubao.api-key:}") String doubaoApiKey,
                              @Value("${ai.doubao.api-url:}") String doubaoApiUrl,
+                             @Value("${ai.doubao.model:doubao-pro-32k}") String doubaoModel,
                              @Value("${ai.deepseek.api-key:}") String deepseekApiKey,
                              @Value("${ai.deepseek.api-url:}") String deepseekApiUrl) {
         this.chatClientProvider = chatClientProvider;
@@ -73,19 +77,32 @@ public class AiChatServiceImpl implements AiChatService {
         this.chatRecordRepository = chatRecordRepository;
         this.doubaoApiKey = doubaoApiKey;
         this.doubaoApiUrl = doubaoApiUrl;
+        this.doubaoModel = doubaoModel;
         this.deepseekApiKey = deepseekApiKey;
         this.deepseekApiUrl = deepseekApiUrl;
 
         // Initialize Doubao Client
+        System.out.println("[Doubao] Initializing Doubao AI client...");
+        System.out.println("[Doubao] API Key: " + (doubaoApiKey != null && !doubaoApiKey.isEmpty() ? "********" : "NOT SET"));
+        System.out.println("[Doubao] API URL: " + (doubaoApiUrl != null ? doubaoApiUrl : "NOT SET"));
+        System.out.println("[Doubao] Model ID: " + (doubaoModel != null ? doubaoModel : "NOT SET"));
+        
         if (doubaoApiKey != null && !doubaoApiKey.isEmpty() && doubaoApiUrl != null && !doubaoApiUrl.isEmpty()) {
             try {
                 OpenAiApi doubaoApi = new OpenAiApi(doubaoApiUrl, doubaoApiKey);
-                OpenAiChatClient client = new OpenAiChatClient(doubaoApi);
+                
+                OpenAiChatOptions doubaoOptions = OpenAiChatOptions.builder()
+                        .withModel(doubaoModel) // 使用配置的豆包模型名称（通常是 Endpoint ID）
+                        .withTemperature(0.7f)
+                        .withMaxTokens(maxTokens)
+                        .build();
+                
+                OpenAiChatClient client = new OpenAiChatClient(doubaoApi, doubaoOptions);
                 this.doubaoChatClient = client;
                 this.doubaoStreamingChatClient = client;
-                System.out.println("Doubao AI client initialized successfully with URL: " + doubaoApiUrl);
+                System.out.println("[Doubao] Doubao AI client initialized successfully with model: " + doubaoModel);
             } catch (Exception e) {
-                System.err.println("Failed to initialize Doubao AI client: " + e.getMessage());
+                System.err.println("[Doubao ERROR] Failed to initialize Doubao AI client: " + e.getMessage());
             }
         }
         
@@ -112,29 +129,43 @@ public class AiChatServiceImpl implements AiChatService {
         // 创建SSE发射器，设置超时时间为3分钟
         SseEmitter emitter = new SseEmitter(180_000L);
         
+        System.out.println("=== askStream Called ===");
+        System.out.println("Model: " + model);
+        System.out.println("Prompt: " + (prompt != null ? prompt.substring(0, Math.min(50, prompt.length())) + "..." : "null"));
+        System.out.println("Session ID: " + sessionId);
+        System.out.println("User ID: " + userId);
+        
         // 确定使用的客户端和模型名称
         StreamingChatClient clientToUse = null;
         String actualModel = model;
         
         if ("doubao".equals(model)) {
+            System.out.println("[Doubao] Selected model: doubao");
             if (doubaoStreamingChatClient != null) {
                 clientToUse = doubaoStreamingChatClient;
+                actualModel = doubaoModel; // 使用实际的豆包模型ID
+                System.out.println("[Doubao] Using Doubao client with actual model: " + actualModel);
             } else {
-                // 如果豆包客户端未初始化，尝试使用默认客户端
-                System.err.println("Doubao client not initialized, falling back to default.");
                 clientToUse = streamingChatClientProvider.getIfAvailable();
+                actualModel = "deepseek-chat";
+                System.err.println("[Doubao] Client not initialized, fallback to default");
             }
         } else if ("deepseek".equals(model) || "deepseek-chat".equals(model)) {
+            System.out.println("Selected model: deepseek");
             if (deepseekStreamingChatClient != null) {
                 clientToUse = deepseekStreamingChatClient;
+                System.out.println("Using initialized DeepSeek streaming client");
             } else {
                 clientToUse = streamingChatClientProvider.getIfAvailable();
+                System.out.println("Fallback to default streaming client: " + (clientToUse != null ? "available" : "not available"));
             }
             actualModel = "deepseek-chat";
         } else {
+            System.out.println("Selected model: " + model + " (using default client)");
             clientToUse = streamingChatClientProvider.getIfAvailable();
             if (model == null || model.isEmpty()) {
                 actualModel = "deepseek-chat";
+                System.out.println("Model is null/empty, using default: deepseek-chat");
             }
         }
         
@@ -149,10 +180,17 @@ public class AiChatServiceImpl implements AiChatService {
                 .withMaxTokens(maxTokens)
                 .build();
         
+        System.out.println("Building prompt with options:");
+        System.out.println("- Model: " + options.getModel());
+        System.out.println("- Temperature: " + options.getTemperature());
+        System.out.println("- Max Tokens: " + options.getMaxTokens());
+        
         // 构建包含上下文的Prompt
         Prompt promptObj = buildPrompt(prompt, sessionId, userId, options);
+        System.out.println("Prompt built with " + promptObj.getMessages().size() + " messages");
         
         final StreamingChatClient finalClient = clientToUse;
+        System.out.println("Final client: " + (finalClient != null ? finalClient.getClass().getSimpleName() : "null"));
         
         // 异步处理流式响应
         new Thread(() -> {
@@ -252,8 +290,10 @@ public class AiChatServiceImpl implements AiChatService {
             if ("doubao".equals(model)) {
                 if (doubaoChatClient != null) {
                     clientToUse = doubaoChatClient;
+                    actualModel = doubaoModel;
                 } else {
                     clientToUse = chatClientProvider.getIfAvailable();
+                    actualModel = "deepseek-chat";
                 }
             } else if ("deepseek".equals(model) || "deepseek-chat".equals(model)) {
                 if (deepseekChatClient != null) {

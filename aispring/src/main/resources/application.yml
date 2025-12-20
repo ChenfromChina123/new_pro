@@ -95,6 +95,7 @@ ai:
   doubao:
     api-key: ${DOUBAO_KEY:6261fd4e-7ac5-46de-95a6-f68f00243230}
     api-url: ${DOUBAO_BASEURL:https://api.doubao.com/v1}
+    model: ${DOUBAO_MODEL:doubao-pro-32k}
   max-tokens: ${MAX_TOKEN:4096}
 
 # 文件存储配置

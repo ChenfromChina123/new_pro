@@ -47,6 +47,15 @@ public class AiChatController {
             @Valid @RequestBody AskRequest request,
             @AuthenticationPrincipal CustomUserDetails customUserDetails) {
         
+        System.out.println(">>> askStream Request Received");
+        if (request == null) {
+            System.err.println(">>> ERROR: Request body is NULL");
+        } else {
+            System.out.println(">>> Prompt: " + (request.getPrompt() != null ? request.getPrompt().substring(0, Math.min(20, request.getPrompt().length())) : "null"));
+            System.out.println(">>> Model: " + request.getModel());
+            System.out.println(">>> Session: " + request.getSession_id());
+        }
+        
         String userId = customUserDetails.getUser().getId().toString();
         
         // 调用AI流式聊天服务
