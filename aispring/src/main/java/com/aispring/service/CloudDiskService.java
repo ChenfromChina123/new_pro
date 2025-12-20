@@ -364,8 +364,6 @@ public class CloudDiskService {
         String filePath = userDiskPath + "/" + uniqueFilename;
         Files.copy(file.getInputStream(), Paths.get(filePath), StandardCopyOption.REPLACE_EXISTING);
         
-        User user = userRepository.findById(userId)
-            .orElseThrow(() -> new IllegalArgumentException("用户不存在"));
         UserFile userFile = new UserFile();
         userFile.setUser(user);
         userFile.setFilename(originalFilename);

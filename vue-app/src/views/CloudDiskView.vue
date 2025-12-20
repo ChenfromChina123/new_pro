@@ -9,8 +9,16 @@
               <span class="breadcrumb-item current">全部文件</span>
             </template>
             <template v-else>
-              <template v-for="(segment, index) in breadcrumbSegments" :key="index">
-                <span v-if="index > 0" class="separator">></span>
+              <template 
+                v-for="(segment, index) in breadcrumbSegments" 
+                :key="index"
+              >
+                <span 
+                  v-if="index > 0" 
+                  class="separator"
+                >
+                  >
+                </span>
                 <button
                   class="breadcrumb-item"
                   :class="{ current: index === breadcrumbSegments.length - 1 }"
@@ -278,7 +286,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed, onActivated } from 'vue'
 import { useCloudDiskStore } from '@/stores/cloudDisk'
 import ConflictResolutionDialog from '@/components/ConflictResolutionDialog.vue'
 
@@ -300,6 +308,17 @@ const pendingUploads = ref([])
 // 排序相关
 const sortField = ref('upload_time')
 const sortAscending = ref(false)
+
+/**
+ * 刷新数据
+ */
+const refreshData = async () => {
+  await Promise.all([
+    cloudDiskStore.fetchFolders(),
+    cloudDiskStore.fetchFiles(cloudDiskStore.currentFolder),
+    cloudDiskStore.fetchQuota()
+  ])
+}
 
 /**
  * 计算面包屑路径分段
@@ -333,9 +352,11 @@ const handleResize = () => {
 
 onMounted(async () => {
   window.addEventListener('resize', handleResize, { passive: true })
-  await cloudDiskStore.fetchFolders()
-  await cloudDiskStore.fetchFiles()
-  await cloudDiskStore.fetchQuota()
+  await refreshData()
+})
+
+onActivated(async () => {
+  await refreshData()
 })
 
 onBeforeUnmount(() => {
@@ -391,7 +412,7 @@ const handleFileSelect = async (event) => {
   if (cloudDiskStore.quota.limitSize !== -1) {
     const totalSize = files.reduce((acc, f) => acc + f.size, 0)
     if (cloudDiskStore.quota.usedSize + totalSize > cloudDiskStore.quota.limitSize) {
-      alert(`存储空间不足！当前可用空间约 ${formatSize(cloudDiskStore.quota.limitSize - cloudDiskStore.quota.usedSize)}`)
+      alert(`存储空间不足！当前可用空间约 ${formatFileSize(cloudDiskStore.quota.limitSize - cloudDiskStore.quota.usedSize)}`)
       event.target.value = ''
       return
     }

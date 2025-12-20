@@ -136,7 +136,10 @@
             
             <div class="input-toolbar">
               <div class="toolbar-left">
-                <button class="tool-btn" title="上传附件">
+                <button 
+                  class="tool-btn" 
+                  title="上传附件"
+                >
                   <i class="fas fa-paperclip" />
                 </button>
                 <button 
@@ -147,18 +150,27 @@
                   <i class="fas fa-atom" />
                   <span>深度思考</span>
                 </button>
-                <div class="tool-btn-pill model-pill" ref="modelMenuRef">
+                <div 
+                  ref="modelMenuRef"
+                  class="tool-btn-pill model-pill" 
+                >
                   <div 
                     class="model-selector-trigger" 
-                    @click="isModelMenuOpen = !isModelMenuOpen"
                     :class="{ active: isModelMenuOpen }"
+                    @click="isModelMenuOpen = !isModelMenuOpen"
                   >
                     <span class="brand-name">{{ currentBrand.name }}</span>
-                    <i class="fas fa-chevron-up toggle-arrow" :class="{ rotate: isModelMenuOpen }" />
+                    <i 
+                      class="fas fa-chevron-up toggle-arrow" 
+                      :class="{ rotate: isModelMenuOpen }" 
+                    />
                   </div>
                   
                   <transition name="menu-fade">
-                    <div v-if="isModelMenuOpen" class="model-dropdown-menu">
+                    <div 
+                      v-if="isModelMenuOpen" 
+                      class="model-dropdown-menu"
+                    >
                       <div 
                         v-for="brand in brands" 
                         :key="brand.id"
@@ -170,7 +182,10 @@
                           <span class="item-name">{{ brand.name }}</span>
                           <span class="item-desc">{{ brand.id === 'deepseek' ? 'DeepSeek-V3' : '豆包-pro-128k' }}</span>
                         </div>
-                        <i v-if="currentBrand.id === brand.id" class="fas fa-check check-icon" />
+                        <i 
+                          v-if="currentBrand.id === brand.id" 
+                          class="fas fa-check check-icon" 
+                        />
                       </div>
                     </div>
                   </transition>
@@ -178,13 +193,22 @@
               </div>
               
               <div class="toolbar-right">
-                <button class="tool-btn" title="截图">
+                <button 
+                  class="tool-btn" 
+                  title="截图"
+                >
                   <i class="fas fa-cut" />
                 </button>
-                <button class="tool-btn" title="语音通话">
+                <button 
+                  class="tool-btn" 
+                  title="语音通话"
+                >
                   <i class="fas fa-phone" />
                 </button>
-                <button class="tool-btn" title="语音输入">
+                <button 
+                  class="tool-btn" 
+                  title="语音输入"
+                >
                   <i class="fas fa-microphone" />
                 </button>
                 
@@ -707,8 +731,8 @@ const formatMessage = (content) => {
     // 强力清除 strong 和 em 标签及其空格变体 (如 < strong >)
     cleanContent = cleanContent.replace(/<\s*\/?\s*(strong|em)\s*>/gi, '');
     
-    // 处理数学符号问题：将错误显示的符号替换为正确的
-    cleanContent = cleanContent.replace(/目/g, '≠');
+    // // 处理数学符号问题：将错误显示的符号替换为正确的
+    // cleanContent = cleanContent.replace(/目/g, '≠');
     
     // 移除公式周围的双重括号 ((...)) -> ...
     // 使用 [\s\S]*? 非贪婪匹配任意字符(包括换行)，直到遇到 ))
