@@ -849,11 +849,17 @@
       v-if="articleGenerationInProgress || articleGenerationComplete"
       class="article-generation-notification"
     >
-      <div v-if="articleGenerationInProgress" class="generation-progress">
-        <div class="spinner small"></div>
+      <div
+        v-if="articleGenerationInProgress"
+        class="generation-progress"
+      >
+        <div class="spinner small" />
         <span>正在生成文章...</span>
       </div>
-      <div v-if="articleGenerationComplete" class="generation-complete">
+      <div
+        v-if="articleGenerationComplete"
+        class="generation-complete"
+      >
         <span>✓ 文章生成完成！请在"我的文章"中查看</span>
       </div>
     </div>
