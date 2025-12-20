@@ -2,14 +2,53 @@
   <AppLayout>
     <div class="chat-page">
       <div class="chat-container">
-        <!-- 侧边栏：会话列表 -->
+        <!-- 侧边栏：全局导航 + 会话列表 -->
         <aside class="chat-sidebar">
+          <div class="sidebar-logo">
+            <span class="logo-text">AI学习助手</span>
+          </div>
+
+          <div class="sidebar-nav">
+            <router-link
+              to="/chat"
+              class="nav-item"
+              active-class="active"
+            >
+              <i class="fas fa-comments" />
+              <span>AI问答</span>
+            </router-link>
+            <router-link
+              to="/cloud-disk"
+              class="nav-item"
+              active-class="active"
+            >
+              <i class="fas fa-cloud" />
+              <span>云盘</span>
+            </router-link>
+            <router-link
+              to="/language-learning"
+              class="nav-item"
+              active-class="active"
+            >
+              <i class="fas fa-book" />
+              <span>语言学习</span>
+            </router-link>
+            <router-link
+              v-if="authStore.isAdmin"
+              to="/admin"
+              class="nav-item"
+              active-class="active"
+            >
+              <i class="fas fa-cog" />
+              <span>管理</span>
+            </router-link>
+          </div>
+
+          <div class="sidebar-divider" />
+
           <div class="sidebar-header">
-            <h3 class="sidebar-title">
-              会话列表
-            </h3>
             <button
-              class="btn btn-primary"
+              class="btn btn-primary new-chat-btn"
               @click="createNewSession"
             >
               <span class="btn-icon">
@@ -19,6 +58,7 @@
             </button>
           </div>
           
+          <div class="history-section-title">历史对话</div>
           <div class="session-list">
             <div
               v-for="session in chatStore.sessions"
@@ -55,29 +95,6 @@
                 <h2 class="chat-title">
                   {{ currentSessionTitle }}
                 </h2>
-              </div>
-              
-              <div class="header-right">
-                <div class="model-selector">
-                  <label class="model-label">AI模型：</label>
-                  <select
-                    v-model="chatStore.selectedModel"
-                    class="model-select"
-                  >
-                    <option value="deepseek-chat">
-                      DeepSeek Chat
-                    </option>
-                    <option value="deepseek-reasoner">
-                      DeepSeek Reasoner
-                    </option>
-                    <option value="doubao">
-                      豆包
-                    </option>
-                    <option value="doubao-reasoner">
-                      豆包-reasoner
-                    </option>
-                  </select>
-                </div>
               </div>
             </div>
           </div>
@@ -214,10 +231,18 @@
                     <i class="fas fa-atom" />
                     <span>深度思考</span>
                   </button>
-                  <button class="tool-btn-pill">
-                    <i class="fas fa-th-large" />
-                    <span>技能</span>
-                  </button>
+                  <div class="tool-btn-pill model-pill">
+                    <i class="fas fa-robot" />
+                    <select
+                      v-model="chatStore.selectedModel"
+                      class="model-select-inline"
+                    >
+                      <option value="deepseek-chat">DeepSeek Chat</option>
+                      <option value="deepseek-reasoner">DeepSeek Reasoner</option>
+                      <option value="doubao">豆包</option>
+                      <option value="doubao-reasoner">豆包-reasoner</option>
+                    </select>
+                  </div>
                 </div>
                 
                 <div class="toolbar-right">
@@ -899,7 +924,7 @@ const adjustTextareaHeight = (event) => {
 }
 
 .chat-sidebar {
-  width: 300px;
+  width: 260px;
   background-color: var(--bg-secondary);
   border-right: 1px solid var(--border-color);
   display: flex;
@@ -907,17 +932,74 @@ const adjustTextareaHeight = (event) => {
   transition: all 0.3s ease;
 }
 
+.sidebar-nav {
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebar-nav .nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.sidebar-nav .nav-item:hover {
+  background-color: var(--bg-tertiary);
+}
+
+.sidebar-nav .nav-item.active {
+  background-color: #ebf5ff;
+  color: #2563eb;
+  font-weight: 500;
+}
+
+.sidebar-divider {
+  height: 1px;
+  background-color: var(--border-color);
+  margin: 8px 16px;
+}
+
 .sidebar-header {
-  padding: 20px;
-  border-bottom: 1px solid var(--border-color);
+  padding: 8px 16px;
+}
+
+.new-chat-btn {
+  display: flex !important;
+  align-items: center;
+  justify-content: flex-start !important;
+  gap: 8px;
+  padding: 10px 16px !important;
+  border-radius: 12px !important;
+  background-color: #ebf5ff !important;
+  color: #2563eb !important;
+  border: 1px solid #bfdbfe !important;
+  font-weight: 500 !important;
+  width: 100%;
+}
+
+.new-chat-btn:hover {
+  background-color: #dbeafe !important;
+}
+
+.history-section-title {
+  padding: 16px 16px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .sidebar-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 12px;
-  letter-spacing: 0.5px;
+  display: none;
 }
 
 .sidebar-header .btn {
@@ -1076,44 +1158,6 @@ const adjustTextareaHeight = (event) => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-shrink: 0;
-}
-
-.model-selector {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.model-label {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  letter-spacing: 0.2px;
-}
-
-.model-select {
-  padding: 8px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-sm);
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  min-width: 120px;
-}
-
-.model-select:focus {
-  outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.1);
 }
 
 .messages-container {
@@ -1723,6 +1767,36 @@ body.dark-mode .message-copy-button {
 
 .tool-btn-pill:hover {
   background-color: var(--bg-secondary);
+}
+
+.model-pill {
+  position: relative;
+  padding: 0 8px 0 12px !important;
+}
+
+.model-pill i {
+  color: #2563eb;
+}
+
+.model-select-inline {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 0;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  padding-right: 20px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right center;
+  background-size: 12px;
+}
+
+.model-select-inline:focus {
+  outline: none;
 }
 
 .toolbar-divider {

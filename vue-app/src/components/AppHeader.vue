@@ -3,57 +3,9 @@
     <div class="header-container">
       <div class="header-left">
         <div class="logo">
-          <!-- <span class="logo-icon">
-            <i class="fas fa-robot"></i>
-          </span> -->
           <span class="logo-text">AI学习助手</span>
         </div>
       </div>
-      
-      <!-- 桌面端导航 -->
-      <nav class="header-nav">
-        <router-link
-          to="/chat"
-          class="nav-item"
-          active-class="active"
-        >
-          <span class="nav-icon">
-            <i class="fas fa-comments" />
-          </span>
-          <span class="nav-text">AI问答</span>
-        </router-link>
-        <router-link
-          to="/cloud-disk"
-          class="nav-item"
-          active-class="active"
-        >
-          <span class="nav-icon">
-            <i class="fas fa-cloud" />
-          </span>
-          <span class="nav-text">云盘</span>
-        </router-link>
-        <router-link
-          to="/language-learning"
-          class="nav-item"
-          active-class="active"
-        >
-          <span class="nav-icon">
-            <i class="fas fa-book" />
-          </span>
-          <span class="nav-text">语言学习</span>
-        </router-link>
-        <router-link
-          v-if="authStore.isAdmin"
-          to="/admin"
-          class="nav-item"
-          active-class="active"
-        >
-          <span class="nav-icon">
-            <i class="fas fa-cog" />
-          </span>
-          <span class="nav-text">管理</span>
-        </router-link>
-      </nav>
       
       <!-- 移动端汉堡菜单 -->
       <button 
@@ -125,60 +77,7 @@
         </div>
       </div>
       
-      <!-- 移动端导航菜单 -->
-      <div 
-        class="mobile-nav" 
-        :class="{ 'mobile-nav-open': isMobileMenuOpen }"
-        role="navigation"
-      >
-        <nav class="mobile-nav-menu">
-          <router-link 
-            to="/chat" 
-            class="mobile-nav-item" 
-            active-class="active"
-            @click="toggleMobileMenu"
-          >
-            <span class="nav-icon">
-              <i class="fas fa-comments" />
-            </span>
-            <span class="nav-text">AI问答</span>
-          </router-link>
-          <router-link 
-            to="/cloud-disk" 
-            class="mobile-nav-item" 
-            active-class="active"
-            @click="toggleMobileMenu"
-          >
-            <span class="nav-icon">
-              <i class="fas fa-cloud" />
-            </span>
-            <span class="nav-text">云盘</span>
-          </router-link>
-          <router-link 
-            to="/language-learning" 
-            class="mobile-nav-item" 
-            active-class="active"
-            @click="toggleMobileMenu"
-          >
-            <span class="nav-icon">
-              <i class="fas fa-book" />
-            </span>
-            <span class="nav-text">语言学习</span>
-          </router-link>
-          <router-link 
-            v-if="authStore.isAdmin" 
-            to="/admin" 
-            class="mobile-nav-item" 
-            active-class="active"
-            @click="toggleMobileMenu"
-          >
-            <span class="nav-icon">
-              <i class="fas fa-cog" />
-            </span>
-            <span class="nav-text">管理</span>
-          </router-link>
-        </nav>
-      </div>
+      <!-- 移除移动端导航菜单，已移至侧边栏 -->
     </div>
   </header>
 </template>
