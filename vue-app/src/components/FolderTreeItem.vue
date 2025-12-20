@@ -254,7 +254,7 @@ const afterLeave = (el) => {
   background-color: var(--bg-tertiary);
 }
 
-.folder-item.active .folder-header {
+.folder-item.active > .folder-header {
   background-color: var(--bg-tertiary);
   color: var(--primary-color);
   border-color: var(--primary-color);
