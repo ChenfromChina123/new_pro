@@ -221,9 +221,9 @@
 <script setup>
 import DOMPurify from 'dompurify'
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { useChatStore } from '@/stores/chat'
 import { useAuthStore } from '@/stores/auth'
+import { useRoute, useRouter } from 'vue-router'
 import { marked } from 'marked'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
@@ -234,6 +234,7 @@ import { API_CONFIG } from '@/config/api'
 const chatStore = useChatStore()
 const authStore = useAuthStore()
 const router = useRouter()
+const route = useRoute()
 const inputMessage = ref('')
 const messagesContainer = ref(null)
 
@@ -302,14 +303,63 @@ const currentSessionTitle = computed(() => {
 })
 
 onMounted(async () => {
-  // 如果没有当前会话，创建一个新的
-  if (!chatStore.currentSessionId && chatStore.sessions.length === 0) {
-    await chatStore.createSession()
-  } else if (chatStore.sessions.length > 0 && !chatStore.currentSessionId) {
+  // 0. 确保会话列表已加载
+  if (chatStore.sessions.length === 0) {
+    await chatStore.fetchSessions()
+  }
+
+  // 1. 如果 URL 中有会话 ID，优先加载该会话
+  const querySessionId = route.query.session
+  if (querySessionId) {
+    chatStore.currentSessionId = querySessionId
+    await chatStore.fetchSessionMessages(querySessionId)
+    return
+  }
+
+  // 2. 如果没有当前会话，但有会话列表，加载第一个
+  if (!chatStore.currentSessionId && chatStore.sessions.length > 0) {
     chatStore.currentSessionId = chatStore.sessions[0].id
     await chatStore.fetchSessionMessages(chatStore.sessions[0].id)
+    // 更新 URL
+    router.replace(`/chat?session=${chatStore.sessions[0].id}`)
+  } 
+  // 3. 如果没有任何会话，创建一个新的
+  else if (!chatStore.currentSessionId && chatStore.sessions.length === 0) {
+    await chatStore.createSession()
   }
 })
+
+// 监听 URL 参数变化 (例如点击侧边栏时)
+watch(
+  () => route.query.session,
+  async (newSessionId) => {
+    if (newSessionId) {
+      await chatStore.fetchSessionMessages(newSessionId)
+    } else {
+      // 如果没有会话 ID，可能回到了 /chat 根路径，尝试加载最近的会话或显示空状态
+      if (chatStore.sessions.length > 0) {
+        chatStore.currentSessionId = chatStore.sessions[0].id
+        await chatStore.fetchSessionMessages(chatStore.sessions[0].id)
+      } else {
+        chatStore.currentSessionId = null
+        chatStore.messages = []
+      }
+    }
+  }
+)
+
+// 监听当前会话 ID 变化 (例如切换会话时)
+watch(
+  () => chatStore.currentSessionId,
+  async (newId, oldId) => {
+    if (newId && newId !== oldId) {
+      // 避免重复加载 (如果路由 watch 已经触发了)
+      if (newId !== route.query.session) {
+        await chatStore.fetchSessionMessages(newId)
+      }
+    }
+  }
+)
 
 watch(
   () => authStore.userInfo?.avatar,
