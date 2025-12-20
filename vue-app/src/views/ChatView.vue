@@ -339,7 +339,8 @@ onMounted(async () => {
   if (querySessionId) {
     chatStore.currentSessionId = querySessionId
     await chatStore.fetchSessionMessages(querySessionId)
-    nextTick(() => scrollToBottom())
+    // 使用 setTimeout 确保在内容渲染完成后滚动，且首次加载使用 auto 避免平滑滚动延迟
+    setTimeout(() => scrollToBottom('auto'), 100)
     return
   }
 
@@ -347,14 +348,14 @@ onMounted(async () => {
   if (!chatStore.currentSessionId && chatStore.sessions.length > 0) {
     chatStore.currentSessionId = chatStore.sessions[0].id
     await chatStore.fetchSessionMessages(chatStore.sessions[0].id)
-    nextTick(() => scrollToBottom())
+    setTimeout(() => scrollToBottom('auto'), 100)
     // 更新 URL
     router.replace(`/chat?session=${chatStore.sessions[0].id}`)
   } 
   // 3. 如果没有任何会话，创建一个新的
   else if (!chatStore.currentSessionId && chatStore.sessions.length === 0) {
     await chatStore.createSession()
-    nextTick(() => scrollToBottom())
+    setTimeout(() => scrollToBottom('auto'), 100)
   }
 })
 
@@ -364,13 +365,13 @@ watch(
   async (newSessionId) => {
     if (newSessionId) {
       await chatStore.fetchSessionMessages(newSessionId)
-      nextTick(() => scrollToBottom())
+      setTimeout(() => scrollToBottom('auto'), 100)
     } else {
       // 如果没有会话 ID，可能回到了 /chat 根路径，尝试加载最近的会话或显示空状态
       if (chatStore.sessions.length > 0) {
         chatStore.currentSessionId = chatStore.sessions[0].id
         await chatStore.fetchSessionMessages(chatStore.sessions[0].id)
-        nextTick(() => scrollToBottom())
+        setTimeout(() => scrollToBottom('auto'), 100)
       } else {
         chatStore.currentSessionId = null
         chatStore.messages = []
@@ -854,9 +855,12 @@ const formatSessionDate = (timestamp) => {
   }
 }
 
-const scrollToBottom = () => {
+const scrollToBottom = (behavior = 'smooth') => {
   if (messagesContainer.value) {
-    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+    messagesContainer.value.scrollTo({
+      top: messagesContainer.value.scrollHeight,
+      behavior: behavior
+    })
   }
 }
 
@@ -1000,7 +1004,6 @@ const adjustTextareaHeight = (event) => {
   flex: 1;
   overflow-y: auto;
   padding: 32px 40px;
-  scroll-behavior: smooth;
   background-color: var(--bg-primary);
   display: flex;
   flex-direction: column;
