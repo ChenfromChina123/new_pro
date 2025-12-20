@@ -10,7 +10,10 @@
             :alt="authStore.username" 
             class="sidebar-avatar"
           >
-          <i v-else class="fas fa-user default-avatar-icon" />
+          <i 
+            v-else 
+            class="fas fa-user default-avatar-icon" 
+          />
         </div>
         <span class="sidebar-user-name">{{ authStore.username || '用户' }}</span>
       </div>
@@ -64,7 +67,10 @@
     </div>
 
     <!-- 存储配额显示 -->
-    <div v-if="isCloudDiskRoute" class="sidebar-quota">
+    <div 
+      v-if="isCloudDiskRoute" 
+      class="sidebar-quota"
+    >
       <div class="quota-info">
         <span class="quota-label">存储空间</span>
         <span class="quota-value">
@@ -74,14 +80,22 @@
           </template>
         </span>
       </div>
-      <div v-if="cloudDiskStore.quota.limitSize !== -1" class="quota-progress-bar">
+      <div 
+        v-if="cloudDiskStore.quota.limitSize !== -1" 
+        class="quota-progress-bar"
+      >
         <div 
           class="quota-progress-fill" 
           :style="{ width: Math.min(100, (cloudDiskStore.quota.usedSize / cloudDiskStore.quota.limitSize) * 100) + '%' }"
           :class="{ 'warning': (cloudDiskStore.quota.usedSize / cloudDiskStore.quota.limitSize) > 0.8, 'danger': (cloudDiskStore.quota.usedSize / cloudDiskStore.quota.limitSize) > 0.9 }"
         />
       </div>
-      <div v-else class="quota-admin-tip">管理员不计容量</div>
+      <div 
+        v-else 
+        class="quota-admin-tip"
+      >
+        管理员不计容量
+      </div>
     </div>
 
     <div class="sidebar-divider" />
@@ -102,7 +116,9 @@
           </button>
         </div>
         
-        <div class="history-section-title">历史对话</div>
+        <div class="history-section-title">
+          历史对话
+        </div>
         <div class="session-list">
           <div
             v-for="session in chatStore.sessions"
@@ -173,7 +189,10 @@
 
     <!-- 底部：退出登录 -->
     <div class="sidebar-footer">
-      <button class="logout-btn" @click="handleLogout">
+      <button 
+        class="logout-btn" 
+        @click="handleLogout"
+      >
         <i class="fas fa-sign-out-alt" />
         <span>退出登录</span>
       </button>
@@ -506,30 +525,20 @@ const handleLogout = () => {
   }
 }
 
-watch(isCloudDiskRoute, async (newVal) => {
-  if (newVal) {
-    await cloudDiskStore.fetchFolders()
-    await cloudDiskStore.fetchQuota()
-  }
-})
-
-// 初始化
-onMounted(async () => {
-  if (isChatRoute.value) {
-    chatStore.fetchSessions()
-  } else if (isCloudDiskRoute.value) {
-    await cloudDiskStore.fetchFolders()
-    await cloudDiskStore.fetchQuota()
-  }
-})
-
 // 监听路由变化加载数据
-watch(route, (newRoute) => {
+watch(route, async (newRoute) => {
   if (newRoute.path.startsWith('/chat')) {
     chatStore.fetchSessions()
   } else if (newRoute.path.startsWith('/cloud-disk')) {
-    cloudDiskStore.fetchFolders()
+    // 只有当路径确实变化或是进入云盘时才获取
+    await cloudDiskStore.fetchFolders()
+    await cloudDiskStore.fetchQuota()
   }
+}, { immediate: true })
+
+// 初始化
+onMounted(() => {
+  // 初始加载由 watch { immediate: true } 处理
 })
 </script>
 

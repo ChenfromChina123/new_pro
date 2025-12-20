@@ -5,7 +5,7 @@
       <router-view v-slot="{ Component }">
         <transition name="fade-slide" mode="out-in">
           <keep-alive>
-            <component :is="Component" />
+            <component :is="Component" :key="route.fullPath" />
           </keep-alive>
         </transition>
       </router-view>
