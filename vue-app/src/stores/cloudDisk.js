@@ -15,6 +15,11 @@ export const useCloudDiskStore = defineStore('cloudDisk', () => {
   const showRenameFolderDialog = ref(false)
   const renamingFolder = ref(null)
   const renameFolderName = ref('')
+  const quota = ref({
+    usedSize: 0,
+    limitSize: -1,
+    isAdmin: false
+  })
   let latestFetchToken = 0
 
   function normalizeFolderPath(folderPath) {
@@ -102,6 +107,39 @@ export const useCloudDiskStore = defineStore('cloudDisk', () => {
     } finally {
       isLoading.value = false
     }
+  }
+
+  // 获取配额信息
+  async function fetchQuota() {
+    try {
+      const response = await request.get(API_ENDPOINTS.cloudDisk.quota)
+      if (response && response.data) {
+        quota.value = response.data
+      } else if (response) {
+        quota.value = response
+      }
+      return { success: true }
+    } catch (error) {
+      console.error('Fetch quota error:', error)
+      return { success: false, message: '获取存储空间信息失败' }
+    }
+  }
+
+  // 检查是否可以创建文件夹（层级限制）
+  function canCreateSubFolder(folderPath = null) {
+    const path = folderPath !== null ? folderPath : currentFolder.value
+    if (!path || path === '' || path === '/') {
+      return true // 根目录下可以创建（第1层）
+    }
+    
+    const normalizedPath = path.replace(/^\//, '').replace(/\/$/, '')
+    if (!normalizedPath) return true
+    
+    const segments = normalizedPath.split('/')
+    // segments.length 就是当前深度。
+    // 如果 segments.length < 2，说明还可以创建子目录（创建后深度变为 length + 1）
+    // 如果 segments.length >= 2，说明当前已经是第2层（或更深），不能再创建
+    return segments.length < 2
   }
   
   async function startRenameFile(fileId, newName) {
@@ -362,6 +400,7 @@ export const useCloudDiskStore = defineStore('cloudDisk', () => {
           }
       }
       
+      await fetchQuota()
       return { success: true, file: response }
     } catch (error) {
       console.error('Upload file error:', error)
@@ -389,6 +428,7 @@ export const useCloudDiskStore = defineStore('cloudDisk', () => {
       })
       await fetchFiles(folderPath)
       await fetchFolders()
+      await fetchQuota()
       return { success: true, filesImported: response?.data || 0 }
     } catch (error) {
       return { success: false, message: error.response?.data?.message || '上传文件夹失败' }
@@ -414,6 +454,7 @@ export const useCloudDiskStore = defineStore('cloudDisk', () => {
       })
       await fetchFiles(folderPath)
       await fetchFolders()
+      await fetchQuota()
       return { success: true, filesImported: response?.data || 0 }
     } catch (error) {
       return { success: false, message: error.response?.data?.message || '上传文件夹失败' }
@@ -431,6 +472,7 @@ export const useCloudDiskStore = defineStore('cloudDisk', () => {
       
       // 刷新文件夹树
       await fetchFolders()
+      await fetchQuota()
       
       return { success: true }
     } catch (error) {
@@ -450,6 +492,7 @@ export const useCloudDiskStore = defineStore('cloudDisk', () => {
       // 从列表中移除
       files.value = files.value.filter(f => f.id !== fileId)
       
+      await fetchQuota()
       return { success: true }
     } catch (error) {
       console.error('Delete file error:', error)
@@ -480,6 +523,7 @@ export const useCloudDiskStore = defineStore('cloudDisk', () => {
       
       // 刷新文件夹树
       await fetchFolders()
+      await fetchQuota()
       
       return { success: true }
     } catch (error) {
@@ -675,7 +719,10 @@ export const useCloudDiskStore = defineStore('cloudDisk', () => {
     getPreviewUrl,
     toggleFileSelection,
     toggleSelectAll,
-    clearSelection
+    clearSelection,
+    quota,
+    fetchQuota,
+    canCreateSubFolder
   }
 })
 
