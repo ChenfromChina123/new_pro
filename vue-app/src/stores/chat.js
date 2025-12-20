@@ -157,6 +157,8 @@ export const useChatStore = defineStore('chat', () => {
     const aiMessage = {
       role: 'assistant',
       content: '',
+      reasoning_content: '', // 新增推理内容字段
+      isReasoningCollapsed: false, // 默认展开推理过程
       timestamp: new Date().toISOString(),
       model: selectedModel.value
     }
@@ -216,6 +218,13 @@ export const useChatStore = defineStore('chat', () => {
             }
             try {
               const parsed = JSON.parse(data)
+              
+              // 处理推理内容
+              if (parsed.reasoning_content) {
+                activeAiMessage.reasoning_content = (activeAiMessage.reasoning_content || '') + parsed.reasoning_content
+              }
+              
+              // 处理回复内容
               if (parsed.content) {
                 activeAiMessage.content += parsed.content
                 if (onChunk) {
@@ -235,6 +244,11 @@ export const useChatStore = defineStore('chat', () => {
         if (data !== '[DONE]') {
           try {
             const parsed = JSON.parse(data)
+            
+            if (parsed.reasoning_content) {
+              activeAiMessage.reasoning_content = (activeAiMessage.reasoning_content || '') + parsed.reasoning_content
+            }
+            
             if (parsed.content) {
               activeAiMessage.content += parsed.content
               if (onChunk) {

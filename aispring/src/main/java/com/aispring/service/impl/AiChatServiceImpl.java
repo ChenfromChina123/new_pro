@@ -3,7 +3,9 @@ package com.aispring.service.impl;
 import com.aispring.service.AiChatService;
 import com.aispring.repository.ChatRecordRepository;
 import com.aispring.entity.ChatRecord;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import okhttp3.*;
 import org.springframework.ai.chat.ChatClient;
 import org.springframework.ai.chat.ChatResponse;
 import org.springframework.ai.chat.StreamingChatClient;
@@ -20,10 +22,20 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import jakarta.annotation.PostConstruct;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+
+import javax.net.ssl.*;
+import java.security.cert.CertificateException;
 
 /**
  * AI聊天服务实现类
@@ -36,6 +48,7 @@ public class AiChatServiceImpl implements AiChatService {
     private final ObjectProvider<ChatClient> chatClientProvider;
     private final ObjectProvider<StreamingChatClient> streamingChatClientProvider;
     private final ChatRecordRepository chatRecordRepository;
+    private final OkHttpClient okHttpClient;
     
     @Value("${ai.max-tokens:4096}")
     private Integer maxTokens;
@@ -75,6 +88,11 @@ public class AiChatServiceImpl implements AiChatService {
         this.doubaoApiUrl = doubaoApiUrl;
         this.deepseekApiKey = deepseekApiKey;
         this.deepseekApiUrl = deepseekApiUrl;
+        
+        // Initialize OkHttpClient with custom timeouts and unsafe SSL
+        this.okHttpClient = createUnsafeOkHttpClient();
+
+        // Initialize Doubao Client
 
         // Initialize Doubao Client
         System.out.println("[Doubao] Initializing Doubao AI client...");
@@ -146,6 +164,11 @@ public class AiChatServiceImpl implements AiChatService {
         System.out.println("Session ID: " + sessionId);
         System.out.println("User ID: " + userId);
         
+        // 检查是否为推理模型，如果是则使用OkHttp自定义流式调用
+        if ("deepseek-reasoner".equals(model) || "doubao-reasoner".equals(model)) {
+            return askStreamWithOkHttp(prompt, sessionId, model, userId, emitter);
+        }
+
         // 确定使用的客户端和模型名称
         StreamingChatClient clientToUse = null;
         String actualModel = model;
@@ -249,6 +272,137 @@ public class AiChatServiceImpl implements AiChatService {
         
         return emitter;
     }
+
+    private SseEmitter askStreamWithOkHttp(String prompt, String sessionId, String model, String userId, SseEmitter emitter) {
+        new Thread(() -> {
+            try {
+                String apiKey = "";
+                String apiUrl = "";
+                String requestModel = "";
+                boolean isDoubao = false;
+
+                if ("deepseek-reasoner".equals(model)) {
+                    apiKey = deepseekApiKey;
+                    apiUrl = deepseekApiUrl + "/v1/chat/completions";
+                    requestModel = "deepseek-reasoner";
+                } else if ("doubao-reasoner".equals(model)) {
+                    apiKey = doubaoApiKey;
+                    apiUrl = doubaoApiUrl + "/api/v3/chat/completions"; // 火山方舟通常路径
+                    // 如果 doubaoApiUrl 已经包含完整路径（如 /api/v3/...），需要适配
+                    if (doubaoApiUrl.endsWith("/chat/completions")) {
+                        apiUrl = doubaoApiUrl;
+                    } else if (doubaoApiUrl.endsWith("/")) {
+                        apiUrl = doubaoApiUrl + "api/v3/chat/completions";
+                    }
+                    requestModel = "doubao-seed-1-6-251015";
+                    isDoubao = true;
+                }
+
+                // 准备消息历史
+                List<Map<String, String>> messages = new ArrayList<>();
+                if (sessionId != null && !sessionId.isEmpty()) {
+                    List<ChatRecord> history = chatRecordRepository.findByUserIdAndSessionIdOrderByMessageOrderAsc(userId, sessionId);
+                    int start = Math.max(0, history.size() - MAX_CONTEXT_MESSAGES);
+                    List<ChatRecord> recentHistory = history.subList(start, history.size());
+                    
+                    for (ChatRecord record : recentHistory) {
+                        Map<String, String> msg = new HashMap<>();
+                        msg.put("role", record.getSenderType() == 1 ? "user" : "assistant");
+                        msg.put("content", record.getContent());
+                        messages.add(msg);
+                    }
+                }
+                
+                // 添加当前用户消息
+                Map<String, String> currentMsg = new HashMap<>();
+                currentMsg.put("role", "user");
+                currentMsg.put("content", prompt);
+                messages.add(currentMsg);
+
+                // 构建请求体
+                Map<String, Object> payload = new HashMap<>();
+                payload.put("model", requestModel);
+                payload.put("messages", messages);
+                payload.put("stream", true);
+                payload.put("temperature", 0.6); // 深度思考模型通常建议较低温度
+                
+                if (isDoubao) {
+                    // 豆包-reasoner 特有参数
+                    payload.put("thinking", Map.of("type", "enabled"));
+                }
+
+                String jsonPayload = objectMapper.writeValueAsString(payload);
+                
+                RequestBody body = RequestBody.create(jsonPayload, MediaType.get("application/json; charset=utf-8"));
+                Request request = new Request.Builder()
+                        .url(apiUrl)
+                        .addHeader("Authorization", "Bearer " + apiKey)
+                        .post(body)
+                        .build();
+
+                try (Response response = okHttpClient.newCall(request).execute()) {
+                    if (!response.isSuccessful()) {
+                        throw new IOException("Unexpected code " + response);
+                    }
+
+                    InputStream is = response.body().byteStream();
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+                    String line;
+                    
+                    while ((line = reader.readLine()) != null) {
+                        if (line.isEmpty()) continue;
+                        if (line.startsWith("data: ")) {
+                            String data = line.substring(6).trim();
+                            if ("[DONE]".equals(data)) break;
+                            
+                            try {
+                                JsonNode root = objectMapper.readTree(data);
+                                JsonNode choices = root.path("choices");
+                                if (choices.isArray() && choices.size() > 0) {
+                                    JsonNode delta = choices.get(0).path("delta");
+                                    
+                                    // 提取推理内容
+                                    String reasoningContent = "";
+                                    if (delta.has("reasoning_content")) {
+                                        reasoningContent = delta.get("reasoning_content").asText();
+                                    }
+                                    
+                                    // 提取回复内容
+                                    String content = "";
+                                    if (delta.has("content")) {
+                                        content = delta.get("content").asText();
+                                    }
+                                    
+                                    if (!reasoningContent.isEmpty() || !content.isEmpty()) {
+                                        Map<String, String> resultMap = new HashMap<>();
+                                        if (!reasoningContent.isEmpty()) {
+                                            resultMap.put("reasoning_content", reasoningContent);
+                                        }
+                                        if (!content.isEmpty()) {
+                                            resultMap.put("content", content);
+                                        }
+                                        String json = objectMapper.writeValueAsString(resultMap);
+                                        emitter.send(SseEmitter.event().data(json));
+                                    }
+                                }
+                            } catch (Exception e) {
+                                // 忽略解析错误，继续处理下一行
+                                System.err.println("Parse SSE error: " + e.getMessage());
+                            }
+                        }
+                    }
+                    
+                    emitter.send(SseEmitter.event().data("[DONE]"));
+                    emitter.complete();
+                }
+            } catch (Exception e) {
+                handleError(emitter, e);
+            }
+        }).start();
+        
+        return emitter;
+    }
+
 
     private Prompt buildPrompt(String promptText, String sessionId, String userId, OpenAiChatOptions options) {
         List<Message> messages = new ArrayList<>();
@@ -374,5 +528,45 @@ public class AiChatServiceImpl implements AiChatService {
             }
         } catch (Exception ignore) {}
         return "抱歉，AI服务暂不可用。";
+    }
+
+    private OkHttpClient createUnsafeOkHttpClient() {
+        try {
+            // Create a trust manager that does not validate certificate chains
+            final TrustManager[] trustAllCerts = new TrustManager[]{
+                    new X509TrustManager() {
+                        @Override
+                        public void checkClientTrusted(java.security.cert.X509Certificate[] chain, String authType) throws CertificateException {
+                        }
+
+                        @Override
+                        public void checkServerTrusted(java.security.cert.X509Certificate[] chain, String authType) throws CertificateException {
+                        }
+
+                        @Override
+                        public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+                            return new java.security.cert.X509Certificate[]{};
+                        }
+                    }
+            };
+
+            // Install the all-trusting trust manager
+            final SSLContext sslContext = SSLContext.getInstance("SSL");
+            sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
+            // Create an ssl socket factory with our all-trusting manager
+            final SSLSocketFactory sslSocketFactory = sslContext.getSocketFactory();
+
+            OkHttpClient.Builder builder = new OkHttpClient.Builder();
+            builder.sslSocketFactory(sslSocketFactory, (X509TrustManager) trustAllCerts[0]);
+            builder.hostnameVerifier((hostname, session) -> true);
+            
+            builder.connectTimeout(60, TimeUnit.SECONDS)
+                   .writeTimeout(60, TimeUnit.SECONDS)
+                   .readTimeout(180, TimeUnit.SECONDS);
+
+            return builder.build();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }
