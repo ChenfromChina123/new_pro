@@ -4,8 +4,29 @@
       <div class="chat-container">
         <!-- 侧边栏：全局导航 + 会话列表 -->
         <aside class="chat-sidebar">
-          <div class="sidebar-logo">
-            <span class="logo-text">AI学习助手</span>
+          <div class="sidebar-top">
+            <div class="user-profile">
+              <div class="user-avatar-wrapper">
+                <img 
+                  v-if="authStore.userInfo?.avatar" 
+                  :src="avatarUrl || authStore.userInfo.avatar" 
+                  :alt="authStore.username" 
+                  class="sidebar-avatar"
+                >
+                <i v-else class="fas fa-user default-avatar-icon" />
+              </div>
+              <span class="sidebar-user-name">{{ authStore.username || '用户' }}</span>
+            </div>
+            
+            <div class="sidebar-actions">
+              <button 
+                class="sidebar-icon-btn" 
+                :title="themeStore.isDarkMode ? '切换到浅色模式' : '切换到深色模式'" 
+                @click="themeStore.toggleDarkMode()"
+              >
+                <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" />
+              </button>
+            </div>
           </div>
 
           <div class="sidebar-nav">
@@ -84,6 +105,13 @@
                 <i class="fas fa-trash" />
               </button>
             </div>
+          </div>
+
+          <div class="sidebar-footer">
+            <button class="logout-btn" @click="handleLogout">
+              <i class="fas fa-sign-out-alt" />
+              <span>退出登录</span>
+            </button>
           </div>
         </aside>
         
@@ -291,8 +319,10 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useChatStore } from '@/stores/chat'
 import { useAuthStore } from '@/stores/auth'
+import { useThemeStore } from '@/stores/theme'
 import { marked } from 'marked'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
@@ -303,10 +333,51 @@ import { API_CONFIG } from '@/config/api'
 
 const chatStore = useChatStore()
 const authStore = useAuthStore()
+const themeStore = useThemeStore() // 导入主题 store
+const router = useRouter() // 导入路由
 const inputMessage = ref('')
 const messagesContainer = ref(null)
 
-const userAvatarUrl = ref(null)
+const avatarUrl = ref(null) // 用于侧边栏头像
+const userAvatarUrl = ref(null) // 用于消息列表头像
+
+// 退出登录逻辑
+const handleLogout = () => {
+  if (confirm('确定要退出登录吗？')) {
+    authStore.logout()
+    router.push('/login')
+  }
+}
+
+// 侧边栏头像逻辑
+watch(
+  () => authStore.userInfo?.avatar,
+  async (path) => {
+    if (path) {
+      try {
+        const res = await fetch(`${API_CONFIG.baseURL}${path}`, {
+          headers: { Authorization: `Bearer ${authStore.token}` }
+        })
+        if (res.ok) {
+          const blob = await res.blob()
+          const url = URL.createObjectURL(blob)
+          avatarUrl.value = url
+          userAvatarUrl.value = url // 同时更新消息头像
+        } else {
+          avatarUrl.value = null
+          userAvatarUrl.value = null
+        }
+      } catch {
+        avatarUrl.value = null
+        userAvatarUrl.value = null
+      }
+    } else {
+      avatarUrl.value = null
+      userAvatarUrl.value = null
+    }
+  },
+  { immediate: true }
+)
 
 /**
  * 解析并返回消息头像图片地址；无可用图片时返回 `null` 以回退到默认图标
@@ -907,7 +978,7 @@ const adjustTextareaHeight = (event) => {
 
 <style scoped>
 .chat-page {
-  height: calc(100vh - 68px);
+  height: 100vh;
   overflow: hidden;
   background-color: var(--bg-primary);
 }
@@ -915,21 +986,120 @@ const adjustTextareaHeight = (event) => {
 .chat-container {
   display: flex;
   height: 100%;
-  max-width: 1400px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
   background-color: var(--bg-secondary);
-  box-shadow: var(--shadow-lg);
-  border-radius: var(--border-radius-lg);
+  box-shadow: none;
+  border-radius: 0;
   overflow: hidden;
 }
 
 .chat-sidebar {
-  width: 260px;
+  width: 280px;
   background-color: var(--bg-secondary);
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   transition: all 0.3s ease;
+  height: 100%;
+}
+
+.sidebar-top {
+  padding: 20px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.user-avatar-wrapper {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: var(--bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.sidebar-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.default-avatar-icon {
+  font-size: 18px;
+  color: var(--text-tertiary);
+}
+
+.sidebar-user-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-actions {
+  display: flex;
+  align-items: center;
+}
+
+.sidebar-icon-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-icon-btn:hover {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.sidebar-footer {
+  padding: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.logout-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background-color: transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.logout-btn:hover {
+  background-color: var(--bg-tertiary);
+  color: var(--danger-color);
+  border-color: var(--danger-color);
 }
 
 .sidebar-nav {

@@ -1,6 +1,6 @@
 <template>
   <div class="app-layout">
-    <AppHeader />
+    <!-- 移除顶部 AppHeader，改为全屏侧边栏布局 -->
     <main class="main-content">
       <slot />
     </main>
@@ -8,18 +8,23 @@
 </template>
 
 <script setup>
-import AppHeader from './AppHeader.vue'
+// AppHeader 已不再作为顶部导航使用
 </script>
 
 <style scoped>
 .app-layout {
-  min-height: 100vh;
+  height: 100vh;
+  width: 100vw;
   display: flex;
-  flex-direction: column;
+  overflow: hidden;
+  background-color: var(--bg-primary);
 }
 
 .main-content {
   flex: 1;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
 }
 </style>
 
