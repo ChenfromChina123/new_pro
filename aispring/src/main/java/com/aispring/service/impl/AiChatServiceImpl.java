@@ -3,16 +3,7 @@ package com.aispring.service.impl;
 import com.aispring.service.AiChatService;
 import com.aispring.repository.ChatRecordRepository;
 import com.aispring.entity.ChatRecord;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
-import okio.BufferedSource;
 import org.springframework.ai.chat.ChatClient;
 import org.springframework.ai.chat.ChatResponse;
 import org.springframework.ai.chat.StreamingChatClient;
@@ -29,11 +20,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import jakarta.annotation.PostConstruct;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -43,7 +32,6 @@ import java.util.stream.Collectors;
 @Service
 public class AiChatServiceImpl implements AiChatService {
     
-    private static final Logger logger = LoggerFactory.getLogger(AiChatServiceImpl.class);
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private final ObjectProvider<ChatClient> chatClientProvider;
     private final ObjectProvider<StreamingChatClient> streamingChatClientProvider;
@@ -57,9 +45,6 @@ public class AiChatServiceImpl implements AiChatService {
     
     @Value("${ai.doubao.api-url:}")
     private String doubaoApiUrl;
-    
-    @Value("${ai.doubao.model:}")
-    private String doubaoModel;
     
     @Value("${ai.deepseek.api-key:}")
     private String deepseekApiKey;
@@ -75,72 +60,12 @@ public class AiChatServiceImpl implements AiChatService {
     
     // 上下文最大消息数
     private static final int MAX_CONTEXT_MESSAGES = 10;
-    
-    private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-    private static final int DOUBAO_MAX_RETRIES = 2;
-    
-    private final OkHttpClient doubaoHttpClient = new OkHttpClient.Builder()
-            .connectTimeout(10, TimeUnit.SECONDS)
-            .writeTimeout(20, TimeUnit.SECONDS)
-            .readTimeout(40, TimeUnit.SECONDS)
-            .build();
-    
-    private final OkHttpClient doubaoStreamingHttpClient = new OkHttpClient.Builder()
-            .connectTimeout(10, TimeUnit.SECONDS)
-            .writeTimeout(20, TimeUnit.SECONDS)
-            .readTimeout(0, TimeUnit.MILLISECONDS)
-            .build();
-    
-    /**
-     * 对注入的 URL / Key 做规范化处理，兼容用户配置中包含的引号/反引号/多余空格。
-     */
-    @PostConstruct
-    public void normalizeConfig() {
-        this.doubaoApiUrl = normalizeUrl(this.doubaoApiUrl);
-        this.deepseekApiUrl = normalizeUrl(this.deepseekApiUrl);
-        this.doubaoApiKey = normalizeToken(this.doubaoApiKey);
-        this.deepseekApiKey = normalizeToken(this.deepseekApiKey);
-        this.doubaoModel = normalizeToken(this.doubaoModel);
-    }
-    
-    /**
-     * 规范化 URL，去掉首尾空白、引号与反引号，并移除末尾多余的 `/`。
-     */
-    private String normalizeUrl(String raw) {
-        if (raw == null) {
-            return null;
-        }
-        String s = raw.trim();
-        if (s.isEmpty()) {
-            return s;
-        }
-        s = s.replace("`", "").replace("\"", "").trim();
-        while (s.endsWith("/")) {
-            s = s.substring(0, s.length() - 1);
-        }
-        return s;
-    }
-    
-    /**
-     * 规范化 Token（Key/Model），去掉首尾空白、引号与反引号。
-     */
-    private String normalizeToken(String raw) {
-        if (raw == null) {
-            return null;
-        }
-        String s = raw.trim();
-        if (s.isEmpty()) {
-            return s;
-        }
-        return s.replace("`", "").replace("\"", "").trim();
-    }
 
     public AiChatServiceImpl(ObjectProvider<ChatClient> chatClientProvider,
                              ObjectProvider<StreamingChatClient> streamingChatClientProvider,
                              ChatRecordRepository chatRecordRepository,
                              @Value("${ai.doubao.api-key:}") String doubaoApiKey,
                              @Value("${ai.doubao.api-url:}") String doubaoApiUrl,
-                             @Value("${ai.doubao.model:}") String doubaoModel,
                              @Value("${ai.deepseek.api-key:}") String deepseekApiKey,
                              @Value("${ai.deepseek.api-url:}") String deepseekApiUrl) {
         this.chatClientProvider = chatClientProvider;
@@ -148,31 +73,58 @@ public class AiChatServiceImpl implements AiChatService {
         this.chatRecordRepository = chatRecordRepository;
         this.doubaoApiKey = doubaoApiKey;
         this.doubaoApiUrl = doubaoApiUrl;
-        this.doubaoModel = doubaoModel;
         this.deepseekApiKey = deepseekApiKey;
         this.deepseekApiUrl = deepseekApiUrl;
 
         // Initialize Doubao Client
+        System.out.println("[Doubao] Initializing Doubao AI client...");
+        System.out.println("[Doubao] API Key length: " + (doubaoApiKey != null ? doubaoApiKey.length() : 0));
+        System.out.println("[Doubao] API Key: " + (doubaoApiKey != null && !doubaoApiKey.isEmpty() ? "********" : "NOT SET"));
+        System.out.println("[Doubao] API URL: " + (doubaoApiUrl != null ? doubaoApiUrl : "NOT SET"));
+        
         if (doubaoApiKey != null && !doubaoApiKey.isEmpty() && doubaoApiUrl != null && !doubaoApiUrl.isEmpty()) {
             try {
-                OpenAiApi doubaoApi = new OpenAiApi(normalizeUrl(doubaoApiUrl), normalizeToken(doubaoApiKey));
-                OpenAiChatClient client = new OpenAiChatClient(doubaoApi);
+                System.out.println("[Doubao] Creating OpenAiApi instance for Doubao...");
+                System.out.println("[Doubao] OpenAiApi constructor params - URL: " + doubaoApiUrl + ", Key length: " + doubaoApiKey.length());
+                OpenAiApi doubaoApi = new OpenAiApi(doubaoApiUrl, doubaoApiKey);
+                System.out.println("[Doubao] OpenAiApi instance created successfully");
+                
+                System.out.println("[Doubao] Creating OpenAiChatOptions for Doubao...");
+                OpenAiChatOptions doubaoOptions = OpenAiChatOptions.builder()
+                        .withModel("doubao-pro-32k") // 设置豆包模型名称
+                        .withTemperature(0.7f)
+                        .withMaxTokens(maxTokens)
+                        .build();
+                System.out.println("[Doubao] OpenAiChatOptions created with model: " + doubaoOptions.getModel());
+                
+                System.out.println("[Doubao] Creating OpenAiChatClient instance for Doubao...");
+                OpenAiChatClient client = new OpenAiChatClient(doubaoApi, doubaoOptions);
                 this.doubaoChatClient = client;
                 this.doubaoStreamingChatClient = client;
-                System.out.println("Doubao AI client initialized successfully with URL: " + normalizeUrl(doubaoApiUrl));
+                System.out.println("[Doubao] Doubao AI client initialized successfully!");
+                System.out.println("[Doubao] doubaoChatClient: " + (this.doubaoChatClient != null ? this.doubaoChatClient.getClass().getSimpleName() : "null"));
+                System.out.println("[Doubao] doubaoStreamingChatClient: " + (this.doubaoStreamingChatClient != null ? this.doubaoStreamingChatClient.getClass().getSimpleName() : "null"));
             } catch (Exception e) {
-                System.err.println("Failed to initialize Doubao AI client: " + e.getMessage());
+                System.err.println("[Doubao ERROR] Failed to initialize Doubao AI client: " + e.getMessage());
+                System.err.println("[Doubao ERROR] Stack trace:");
+                e.printStackTrace();
+                System.err.println("[Doubao ERROR] API URL: " + doubaoApiUrl);
+                System.err.println("[Doubao ERROR] API Key length: " + (doubaoApiKey != null ? doubaoApiKey.length() : 0));
             }
+        } else {
+            System.err.println("[Doubao ERROR] Initialization skipped: missing API key or URL");
+            System.err.println("[Doubao ERROR] API Key provided: " + (doubaoApiKey != null && !doubaoApiKey.isEmpty()));
+            System.err.println("[Doubao ERROR] API URL provided: " + (doubaoApiUrl != null && !doubaoApiUrl.isEmpty()));
         }
         
         // Initialize DeepSeek Client
         if (deepseekApiKey != null && !deepseekApiKey.isEmpty() && deepseekApiUrl != null && !deepseekApiUrl.isEmpty()) {
             try {
-                OpenAiApi deepseekApi = new OpenAiApi(normalizeUrl(deepseekApiUrl), normalizeToken(deepseekApiKey));
+                OpenAiApi deepseekApi = new OpenAiApi(deepseekApiUrl, deepseekApiKey);
                 OpenAiChatClient client = new OpenAiChatClient(deepseekApi);
                 this.deepseekChatClient = client;
                 this.deepseekStreamingChatClient = client;
-                System.out.println("DeepSeek AI client initialized successfully with URL: " + normalizeUrl(deepseekApiUrl));
+                System.out.println("DeepSeek AI client initialized successfully with URL: " + deepseekApiUrl);
             } catch (Exception e) {
                 System.err.println("Failed to initialize DeepSeek AI client: " + e.getMessage());
             }
@@ -188,32 +140,46 @@ public class AiChatServiceImpl implements AiChatService {
         // 创建SSE发射器，设置超时时间为3分钟
         SseEmitter emitter = new SseEmitter(180_000L);
         
-        if ("doubao".equals(model)) {
-            new Thread(() -> {
-                try {
-                    streamDoubaoWithRetry(emitter, prompt, sessionId, userId);
-                } catch (Exception e) {
-                    handleError(emitter, e);
-                }
-            }).start();
-            return emitter;
-        }
+        System.out.println("=== askStream Called ===");
+        System.out.println("Model: " + model);
+        System.out.println("Prompt: " + (prompt != null ? prompt.substring(0, Math.min(50, prompt.length())) + "..." : "null"));
+        System.out.println("Session ID: " + sessionId);
+        System.out.println("User ID: " + userId);
         
         // 确定使用的客户端和模型名称
         StreamingChatClient clientToUse = null;
         String actualModel = model;
         
-        if ("deepseek".equals(model) || "deepseek-chat".equals(model)) {
+        if ("doubao".equals(model)) {
+            System.out.println("[Doubao] Selected model: doubao");
+            System.out.println("[Doubao] doubaoStreamingChatClient reference: " + (doubaoStreamingChatClient != null ? "exists" : "null"));
+            if (doubaoStreamingChatClient != null) {
+                clientToUse = doubaoStreamingChatClient;
+                System.out.println("[Doubao] Using initialized Doubao streaming client");
+                System.out.println("[Doubao] Client type: " + doubaoStreamingChatClient.getClass().getSimpleName());
+            } else {
+                // 如果豆包客户端未初始化，尝试使用默认客户端
+                System.err.println("[Doubao ERROR] Client not initialized, falling back to default.");
+                clientToUse = streamingChatClientProvider.getIfAvailable();
+                System.out.println("[Doubao] Fallback to default streaming client: " + (clientToUse != null ? "available" : "not available"));
+                System.out.println("[Doubao] Default client type: " + (clientToUse != null ? clientToUse.getClass().getSimpleName() : "null"));
+            }
+        } else if ("deepseek".equals(model) || "deepseek-chat".equals(model)) {
+            System.out.println("Selected model: deepseek");
             if (deepseekStreamingChatClient != null) {
                 clientToUse = deepseekStreamingChatClient;
+                System.out.println("Using initialized DeepSeek streaming client");
             } else {
                 clientToUse = streamingChatClientProvider.getIfAvailable();
+                System.out.println("Fallback to default streaming client: " + (clientToUse != null ? "available" : "not available"));
             }
             actualModel = "deepseek-chat";
         } else {
+            System.out.println("Selected model: " + model + " (using default client)");
             clientToUse = streamingChatClientProvider.getIfAvailable();
             if (model == null || model.isEmpty()) {
                 actualModel = "deepseek-chat";
+                System.out.println("Model is null/empty, using default: deepseek-chat");
             }
         }
         
@@ -228,10 +194,17 @@ public class AiChatServiceImpl implements AiChatService {
                 .withMaxTokens(maxTokens)
                 .build();
         
+        System.out.println("Building prompt with options:");
+        System.out.println("- Model: " + options.getModel());
+        System.out.println("- Temperature: " + options.getTemperature());
+        System.out.println("- Max Tokens: " + options.getMaxTokens());
+        
         // 构建包含上下文的Prompt
         Prompt promptObj = buildPrompt(prompt, sessionId, userId, options);
+        System.out.println("Prompt built");
         
         final StreamingChatClient finalClient = clientToUse;
+        System.out.println("Final client: " + (finalClient != null ? finalClient.getClass().getSimpleName() : "null"));
         
         // 异步处理流式响应
         new Thread(() -> {
@@ -277,9 +250,6 @@ public class AiChatServiceImpl implements AiChatService {
         return emitter;
     }
 
-    /**
-     * 构建包含历史上下文的 Prompt，用于 Spring AI 的 ChatClient 调用。
-     */
     private Prompt buildPrompt(String promptText, String sessionId, String userId, OpenAiChatOptions options) {
         List<Message> messages = new ArrayList<>();
         
@@ -306,9 +276,6 @@ public class AiChatServiceImpl implements AiChatService {
         return new Prompt(messages, options);
     }
 
-    /**
-     * 统一处理流式接口异常：记录日志并向前端发送可展示的错误消息，然后结束流。
-     */
     private void handleError(SseEmitter emitter, Throwable e) {
         // 记录错误日志
         System.err.println("AI Chat Error: " + e.getMessage());
@@ -335,7 +302,11 @@ public class AiChatServiceImpl implements AiChatService {
             String actualModel = model;
             
             if ("doubao".equals(model)) {
-                return callDoubaoWithRetry(prompt, sessionId, userId);
+                if (doubaoChatClient != null) {
+                    clientToUse = doubaoChatClient;
+                } else {
+                    clientToUse = chatClientProvider.getIfAvailable();
+                }
             } else if ("deepseek".equals(model) || "deepseek-chat".equals(model)) {
                 if (deepseekChatClient != null) {
                     clientToUse = deepseekChatClient;
@@ -367,21 +338,19 @@ public class AiChatServiceImpl implements AiChatService {
             Prompt promptObj = buildPrompt(prompt, sessionId, userId, options);
             
             final ChatClient finalClient = clientToUse;
-            logger.info("Sending request to AI. Model: {}, Prompt length: {}", actualModel, prompt.length());
+            System.out.println("Sending request to AI. Model: " + actualModel + ", Prompt length: " + prompt.length());
             
             ChatResponse response = finalClient.call(promptObj);
             String content = response.getResult().getOutput().getContent();
-            logger.info("AI Response received. Length: {}", (content != null ? content.length() : 0));
+            System.out.println("AI Response received. Length: " + (content != null ? content.length() : 0));
             return content;
         } catch (Exception e) {
-            logger.error("AI Chat Error in ask(): ", e);
+            System.err.println("AI Chat Error in ask(): " + e.getMessage());
+            e.printStackTrace();
             return fallbackAnswer(prompt);
         }
     }
 
-    /**
-     * 当外部AI不可用时的兜底回复（避免前端空白并保证流程可结束）。
-     */
     private String fallbackAnswer(String prompt) {
         if (prompt == null || prompt.trim().isEmpty()) {
             return "";
@@ -405,245 +374,5 @@ public class AiChatServiceImpl implements AiChatService {
             }
         } catch (Exception ignore) {}
         return "抱歉，AI服务暂不可用。";
-    }
-    
-    /**
-     * 将数据库中的对话历史与当前问题合并为 OpenAI 兼容的 messages 数组。
-     */
-    private List<Map<String, String>> buildOpenAiMessages(String promptText, String sessionId, String userId) {
-        List<Map<String, String>> messages = new ArrayList<>();
-        
-        if (sessionId != null && !sessionId.isEmpty()) {
-            List<ChatRecord> history = chatRecordRepository.findByUserIdAndSessionIdOrderByMessageOrderAsc(userId, sessionId);
-            int start = Math.max(0, history.size() - MAX_CONTEXT_MESSAGES);
-            List<ChatRecord> recentHistory = history.subList(start, history.size());
-            
-            for (ChatRecord record : recentHistory) {
-                if (record.getSenderType() == 1) {
-                    messages.add(Map.of("role", "user", "content", record.getContent()));
-                } else if (record.getSenderType() == 2) {
-                    messages.add(Map.of("role", "assistant", "content", record.getContent()));
-                }
-            }
-        }
-        
-        messages.add(Map.of("role", "user", "content", promptText));
-        return messages;
-    }
-    
-    /**
-     * 生成豆包 OpenAI 兼容接口的 `chat/completions` 目标 URL。
-     * 支持 baseUrl 既可能是根域名（自动补 `/v1`），也可能已经包含 `/v1` 或 `/api/v3`。
-     */
-    private String buildDoubaoChatCompletionsUrl() {
-        String base = doubaoApiUrl == null ? "" : doubaoApiUrl.trim();
-        if (base.isEmpty()) {
-            throw new IllegalStateException("豆包API地址未配置（DOUBAO_BASEURL）");
-        }
-        if (base.endsWith("/")) {
-            base = base.substring(0, base.length() - 1);
-        }
-        if (base.contains("/api/v3") || base.endsWith("/v1")) {
-            return base + "/chat/completions";
-        }
-        return base + "/v1/chat/completions";
-    }
-    
-    /**
-     * 校验豆包配置，并返回实际调用的模型名称（通常为 Endpoint ID）。
-     */
-    private String resolveDoubaoActualModel() {
-        if (doubaoApiKey == null || doubaoApiKey.trim().isEmpty()) {
-            throw new IllegalStateException("豆包API密钥未配置（DOUBAO_API_KEY 或 AI_DOUBAO_API_KEY）");
-        }
-        String m = doubaoModel == null ? "" : doubaoModel.trim();
-        if (m.isEmpty()) {
-            throw new IllegalStateException("豆包模型未配置（DOUBAO_MODEL 或 AI_DOUBAO_MODEL，通常为 Endpoint ID）");
-        }
-        return m;
-    }
-    
-    /**
-     * 以流式方式调用豆包 OpenAI 兼容接口，并将增量内容转发为 SSE chunk。
-     */
-    private void streamDoubaoWithRetry(SseEmitter emitter, String prompt, String sessionId, String userId) throws Exception {
-        Exception last = null;
-        for (int attempt = 1; attempt <= DOUBAO_MAX_RETRIES; attempt++) {
-            try {
-                streamDoubaoOnce(emitter, prompt, sessionId, userId);
-                return;
-            } catch (Exception e) {
-                last = e;
-                boolean canRetry = (e instanceof IOException) || (e.getCause() instanceof IOException);
-                if (attempt < DOUBAO_MAX_RETRIES && canRetry) {
-                    Thread.sleep(300L * attempt);
-                    continue;
-                }
-                throw e;
-            }
-        }
-        if (last != null) {
-            throw last;
-        }
-    }
-    
-    /**
-     * 执行一次豆包流式请求。
-     */
-    private void streamDoubaoOnce(SseEmitter emitter, String prompt, String sessionId, String userId) throws Exception {
-        String url = buildDoubaoChatCompletionsUrl();
-        String actualModel = resolveDoubaoActualModel();
-        
-        List<Map<String, String>> messages = buildOpenAiMessages(prompt, sessionId, userId);
-        String requestJson = objectMapper.writeValueAsString(Map.of(
-                "model", actualModel,
-                "messages", messages,
-                "stream", true,
-                "temperature", 0.7,
-                "max_tokens", maxTokens
-        ));
-        
-        Request request = new Request.Builder()
-                .url(url)
-                .addHeader("Authorization", "Bearer " + doubaoApiKey.trim())
-                .addHeader("Accept", "text/event-stream")
-                .post(RequestBody.create(requestJson, JSON))
-                .build();
-        
-        long start = System.currentTimeMillis();
-        try (Response response = doubaoStreamingHttpClient.newCall(request).execute()) {
-            if (!response.isSuccessful()) {
-                String body = response.body() != null ? response.body().string() : "";
-                throw new IllegalStateException("豆包请求失败，HTTP " + response.code() + (body.isEmpty() ? "" : (": " + body)));
-            }
-            
-            if (response.body() == null) {
-                throw new IllegalStateException("豆包响应为空");
-            }
-            
-            BufferedSource source = response.body().source();
-            String line;
-            while ((line = source.readUtf8Line()) != null) {
-                if (line.isBlank()) continue;
-                if (!line.startsWith("data:")) continue;
-                String data = line.substring(5).trim();
-                if ("[DONE]".equals(data)) {
-                    break;
-                }
-                String chunk = extractStreamDeltaContent(data);
-                if (chunk != null && !chunk.isEmpty()) {
-                    String json = objectMapper.writeValueAsString(Map.of("content", chunk));
-                    emitter.send(SseEmitter.event().data(json));
-                }
-            }
-            
-            emitter.send(SseEmitter.event().data("[DONE]"));
-            emitter.complete();
-        } finally {
-            long cost = System.currentTimeMillis() - start;
-            logger.info("Doubao stream finished. costMs={}, sessionId={}, userId={}", cost, sessionId, userId);
-        }
-    }
-    
-    /**
-     * 解析 OpenAI 流式返回的单条 data JSON，提取增量文本内容。
-     */
-    private String extractStreamDeltaContent(String dataJson) throws Exception {
-        JsonNode root = objectMapper.readTree(dataJson);
-        JsonNode choices = root.path("choices");
-        if (!choices.isArray() || choices.isEmpty()) {
-            return null;
-        }
-        JsonNode delta = choices.get(0).path("delta");
-        if (delta.isMissingNode()) {
-            return null;
-        }
-        JsonNode content = delta.get("content");
-        return content != null && !content.isNull() ? content.asText() : null;
-    }
-    
-    /**
-     * 以非流式方式调用豆包接口（带一次重试），返回完整文本内容。
-     */
-    private String callDoubaoWithRetry(String prompt, String sessionId, String userId) {
-        Exception last = null;
-        for (int attempt = 1; attempt <= DOUBAO_MAX_RETRIES; attempt++) {
-            try {
-                return callDoubaoOnce(prompt, sessionId, userId);
-            } catch (Exception e) {
-                last = e;
-                boolean canRetry = (e instanceof IOException) || (e.getCause() instanceof IOException);
-                if (attempt < DOUBAO_MAX_RETRIES && canRetry) {
-                    try {
-                        Thread.sleep(300L * attempt);
-                    } catch (InterruptedException ignored) {
-                        Thread.currentThread().interrupt();
-                        break;
-                    }
-                    continue;
-                }
-                break;
-            }
-        }
-        if (last != null) {
-            logger.error("Doubao call failed.", last);
-            if (last instanceof IllegalStateException) {
-                return last.getMessage();
-            }
-        }
-        return fallbackAnswer(prompt);
-    }
-    
-    /**
-     * 执行一次豆包非流式请求。
-     */
-    private String callDoubaoOnce(String prompt, String sessionId, String userId) throws Exception {
-        String url = buildDoubaoChatCompletionsUrl();
-        String actualModel = resolveDoubaoActualModel();
-        
-        List<Map<String, String>> messages = buildOpenAiMessages(prompt, sessionId, userId);
-        String requestJson = objectMapper.writeValueAsString(Map.of(
-                "model", actualModel,
-                "messages", messages,
-                "stream", false,
-                "temperature", 0.7,
-                "max_tokens", maxTokens
-        ));
-        
-        Request request = new Request.Builder()
-                .url(url)
-                .addHeader("Authorization", "Bearer " + doubaoApiKey.trim())
-                .post(RequestBody.create(requestJson, JSON))
-                .build();
-        
-        long start = System.currentTimeMillis();
-        try (Response response = doubaoHttpClient.newCall(request).execute()) {
-            if (!response.isSuccessful()) {
-                String body = response.body() != null ? response.body().string() : "";
-                throw new IllegalStateException("豆包请求失败，HTTP " + response.code() + (body.isEmpty() ? "" : (": " + body)));
-            }
-            if (response.body() == null) {
-                throw new IllegalStateException("豆包响应为空");
-            }
-            String body = response.body().string();
-            return extractNonStreamContent(body);
-        } finally {
-            long cost = System.currentTimeMillis() - start;
-            logger.info("Doubao call finished. costMs={}, sessionId={}, userId={}", cost, sessionId, userId);
-        }
-    }
-    
-    /**
-     * 解析非流式响应 JSON，提取 choices[0].message.content。
-     */
-    private String extractNonStreamContent(String bodyJson) throws Exception {
-        JsonNode root = objectMapper.readTree(bodyJson);
-        JsonNode choices = root.path("choices");
-        if (!choices.isArray() || choices.isEmpty()) {
-            return "";
-        }
-        JsonNode msg = choices.get(0).path("message");
-        JsonNode content = msg.get("content");
-        return content != null && !content.isNull() ? content.asText() : "";
     }
 }
