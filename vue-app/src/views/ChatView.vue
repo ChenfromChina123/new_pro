@@ -259,17 +259,37 @@
                     <i class="fas fa-atom" />
                     <span>深度思考</span>
                   </button>
-                  <div class="tool-btn-pill model-pill">
-                    <i class="fas fa-robot" />
-                    <select
-                      v-model="chatStore.selectedModel"
-                      class="model-select-inline"
+                  <div class="tool-btn-pill model-pill" ref="modelMenuRef">
+                    <div 
+                      class="model-selector-trigger" 
+                      @click="isModelMenuOpen = !isModelMenuOpen"
+                      :class="{ active: isModelMenuOpen }"
                     >
-                      <option value="deepseek-chat">DeepSeek Chat</option>
-                      <option value="deepseek-reasoner">DeepSeek Reasoner</option>
-                      <option value="doubao">豆包</option>
-                      <option value="doubao-reasoner">豆包-reasoner</option>
-                    </select>
+                      <i :class="currentBrand.icon" class="brand-icon" />
+                      <span class="brand-name">{{ currentBrand.name }}</span>
+                      <i class="fas fa-chevron-up toggle-arrow" :class="{ rotate: isModelMenuOpen }" />
+                    </div>
+                    
+                    <transition name="menu-fade">
+                      <div v-if="isModelMenuOpen" class="model-dropdown-menu">
+                        <div 
+                          v-for="brand in brands" 
+                          :key="brand.id"
+                          class="model-menu-item"
+                          :class="{ active: currentBrand.id === brand.id }"
+                          @click="selectBrand(brand)"
+                        >
+                          <div class="item-icon-wrapper">
+                            <i :class="brand.icon" />
+                          </div>
+                          <div class="item-info">
+                            <span class="item-name">{{ brand.name }}</span>
+                            <span class="item-desc">{{ brand.id === 'deepseek' ? 'DeepSeek-V3' : '豆包-pro-128k' }}</span>
+                          </div>
+                          <i v-if="currentBrand.id === brand.id" class="fas fa-check check-icon" />
+                        </div>
+                      </div>
+                    </transition>
                   </div>
                 </div>
                 
@@ -950,24 +970,60 @@ const scrollToBottom = () => {
   }
 }
 
+const isModelMenuOpen = ref(false)
+const modelMenuRef = ref(null)
+
+const brands = [
+  {
+    id: 'deepseek',
+    name: 'DeepSeek',
+    icon: 'fas fa-brain',
+    standard: 'deepseek-chat',
+    reasoner: 'deepseek-reasoner'
+  },
+  {
+    id: 'doubao',
+    name: '豆包',
+    icon: 'fas fa-robot',
+    standard: 'doubao',
+    reasoner: 'doubao-reasoner'
+  }
+]
+
+// 获取当前选中的品牌
+const currentBrand = computed(() => {
+  const model = chatStore.selectedModel
+  return brands.find(b => model === b.standard || model === b.reasoner) || brands[0]
+})
+
+// 切换品牌
+const selectBrand = (brand) => {
+  const isReasoning = chatStore.selectedModel.includes('reasoner')
+  const newModel = isReasoning ? brand.reasoner : brand.standard
+  chatStore.setModel(newModel)
+  isModelMenuOpen.value = false
+}
+
+// 切换深度思考
 const toggleDeepThinking = () => {
-  const currentModel = chatStore.selectedModel
-  if (currentModel.includes('reasoner')) {
-    // 切换回普通模型
-    if (currentModel.includes('deepseek')) {
-      chatStore.setModel('deepseek-chat')
-    } else if (currentModel.includes('doubao')) {
-      chatStore.setModel('doubao')
-    }
-  } else {
-    // 切换到推理模型
-    if (currentModel.includes('deepseek')) {
-      chatStore.setModel('deepseek-reasoner')
-    } else if (currentModel.includes('doubao')) {
-      chatStore.setModel('doubao-reasoner')
+  const brand = currentBrand.value
+  const isReasoning = chatStore.selectedModel.includes('reasoner')
+  const newModel = isReasoning ? brand.standard : brand.reasoner
+  chatStore.setModel(newModel)
+}
+
+// 点击外部关闭菜单
+onMounted(() => {
+  const handleClickOutside = (event) => {
+    if (modelMenuRef.value && !modelMenuRef.value.contains(event.target)) {
+      isModelMenuOpen.value = false
     }
   }
-}
+  document.addEventListener('click', handleClickOutside)
+  onUnmounted(() => {
+    document.removeEventListener('click', handleClickOutside)
+  })
+})
 
 const adjustTextareaHeight = (event) => {
   const textarea = event.target
@@ -1956,32 +2012,152 @@ body.dark-mode .message-copy-button {
 
 .model-pill {
   position: relative;
-  padding: 0 8px 0 12px !important;
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
 }
 
-.model-pill i {
-  color: #2563eb;
+.model-selector-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 14px;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-.model-select-inline {
-  background: transparent;
-  border: none;
-  color: var(--text-primary);
+.model-selector-trigger:hover, .model-selector-trigger.active {
+  background-color: var(--bg-primary);
+  border-color: var(--primary-color);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
+  transform: translateY(-1px);
+}
+
+.brand-icon {
+  color: var(--primary-color);
+  font-size: 14px;
+}
+
+.brand-name {
   font-size: 13px;
   font-weight: 500;
-  padding: 6px 0;
-  cursor: pointer;
-  outline: none;
-  appearance: none;
-  padding-right: 20px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right center;
-  background-size: 12px;
+  color: var(--text-primary);
 }
 
-.model-select-inline:focus {
-  outline: none;
+.toggle-arrow {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.toggle-arrow.rotate {
+  transform: rotate(180deg);
+}
+
+.model-dropdown-menu {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 0;
+  width: 240px;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 18px;
+  padding: 8px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  transform-origin: bottom left;
+  backdrop-filter: blur(10px);
+}
+
+.model-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  margin-bottom: 2px;
+}
+
+.model-menu-item:last-child {
+  margin-bottom: 0;
+}
+
+.model-menu-item:hover {
+  background-color: var(--bg-secondary);
+  transform: scale(1.02);
+}
+
+.model-menu-item.active {
+  background-color: rgba(37, 99, 235, 0.05);
+}
+
+.item-icon-wrapper {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background-color: var(--bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-color);
+  font-size: 16px;
+  transition: all 0.3s ease;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.model-menu-item.active .item-icon-wrapper {
+  background-color: var(--primary-color);
+  color: white;
+  box-shadow: 0 4px 8px rgba(37, 99, 235, 0.3);
+}
+
+.item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.item-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.item-desc {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.check-icon {
+  font-size: 12px;
+  color: var(--primary-color);
+  animation: checkPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes checkPop {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
+}
+
+/* 菜单动画 */
+.menu-fade-enter-active,
+.menu-fade-leave-active {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.menu-fade-enter-from,
+.menu-fade-leave-to {
+  opacity: 0;
+  transform: translateY(12px) scale(0.95);
 }
 
 .toolbar-divider {
