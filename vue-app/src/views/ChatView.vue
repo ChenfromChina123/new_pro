@@ -190,42 +190,73 @@
           </div>
           
           <div class="chat-input-area">
-            <form
-              class="input-form"
-              @submit.prevent="sendMessage"
-            >
-              <div class="input-wrapper">
-                <textarea
-                  v-model="inputMessage"
-                  class="chat-input"
-                  placeholder="输入你的问题..."
-                  :disabled="chatStore.isLoading"
-                  rows="3"
-                  @keydown.enter.exact.prevent="sendMessage"
-                />
-                <div class="input-actions">
-                  <button
-                    type="submit"
-                    class="btn btn-primary send-btn"
-                    :disabled="!inputMessage.trim() || chatStore.isLoading"
+            <div class="input-container">
+              <textarea
+                v-model="inputMessage"
+                class="chat-input"
+                placeholder="发送消息或输入 / 选择技能"
+                :disabled="chatStore.isLoading"
+                rows="1"
+                @input="adjustTextareaHeight"
+                @keydown.enter.exact.prevent="sendMessage"
+              />
+              
+              <div class="input-toolbar">
+                <div class="toolbar-left">
+                  <button class="tool-btn" title="上传附件">
+                    <i class="fas fa-paperclip" />
+                  </button>
+                  <button 
+                    class="tool-btn-special" 
+                    :class="{ active: chatStore.selectedModel.includes('reasoner') }"
+                    @click="toggleDeepThinking"
                   >
-                    <span
-                      v-if="chatStore.isLoading"
-                      class="btn-icon"
-                    >
-                      <i class="fas fa-spinner fa-spin" />
-                    </span>
-                    <span
-                      v-else
-                      class="btn-icon"
-                    >
-                      <i class="fas fa-paper-plane" />
-                    </span>
-                    <span class="btn-text">发送</span>
+                    <i class="fas fa-atom" />
+                    <span>深度思考</span>
+                  </button>
+                  <button class="tool-btn-pill">
+                    <i class="fas fa-th-large" />
+                    <span>技能</span>
+                  </button>
+                </div>
+                
+                <div class="toolbar-right">
+                  <button class="tool-btn" title="截图">
+                    <i class="fas fa-cut" />
+                  </button>
+                  <button class="tool-btn" title="语音通话">
+                    <i class="fas fa-phone" />
+                  </button>
+                  <button class="tool-btn" title="语音输入">
+                    <i class="fas fa-microphone" />
+                  </button>
+                  
+                  <div class="toolbar-divider" />
+                  
+                  <button
+                    v-if="chatStore.isLoading"
+                    class="stop-btn"
+                    title="停止生成"
+                    @click="chatStore.stopGeneration"
+                  >
+                    <div class="stop-icon-wrapper">
+                      <i class="fas fa-stop" />
+                    </div>
+                  </button>
+                  <button
+                    v-else
+                    class="send-btn-new"
+                    :disabled="!inputMessage.trim()"
+                    title="发送消息"
+                    @click="sendMessage"
+                  >
+                    <div class="send-icon-wrapper">
+                      <i class="fas fa-arrow-up" />
+                    </div>
                   </button>
                 </div>
               </div>
-            </form>
+            </div>
           </div>
         </main>
       </div>
@@ -400,6 +431,12 @@ const sendMessage = async () => {
   
   const message = inputMessage.value.trim()
   inputMessage.value = ''
+  
+  // 重置输入框高度
+  const textarea = document.querySelector('.chat-input')
+  if (textarea) {
+    textarea.style.height = 'auto'
+  }
   
   await chatStore.sendMessage(message, () => {
     nextTick(() => scrollToBottom())
@@ -815,6 +852,31 @@ const scrollToBottom = () => {
   if (messagesContainer.value) {
     messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
   }
+}
+
+const toggleDeepThinking = () => {
+  const currentModel = chatStore.selectedModel
+  if (currentModel.includes('reasoner')) {
+    // 切换回普通模型
+    if (currentModel.includes('deepseek')) {
+      chatStore.setModel('deepseek-chat')
+    } else if (currentModel.includes('doubao')) {
+      chatStore.setModel('doubao')
+    }
+  } else {
+    // 切换到推理模型
+    if (currentModel.includes('deepseek')) {
+      chatStore.setModel('deepseek-reasoner')
+    } else if (currentModel.includes('doubao')) {
+      chatStore.setModel('doubao-reasoner')
+    }
+  }
+}
+
+const adjustTextareaHeight = (event) => {
+  const textarea = event.target
+  textarea.style.height = 'auto'
+  textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`
 }
 </script>
 
@@ -1551,52 +1613,171 @@ body.dark-mode .message-copy-button {
   }
 
 .chat-input-area {
-  padding: 24px 32px;
+  padding: 20px 32px 32px;
   background-color: var(--bg-secondary);
-  border-top: 1px solid var(--border-color);
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
   display: flex;
   justify-content: center;
 }
 
-.input-form {
+.input-container {
   width: 100%;
   max-width: 980px;
-}
-
-.input-wrapper {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 24px;
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input-container:focus-within {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.05);
 }
 
 .chat-input {
   width: 100%;
-  padding: 16px 20px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-lg);
-  background-color: var(--bg-primary);
+  border: none;
+  background: transparent;
   color: var(--text-primary);
-  font-size: 14px;
-  resize: vertical;
-  font-family: inherit;
-  transition: all 0.2s ease;
-  min-height: 100px;
-  box-shadow: var(--shadow-sm);
-  letter-spacing: 0.2px;
+  font-size: 15px;
+  resize: none;
+  padding: 8px 4px;
   line-height: 1.6;
+  min-height: 24px;
+  max-height: 200px;
 }
 
 .chat-input:focus {
   outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.1);
+}
+
+.input-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 4px;
+}
+
+.toolbar-left, .toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tool-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  font-size: 16px;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.tool-btn:hover {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.tool-btn-special {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tool-btn-special.active {
+  background-color: #ebf5ff;
+  border-color: #bfdbfe;
+  color: #2563eb;
+}
+
+.tool-btn-pill {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tool-btn-pill:hover {
   background-color: var(--bg-secondary);
 }
 
-.input-actions {
+.toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background-color: var(--border-color);
+  margin: 0 4px;
+}
+
+.stop-btn, .send-btn-new {
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: center;
+}
+
+.stop-icon-wrapper {
+  width: 32px;
+  height: 32px;
+  background-color: var(--text-primary);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.send-icon-wrapper {
+  width: 32px;
+  height: 32px;
+  background-color: var(--text-primary);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: opacity 0.2s;
+}
+
+.send-btn-new:disabled .send-icon-wrapper {
+  background-color: var(--border-color);
+  cursor: not-allowed;
+}
+
+.send-btn-new:not(:disabled):hover .send-icon-wrapper {
+  opacity: 0.8;
+}
+
+.stop-btn:hover .stop-icon-wrapper {
+  opacity: 0.8;
 }
 
 .send-btn {
