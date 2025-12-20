@@ -166,7 +166,7 @@ export const useChatStore = defineStore('chat', () => {
     
     try {
       const authStore = useAuthStore()
-      const response = await fetch(`${request.defaults.baseURL}${API_ENDPOINTS.chat.askStream}`, {
+      const response = await fetch(API_ENDPOINTS.chat.askStream, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
