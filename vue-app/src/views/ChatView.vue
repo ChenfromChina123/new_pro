@@ -1048,7 +1048,7 @@ const adjustTextareaHeight = (event) => {
 }
 
 .chat-sidebar {
-  width: 280px;
+  width: 300px;
   background-color: var(--bg-secondary);
   border-right: 1px solid var(--border-color);
   display: flex;
@@ -1058,7 +1058,7 @@ const adjustTextareaHeight = (event) => {
 }
 
 .sidebar-top {
-  padding: 20px 16px;
+  padding: 24px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1068,14 +1068,14 @@ const adjustTextareaHeight = (event) => {
 .user-profile {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   flex: 1;
   min-width: 0;
 }
 
 .user-avatar-wrapper {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background-color: var(--bg-tertiary);
   display: flex;
@@ -1155,10 +1155,10 @@ const adjustTextareaHeight = (event) => {
 }
 
 .sidebar-nav {
-  padding: 12px 16px;
+  padding: 16px 20px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .sidebar-nav .nav-item {
@@ -1190,7 +1190,7 @@ const adjustTextareaHeight = (event) => {
 }
 
 .sidebar-header {
-  padding: 8px 16px;
+  padding: 12px 20px;
 }
 
 .new-chat-btn {
@@ -1256,7 +1256,7 @@ const adjustTextareaHeight = (event) => {
 .session-list {
   flex: 1;
   overflow-y: auto;
-  padding: 8px;
+  padding: 12px;
 }
 
 .session-list::-webkit-scrollbar {
@@ -1281,8 +1281,8 @@ const adjustTextareaHeight = (event) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px;
-  margin-bottom: 4px;
+  padding: 16px 20px;
+  margin-bottom: 6px;
   border-radius: var(--border-radius-md);
   cursor: pointer;
   transition: all 0.2s ease;
