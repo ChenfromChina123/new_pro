@@ -35,15 +35,19 @@ public class VocabularyUploadTask {
     @Column(name = "vocabulary_list_id")
     private Integer vocabularyListId;  // 关联的单词表ID
     
+    @Builder.Default
     @Column(name = "status", length = 50, nullable = false)
     private String status = "pending";  // pending, processing, completed, failed
     
+    @Builder.Default
     @Column(name = "progress", nullable = false)
     private Integer progress = 0;  // 进度百分比 0-100
     
+    @Builder.Default
     @Column(name = "total_words", nullable = false)
     private Integer totalWords = 0;  // 总单词数
     
+    @Builder.Default
     @Column(name = "processed_words", nullable = false)
     private Integer processedWords = 0;  // 已处理单词数
     

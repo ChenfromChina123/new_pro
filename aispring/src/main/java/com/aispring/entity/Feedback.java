@@ -45,6 +45,7 @@ public class Feedback {
     @Column(name = "content", columnDefinition = "TEXT", nullable = false)
     private String content;
     
+    @Builder.Default
     @Column(name = "status", length = 20, nullable = false)
     private String status = "pending";  // pending, processing, resolved, rejected
     

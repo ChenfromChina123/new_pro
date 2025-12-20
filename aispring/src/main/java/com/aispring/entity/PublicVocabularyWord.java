@@ -33,6 +33,7 @@ public class PublicVocabularyWord {
     @Column(name = "word", nullable = false, length = 100)
     private String word;
     
+    @Builder.Default
     @Column(name = "language", length = 10, nullable = false)
     private String language = "en";
     
@@ -48,6 +49,7 @@ public class PublicVocabularyWord {
     @Column(name = "tag", length = 50)
     private String tag;  // 标签：四级、六级、托福、雅思等
     
+    @Builder.Default
     @Column(name = "usage_count", nullable = false)
     private Integer usageCount = 0;  // 被使用的次数
     

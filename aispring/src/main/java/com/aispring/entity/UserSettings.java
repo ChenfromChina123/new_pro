@@ -31,18 +31,23 @@ public class UserSettings {
     @Column(name = "user_id", nullable = false, unique = true)
     private Long userId;
     
+    @Builder.Default
     @Column(name = "ai_model", length = 50)
     private String aiModel = "deepseek";  // deepseek, doubao, etc.
     
+    @Builder.Default
     @Column(name = "theme", length = 20)
     private String theme = "light";  // light, dark
     
+    @Builder.Default
     @Column(name = "language", length = 10)
     private String language = "zh-CN";  // zh-CN, en-US
     
+    @Builder.Default
     @Column(name = "notifications_enabled", nullable = false)
     private Boolean notificationsEnabled = true;
     
+    @Builder.Default
     @Column(name = "email_notifications", nullable = false)
     private Boolean emailNotifications = false;
     

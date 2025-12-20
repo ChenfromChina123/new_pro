@@ -39,6 +39,7 @@ public class ArticleUsedWord {
     @Column(name = "word_text", length = 100, nullable = false)
     private String wordText;  // 单词文本（冗余字段，便于查询）
     
+    @Builder.Default
     @Column(name = "occurrence_count", nullable = false)
     private Integer occurrenceCount = 1;  // 在文章中出现的次数
     
