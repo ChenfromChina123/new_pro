@@ -45,7 +45,8 @@ export const API_ENDPOINTS = {
     moveFile: '/api/cloud_disk/move-file',
     renameFolder: '/api/cloud_disk/rename-folder',
     renameFile: (fileId) => `/api/cloud_disk/rename-file?fileId=${fileId}`,
-    resolveRenameFile: (fileId) => `/api/cloud_disk/resolve-rename-file?fileId=${fileId}`
+    resolveRenameFile: (fileId) => `/api/cloud_disk/resolve-rename-file?fileId=${fileId}`,
+    quota: '/api/cloud_disk/quota'
   },
   
   // 自定义模型

@@ -93,6 +93,19 @@ public class CloudDiskController {
         
         return ResponseEntity.ok(ApiResponse.success("文件夹结构初始化成功", null));
     }
+
+    /**
+     * 获取用户存储配额信息
+     */
+    @GetMapping("/quota")
+    public ResponseEntity<ApiResponse<CloudDiskService.QuotaInfo>> getQuota(
+            @AuthenticationPrincipal CustomUserDetails customUserDetails) {
+        
+        Long userId = customUserDetails.getUser().getId();
+        CloudDiskService.QuotaInfo quota = cloudDiskService.getQuota(userId);
+        
+        return ResponseEntity.ok(ApiResponse.success("获取存储配额成功", quota));
+    }
     
     /**
      * 获取文件夹树

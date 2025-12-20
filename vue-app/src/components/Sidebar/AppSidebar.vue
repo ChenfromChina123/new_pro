@@ -63,6 +63,27 @@
       </router-link>
     </div>
 
+    <!-- 存储配额显示 -->
+    <div v-if="isCloudDiskRoute" class="sidebar-quota">
+      <div class="quota-info">
+        <span class="quota-label">存储空间</span>
+        <span class="quota-value">
+          {{ formatFileSize(cloudDiskStore.quota.usedSize) }}
+          <template v-if="cloudDiskStore.quota.limitSize !== -1">
+            / {{ formatFileSize(cloudDiskStore.quota.limitSize) }}
+          </template>
+        </span>
+      </div>
+      <div v-if="cloudDiskStore.quota.limitSize !== -1" class="quota-progress-bar">
+        <div 
+          class="quota-progress-fill" 
+          :style="{ width: Math.min(100, (cloudDiskStore.quota.usedSize / cloudDiskStore.quota.limitSize) * 100) + '%' }"
+          :class="{ 'warning': (cloudDiskStore.quota.usedSize / cloudDiskStore.quota.limitSize) > 0.8, 'danger': (cloudDiskStore.quota.usedSize / cloudDiskStore.quota.limitSize) > 0.9 }"
+        />
+      </div>
+      <div v-else class="quota-admin-tip">管理员不计容量</div>
+    </div>
+
     <div class="sidebar-divider" />
 
     <!-- 动态内容区域：根据当前路由显示不同内容 -->
@@ -324,6 +345,12 @@ const folderIndentPx = 20
 const expandedFolders = ref(new Set())
 
 const handleNewFolder = () => {
+  // 检查层级限制
+  if (!cloudDiskStore.canCreateSubFolder()) {
+    alert('目录层级超出限制，最多支持两层目录（不计根目录）')
+    return
+  }
+  
   // 这里通过 store 触发视图层显示对话框
   cloudDiskStore.showCreateFolderDialog = true
 }
@@ -352,6 +379,14 @@ const toggleFolderExpand = (folderId) => {
   } else {
     expandedFolders.value.add(id)
   }
+}
+
+const formatFileSize = (bytes) => {
+  if (!bytes) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
 }
 
 const selectFolder = (folderPath, folderId) => {
@@ -471,12 +506,20 @@ const handleLogout = () => {
   }
 }
 
+watch(isCloudDiskRoute, async (newVal) => {
+  if (newVal) {
+    await cloudDiskStore.fetchFolders()
+    await cloudDiskStore.fetchQuota()
+  }
+})
+
 // 初始化
-onMounted(() => {
+onMounted(async () => {
   if (isChatRoute.value) {
     chatStore.fetchSessions()
   } else if (isCloudDiskRoute.value) {
-    cloudDiskStore.fetchFolders()
+    await cloudDiskStore.fetchFolders()
+    await cloudDiskStore.fetchQuota()
   }
 })
 
@@ -575,10 +618,54 @@ watch(route, (newRoute) => {
 }
 
 .sidebar-nav {
-  padding: 16px 20px;
+  padding: 12px 10px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
+}
+
+.sidebar-quota {
+  padding: 12px 20px;
+  font-size: 12px;
+}
+
+.quota-info {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  color: var(--text-secondary);
+}
+
+.quota-value {
+  font-weight: 500;
+}
+
+.quota-progress-bar {
+  height: 6px;
+  background-color: var(--bg-tertiary);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.quota-progress-fill {
+  height: 100%;
+  background-color: #4CAF50;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.quota-progress-fill.warning {
+  background-color: #FF9800;
+}
+
+.quota-progress-fill.danger {
+  background-color: #F44336;
+}
+
+.quota-admin-tip {
+  color: var(--text-tertiary);
+  font-style: italic;
+  font-size: 11px;
 }
 
 .nav-item {

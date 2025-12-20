@@ -2,6 +2,8 @@ package com.aispring.repository;
 
 import com.aispring.entity.UserFile;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -32,5 +34,11 @@ public interface UserFileRepository extends JpaRepository<UserFile, Long> {
      * 根据文件路径查找
      */
     Optional<UserFile> findByFilepath(String filepath);
+
+    /**
+     * 计算用户已使用的存储空间（单位：字节）
+     */
+    @Query("SELECT COALESCE(SUM(f.fileSize), 0) FROM UserFile f WHERE f.user.id = :userId")
+    Long sumFileSizeByUserId(@Param("userId") Long userId);
 }
 

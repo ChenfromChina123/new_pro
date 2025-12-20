@@ -5,14 +5,10 @@
       <main class="file-main">
         <div class="file-header">
           <div class="breadcrumb">
-            <button
-              v-if="breadcrumbSegments.length === 0"
-              class="breadcrumb-item current"
-            >
-              全部文件
-            </button>
+            <template v-if="breadcrumbSegments.length === 0">
+              <span class="breadcrumb-item current">全部文件</span>
+            </template>
             <template v-else>
-              <!-- 根目录(全部文件)在进入子目录后可以选择隐藏，直接显示子路径 -->
               <template v-for="(segment, index) in breadcrumbSegments" :key="index">
                 <span v-if="index > 0" class="separator">></span>
                 <button
@@ -339,6 +335,7 @@ onMounted(async () => {
   window.addEventListener('resize', handleResize, { passive: true })
   await cloudDiskStore.fetchFolders()
   await cloudDiskStore.fetchFiles()
+  await cloudDiskStore.fetchQuota()
 })
 
 onBeforeUnmount(() => {
@@ -363,9 +360,42 @@ const goToRoot = async () => {
   cloudDiskStore.clearSelection()
 }
 
+/**
+ * 处理新建文件夹
+ */
+const handleNewFolder = () => {
+  // 检查层级限制
+  if (!cloudDiskStore.canCreateSubFolder()) {
+    alert('目录层级超出限制，最多支持两层目录（不计根目录）')
+    return
+  }
+  
+  const folderName = prompt('请输入文件夹名称')
+  if (folderName && folderName.trim()) {
+    createFolder(folderName)
+  }
+}
+
+const createFolder = async (folderName) => {
+  const result = await cloudDiskStore.createFolder(folderName)
+  if (!result.success) {
+    alert(`创建文件夹失败: ${result.message}`)
+  }
+}
+
 const handleFileSelect = async (event) => {
   const files = Array.from(event.target.files)
   if (!files || files.length === 0) return
+  
+  // 检查存储空间
+  if (cloudDiskStore.quota.limitSize !== -1) {
+    const totalSize = files.reduce((acc, f) => acc + f.size, 0)
+    if (cloudDiskStore.quota.usedSize + totalSize > cloudDiskStore.quota.limitSize) {
+      alert(`存储空间不足！当前可用空间约 ${formatSize(cloudDiskStore.quota.limitSize - cloudDiskStore.quota.usedSize)}`)
+      event.target.value = ''
+      return
+    }
+  }
   
   // 重置批处理策略和队列
   cloudDiskStore.batchStrategy = null

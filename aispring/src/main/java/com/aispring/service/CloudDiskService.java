@@ -6,6 +6,8 @@ import com.aispring.entity.UserFolder;
 import com.aispring.repository.UserFileRepository;
 import com.aispring.repository.UserFolderRepository;
 import com.aispring.repository.UserRepository;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import com.aispring.config.StorageProperties;
 import org.springframework.stereotype.Service;
@@ -63,6 +65,27 @@ public class CloudDiskService {
         return s;
     }
     
+    /**
+     * 获取用户存储配额信息
+     */
+    public QuotaInfo getQuota(Long userId) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new IllegalArgumentException("用户不存在"));
+            
+        long usedSize = userFileRepository.sumFileSizeByUserId(userId);
+        long limitSize = user.isAdmin() ? -1L : 1024L * 1024L * 1024L; // -1 表示无限制
+        
+        return new QuotaInfo(usedSize, limitSize, user.isAdmin());
+    }
+
+    @Data
+    @AllArgsConstructor
+    public static class QuotaInfo {
+        private long usedSize;
+        private long limitSize;
+        private boolean isAdmin;
+    }
+
     /**
      * 初始化用户文件夹结构
      */
@@ -131,6 +154,18 @@ public class CloudDiskService {
         } else {
             // 确保路径以/开头
             normalizedFolderPath = folderPath.startsWith("/") ? folderPath : "/" + folderPath;
+        }
+
+        // 目录层级限制：最多两层目录，根目录不算一层
+        // 根目录路径为 "/" (深度0)
+        // 一级目录路径如 "/dir1" (深度1)
+        // 二级目录路径如 "/dir1/dir2" (深度2)
+        // 逻辑：如果 normalizedFolderPath (父目录) 的深度已经达到2，则不允许再创建子目录
+        if (!normalizedFolderPath.equals("/")) {
+            String[] segments = normalizedFolderPath.substring(1).split("/");
+            if (segments.length >= 2) {
+                throw new IllegalArgumentException("目录层级超出限制，最多支持两层目录");
+            }
         }
         
         // 构建新文件夹的完整路径
@@ -224,6 +259,18 @@ public class CloudDiskService {
     @Transactional(rollbackFor = Exception.class)
     public UserFile uploadFile(Long userId, Long folderId, String folderPath, 
                                MultipartFile file, String conflictStrategy) throws IOException {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new IllegalArgumentException("用户不存在"));
+
+        // 存储配额限制：普通用户最多1GB，管理员无限制
+        if (!user.isAdmin()) {
+            long usedSize = userFileRepository.sumFileSizeByUserId(userId);
+            long limitSize = 1024L * 1024L * 1024L; // 1GB
+            if (usedSize + file.getSize() > limitSize) {
+                throw new IllegalArgumentException("存储空间已满（普通用户限额 1GB），请联系管理员或清理文件");
+            }
+        }
+
         String originalFilename = file.getOriginalFilename();
         if (originalFilename == null) originalFilename = "unknown_file";
         
