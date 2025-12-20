@@ -1144,19 +1144,23 @@ const adjustTextareaHeight = (event) => {
 .new-chat-btn {
   display: flex !important;
   align-items: center;
-  justify-content: flex-start !important;
+  justify-content: center !important;
   gap: 8px;
-  padding: 10px 16px !important;
+  padding: 12px 16px !important;
   border-radius: 12px !important;
-  background-color: #ebf5ff !important;
-  color: #2563eb !important;
-  border: 1px solid #bfdbfe !important;
-  font-weight: 500 !important;
+  background: var(--gradient-primary) !important;
+  color: white !important;
+  border: none !important;
+  font-weight: 600 !important;
   width: 100%;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s;
 }
 
 .new-chat-btn:hover {
-  background-color: #dbeafe !important;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+  opacity: 0.9 !important;
 }
 
 .history-section-title {
