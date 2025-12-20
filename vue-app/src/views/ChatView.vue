@@ -261,33 +261,29 @@
                   </button>
                   <div class="tool-btn-pill model-pill" ref="modelMenuRef">
                     <div 
-                      class="model-selector-trigger" 
-                      @click="isModelMenuOpen = !isModelMenuOpen"
-                      :class="{ active: isModelMenuOpen }"
-                    >
-                      <i :class="currentBrand.icon" class="brand-icon" />
-                      <span class="brand-name">{{ currentBrand.name }}</span>
-                      <i class="fas fa-chevron-up toggle-arrow" :class="{ rotate: isModelMenuOpen }" />
-                    </div>
+            class="model-selector-trigger" 
+            @click="isModelMenuOpen = !isModelMenuOpen"
+            :class="{ active: isModelMenuOpen }"
+          >
+            <span class="brand-name">{{ currentBrand.name }}</span>
+            <i class="fas fa-chevron-up toggle-arrow" :class="{ rotate: isModelMenuOpen }" />
+          </div>
                     
                     <transition name="menu-fade">
                       <div v-if="isModelMenuOpen" class="model-dropdown-menu">
                         <div 
-                          v-for="brand in brands" 
-                          :key="brand.id"
-                          class="model-menu-item"
-                          :class="{ active: currentBrand.id === brand.id }"
-                          @click="selectBrand(brand)"
-                        >
-                          <div class="item-icon-wrapper">
-                            <i :class="brand.icon" />
-                          </div>
-                          <div class="item-info">
-                            <span class="item-name">{{ brand.name }}</span>
-                            <span class="item-desc">{{ brand.id === 'deepseek' ? 'DeepSeek-V3' : '豆包-pro-128k' }}</span>
-                          </div>
-                          <i v-if="currentBrand.id === brand.id" class="fas fa-check check-icon" />
-                        </div>
+                  v-for="brand in brands" 
+                  :key="brand.id"
+                  class="model-menu-item"
+                  :class="{ active: currentBrand.id === brand.id }"
+                  @click="selectBrand(brand)"
+                >
+                  <div class="item-info">
+                    <span class="item-name">{{ brand.name }}</span>
+                    <span class="item-desc">{{ brand.id === 'deepseek' ? 'DeepSeek-V3' : '豆包-pro-128k' }}</span>
+                  </div>
+                  <i v-if="currentBrand.id === brand.id" class="fas fa-check check-icon" />
+                </div>
                       </div>
                     </transition>
                   </div>
@@ -1555,7 +1551,7 @@ const adjustTextareaHeight = (event) => {
   word-wrap: break-word;
   box-shadow: var(--shadow-sm);
   transition: all 0.2s ease;
-  font-size: 14px;
+  font-size: 16px;
   letter-spacing: 0.2px;
 }
 
@@ -1569,7 +1565,7 @@ const adjustTextareaHeight = (event) => {
   border: none;
   box-shadow: none;
   padding: 8px 0;
-  font-size: 15px;
+  font-size: 17px;
   line-height: 1.8;
 }
 
@@ -1871,7 +1867,7 @@ body.dark-mode .message-copy-button {
 }
 
 .message-time {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-tertiary);
   margin-top: 4px;
   padding: 0 4px;
@@ -1928,7 +1924,7 @@ body.dark-mode .message-copy-button {
   border: none;
   background: transparent;
   color: var(--text-primary);
-  font-size: 15px;
+  font-size: 16px;
   resize: none;
   padding: 8px 4px;
   line-height: 1.6;
@@ -2373,7 +2369,7 @@ body.dark-mode .message-copy-button {
 }
 
 .reasoning-text {
-  font-size: 14px;
+  font-size: 15px;
   color: var(--text-secondary);
   padding: 16px;
   line-height: 1.7;
