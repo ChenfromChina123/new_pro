@@ -233,25 +233,32 @@ const afterLeave = (el) => {
 
 <style scoped>
 .folder-item {
-  margin-bottom: 2px;
+  margin-bottom: 4px;
   user-select: none;
   color: var(--text-primary);
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .folder-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  border-left: 4px solid transparent;
+  gap: 12px;
+  padding: 12px 16px;
   transition: all 0.2s ease;
+  border: 1px solid transparent;
+  border-radius: 8px;
+}
+
+.folder-header:hover {
+  background-color: var(--bg-tertiary);
 }
 
 .folder-item.active .folder-header {
-  background-color: var(--chip-bg);
+  background-color: var(--bg-tertiary);
   color: var(--primary-color);
-  border-left-color: var(--primary-color);
-  font-weight: 500;
+  border-color: var(--primary-color);
+  font-weight: 600;
 }
 
 .folder-toggle {
@@ -263,7 +270,7 @@ const afterLeave = (el) => {
   cursor: pointer;
   font-size: 10px;
   font-weight: bold;
-  color: inherit;
+  color: var(--text-secondary);
   transition: all 0.2s ease;
 }
 
@@ -280,32 +287,45 @@ const afterLeave = (el) => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 14px;
+  font-size: 15px;
   display: block;
   color: inherit;
+  letter-spacing: 0.2px;
 }
 
 .folder-delete-btn,
 .folder-rename-btn {
   background: none;
   border: none;
-  color: var(--text-secondary);
+  color: var(--text-tertiary);
   cursor: pointer;
-  font-size: 0.9em;
-  opacity: 1;
-  transition: opacity 0.2s ease;
+  font-size: 14px;
+  opacity: 0.6;
+  transition: all 0.2s ease;
   padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.folder-header:hover .folder-delete-btn,
+.folder-header:hover .folder-rename-btn {
+  opacity: 1;
 }
 
 .folder-delete-btn:hover,
 .folder-rename-btn:hover {
   color: var(--primary-color);
-  background-color: rgba(0, 0, 0, 0.05);
-  border-radius: 4px;
+  background-color: var(--bg-secondary);
+  border-radius: 6px;
+}
+
+.folder-delete-btn:hover {
+  color: var(--danger-color);
+  background-color: rgba(239, 68, 68, 0.1);
 }
 
 .folder-children {
-  /* 移除左边框，使外观更简洁，符合图2风格 */
   margin-left: 0;
   padding-left: 0;
 }

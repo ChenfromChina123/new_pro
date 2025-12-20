@@ -123,82 +123,116 @@ const formatSize = (bytes) => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.7);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  backdrop-filter: blur(4px);
 }
 
 .modal-content {
-  background: white;
-  padding: 24px;
-  border-radius: 12px;
+  background: var(--bg-secondary);
+  padding: 32px;
+  border-radius: 16px;
   width: 90%;
   max-width: 500px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  box-shadow: var(--shadow-lg);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
 }
 
 h3 {
   margin-top: 0;
-  margin-bottom: 16px;
-  font-size: 1.25rem;
+  margin-bottom: 20px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.conflict-info p {
+  margin-bottom: 8px;
+  color: var(--text-secondary);
 }
 
 .file-list {
-  background: #f8f9fa;
-  border-radius: 6px;
-  padding: 12px;
-  margin: 12px 0;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0;
   list-style: none;
   max-height: 150px;
   overflow-y: auto;
+  border: 1px solid var(--border-color);
 }
 
 .file-list li {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 0;
+  gap: 12px;
+  padding: 6px 0;
+  color: var(--text-primary);
+}
+
+.file-icon {
+  font-size: 18px;
+}
+
+.file-name {
+  font-weight: 500;
 }
 
 .file-details {
-  color: #6c757d;
-  font-size: 0.9em;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+
+.warning {
+  color: var(--warning-color);
+  font-size: 13px;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.actions {
+  margin-top: 20px;
 }
 
 .option {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  padding: 12px;
-  border: 2px solid #e9ecef;
-  border-radius: 8px;
+  gap: 16px;
+  padding: 16px;
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
   margin-bottom: 12px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 
 .option:hover {
-  border-color: #ced4da;
+  border-color: var(--gray-300);
+  background-color: var(--bg-tertiary);
 }
 
 .option.active {
-  border-color: #0d6efd;
-  background-color: #f8faff;
+  border-color: var(--primary-color);
+  background-color: rgba(29, 78, 216, 0.04);
 }
 
 .radio {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  border: 2px solid #adb5bd;
+  border: 2px solid var(--gray-300);
   margin-top: 2px;
   position: relative;
+  flex-shrink: 0;
 }
 
 .option.active .radio {
-  border-color: #0d6efd;
+  border-color: var(--primary-color);
 }
 
 .option.active .radio::after {
@@ -209,20 +243,23 @@ h3 {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #0d6efd;
+  background: var(--primary-color);
 }
 
 .text strong {
   display: block;
   margin-bottom: 4px;
+  font-size: 15px;
 }
 
 .text small {
-  color: #6c757d;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .footer {
-  margin-top: 24px;
+  margin-top: 32px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -233,29 +270,18 @@ h3 {
   gap: 12px;
 }
 
-.btn {
-  padding: 8px 16px;
-  border-radius: 6px;
-  border: none;
-  cursor: pointer;
-  font-weight: 500;
-}
-
-.btn-primary {
-  background: #0d6efd;
-  color: white;
-}
-
-.btn-secondary {
-  background: #e9ecef;
-  color: #212529;
-}
-
 .checkbox-label {
   display: flex;
   align-items: center;
   gap: 8px;
   cursor: pointer;
   user-select: none;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.checkbox-label input {
+  width: 16px;
+  height: 16px;
 }
 </style>
