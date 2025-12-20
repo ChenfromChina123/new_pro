@@ -295,7 +295,6 @@ const handleNewChat = async () => {
 }
 
 const loadSession = (sessionId) => {
-  chatStore.currentSessionId = sessionId
   router.push(`/chat?session=${sessionId}`)
 }
 
