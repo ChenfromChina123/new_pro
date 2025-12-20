@@ -156,7 +156,122 @@
         <main class="chat-main">
           <!-- AI问答视图 -->
           <template v-if="activeNav === 'chat'">
-            <!-- ... 原有内容 ... -->
+            <header class="chat-header">
+              <div class="chat-header-inner">
+                <div class="header-left">
+                  <h2 class="chat-title">{{ currentSessionTitle }}</h2>
+                </div>
+                <div class="header-right">
+                  <div class="model-selector-wrapper" v-click-outside="() => showModelSelector = false">
+                    <button class="model-selector-btn" @click="showModelSelector = !showModelSelector">
+                      <span class="model-name">{{ chatStore.currentModelName }}</span>
+                      <i class="fas fa-chevron-down" :class="{ rotated: showModelSelector }" />
+                    </button>
+                    
+                    <transition name="menu-fade">
+                      <div v-if="showModelSelector" class="model-dropdown">
+                        <div v-for="brand in modelBrands" :key="brand.name" class="brand-section">
+                          <div class="brand-header">{{ brand.name }}</div>
+                          <div 
+                            v-for="model in brand.models" 
+                            :key="model.id"
+                            class="model-item"
+                            :class="{ active: chatStore.currentModel === model.id }"
+                            @click="selectModel(model.id)"
+                          >
+                            <div class="model-item-info">
+                              <span class="item-name">{{ model.name }}</span>
+                            </div>
+                            <i v-if="chatStore.currentModel === model.id" class="fas fa-check check-icon" />
+                          </div>
+                        </div>
+                      </div>
+                    </transition>
+                  </div>
+
+                  <div class="toolbar-divider" />
+                  
+                  <button 
+                    class="tool-btn" 
+                    :class="{ active: chatStore.isDeepThinking }"
+                    title="深度思考"
+                    @click="toggleDeepThinking"
+                  >
+                    <i class="fas fa-brain" />
+                    <span>深度思考</span>
+                  </button>
+                </div>
+              </div>
+            </header>
+
+            <div class="messages-container" ref="messagesContainer">
+              <template v-if="chatStore.messages.length > 0">
+                <div
+                  v-for="message in chatStore.messages"
+                  :key="message.id"
+                  class="message"
+                  :class="message.role"
+                >
+                  <div class="message-avatar" :class="{ 'has-image': message.role === 'user' && userAvatarUrl }">
+                    <template v-if="message.role === 'user'">
+                      <img v-if="userAvatarUrl" :src="userAvatarUrl" class="message-avatar-img" alt="User">
+                      <i v-else class="fas fa-user" />
+                    </template>
+                    <i v-else class="fas fa-robot" />
+                  </div>
+                  <div class="message-content">
+                    <div class="message-bubble">
+                      <!-- 思考内容 -->
+                      <div v-if="message.reasoning_content" class="reasoning-message" :class="{ collapsed: message.isReasoningCollapsed }">
+                        <div class="reasoning-header" @click="toggleReasoning(message)">
+                          <div class="reasoning-title-wrapper">
+                            <i class="fas fa-brain" :class="{ 'fa-spin': message.isReasoning }" />
+                            <span>{{ message.isReasoning ? '正在思考...' : '已完成思考' }}</span>
+                          </div>
+                          <i class="fas fa-chevron-down reasoning-toggle-icon" />
+                        </div>
+                        <div v-if="!message.isReasoningCollapsed" class="reasoning-body">
+                          <div class="reasoning-text" v-html="renderMarkdown(message.reasoning_content)" />
+                        </div>
+                      </div>
+                      
+                      <!-- 消息文本 -->
+                      <div class="message-text" v-html="renderMarkdown(message.content)" />
+                    </div>
+                  </div>
+                </div>
+              </template>
+              <div v-else class="empty-state">
+                <div class="empty-icon">🤖</div>
+                <h1 class="empty-title">我是 AI 助手</h1>
+                <p class="empty-description">你可以问我任何问题，我会尽力为你解答。让我们开始对话吧！</p>
+              </div>
+            </div>
+
+            <div class="chat-input-area">
+              <div class="chat-input-wrapper">
+                <textarea
+                  v-model="inputMessage"
+                  class="chat-input"
+                  placeholder="输入消息..."
+                  rows="1"
+                  @keydown.enter.prevent="sendMessage"
+                  @input="autoResize"
+                />
+                <div class="input-actions">
+                  <button v-if="chatStore.isLoading" class="stop-btn" @click="chatStore.stopGeneration">
+                    <div class="stop-icon-wrapper">
+                      <i class="fas fa-stop" />
+                    </div>
+                  </button>
+                  <button v-else class="send-btn-new" :disabled="!inputMessage.trim()" @click="sendMessage">
+                    <div class="send-icon-wrapper">
+                      <i class="fas fa-paper-plane" />
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </div>
           </template>
 
           <!-- 云盘视图 -->
@@ -257,6 +372,20 @@ const cloudDiskStore = useCloudDiskStore()
 const router = useRouter() // 导入路由
 const inputMessage = ref('')
 const messagesContainer = ref(null)
+
+const vClickOutside = {
+  mounted(el, binding) {
+    el.clickOutsideEvent = (event) => {
+      if (!(el === event.target || el.contains(event.target))) {
+        binding.value(event)
+      }
+    }
+    document.addEventListener('click', el.clickOutsideEvent)
+  },
+  unmounted(el) {
+    document.removeEventListener('click', el.clickOutsideEvent)
+  }
+}
 
 const activeNav = ref('chat') // 当前激活的导航项：'chat' 或 'cloud-disk'
 
@@ -422,6 +551,67 @@ const confirmRenameFolder = async () => {
   }
 }
 // --- 云盘侧边栏逻辑结束 ---
+
+const showModelSelector = ref(false)
+const modelBrands = [
+  {
+    name: '豆包',
+    models: [
+      { id: 'doubao-pro-32k', name: 'Doubao Pro' },
+      { id: 'doubao-lite-32k', name: 'Doubao Lite' }
+    ]
+  },
+  {
+    name: 'DeepSeek',
+    models: [
+      { id: 'deepseek-chat', name: 'DeepSeek Chat' },
+      { id: 'deepseek-reasoner', name: 'DeepSeek Reasoner' }
+    ]
+  }
+]
+
+const selectModel = (modelId) => {
+  chatStore.selectedModel = modelId
+  showModelSelector.value = false
+}
+
+const toggleDeepThinking = () => {
+  chatStore.isDeepThinking = !chatStore.isDeepThinking
+  
+  // 自动切换逻辑
+  if (chatStore.isDeepThinking) {
+    if (chatStore.selectedModel.includes('deepseek')) {
+      chatStore.selectedModel = 'deepseek-reasoner'
+    }
+  } else {
+    if (chatStore.selectedModel === 'deepseek-reasoner') {
+      chatStore.selectedModel = 'deepseek-chat'
+    }
+  }
+}
+
+const autoResize = (event) => {
+  const textarea = event.target
+  textarea.style.height = 'auto'
+  textarea.style.height = textarea.scrollHeight + 'px'
+}
+
+const scrollToBottom = () => {
+  if (messagesContainer.value) {
+    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+  }
+}
+
+const renderMarkdown = (content) => {
+  if (!content) return ''
+  const placeholders = []
+  let processedContent = renderMathFormula(content, placeholders)
+  let html = marked(processedContent)
+  placeholders.forEach((mathHtml, index) => {
+    html = html.replace(`MATH-PLACEHOLDER-${index}-END`, mathHtml)
+  })
+  return html
+}
 
 const avatarUrl = ref(null) // 用于侧边栏头像
 const userAvatarUrl = ref(null) // 用于消息列表头像
@@ -1944,59 +2134,43 @@ body.dark-mode .message-copy-button {
   letter-spacing: 0.2px;
 }
 
-.loading-indicator {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    color: var(--text-secondary);
-    font-size: 14px;
-    padding: 16px 24px;
-    background-color: var(--bg-secondary);
-    border-radius: var(--border-radius-md);
-    box-shadow: var(--shadow-sm);
-    margin: 0 auto 24px;
-    max-width: fit-content;
-    position: sticky;
-    top: 20px;
-    z-index: 20;
-  }
-
+/* 聊天输入区域 */
 .chat-input-area {
-  padding: 20px 32px 32px;
-  background-color: var(--bg-secondary);
+  padding: 20px 40px 32px;
+  background-color: var(--bg-primary);
   display: flex;
   justify-content: center;
 }
 
-.input-container {
+.chat-input-wrapper {
   width: 100%;
   max-width: 980px;
-  background-color: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 24px;
+  position: relative;
+  background-color: var(--bg-tertiary);
+  border-radius: 16px;
   padding: 12px 16px;
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  box-shadow: var(--shadow-sm);
-  transition: border-color 0.2s, box-shadow 0.2s;
+  align-items: flex-end;
+  gap: 12px;
+  border: 1px solid var(--border-color);
+  transition: all 0.2s;
 }
 
-.input-container:focus-within {
+.chat-input-wrapper:focus-within {
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.05);
+  background-color: var(--bg-primary);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
 }
 
 .chat-input {
-  width: 100%;
+  flex: 1;
   border: none;
   background: transparent;
   color: var(--text-primary);
   font-size: 16px;
-  resize: none;
-  padding: 8px 4px;
   line-height: 1.6;
+  padding: 8px 0;
+  resize: none;
   min-height: 24px;
   max-height: 200px;
 }
@@ -2005,81 +2179,323 @@ body.dark-mode .message-copy-button {
   outline: none;
 }
 
-.input-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 4px;
-}
-
-.toolbar-left, .toolbar-right {
+.input-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  padding-bottom: 4px;
 }
 
-.tool-btn {
-  background: transparent;
+.send-btn-new, .stop-btn {
+  background: none;
   border: none;
-  color: var(--text-tertiary);
-  font-size: 16px;
-  padding: 8px;
-  border-radius: 8px;
+  padding: 0;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.send-icon-wrapper, .stop-icon-wrapper {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--gradient-primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.send-btn-new:disabled .send-icon-wrapper {
+  background: var(--gray-300);
+  cursor: not-allowed;
+}
+
+.stop-icon-wrapper {
+  background: #ef4444;
+}
+
+/* 模型选择器 */
+.model-selector-wrapper {
+  position: relative;
+}
+
+.model-selector-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.model-selector-btn:hover {
+  background-color: var(--bg-tertiary);
+  border-color: var(--primary-color);
+}
+
+.model-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.model-selector-btn i {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  transition: transform 0.2s;
+}
+
+.model-selector-btn i.rotated {
+  transform: rotate(180deg);
+}
+
+.model-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 240px;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 8px;
+  box-shadow: var(--shadow-xl);
+  z-index: 1000;
+  animation: menu-in 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.brand-section {
+  margin-bottom: 8px;
+}
+
+.brand-section:last-child {
+  margin-bottom: 0;
+}
+
+.brand-header {
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.model-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.model-item:hover {
+  background-color: var(--bg-tertiary);
+}
+
+.model-item.active {
+  background-color: rgba(37, 99, 235, 0.05);
+  color: var(--primary-color);
+}
+
+.item-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.check-icon {
+  font-size: 12px;
+}
+
+/* 工具栏 */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background-color: var(--border-color);
+  margin: 0 4px;
+}
+
+.tool-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
   transition: all 0.2s;
 }
 
 .tool-btn:hover {
-  background-color: var(--bg-secondary);
+  background-color: var(--bg-tertiary);
+  border-color: var(--primary-color);
   color: var(--text-primary);
 }
 
-.tool-btn-special {
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  color: var(--text-secondary);
-  padding: 6px 12px;
-  border-radius: 12px;
-  font-size: 13px;
+.tool-btn.active {
+  background-color: rgba(37, 99, 235, 0.05);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+/* 云盘相关样式 */
+.sidebar-section-header {
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: space-between;
+  padding: 0 20px 12px;
+  margin-top: 24px;
+}
+
+.icon-btn-small {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
   cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.icon-btn-small:hover {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.folder-tree-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 12px 20px;
+}
+
+/* 弹窗样式 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  background-color: var(--bg-primary);
+  padding: 24px;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--border-color);
+  animation: modal-in 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-content h3 {
+  margin: 0 0 20px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.input-field {
+  width: 100%;
+  padding: 12px 16px;
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  color: var(--text-primary);
+  font-size: 14px;
+  margin-bottom: 24px;
   transition: all 0.2s;
 }
 
-.tool-btn-special.active {
-  background-color: #ebf5ff;
-  border-color: #bfdbfe;
-  color: #2563eb;
+.input-field:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  background-color: var(--bg-primary);
 }
 
-.tool-btn-pill {
-  background: transparent;
-  border: 1px solid var(--border-color);
-  color: var(--text-secondary);
-  padding: 6px 12px;
-  border-radius: 12px;
-  font-size: 13px;
+.modal-actions {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.btn {
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
+  border: none;
 }
 
-.tool-btn-pill:hover {
+.btn-primary {
+  background: var(--gradient-primary);
+  color: white;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
   background-color: var(--bg-secondary);
-}
-
-.model-pill {
-  position: relative;
-  padding: 0 !important;
-  border: none !important;
-  background: transparent !important;
 }
 
 .model-selector-trigger {
@@ -2336,7 +2752,7 @@ body.dark-mode .message-copy-button {
 .btn-secondary:hover {
   background-color: var(--border-color);
 }
-</style>
+
 .item-desc {
   font-size: 11px;
   color: var(--text-tertiary);
