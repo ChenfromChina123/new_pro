@@ -339,6 +339,7 @@ onMounted(async () => {
   if (querySessionId) {
     chatStore.currentSessionId = querySessionId
     await chatStore.fetchSessionMessages(querySessionId)
+    nextTick(() => scrollToBottom())
     return
   }
 
@@ -346,12 +347,14 @@ onMounted(async () => {
   if (!chatStore.currentSessionId && chatStore.sessions.length > 0) {
     chatStore.currentSessionId = chatStore.sessions[0].id
     await chatStore.fetchSessionMessages(chatStore.sessions[0].id)
+    nextTick(() => scrollToBottom())
     // 更新 URL
     router.replace(`/chat?session=${chatStore.sessions[0].id}`)
   } 
   // 3. 如果没有任何会话，创建一个新的
   else if (!chatStore.currentSessionId && chatStore.sessions.length === 0) {
     await chatStore.createSession()
+    nextTick(() => scrollToBottom())
   }
 })
 
@@ -361,11 +364,13 @@ watch(
   async (newSessionId) => {
     if (newSessionId) {
       await chatStore.fetchSessionMessages(newSessionId)
+      nextTick(() => scrollToBottom())
     } else {
       // 如果没有会话 ID，可能回到了 /chat 根路径，尝试加载最近的会话或显示空状态
       if (chatStore.sessions.length > 0) {
         chatStore.currentSessionId = chatStore.sessions[0].id
         await chatStore.fetchSessionMessages(chatStore.sessions[0].id)
+        nextTick(() => scrollToBottom())
       } else {
         chatStore.currentSessionId = null
         chatStore.messages = []
@@ -416,20 +421,6 @@ onUnmounted(() => {
   }
 })
 
-// 监听消息变化，自动滚动到底部
-watch(
-  [
-    () => chatStore.messages.length,
-    () => chatStore.messages[chatStore.messages.length - 1]?.content,
-    () => chatStore.messages[chatStore.messages.length - 1]?.reasoning_content
-  ],
-  () => {
-    nextTick(() => {
-      scrollToBottom()
-    })
-  }
-)
-
 const toggleReasoning = (message) => {
   message.isReasoningCollapsed = !message.isReasoningCollapsed
 }
@@ -451,9 +442,7 @@ const sendMessage = async () => {
     textarea.style.height = 'auto'
   }
   
-  await chatStore.sendMessage(message, () => {
-    nextTick(() => scrollToBottom())
-  })
+  await chatStore.sendMessage(message)
 }
 
 // 渲染数学公式
