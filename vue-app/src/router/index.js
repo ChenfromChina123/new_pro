@@ -6,61 +6,55 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      redirect: '/chat'
+      component: () => import('@/components/AppLayout.vue'),
+      children: [
+        {
+          path: '',
+          redirect: '/chat'
+        },
+        {
+          path: 'chat',
+          name: 'Chat',
+          component: () => import('@/views/ChatView.vue'),
+          meta: { requiresAuth: true }
+        },
+        {
+          path: 'cloud-disk',
+          name: 'CloudDisk',
+          component: () => import('@/views/CloudDiskView.vue'),
+          meta: { requiresAuth: true }
+        },
+        {
+          path: 'language-learning',
+          name: 'LanguageLearning',
+          component: () => import('@/views/LanguageLearningView.vue'),
+          meta: { requiresAuth: true }
+        },
+        {
+          path: 'chat-management',
+          name: 'ChatManagement',
+          component: () => import('@/views/ChatManagementView.vue'),
+          meta: { requiresAuth: true }
+        },
+        {
+          path: 'admin',
+          name: 'Admin',
+          component: () => import('@/views/AdminView.vue'),
+          meta: { requiresAuth: true, requiresAdmin: true }
+        },
+        {
+          path: 'settings',
+          name: 'Settings',
+          component: () => import('@/views/SettingsView.vue'),
+          meta: { requiresAuth: true }
+        }
+      ]
     },
     {
       path: '/login',
       name: 'Login',
       component: () => import('@/views/auth/LoginView.vue'),
       meta: { requiresGuest: true }
-    },
-    {
-      path: '/register',
-      name: 'Register',
-      component: () => import('@/views/auth/RegisterView.vue'),
-      meta: { requiresGuest: true }
-    },
-    {
-      path: '/forgot-password',
-      name: 'ForgotPassword',
-      component: () => import('@/views/auth/ForgotPasswordView.vue'),
-      meta: { requiresGuest: true }
-    },
-    {
-      path: '/chat',
-      name: 'Chat',
-      component: () => import('@/views/ChatView.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/cloud-disk',
-      name: 'CloudDisk',
-      component: () => import('@/views/CloudDiskView.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/language-learning',
-      name: 'LanguageLearning',
-      component: () => import('@/views/LanguageLearningView.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/chat-management',
-      name: 'ChatManagement',
-      component: () => import('@/views/ChatManagementView.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/admin',
-      name: 'Admin',
-      component: () => import('@/views/AdminView.vue'),
-      meta: { requiresAuth: true, requiresAdmin: true }
-    },
-    {
-      path: '/settings',
-      name: 'Settings',
-      component: () => import('@/views/SettingsView.vue'),
-      meta: { requiresAuth: true }
     },
     {
       path: '/:pathMatch(.*)*',

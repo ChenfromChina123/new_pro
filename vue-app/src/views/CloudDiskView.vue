@@ -1,359 +1,236 @@
 <template>
-  <AppLayout>
-    <div class="cloud-disk-page">
-      <!-- 移动端侧边栏控制按钮 -->
-      <button 
-        class="mobile-sidebar-toggle"
-        title="切换文件夹视图"
-        @click="toggleSidebar"
-      >
-        📁 文件夹
-      </button>
-      
-      <div 
-        class="disk-container"
-        @touchstart="handleTouchStart"
-        @touchmove="handleTouchMove"
-        @touchend="handleTouchEnd"
-      >
-        <!-- 左侧文件夹树 -->
-        <aside 
-          class="folder-sidebar"
-          :class="{ 'sidebar-visible': isSidebarVisible }"
-        >
-          <div class="sidebar-header">
-            <h3>📁 文件夹</h3>
+  <div class="cloud-disk-page">
+    <div class="disk-container">
+      <!-- 主文件区域 -->
+      <main class="file-main">
+        <div class="file-header">
+          <div class="breadcrumb">
             <button
-              class="icon-btn"
-              title="新建文件夹"
-              @click="showCreateFolderDialog"
+              class="breadcrumb-item"
+              @click="goToRoot"
             >
-              ➕
+              🏠 根目录
+            </button>
+            <!-- 只在有子文件夹时显示斜杠和当前文件夹 -->
+            <template v-if="cloudDiskStore.currentFolder && cloudDiskStore.currentFolder !== ''">
+              <span class="separator">/</span>
+              <span class="breadcrumb-item current">
+                {{ cloudDiskStore.currentFolder.replace(/^\//, '') }}
+              </span>
+            </template>
+          </div>
+          
+          <div class="toolbar">
+            <input
+              ref="fileInput"
+              type="file"
+              multiple
+              style="display: none"
+              @change="handleFileSelect"
+            >
+            <input
+              ref="folderInput"
+              type="file"
+              webkitdirectory
+              directory
+              multiple
+              style="display: none"
+              @change="handleFolderSelect"
+            >
+            <button
+              class="btn btn-primary"
+              @click="$refs.fileInput.click()"
+            >
+              📤 上传文件
             </button>
             <button
-              class="icon-btn close-btn"
-              title="关闭"
-              @click="toggleSidebar"
+              class="btn btn-secondary"
+              @click="$refs.folderInput.click()"
             >
-              ✕
+              📁 上传文件夹
             </button>
+            <button
+              class="btn btn-secondary"
+              @click="downloadCurrentFolder"
+            >
+              💾 下载文件夹
+            </button>
+            
+            <template v-if="cloudDiskStore.selectedFiles.length > 0">
+              <button
+                class="btn btn-secondary"
+                @click="downloadSelected"
+              >
+                💾 下载 ({{ cloudDiskStore.selectedFiles.length }})
+              </button>
+              <button
+                class="btn btn-secondary"
+                @click="deleteSelected"
+              >
+                🗑️ 删除 ({{ cloudDiskStore.selectedFiles.length }})
+              </button>
+            </template>
+          </div>
+        </div>
+        
+        <div class="file-list">
+          <div
+            v-if="cloudDiskStore.isLoading"
+            class="loading-state"
+          >
+            <div class="loading" />
+            <p>加载中...</p>
           </div>
           
           <div
-            class="folder-tree"
-            :class="{ 'folder-tree-scroll': maxFolderDepth >= 3 }"
-            :style="{ '--folder-indent': `${folderIndentPx}px` }"
+            v-else-if="cloudDiskStore.files.length === 0"
+            class="empty-state"
           >
-            <FolderTreeItem
-              v-for="rootFolder in cloudDiskStore.folders"
-              :key="rootFolder.id"
-              :folder="rootFolder"
-              :select-folder="selectFolder"
-              :toggle-folder-expand="toggleFolderExpand"
-              :is-folder-expanded="isFolderExpanded"
-              :delete-folder-action="deleteFolderAction"
-              :rename-folder-action="renameFolderAction"
-              :depth="0"
-              :indent="folderIndentPx"
-            />
-          </div>
-        </aside>
-        
-        <!-- 主文件区域 -->
-        <main class="file-main">
-          <div class="file-header">
-            <div class="breadcrumb">
-              <button
-                class="breadcrumb-item"
-                @click="goToRoot"
-              >
-                🏠 根目录
-              </button>
-              <!-- 只在有子文件夹时显示斜杠和当前文件夹 -->
-              <template v-if="cloudDiskStore.currentFolder && cloudDiskStore.currentFolder !== ''">
-                <span class="separator">/</span>
-                <span class="breadcrumb-item current">
-                  {{ cloudDiskStore.currentFolder.replace(/^\//, '') }}
-                </span>
-              </template>
+            <div class="empty-icon">
+              📭
             </div>
-            
-            <div class="toolbar">
-              <input
-                ref="fileInput"
-                type="file"
-                multiple
-                style="display: none"
-                @change="handleFileSelect"
-              >
-              <input
-                ref="folderInput"
-                type="file"
-                webkitdirectory
-                directory
-                multiple
-                style="display: none"
-                @change="handleFolderSelect"
-              >
-              <button
-                class="btn btn-primary"
-                @click="$refs.fileInput.click()"
-              >
-                📤 上传文件
-              </button>
-              <button
-                class="btn btn-secondary"
-                @click="$refs.folderInput.click()"
-              >
-                📁 上传文件夹
-              </button>
-              <button
-                class="btn btn-secondary"
-                @click="downloadCurrentFolder"
-              >
-                💾 下载文件夹
-              </button>
-              
-              <template v-if="cloudDiskStore.selectedFiles.length > 0">
-                <button
-                  class="btn btn-secondary"
-                  @click="downloadSelected"
-                >
-                  💾 下载 ({{ cloudDiskStore.selectedFiles.length }})
-                </button>
-                <button
-                  class="btn btn-secondary"
-                  @click="deleteSelected"
-                >
-                  🗑️ 删除 ({{ cloudDiskStore.selectedFiles.length }})
-                </button>
-              </template>
-            </div>
+            <h3>暂无文件</h3>
+            <p>点击上传文件按钮开始上传</p>
           </div>
           
-          <div class="file-list">
-            <div
-              v-if="cloudDiskStore.isLoading"
-              class="loading-state"
-            >
-              <div class="loading" />
-              <p>加载中...</p>
-            </div>
-            
-            <div
-              v-else-if="cloudDiskStore.files.length === 0"
-              class="empty-state"
-            >
-              <div class="empty-icon">
-                📭
-              </div>
-              <h3>暂无文件</h3>
-              <p>点击上传文件按钮开始上传</p>
-            </div>
-            
-            <div
-              v-else
-              class="file-table-container"
-            >
-              <table class="file-table">
-                <thead>
-                  <tr>
-                    <th class="select-all-column">
-                      <input
-                        type="checkbox"
-                        :checked="areAllFilesSelected"
-                        @click="toggleSelectAll"
-                      >
-                    </th>
-                    <th
-                      class="name-column"
-                      @click="sortFiles('filename')"
+          <div
+            v-else
+            class="file-table-container"
+          >
+            <table class="file-table">
+              <thead>
+                <tr>
+                  <th class="select-all-column">
+                    <input
+                      type="checkbox"
+                      :checked="areAllFilesSelected"
+                      @click="toggleSelectAll"
                     >
-                      <div class="column-header">
-                        <span>名称</span>
-                        <span
-                          v-if="sortField === 'filename'"
-                          class="sort-indicator"
-                        >
-                          {{ sortAscending ? '↑' : '↓' }}
-                        </span>
-                      </div>
-                    </th>
-                    <th
-                      class="date-column"
-                      @click="sortFiles('upload_time')"
-                    >
-                      <div class="column-header">
-                        <span>修改日期</span>
-                        <span
-                          v-if="sortField === 'upload_time'"
-                          class="sort-indicator"
-                        >
-                          {{ sortAscending ? '↑' : '↓' }}
-                        </span>
-                      </div>
-                    </th>
-                    <th
-                      class="type-column"
-                      @click="sortFiles('file_type')"
-                    >
-                      <div class="column-header">
-                        <span>类型</span>
-                        <span
-                          v-if="sortField === 'file_type'"
-                          class="sort-indicator"
-                        >
-                          {{ sortAscending ? '↑' : '↓' }}
-                        </span>
-                      </div>
-                    </th>
-                    <th
-                      class="size-column"
-                      @click="sortFiles('file_size')"
-                    >
-                      <div class="column-header">
-                        <span>大小</span>
-                        <span
-                          v-if="sortField === 'file_size'"
-                          class="sort-indicator"
-                        >
-                          {{ sortAscending ? '↑' : '↓' }}
-                        </span>
-                      </div>
-                    </th>
-                    <th class="actions-column">
-                      操作
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr
-                    v-for="file in sortedFiles"
-                    :key="file.id"
-                    class="file-row"
-                    :class="{ selected: isFileSelected(file.id) }"
+                  </th>
+                  <th
+                    class="name-column"
+                    @click="sortFiles('filename')"
                   >
-                    <td class="select-column">
-                      <input
-                        type="checkbox"
-                        :checked="isFileSelected(file.id)"
-                        @click="toggleFileSelection(file.id)"
+                    <div class="column-header">
+                      <span>名称</span>
+                      <span
+                        v-if="sortField === 'filename'"
+                        class="sort-indicator"
                       >
-                    </td>
-                    <td class="name-column">
-                      <div class="file-cell">
-                        <span class="file-icon">{{ getFileIcon(file.filename) }}</span>
-                        <span
-                          class="file-name"
-                          :title="file.filename"
-                        >{{ file.filename }}</span>
-                      </div>
-                    </td>
-                    <td class="date-column">
-                      {{ formatDate(file.upload_time) }}
-                    </td>
-                    <td class="type-column">
-                      {{ getFileTypeLabel(file.filename) }}
-                    </td>
-                    <td class="size-column">
-                      {{ formatFileSize(file.file_size) }}
-                    </td>
-                    <td class="actions-column">
-                      <div class="file-actions">
-                        <button
-                          class="action-btn"
-                          title="预览"
-                          @click="previewFile(file)"
-                        >
-                          👁️
-                        </button>
-                        <button
-                          class="action-btn"
-                          title="下载"
-                          @click="downloadFile(file.id)"
-                        >
-                          💾
-                        </button>
-                        <button
-                          class="action-btn delete"
-                          title="删除"
-                          @click="deleteFile(file.id)"
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+                        {{ sortAscending ? '↑' : '↓' }}
+                      </span>
+                    </div>
+                  </th>
+                  <th
+                    class="date-column"
+                    @click="sortFiles('upload_time')"
+                  >
+                    <div class="column-header">
+                      <span>修改日期</span>
+                      <span
+                        v-if="sortField === 'upload_time'"
+                        class="sort-indicator"
+                      >
+                        {{ sortAscending ? '↑' : '↓' }}
+                      </span>
+                    </div>
+                  </th>
+                  <th
+                    class="type-column"
+                    @click="sortFiles('file_type')"
+                  >
+                    <div class="column-header">
+                      <span>类型</span>
+                      <span
+                        v-if="sortField === 'file_type'"
+                        class="sort-indicator"
+                      >
+                        {{ sortAscending ? '↑' : '↓' }}
+                      </span>
+                    </div>
+                  </th>
+                  <th
+                    class="size-column"
+                    @click="sortFiles('file_size')"
+                  >
+                    <div class="column-header">
+                      <span>大小</span>
+                      <span
+                        v-if="sortField === 'file_size'"
+                        class="sort-indicator"
+                      >
+                        {{ sortAscending ? '↑' : '↓' }}
+                      </span>
+                    </div>
+                  </th>
+                  <th class="actions-column">
+                    操作
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="file in sortedFiles"
+                  :key="file.id"
+                  class="file-row"
+                  :class="{ selected: isFileSelected(file.id) }"
+                >
+                  <td class="select-column">
+                    <input
+                      type="checkbox"
+                      :checked="isFileSelected(file.id)"
+                      @click="toggleFileSelection(file.id)"
+                    >
+                  </td>
+                  <td class="name-column">
+                    <div class="file-cell">
+                      <span class="file-icon">{{ getFileIcon(file.filename) }}</span>
+                      <span
+                        class="file-name"
+                        :title="file.filename"
+                      >{{ file.filename }}</span>
+                    </div>
+                  </td>
+                  <td class="date-column">
+                    {{ formatDate(file.upload_time) }}
+                  </td>
+                  <td class="type-column">
+                    {{ getFileTypeLabel(file.filename) }}
+                  </td>
+                  <td class="size-column">
+                    {{ formatFileSize(file.file_size) }}
+                  </td>
+                  <td class="actions-column">
+                    <div class="file-actions">
+                      <button
+                        class="action-btn"
+                        title="预览"
+                        @click="previewFile(file)"
+                      >
+                        👁️
+                      </button>
+                      <button
+                        class="action-btn"
+                        title="下载"
+                        @click="downloadFile(file.id)"
+                      >
+                        💾
+                      </button>
+                      <button
+                        class="action-btn delete"
+                        title="删除"
+                        @click="deleteFile(file.id)"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-        </main>
-      </div>
-    </div>
-    
-    <!-- 创建文件夹对话框 -->
-    <div
-      v-if="showCreateFolder"
-      class="modal"
-      @click.self="showCreateFolder = false"
-    >
-      <div class="modal-content">
-        <h3>创建新文件夹</h3>
-        <input
-          v-model="newFolderName"
-          type="text"
-          class="input"
-          placeholder="输入文件夹名称"
-          @keyup.enter="createFolder"
-        >
-        <div class="modal-actions">
-          <button
-            class="btn btn-primary"
-            @click="createFolder"
-          >
-            创建
-          </button>
-          <button
-            class="btn btn-secondary"
-            @click="showCreateFolder = false"
-          >
-            取消
-          </button>
         </div>
-      </div>
-    </div>
-
-    <!-- 重命名文件夹对话框 -->
-    <div
-      v-if="showRenameFolder"
-      class="modal"
-      @click.self="closeRenameFolderDialog"
-    >
-      <div class="modal-content">
-        <h3>重命名文件夹</h3>
-        <input
-          v-model="renameFolderName"
-          type="text"
-          class="input"
-          placeholder="输入新文件夹名称"
-          @keyup.enter="confirmRenameFolder"
-        >
-        <div class="modal-actions">
-          <button
-            class="btn btn-primary"
-            @click="confirmRenameFolder"
-          >
-            确定
-          </button>
-          <button
-            class="btn btn-secondary"
-            @click="closeRenameFolderDialog"
-          >
-            取消
-          </button>
-        </div>
-      </div>
+      </main>
     </div>
     
     <!-- 文件预览对话框 -->
@@ -451,180 +328,39 @@
       :visible="conflictDialogVisible"
       :files="currentConflictFiles"
       :batch-mode="pendingUploads.length > 1"
-      :is-folder="!!renamingFolder"
+      :is-folder="!!cloudDiskStore.renamingFolder"
       @resolve="onConflictResolved"
       @cancel="onConflictCancelled"
     />
-  </AppLayout>
+  </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useCloudDiskStore } from '@/stores/cloudDisk'
-import AppLayout from '@/components/AppLayout.vue'
-import FolderTreeItem from '@/components/FolderTreeItem.vue'
 import ConflictResolutionDialog from '@/components/ConflictResolutionDialog.vue'
 
 const cloudDiskStore = useCloudDiskStore()
 
 const fileInput = ref(null)
 const folderInput = ref(null)
-const showCreateFolder = ref(false)
-const showRenameFolder = ref(false)
-const renamingFolder = ref(null)
-const renameFolderName = ref('')
-const newFolderName = ref('')
 const previewFileData = ref(null)
 const previewUrl = ref('')
 const previewText = ref('')
 const uploadProgress = ref(0)
-const isSidebarVisible = ref(false)
-const touchStartX = ref(0)
-const touchEndX = ref(0)
-const hoveredFolderId = ref(null)
-const expandedFolders = ref(new Set()) // 用于跟踪哪些文件夹是展开的
 const viewportWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1024)
 
 // 冲突处理状态
 const conflictDialogVisible = ref(false)
 const currentConflictFiles = ref([])
 const pendingUploads = ref([])
-const batchStrategy = ref(null)
-
 
 // 排序相关
 const sortField = ref('upload_time')
 const sortAscending = ref(false)
 
-const normalizeFolderPath = (folderPath) => {
-  return (folderPath || '').replace(/^\//, '').replace(/\/+$/, '')
-}
-
-const findFolderByPath = (folderPath) => {
-  const target = normalizeFolderPath(folderPath)
-  const stack = Array.isArray(cloudDiskStore.folders) ? [...cloudDiskStore.folders] : []
-  while (stack.length) {
-    const node = stack.pop()
-    if (!node) continue
-    if ((node.folderPath || '') === target) return node
-    const children = Array.isArray(node.children) ? node.children : []
-    for (const child of children) {
-      stack.push(child)
-    }
-  }
-  return null
-}
-
 /**
- * 判断当前路径是否位于指定文件夹下（用于自动展开当前路径链路上的父级）。
- */
-const isInActiveChain = (folder) => {
-  const folderPath = (folder?.folderPath || '').replace(/\/+$/, '')
-  const current = (cloudDiskStore.currentFolder || '').replace(/\/+$/, '')
-  
-  // 根目录始终展开
-  if (folderPath === '') return true
-  
-  // 仅展开当前路径的父级（严格前缀检查）
-  // 例如：current='a/b', folder='a' -> startWith('a/') -> true
-  // 例如：current='a', folder='a' -> startWith('a/') -> false
-  return current.startsWith(folderPath + '/')
-}
-
-/**
- * 切换文件夹展开状态（通过替换 Set 触发视图更新）。
- */
-const toggleFolderExpand = (folderId, event) => {
-  // 阻止事件冒泡，避免触发文件夹选择
-  event.stopPropagation()
-
-  const next = new Set(expandedFolders.value)
-  if (next.has(folderId)) {
-    next.delete(folderId)
-  } else {
-    next.add(folderId)
-  }
-  expandedFolders.value = next
-}
-
-/**
- * 判断文件夹是否展开：手动展开优先，其次自动展开当前路径链路上的父级。
- */
-const isFolderExpanded = (folder) => {
-  // 如果文件夹被手动展开，返回true
-  if (expandedFolders.value.has(folder.id)) {
-    return true
-  }
-  
-  // 自动展开：当前路径链路上的父级
-  if (isInActiveChain(folder)) {
-    return true
-  }
-  
-  return false
-}
-
-/**
- * 计算文件夹树最大深度（用于超过阈值时启用滚动与缩进调整）。
- */
-const maxFolderDepth = computed(() => {
-  const roots = cloudDiskStore.folders || []
-  let max = 0
-  const stack = roots.map(r => ({ node: r, depth: 0 }))
-  while (stack.length) {
-    const { node, depth } = stack.pop()
-    if (depth > max) max = depth
-    const children = node?.children || []
-    for (const child of children) {
-      stack.push({ node: child, depth: depth + 1 })
-    }
-  }
-  return max
-})
-
-/**
- * 根据深度与屏幕尺寸动态计算缩进像素，避免深层级挤压布局。
- */
-const folderIndentPx = computed(() => {
-  const depth = maxFolderDepth.value
-  const isMobile = viewportWidth.value <= 768
-  if (isMobile) return depth > 6 ? 10 : 12
-  return depth > 8 ? 10 : depth > 5 ? 12 : 14
-})
-
-// 切换侧边栏显示
-const toggleSidebar = () => {
-  isSidebarVisible.value = !isSidebarVisible.value
-}
-
-// 触摸事件处理
-const handleTouchStart = (e) => {
-  touchStartX.value = e.touches[0].clientX
-}
-
-const handleTouchMove = (e) => {
-  touchEndX.value = e.touches[0].clientX
-}
-
-const handleTouchEnd = () => {
-  const diffX = touchEndX.value - touchStartX.value
-  
-  // 从左向右滑动，显示侧边栏
-  if (diffX > 50 && !isSidebarVisible.value) {
-    isSidebarVisible.value = true
-  }
-  // 从右向左滑动，隐藏侧边栏
-  else if (diffX < -50 && isSidebarVisible.value) {
-    isSidebarVisible.value = false
-  }
-  
-  // 重置触摸坐标
-  touchStartX.value = 0
-  touchEndX.value = 0
-}
-
-/**
- * 监听窗口尺寸变化，确保深层级文件夹缩进在不同设备上自适应。
+ * 监听窗口尺寸变化
  */
 const handleResize = () => {
   viewportWidth.value = window.innerWidth
@@ -647,15 +383,7 @@ const selectFolder = async (folderPath, folderId, event) => {
   if (event && typeof event.stopPropagation === 'function') {
     event.stopPropagation()
   }
-  if (folderId !== undefined && folderId !== null) {
-    const next = new Set(expandedFolders.value)
-    next.delete(folderId)
-    expandedFolders.value = next
-  }
   cloudDiskStore.setActiveFolder({ folderPath, folderId })
-  // 查找对应folderPath的文件夹id
-  // 注意：这里我们不再传递folderId，而是传递folderPath
-  // 后端需要修改为接受folderPath参数，或者前端需要先根据folderPath查找folderId
   await cloudDiskStore.fetchFiles(folderPath)
   cloudDiskStore.clearSelection()
 }
@@ -671,7 +399,7 @@ const handleFileSelect = async (event) => {
   if (!files || files.length === 0) return
   
   // 重置批处理策略和队列
-  batchStrategy.value = null
+  cloudDiskStore.batchStrategy = null
   pendingUploads.value = []
   
   // 准备上传队列
@@ -702,9 +430,9 @@ const processUploadQueue = async () => {
     )
     
     if (exists) {
-        if (batchStrategy.value) {
+        if (cloudDiskStore.batchStrategy) {
             // 应用批处理策略
-            await performUpload(file, batchStrategy.value)
+            await performUpload(file, cloudDiskStore.batchStrategy)
             pendingUploads.value.shift()
             await processUploadQueue()
         } else {
@@ -741,25 +469,8 @@ const performUpload = async (file, strategy) => {
 const onConflictResolved = async ({ strategy, applyToAll }) => {
     conflictDialogVisible.value = false
 
-    // 处理文件夹重命名冲突
-    if (renamingFolder.value) {
-        const action = strategy === 'OVERWRITE' ? 'override' : 'rename'
-        const result = await cloudDiskStore.resolveRenameFolder(
-            renamingFolder.value.id,
-            action,
-            renameFolderName.value
-        )
-        
-        if (result.success) {
-             closeRenameFolderDialog()
-        } else {
-             alert(result.message)
-        }
-        return
-    }
-
     if (applyToAll) {
-        batchStrategy.value = strategy
+        cloudDiskStore.batchStrategy = strategy
     }
     
     // 继续上传当前文件
@@ -773,14 +484,6 @@ const onConflictResolved = async ({ strategy, applyToAll }) => {
 const onConflictCancelled = () => {
     conflictDialogVisible.value = false
     
-    // 如果是重命名文件夹取消，则清除重命名状态
-    if (renamingFolder.value) {
-        // 保持重命名对话框关闭（因为它在冲突对话框出现前已经关闭了，或者我们应该重新打开它？）
-        // 这里简单地重置状态，用户需要重新发起重命名
-        closeRenameFolderDialog()
-        return
-    }
-
     // 跳过当前文件
     pendingUploads.value.shift()
     processUploadQueue()
@@ -811,36 +514,6 @@ const handleFolderSelect = async (event) => {
   event.target.value = '' // 重置input
 }
 
-const showCreateFolderDialog = () => {
-  newFolderName.value = ''
-  showCreateFolder.value = true
-}
-
-const createFolder = async () => {
-  if (!newFolderName.value.trim()) {
-    alert('请输入文件夹名称')
-    return
-  }
-  
-  const result = await cloudDiskStore.createFolder(
-    newFolderName.value,
-    cloudDiskStore.currentFolder
-  )
-  
-  if (result.success) {
-    const currentFolderNode = findFolderByPath(cloudDiskStore.currentFolder)
-    if (currentFolderNode?.id) {
-      const next = new Set(expandedFolders.value)
-      next.add(currentFolderNode.id)
-      expandedFolders.value = next
-    }
-    showCreateFolder.value = false
-    newFolderName.value = ''
-  } else {
-    alert(`创建失败: ${result.message}`)
-  }
-}
-
 const isFileSelected = (fileId) => {
   return cloudDiskStore.selectedFiles.includes(fileId)
 }
@@ -865,63 +538,6 @@ const downloadSelected = async () => {
 const deleteFile = async (fileId) => {
   if (confirm('确定要删除这个文件吗？')) {
     const result = await cloudDiskStore.deleteFile(fileId)
-    if (!result.success) {
-      alert(`删除失败: ${result.message}`)
-    }
-  }
-}
-
-const renameFolderAction = (folder) => {
-  renamingFolder.value = folder
-  renameFolderName.value = folder.folderName || folder.name || ''
-  showRenameFolder.value = true
-}
-
-const closeRenameFolderDialog = () => {
-  showRenameFolder.value = false
-  renamingFolder.value = null
-  renameFolderName.value = ''
-}
-
-const confirmRenameFolder = async () => {
-  if (!renameFolderName.value.trim()) {
-    alert('请输入文件夹名称')
-    return
-  }
-  
-  // 如果名称没变，直接关闭
-  if (renamingFolder.value.folderName === renameFolderName.value) {
-    closeRenameFolderDialog()
-    return
-  }
-  
-  const result = await cloudDiskStore.renameFolder(
-    renamingFolder.value.id,
-    renameFolderName.value
-  )
-  
-  if (result.conflict) {
-    // 关闭重命名输入框
-    showRenameFolder.value = false
-    
-    // 显示冲突解决对话框
-    currentConflictFiles.value = [{
-      name: renameFolderName.value,
-      size: 0,
-      isFolder: true
-    }]
-    conflictDialogVisible.value = true
-    // 注意：不要在这里清空 renamingFolder，因为 onConflictResolved 需要它
-  } else if (result.success) {
-    closeRenameFolderDialog()
-  } else {
-    alert(`重命名失败: ${result.message}`)
-  }
-}
-
-const deleteFolderAction = async (folderId) => {
-  if (confirm('确定要删除这个文件夹及其所有内容吗？此操作不可恢复！')) {
-    const result = await cloudDiskStore.deleteFolder(folderId)
     if (!result.success) {
       alert(`删除失败: ${result.message}`)
     }
@@ -1136,169 +752,10 @@ const toggleSelectAll = () => {
   position: relative;
 }
 
-/* 移动端侧边栏切换按钮 */
-.mobile-sidebar-toggle {
-  display: none;
-  position: fixed;
-  top: 80px;
-  right: 16px;
-  z-index: 80;
-  background-color: var(--primary-color);
-  color: white;
-  border: none;
-  border-radius: 20px;
-  padding: 8px 16px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  box-shadow: var(--shadow-md);
-  transition: all 0.3s ease;
-}
-
-.mobile-sidebar-toggle:hover {
-  transform: scale(1.05);
-  box-shadow: var(--shadow-lg);
-}
-
 .disk-container {
   display: flex;
   height: 100%;
   width: 100%;
-}
-
-.folder-sidebar {
-  width: 300px;
-  background-color: var(--bg-secondary);
-  border-right: 1px solid var(--border-color);
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  transition: all 0.3s ease;
-  z-index: 70;
-  height: 100%;
-}
-
-.sidebar-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 24px 20px;
-  border-bottom: 1px solid var(--border-color);
-  gap: 8px;
-}
-
-.sidebar-header h3 {
-  font-size: 16px;
-  font-weight: 600;
-  margin: 0;
-  flex: 1;
-}
-
-.sidebar-header .close-btn {
-  display: none;
-}
-
-.icon-btn {
-  width: 34px;
-  height: 34px;
-  border: none;
-  background-color: var(--bg-tertiary);
-  color: var(--text-primary);
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  border: 1px solid var(--border-color);
-}
-
-.icon-btn:hover {
-  background-color: var(--primary-color);
-  color: white;
-  border-color: var(--primary-color);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-sm);
-}
-
-.folder-tree {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 16px 20px;
-  overscroll-behavior: contain;
-}
-
-.folder-tree.folder-tree-scroll {
-  overflow: auto;
-}
-
-.folder-item {
-  margin-bottom: 4px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.folder-item:hover .folder-header {
-  background-color: var(--bg-tertiary);
-}
-
-.folder-item.active .folder-header {
-  background: var(--bg-tertiary);
-  border: 1px solid var(--primary-color);
-}
-
-.folder-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-  border: 1px solid transparent;
-}
-
-.folder-icon {
-  font-size: 18px;
-}
-
-.folder-name {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 15px;
-  font-weight: 500;
-  display: block;
-  color: var(--text-primary);
-  letter-spacing: 0.2px;
-}
-
-/* 文件夹展开/折叠图标样式 */
-.folder-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-  font-size: 10px;
-  font-weight: bold;
-  color: var(--text-secondary);
-  transition: all 0.2s ease;
-}
-
-/* 子文件夹样式 */
-.folder-children {
-  margin-left: 20px;
-  padding-left: 12px;
-  border-left: 1px solid var(--border-color);
-}
-
-.folder-children .folder-item {
-  margin-bottom: 2px;
 }
 
 .file-main {
@@ -1870,26 +1327,8 @@ input[type="checkbox"] {
 }
 
 @media (max-width: 768px) {
-  .mobile-sidebar-toggle {
-    display: block;
-  }
-  
-  .folder-sidebar {
-    position: fixed;
-    left: 0;
-    top: 0;
-    height: 100vh;
-    transform: translateX(-100%);
-    z-index: 100;
-    box-shadow: var(--shadow-lg);
-  }
-  
-  .folder-sidebar.sidebar-visible {
-    transform: translateX(0);
-  }
-  
-  .sidebar-header .close-btn {
-    display: block;
+  .file-list {
+    padding: 0 16px;
   }
   
   .file-header {

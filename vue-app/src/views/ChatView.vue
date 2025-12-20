@@ -1,658 +1,243 @@
 <template>
-  <AppLayout>
-    <div class="chat-page">
-      <div class="chat-container">
-        <!-- 侧边栏：全局导航 + 会话列表 -->
-        <aside class="chat-sidebar">
-          <div class="sidebar-top">
-            <div class="user-profile">
-              <div class="user-avatar-wrapper">
-                <img 
-                  v-if="authStore.userInfo?.avatar" 
-                  :src="avatarUrl || authStore.userInfo.avatar" 
-                  :alt="authStore.username" 
-                  class="sidebar-avatar"
-                >
-                <i v-else class="fas fa-user default-avatar-icon" />
-              </div>
-              <span class="sidebar-user-name">{{ authStore.username || '用户' }}</span>
-            </div>
-            
-            <div class="sidebar-actions">
-              <button 
-                class="sidebar-icon-btn" 
-                :title="themeStore.isDarkMode ? '切换到浅色模式' : '切换到深色模式'" 
-                @click="themeStore.toggleDarkMode()"
-              >
-                <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" />
-              </button>
+  <div class="chat-page">
+    <div class="chat-container">
+      <!-- 主聊天区域 -->
+      <main class="chat-main">
+        <div class="chat-header">
+          <div class="chat-header-inner">
+            <div class="header-left">
+              <h2 class="chat-title">
+                {{ currentSessionTitle }}
+              </h2>
             </div>
           </div>
-
-          <div class="sidebar-nav">
-            <div
-              class="nav-item"
-              :class="{ active: activeNav === 'chat' }"
-              @click="activeNav = 'chat'"
-            >
-              <i class="fas fa-comments" />
-              <span>AI问答</span>
-            </div>
-            <div
-              class="nav-item"
-              :class="{ active: activeNav === 'cloud-disk' }"
-              @click="activeNav = 'cloud-disk'"
-            >
-              <i class="fas fa-cloud" />
-              <span>云盘</span>
-            </div>
-            <router-link
-              to="/language-learning"
-              class="nav-item"
-              active-class="active"
-            >
-              <i class="fas fa-book" />
-              <span>语言学习</span>
-            </router-link>
-            <router-link
-              v-if="authStore.isAdmin"
-              to="/admin"
-              class="nav-item"
-              active-class="active"
-            >
-              <i class="fas fa-cog" />
-              <span>管理</span>
-            </router-link>
-          </div>
-
-          <div class="sidebar-divider" />
-
-          <!-- 会话列表 (AI问答模式) -->
-          <template v-if="activeNav === 'chat'">
-            <div class="sidebar-header">
-              <button
-                class="btn btn-primary new-chat-btn"
-                @click="createNewSession"
-              >
-                <span class="btn-icon">
-                  <i class="fas fa-plus" />
-                </span>
-                <span class="btn-text">新建对话</span>
-              </button>
-            </div>
-            
-            <div class="history-section-title">历史对话</div>
-            <div class="session-list">
-              <div
-                v-for="session in chatStore.sessions"
-                :key="session.id"
-                class="session-item"
-                :class="{ active: session.id === chatStore.currentSessionId }"
-                @click="loadSession(session.id)"
-              >
-                <div class="session-info">
-                  <div class="session-title">
-                    {{ session.title || '新对话' }}
-                  </div>
-                  <div class="session-meta">
-                    <span class="session-date">{{ formatSessionDate(session.createdAt) }}</span>
-                  </div>
-                </div>
-                <button
-                  class="delete-btn"
-                  title="删除会话"
-                  aria-label="删除会话"
-                  @click.stop="deleteSession(session.id)"
-                >
-                  <i class="fas fa-trash" />
-                </button>
-              </div>
-            </div>
-          </template>
-
-          <!-- 文件夹树 (云盘模式) -->
-          <template v-else-if="activeNav === 'cloud-disk'">
-            <div class="sidebar-header">
-              <div class="sidebar-section-header">
-                <span class="history-section-title">文件夹</span>
-                <button
-                  class="icon-btn-small"
-                  title="新建文件夹"
-                  @click="showCreateFolderDialog"
-                >
-                  <i class="fas fa-plus" />
-                </button>
-              </div>
-            </div>
-            
-            <div
-              class="folder-tree-container"
-              :style="{ '--folder-indent': `${folderIndentPx}px` }"
-            >
-              <FolderTreeItem
-                v-for="rootFolder in cloudDiskStore.folders"
-                :key="rootFolder.id"
-                :folder="rootFolder"
-                :select-folder="selectFolder"
-                :toggle-folder-expand="toggleFolderExpand"
-                :is-folder-expanded="isFolderExpanded"
-                :delete-folder-action="deleteFolderAction"
-                :rename-folder-action="renameFolderAction"
-                :depth="0"
-                :indent="folderIndentPx"
-              />
-            </div>
-          </template>
-
-          <div class="sidebar-footer">
-            <button class="logout-btn" @click="handleLogout">
-              <i class="fas fa-sign-out-alt" />
-              <span>退出登录</span>
-            </button>
-          </div>
-        </aside>
+        </div>
         
-        <!-- 主内容区域 -->
-        <main class="chat-main">
-          <!-- AI问答视图 -->
-          <template v-if="activeNav === 'chat'">
-            <header class="chat-header">
-              <div class="chat-header-inner">
-                <div class="header-left">
-                  <h2 class="chat-title">{{ currentSessionTitle }}</h2>
-                </div>
-                <div class="header-right">
-                  <div class="model-selector-wrapper" v-click-outside="() => showModelSelector = false">
-                    <button class="model-selector-btn" @click="showModelSelector = !showModelSelector">
-                      <span class="model-name">{{ chatStore.currentModelName }}</span>
-                      <i class="fas fa-chevron-down" :class="{ rotated: showModelSelector }" />
-                    </button>
-                    
-                    <transition name="menu-fade">
-                      <div v-if="showModelSelector" class="model-dropdown">
-                        <div v-for="brand in modelBrands" :key="brand.name" class="brand-section">
-                          <div class="brand-header">{{ brand.name }}</div>
-                          <div 
-                            v-for="model in brand.models" 
-                            :key="model.id"
-                            class="model-item"
-                            :class="{ active: chatStore.currentModel === model.id }"
-                            @click="selectModel(model.id)"
-                          >
-                            <div class="model-item-info">
-                              <span class="item-name">{{ model.name }}</span>
-                            </div>
-                            <i v-if="chatStore.currentModel === model.id" class="fas fa-check check-icon" />
-                          </div>
-                        </div>
-                      </div>
-                    </transition>
-                  </div>
+        <div
+          ref="messagesContainer"
+          class="messages-container"
+        >
+          <div
+            v-if="chatStore.messages.length === 0"
+            class="empty-state"
+          >
+            <h3 class="empty-title">
+              开始新的对话
+            </h3>
+            <p class="empty-description">
+              向AI助手提问任何问题，获取专业的解答和帮助
+            </p>
+          </div>
+          
+          <div
+            v-for="(message, index) in chatStore.messages"
+            :key="index"
+            class="message"
+            :class="message.role === 'user' ? 'user' : 'assistant'"
+          >
+            <!-- AI头像 - 移除以匹配图 2 风格 -->
+            <!-- <div
+              v-if="message.role === 'assistant'"
+              class="message-avatar"
+              :class="{ 'has-image': !!getMessageAvatarSrc(message) }"
+            >
+              ...
+            </div> -->
 
-                  <div class="toolbar-divider" />
-                  
-                  <button 
-                    class="tool-btn" 
-                    :class="{ active: chatStore.isDeepThinking }"
-                    title="深度思考"
-                    @click="toggleDeepThinking"
-                  >
-                    <i class="fas fa-brain" />
-                    <span>深度思考</span>
-                  </button>
-                </div>
-              </div>
-            </header>
-
-            <div class="messages-container" ref="messagesContainer">
-              <template v-if="chatStore.messages.length > 0">
-                <div
-                  v-for="message in chatStore.messages"
-                  :key="message.id"
-                  class="message"
-                  :class="message.role"
+            <div class="message-content">
+              <div class="message-bubble">
+                <!-- 深度思考区域 -->
+                <div 
+                  v-if="message.reasoning_content" 
+                  class="reasoning-message"
+                  :class="{ collapsed: message.isReasoningCollapsed }"
                 >
-                  <div class="message-avatar" :class="{ 'has-image': message.role === 'user' && userAvatarUrl }">
-                    <template v-if="message.role === 'user'">
-                      <img v-if="userAvatarUrl" :src="userAvatarUrl" class="message-avatar-img" alt="User">
-                      <i v-else class="fas fa-user" />
-                    </template>
-                    <i v-else class="fas fa-robot" />
-                  </div>
-                  <div class="message-content">
-                    <div class="message-bubble">
-                      <!-- 思考内容 -->
-                      <div v-if="message.reasoning_content" class="reasoning-message" :class="{ collapsed: message.isReasoningCollapsed }">
-                        <div class="reasoning-header" @click="toggleReasoning(message)">
-                          <div class="reasoning-title-wrapper">
-                            <i class="fas fa-brain" :class="{ 'fa-spin': message.isReasoning }" />
-                            <span>{{ message.isReasoning ? '正在思考...' : '已完成思考' }}</span>
-                          </div>
-                          <i class="fas fa-chevron-down reasoning-toggle-icon" />
-                        </div>
-                        <div v-if="!message.isReasoningCollapsed" class="reasoning-body">
-                          <div class="reasoning-text" v-html="renderMarkdown(message.reasoning_content)" />
-                        </div>
-                      </div>
-                      
-                      <!-- 消息文本 -->
-                      <div class="message-text" v-html="renderMarkdown(message.content)" />
+                  <div 
+                    class="reasoning-header" 
+                    @click="toggleReasoning(message)"
+                  >
+                    <div class="reasoning-title-wrapper">
+                      <!-- 移除图标，仅保留文字以匹配图 2 -->
+                      <span class="reasoning-title">
+                        {{ message.isReasoningCollapsed ? '已完成思考' : '正在思考...' }}
+                      </span>
                     </div>
+                    <!-- 切换为 expand 图标以匹配图 2 -->
+                    <i 
+                      class="fas reasoning-toggle-icon" 
+                      :class="message.isReasoningCollapsed ? 'fa-expand-alt' : 'fa-compress-alt'" 
+                    />
+                  </div>
+                  <div 
+                    v-show="!message.isReasoningCollapsed" 
+                    class="reasoning-body"
+                  >
+                    <div
+                      class="reasoning-text"
+                      v-html="formatMessage(sanitizeNullRuns(message.reasoning_content))"
+                    />
                   </div>
                 </div>
-              </template>
-              <div v-else class="empty-state">
-                <div class="empty-icon">🤖</div>
-                <h1 class="empty-title">我是 AI 助手</h1>
-                <p class="empty-description">你可以问我任何问题，我会尽力为你解答。让我们开始对话吧！</p>
-              </div>
-            </div>
 
-            <div class="chat-input-area">
-              <div class="chat-input-wrapper">
-                <textarea
-                  v-model="inputMessage"
-                  class="chat-input"
-                  placeholder="输入消息..."
-                  rows="1"
-                  @keydown.enter.prevent="sendMessage"
-                  @input="autoResize"
+                <div
+                  v-if="message.content"
+                  class="message-text"
+                  v-html="formatMessage(sanitizeNullRuns(message.content))"
                 />
-                <div class="input-actions">
-                  <button v-if="chatStore.isLoading" class="stop-btn" @click="chatStore.stopGeneration">
-                    <div class="stop-icon-wrapper">
-                      <i class="fas fa-stop" />
-                    </div>
-                  </button>
-                  <button v-else class="send-btn-new" :disabled="!inputMessage.trim()" @click="sendMessage">
-                    <div class="send-icon-wrapper">
-                      <i class="fas fa-paper-plane" />
-                    </div>
-                  </button>
+                <!-- 如果没有内容但有reasoning_content，显示占位符或仅显示reasoning -->
+                <div
+                  v-else-if="!message.reasoning_content"
+                  class="message-text"
+                >
+                  <span class="typing-cursor" />
                 </div>
               </div>
+              <div class="message-time">
+                {{ formatTime(message.timestamp) }}
+              </div>
             </div>
-          </template>
 
-          <!-- 云盘视图 -->
-          <template v-else-if="activeNav === 'cloud-disk'">
-            <CloudDiskMain :show-sidebar="false" />
-          </template>
-        </main>
-      </div>
-
-      <!-- 创建文件夹对话框 -->
-      <div
-        v-if="showCreateFolder"
-        class="modal-overlay"
-        @click.self="showCreateFolder = false"
-      >
-        <div class="modal-content">
-          <h3>创建新文件夹</h3>
-          <input
-            v-model="newFolderName"
-            type="text"
-            class="input-field"
-            placeholder="输入文件夹名称"
-            @keyup.enter="createFolder"
-          >
-          <div class="modal-actions">
-            <button
-              class="btn btn-primary"
-              @click="createFolder"
+            <!-- 用户头像 - 移除或改为在user角色下不显示以匹配图2 -->
+            <!-- 如果需要保留头像但放在右侧，可以在这里添加 v-if="message.role === 'user'" -->
+            
+            <!-- 复制按钮 - 位于消息容器外的左下角 -->
+            <button 
+              class="message-copy-button" 
+              title="复制这条消息"
+              @click="copyMessage(message.content)"
             >
-              创建
-            </button>
-            <button
-              class="btn btn-secondary"
-              @click="showCreateFolder = false"
-            >
-              取消
+              <i class="fas fa-copy" />
+              <span class="copy-text">复制</span>
             </button>
           </div>
-        </div>
-      </div>
-
-      <!-- 重命名文件夹对话框 -->
-      <div
-        v-if="showRenameFolder"
-        class="modal-overlay"
-        @click.self="closeRenameFolderDialog"
-      >
-        <div class="modal-content">
-          <h3>重命名文件夹</h3>
-          <input
-            v-model="renameFolderName"
-            type="text"
-            class="input-field"
-            placeholder="输入新文件夹名称"
-            @keyup.enter="confirmRenameFolder"
+          
+          <div
+            v-if="chatStore.isLoading"
+            class="loading-indicator"
           >
-          <div class="modal-actions">
-            <button
-              class="btn btn-primary"
-              @click="confirmRenameFolder"
-            >
-              确定
-            </button>
-            <button
-              class="btn btn-secondary"
-              @click="closeRenameFolderDialog"
-            >
-              取消
-            </button>
+            <div class="loading" />
+            <span>AI正在思考...</span>
           </div>
         </div>
-      </div>
+        
+        <div class="chat-input-area">
+          <div class="input-container">
+            <textarea
+              v-model="inputMessage"
+              class="chat-input"
+              placeholder="发送消息或输入 / 选择技能"
+              :disabled="chatStore.isLoading"
+              rows="1"
+              @input="adjustTextareaHeight"
+              @keydown.enter.exact.prevent="sendMessage"
+            />
+            
+            <div class="input-toolbar">
+              <div class="toolbar-left">
+                <button class="tool-btn" title="上传附件">
+                  <i class="fas fa-paperclip" />
+                </button>
+                <button 
+                  class="tool-btn-special" 
+                  :class="{ active: chatStore.selectedModel.includes('reasoner') }"
+                  @click="toggleDeepThinking"
+                >
+                  <i class="fas fa-atom" />
+                  <span>深度思考</span>
+                </button>
+                <div class="tool-btn-pill model-pill" ref="modelMenuRef">
+                  <div 
+                    class="model-selector-trigger" 
+                    @click="isModelMenuOpen = !isModelMenuOpen"
+                    :class="{ active: isModelMenuOpen }"
+                  >
+                    <span class="brand-name">{{ currentBrand.name }}</span>
+                    <i class="fas fa-chevron-up toggle-arrow" :class="{ rotate: isModelMenuOpen }" />
+                  </div>
+                  
+                  <transition name="menu-fade">
+                    <div v-if="isModelMenuOpen" class="model-dropdown-menu">
+                      <div 
+                        v-for="brand in brands" 
+                        :key="brand.id"
+                        class="model-menu-item"
+                        :class="{ active: currentBrand.id === brand.id }"
+                        @click="selectBrand(brand)"
+                      >
+                        <div class="item-info">
+                          <span class="item-name">{{ brand.name }}</span>
+                          <span class="item-desc">{{ brand.id === 'deepseek' ? 'DeepSeek-V3' : '豆包-pro-128k' }}</span>
+                        </div>
+                        <i v-if="currentBrand.id === brand.id" class="fas fa-check check-icon" />
+                      </div>
+                    </div>
+                  </transition>
+                </div>
+              </div>
+              
+              <div class="toolbar-right">
+                <button class="tool-btn" title="截图">
+                  <i class="fas fa-cut" />
+                </button>
+                <button class="tool-btn" title="语音通话">
+                  <i class="fas fa-phone" />
+                </button>
+                <button class="tool-btn" title="语音输入">
+                  <i class="fas fa-microphone" />
+                </button>
+                
+                <div class="toolbar-divider" />
+                
+                <button
+                  v-if="chatStore.isLoading"
+                  class="stop-btn"
+                  title="停止生成"
+                  @click="chatStore.stopGeneration"
+                >
+                  <div class="stop-icon-wrapper">
+                    <i class="fas fa-stop" />
+                  </div>
+                </button>
+                <button
+                  v-else
+                  class="send-btn-new"
+                  :disabled="!inputMessage.trim()"
+                  title="发送消息"
+                  @click="sendMessage"
+                >
+                  <div class="send-icon-wrapper">
+                    <i class="fas fa-arrow-up" />
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
-  </AppLayout>
+  </div>
 </template>
 
 <script setup>
+import DOMPurify from 'dompurify'
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useChatStore } from '@/stores/chat'
 import { useAuthStore } from '@/stores/auth'
-import { useThemeStore } from '@/stores/theme'
-import { useCloudDiskStore } from '@/stores/cloudDisk'
 import { marked } from 'marked'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
-import AppLayout from '@/components/AppLayout.vue'
-import CloudDiskMain from '@/components/CloudDiskMain.vue'
-import FolderTreeItem from '@/components/FolderTreeItem.vue'
 import { API_CONFIG } from '@/config/api'
 
 const chatStore = useChatStore()
 const authStore = useAuthStore()
-const themeStore = useThemeStore() // 导入主题 store
-const cloudDiskStore = useCloudDiskStore()
-const router = useRouter() // 导入路由
+const router = useRouter()
 const inputMessage = ref('')
 const messagesContainer = ref(null)
 
-const vClickOutside = {
-  mounted(el, binding) {
-    el.clickOutsideEvent = (event) => {
-      if (!(el === event.target || el.contains(event.target))) {
-        binding.value(event)
-      }
-    }
-    document.addEventListener('click', el.clickOutsideEvent)
-  },
-  unmounted(el) {
-    document.removeEventListener('click', el.clickOutsideEvent)
-  }
-}
-
-const activeNav = ref('chat') // 当前激活的导航项：'chat' 或 'cloud-disk'
-
-// --- 云盘侧边栏逻辑 ---
-const expandedFolders = ref(new Set())
-const viewportWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1024)
-const showCreateFolder = ref(false)
-const showRenameFolder = ref(false)
-const renamingFolder = ref(null)
-const renameFolderName = ref('')
-const newFolderName = ref('')
-
-/**
- * 判断当前路径是否位于指定文件夹下
- */
-const isInActiveChain = (folder) => {
-  const folderPath = (folder?.folderPath || '').replace(/\/+$/, '')
-  const current = (cloudDiskStore.currentFolder || '').replace(/\/+$/, '')
-  if (folderPath === '') return true
-  return current.startsWith(folderPath + '/')
-}
-
-/**
- * 切换文件夹展开状态
- */
-const toggleFolderExpand = (folderId, event) => {
-  if (event) event.stopPropagation()
-  const next = new Set(expandedFolders.value)
-  if (next.has(folderId)) {
-    next.delete(folderId)
-  } else {
-    next.add(folderId)
-  }
-  expandedFolders.value = next
-}
-
-/**
- * 判断文件夹是否展开
- */
-const isFolderExpanded = (folder) => {
-  if (expandedFolders.value.has(folder.id)) return true
-  if (isInActiveChain(folder)) return true
-  return false
-}
-
-/**
- * 计算文件夹树最大深度
- */
-const maxFolderDepth = computed(() => {
-  const roots = cloudDiskStore.folders || []
-  let max = 0
-  const stack = roots.map(r => ({ node: r, depth: 0 }))
-  while (stack.length) {
-    const { node, depth } = stack.pop()
-    if (depth > max) max = depth
-    const children = node?.children || []
-    for (const child of children) {
-      stack.push({ node: child, depth: depth + 1 })
-    }
-  }
-  return max
-})
-
-/**
- * 动态计算缩进
- */
-const folderIndentPx = computed(() => {
-  const depth = maxFolderDepth.value
-  const isMobile = viewportWidth.value <= 768
-  if (isMobile) return depth > 6 ? 10 : 12
-  return depth > 8 ? 10 : depth > 5 ? 12 : 14
-})
-
-const selectFolder = async (folderPath, folderId, event) => {
-  if (event && typeof event.stopPropagation === 'function') {
-    event.stopPropagation()
-  }
-  cloudDiskStore.setActiveFolder({ folderPath, folderId })
-}
-
-const showCreateFolderDialog = () => {
-  newFolderName.value = ''
-  showCreateFolder.value = true
-}
-
-const createFolder = async () => {
-  if (!newFolderName.value.trim()) return
-  const result = await cloudDiskStore.createFolder(newFolderName.value)
-  if (result.success) {
-    showCreateFolder.value = false
-    newFolderName.value = ''
-  } else if (result.error === 'FOLDER_EXISTS') {
-    alert('文件夹已存在')
-  }
-}
-
-/**
- * 删除文件夹操作
- */
-const deleteFolderAction = async (folderId) => {
-  // 查找文件夹名称用于确认
-  const findFolder = (folders, id) => {
-    for (const f of folders) {
-      if (f.id === id) return f
-      if (f.children) {
-        const found = findFolder(f.children, id)
-        if (found) return found
-      }
-    }
-    return null
-  }
-  const folder = findFolder(cloudDiskStore.folders, folderId)
-  const folderName = folder ? folder.folderName : '该文件夹'
-
-  if (confirm(`确定要删除文件夹 "${folderName}" 及其所有内容吗？`)) {
-    const result = await cloudDiskStore.deleteFolder(folderId)
-    if (!result.success) {
-      alert('删除失败: ' + (result.message || '未知错误'))
-    }
-  }
-}
-
-/**
- * 开启重命名对话框
- */
-const renameFolderAction = (folder) => {
-  renamingFolder.value = folder
-  renameFolderName.value = folder.folderName
-  showRenameFolder.value = true
-}
-
-/**
- * 关闭重命名对话框
- */
-const closeRenameFolderDialog = () => {
-  showRenameFolder.value = false
-  renamingFolder.value = null
-  renameFolderName.value = ''
-}
-
-/**
- * 确认重命名
- */
-const confirmRenameFolder = async () => {
-  if (!renameFolderName.value.trim() || !renamingFolder.value) return
-  
-  if (renameFolderName.value === renamingFolder.value.folderName) {
-    closeRenameFolderDialog()
-    return
-  }
-
-  const result = await cloudDiskStore.renameFolder(
-    renamingFolder.value.id,
-    renameFolderName.value.trim()
-  )
-
-  if (result.success) {
-    closeRenameFolderDialog()
-  } else if (result.error === 'FOLDER_EXISTS') {
-    alert('文件夹名称已存在')
-  } else {
-    alert('重命名失败: ' + (result.message || '未知错误'))
-  }
-}
-// --- 云盘侧边栏逻辑结束 ---
-
-const showModelSelector = ref(false)
-const modelBrands = [
-  {
-    name: '豆包',
-    models: [
-      { id: 'doubao-pro-32k', name: 'Doubao Pro' },
-      { id: 'doubao-lite-32k', name: 'Doubao Lite' }
-    ]
-  },
-  {
-    name: 'DeepSeek',
-    models: [
-      { id: 'deepseek-chat', name: 'DeepSeek Chat' },
-      { id: 'deepseek-reasoner', name: 'DeepSeek Reasoner' }
-    ]
-  }
-]
-
-const selectModel = (modelId) => {
-  chatStore.selectedModel = modelId
-  showModelSelector.value = false
-}
-
-const toggleDeepThinking = () => {
-  chatStore.isDeepThinking = !chatStore.isDeepThinking
-  
-  // 自动切换逻辑
-  if (chatStore.isDeepThinking) {
-    if (chatStore.selectedModel.includes('deepseek')) {
-      chatStore.selectedModel = 'deepseek-reasoner'
-    }
-  } else {
-    if (chatStore.selectedModel === 'deepseek-reasoner') {
-      chatStore.selectedModel = 'deepseek-chat'
-    }
-  }
-}
-
-const autoResize = (event) => {
-  const textarea = event.target
-  textarea.style.height = 'auto'
-  textarea.style.height = textarea.scrollHeight + 'px'
-}
-
-const scrollToBottom = () => {
-  if (messagesContainer.value) {
-    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
-  }
-}
-
-const renderMarkdown = (content) => {
-  if (!content) return ''
-  const placeholders = []
-  let processedContent = renderMathFormula(content, placeholders)
-  let html = marked(processedContent)
-  placeholders.forEach((mathHtml, index) => {
-    html = html.replace(`MATH-PLACEHOLDER-${index}-END`, mathHtml)
-  })
-  return html
-}
-
-const avatarUrl = ref(null) // 用于侧边栏头像
 const userAvatarUrl = ref(null) // 用于消息列表头像
-
-// 退出登录逻辑
-const handleLogout = () => {
-  if (confirm('确定要退出登录吗？')) {
-    authStore.logout()
-    router.push('/login')
-  }
-}
-
-// 侧边栏头像逻辑
-watch(
-  () => authStore.userInfo?.avatar,
-  async (path) => {
-    if (path) {
-      try {
-        const res = await fetch(`${API_CONFIG.baseURL}${path}`, {
-          headers: { Authorization: `Bearer ${authStore.token}` }
-        })
-        if (res.ok) {
-          const blob = await res.blob()
-          const url = URL.createObjectURL(blob)
-          avatarUrl.value = url
-          userAvatarUrl.value = url // 同时更新消息头像
-        } else {
-          avatarUrl.value = null
-          userAvatarUrl.value = null
-        }
-      } catch {
-        avatarUrl.value = null
-        userAvatarUrl.value = null
-      }
-    } else {
-      avatarUrl.value = null
-      userAvatarUrl.value = null
-    }
-  },
-  { immediate: true }
-)
 
 /**
  * 解析并返回消息头像图片地址；无可用图片时返回 `null` 以回退到默认图标
@@ -717,13 +302,12 @@ const currentSessionTitle = computed(() => {
 })
 
 onMounted(async () => {
-  await chatStore.fetchSessions()
-  
   // 如果没有当前会话，创建一个新的
   if (!chatStore.currentSessionId && chatStore.sessions.length === 0) {
-    await createNewSession()
+    await chatStore.createSession()
   } else if (chatStore.sessions.length > 0 && !chatStore.currentSessionId) {
-    await loadSession(chatStore.sessions[0].id)
+    chatStore.currentSessionId = chatStore.sessions[0].id
+    await chatStore.fetchSessionMessages(chatStore.sessions[0].id)
   }
 })
 
@@ -769,24 +353,6 @@ watch(
     })
   }
 )
-
-const createNewSession = async () => {
-  const result = await chatStore.createSession()
-  if (result.success) {
-    inputMessage.value = ''
-  }
-}
-
-const loadSession = async (sessionId) => {
-  await chatStore.fetchSessionMessages(sessionId)
-  scrollToBottom()
-}
-
-const deleteSession = async (sessionId) => {
-  if (confirm('确定要删除这个会话吗？')) {
-    await chatStore.deleteSession(sessionId)
-  }
-}
 
 const toggleReasoning = (message) => {
   message.isReasoningCollapsed = !message.isReasoningCollapsed
@@ -1158,7 +724,11 @@ const formatMessage = (content) => {
     html = html.replace(/^\s*\[/g, '');
     html = html.replace(/\]\s*$/g, '');
     
-    return html;
+    // 7. 安全过滤，防止 XSS
+    return DOMPurify.sanitize(html, {
+      ADD_ATTR: ['onclick', 'style'], // 允许 onclick 和 style 属性，因为我们自定义了复制按钮
+      ADD_TAGS: ['button', 'i'] // 允许 button 和 i 标签
+    });
   } catch (error) {
     console.error('消息格式化错误:', error);
     return content;
@@ -1259,7 +829,9 @@ const selectBrand = (brand) => {
   isModelMenuOpen.value = false
 }
 
-// 切换深度思考
+/**
+ * 切换深度思考模式
+ */
 const toggleDeepThinking = () => {
   const brand = currentBrand.value
   const isReasoning = chatStore.selectedModel.includes('reasoner')
@@ -1267,7 +839,9 @@ const toggleDeepThinking = () => {
   chatStore.setModel(newModel)
 }
 
-// 点击外部关闭菜单
+/**
+ * 处理点击外部关闭模型选择菜单
+ */
 onMounted(() => {
   const handleClickOutside = (event) => {
     if (modelMenuRef.value && !modelMenuRef.value.contains(event.target)) {
@@ -1280,6 +854,10 @@ onMounted(() => {
   })
 })
 
+/**
+ * 自动调整输入框高度
+ * @param {Event} event 输入事件
+ */
 const adjustTextareaHeight = (event) => {
   const textarea = event.target
   textarea.style.height = 'auto'
@@ -1304,309 +882,6 @@ const adjustTextareaHeight = (event) => {
   box-shadow: none;
   border-radius: 0;
   overflow: hidden;
-}
-
-.chat-sidebar {
-  width: 300px;
-  background-color: var(--bg-secondary);
-  border-right: 1px solid var(--border-color);
-  display: flex;
-  flex-direction: column;
-  transition: all 0.3s ease;
-  height: 100%;
-}
-
-.sidebar-top {
-  padding: 24px 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.user-profile {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex: 1;
-  min-width: 0;
-}
-
-.user-avatar-wrapper {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background-color: var(--bg-tertiary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-
-.sidebar-avatar {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.default-avatar-icon {
-  font-size: 18px;
-  color: var(--text-tertiary);
-}
-
-.sidebar-user-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.sidebar-actions {
-  display: flex;
-  align-items: center;
-}
-
-.sidebar-icon-btn {
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  padding: 8px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.sidebar-icon-btn:hover {
-  background-color: var(--bg-tertiary);
-  color: var(--text-primary);
-}
-
-.sidebar-footer {
-  padding: 16px;
-  border-top: 1px solid var(--border-color);
-}
-
-.logout-btn {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-  background-color: transparent;
-  color: var(--text-secondary);
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.logout-btn:hover {
-  background-color: var(--bg-tertiary);
-  color: var(--danger-color);
-  border-color: var(--danger-color);
-}
-
-.sidebar-nav {
-  padding: 16px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.sidebar-nav .nav-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  color: var(--text-primary);
-  text-decoration: none;
-  font-size: 14px;
-  transition: all 0.2s;
-}
-
-.sidebar-nav .nav-item:hover {
-  background-color: var(--bg-tertiary);
-}
-
-.sidebar-nav .nav-item.active {
-  background-color: #ebf5ff;
-  color: #2563eb;
-  font-weight: 500;
-}
-
-.sidebar-divider {
-  height: 1px;
-  background-color: var(--border-color);
-  margin: 8px 16px;
-}
-
-.sidebar-header {
-  padding: 12px 20px;
-}
-
-.new-chat-btn {
-  display: flex !important;
-  align-items: center;
-  justify-content: center !important;
-  gap: 8px;
-  padding: 12px 16px !important;
-  border-radius: 12px !important;
-  background: #1d4ed8 !important; /* 使用明确的深蓝色 */
-  color: #ffffff !important; /* 确保文字是纯白色 */
-  border: none !important;
-  font-weight: 600 !important;
-  width: 100%;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: all 0.2s;
-  cursor: pointer;
-}
-
-.new-chat-btn:hover {
-  background-color: #1e40af !important; /* 悬停时颜色加深 */
-  transform: translateY(-1px);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
-}
-
-.new-chat-btn:active {
-  transform: translateY(0);
-}
-
-.new-chat-btn .btn-text,
-.new-chat-btn .btn-icon,
-.new-chat-btn i {
-  color: #ffffff !important; /* 强制所有内部元素为白色 */
-}
-
-.history-section-title {
-  padding: 16px 16px 8px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.sidebar-title {
-  display: none;
-}
-
-.sidebar-header .btn {
-  width: 100%;
-  justify-content: center;
-}
-
-.btn-icon {
-  font-size: 14px;
-}
-
-.btn-text {
-  font-size: 14px;
-  letter-spacing: 0.2px;
-}
-
-.session-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 12px;
-}
-
-.session-list::-webkit-scrollbar {
-  width: 6px;
-}
-
-.session-list::-webkit-scrollbar-track {
-  background: var(--bg-tertiary);
-  border-radius: 3px;
-}
-
-.session-list::-webkit-scrollbar-thumb {
-  background: var(--gray-300);
-  border-radius: 3px;
-}
-
-.session-list::-webkit-scrollbar-thumb:hover {
-  background: var(--gray-400);
-}
-
-.session-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  margin-bottom: 6px;
-  border-radius: var(--border-radius-md);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  background-color: var(--bg-secondary);
-  border: 1px solid transparent;
-}
-
-.session-item:hover {
-  background-color: var(--bg-tertiary);
-  border-color: var(--border-color);
-  transform: translateX(2px);
-}
-
-.session-item.active {
-  background-color: var(--bg-tertiary);
-  border-color: var(--primary-color);
-  box-shadow: var(--shadow-sm);
-}
-
-.session-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.session-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  margin-bottom: 4px;
-  letter-spacing: 0.2px;
-}
-
-.session-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.session-date {
-  font-size: 12px;
-  color: var(--text-tertiary);
-}
-
-.delete-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  opacity: 0;
-  transition: all 0.2s ease;
-  color: var(--text-tertiary);
-  padding: 4px;
-  border-radius: var(--border-radius-sm);
-}
-
-.session-item:hover .delete-btn {
-  opacity: 1;
-}
-
-.delete-btn:hover {
-  color: var(--danger-color);
-  background-color: rgba(239, 68, 68, 0.1);
 }
 
 .chat-main {
@@ -2134,43 +1409,59 @@ body.dark-mode .message-copy-button {
   letter-spacing: 0.2px;
 }
 
-/* 聊天输入区域 */
+.loading-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    padding: 16px 24px;
+    background-color: var(--bg-secondary);
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--shadow-sm);
+    margin: 0 auto 24px;
+    max-width: fit-content;
+    position: sticky;
+    top: 20px;
+    z-index: 20;
+  }
+
 .chat-input-area {
-  padding: 20px 40px 32px;
-  background-color: var(--bg-primary);
+  padding: 20px 32px 32px;
+  background-color: var(--bg-secondary);
   display: flex;
   justify-content: center;
 }
 
-.chat-input-wrapper {
+.input-container {
   width: 100%;
   max-width: 980px;
-  position: relative;
-  background-color: var(--bg-tertiary);
-  border-radius: 16px;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 24px;
   padding: 12px 16px;
   display: flex;
-  align-items: flex-end;
-  gap: 12px;
-  border: 1px solid var(--border-color);
-  transition: all 0.2s;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.chat-input-wrapper:focus-within {
+.input-container:focus-within {
   border-color: var(--primary-color);
-  background-color: var(--bg-primary);
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.05);
 }
 
 .chat-input {
-  flex: 1;
+  width: 100%;
   border: none;
   background: transparent;
   color: var(--text-primary);
   font-size: 16px;
-  line-height: 1.6;
-  padding: 8px 0;
   resize: none;
+  padding: 8px 4px;
+  line-height: 1.6;
   min-height: 24px;
   max-height: 200px;
 }
@@ -2179,323 +1470,81 @@ body.dark-mode .message-copy-button {
   outline: none;
 }
 
-.input-actions {
+.input-toolbar {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  padding-bottom: 4px;
+  padding-top: 4px;
 }
 
-.send-btn-new, .stop-btn {
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.send-icon-wrapper, .stop-icon-wrapper {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: var(--gradient-primary);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  transition: all 0.2s;
-}
-
-.send-btn-new:disabled .send-icon-wrapper {
-  background: var(--gray-300);
-  cursor: not-allowed;
-}
-
-.stop-icon-wrapper {
-  background: #ef4444;
-}
-
-/* 模型选择器 */
-.model-selector-wrapper {
-  position: relative;
-}
-
-.model-selector-btn {
+.toolbar-left, .toolbar-right {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
-  background-color: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.model-selector-btn:hover {
-  background-color: var(--bg-tertiary);
-  border-color: var(--primary-color);
-}
-
-.model-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.model-selector-btn i {
-  font-size: 12px;
-  color: var(--text-tertiary);
-  transition: transform 0.2s;
-}
-
-.model-selector-btn i.rotated {
-  transform: rotate(180deg);
-}
-
-.model-dropdown {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  width: 240px;
-  background-color: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 16px;
-  padding: 8px;
-  box-shadow: var(--shadow-xl);
-  z-index: 1000;
-  animation: menu-in 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@keyframes menu-in {
-  from {
-    opacity: 0;
-    transform: translateY(-10px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.brand-section {
-  margin-bottom: 8px;
-}
-
-.brand-section:last-child {
-  margin-bottom: 0;
-}
-
-.brand-header {
-  padding: 8px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.model-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 12px;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.model-item:hover {
-  background-color: var(--bg-tertiary);
-}
-
-.model-item.active {
-  background-color: rgba(37, 99, 235, 0.05);
-  color: var(--primary-color);
-}
-
-.item-name {
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.check-icon {
-  font-size: 12px;
-}
-
-/* 工具栏 */
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.toolbar-divider {
-  width: 1px;
-  height: 20px;
-  background-color: var(--border-color);
-  margin: 0 4px;
 }
 
 .tool-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  font-size: 16px;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  background: none;
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  color: var(--text-secondary);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
+  justify-content: center;
   transition: all 0.2s;
 }
 
 .tool-btn:hover {
-  background-color: var(--bg-tertiary);
-  border-color: var(--primary-color);
-  color: var(--text-primary);
-}
-
-.tool-btn.active {
-  background-color: rgba(37, 99, 235, 0.05);
-  border-color: var(--primary-color);
-  color: var(--primary-color);
-}
-
-/* 云盘相关样式 */
-.sidebar-section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 20px 12px;
-  margin-top: 24px;
-}
-
-.icon-btn-small {
-  background: none;
-  border: none;
-  color: var(--text-tertiary);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-}
-
-.icon-btn-small:hover {
-  background-color: var(--bg-tertiary);
-  color: var(--text-primary);
-}
-
-.folder-tree-container {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0 12px 20px;
-}
-
-/* 弹窗样式 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-  backdrop-filter: blur(4px);
-}
-
-.modal-content {
-  background-color: var(--bg-primary);
-  padding: 24px;
-  border-radius: 16px;
-  width: 90%;
-  max-width: 400px;
-  box-shadow: var(--shadow-xl);
-  border: 1px solid var(--border-color);
-  animation: modal-in 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@keyframes modal-in {
-  from {
-    opacity: 0;
-    transform: scale(0.95) translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-.modal-content h3 {
-  margin: 0 0 20px;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.input-field {
-  width: 100%;
-  padding: 12px 16px;
-  background-color: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  color: var(--text-primary);
-  font-size: 14px;
-  margin-bottom: 24px;
-  transition: all 0.2s;
-}
-
-.input-field:focus {
-  outline: none;
-  border-color: var(--primary-color);
-  background-color: var(--bg-primary);
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-.btn {
-  padding: 10px 20px;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
-}
-
-.btn-primary {
-  background: var(--gradient-primary);
-  color: white;
-}
-
-.btn-primary:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
-
-.btn-secondary {
-  background-color: var(--bg-tertiary);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-}
-
-.btn-secondary:hover {
   background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.tool-btn-special {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tool-btn-special.active {
+  background-color: #ebf5ff;
+  border-color: #bfdbfe;
+  color: #2563eb;
+}
+
+.tool-btn-pill {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tool-btn-pill:hover {
+  background-color: var(--bg-secondary);
+}
+
+.model-pill {
+  position: relative;
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
 }
 
 .model-selector-trigger {
@@ -2611,146 +1660,6 @@ body.dark-mode .message-copy-button {
   font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
-}
-
-/* 云盘相关样式 */
-.sidebar-section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-}
-
-.icon-btn-small {
-  background: none;
-  border: none;
-  color: var(--text-tertiary);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-}
-
-.icon-btn-small:hover {
-  background-color: var(--bg-tertiary);
-  color: var(--primary-color);
-}
-
-.folder-tree-container {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0 12px 20px;
-}
-
-.folder-tree-container::-webkit-scrollbar {
-  width: 5px;
-}
-
-.folder-tree-container::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 10px;
-}
-
-/* 弹窗通用样式 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-  backdrop-filter: blur(4px);
-}
-
-.modal-content {
-  background-color: var(--bg-primary);
-  padding: 24px;
-  border-radius: 16px;
-  width: 90%;
-  max-width: 400px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -6px rgba(0, 0, 0, 0.1);
-  border: 1px solid var(--border-color);
-  animation: modal-in 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@keyframes modal-in {
-  from {
-    opacity: 0;
-    transform: scale(0.95) translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-.modal-content h3 {
-  margin-top: 0;
-  margin-bottom: 20px;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.input-field {
-  width: 100%;
-  padding: 12px 16px;
-  border-radius: 10px;
-  border: 1px solid var(--border-color);
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
-  font-size: 14px;
-  margin-bottom: 24px;
-  transition: all 0.2s;
-}
-
-.input-field:focus {
-  outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-.btn {
-  padding: 10px 20px;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
-}
-
-.btn-primary {
-  background: var(--gradient-primary);
-  color: white;
-}
-
-.btn-primary:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
-
-.btn-secondary {
-  background-color: var(--bg-tertiary);
-  color: var(--text-primary);
-}
-
-.btn-secondary:hover {
-  background-color: var(--border-color);
 }
 
 .item-desc {
