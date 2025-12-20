@@ -50,32 +50,34 @@
         <!-- 主聊天区域 -->
         <main class="chat-main">
           <div class="chat-header">
-            <div class="header-left">
-              <h2 class="chat-title">
-                {{ currentSessionTitle }}
-              </h2>
-            </div>
-            
-            <div class="header-right">
-              <div class="model-selector">
-                <label class="model-label">AI模型：</label>
-                <select
-                  v-model="chatStore.selectedModel"
-                  class="model-select"
-                >
-                  <option value="deepseek-chat">
-                    DeepSeek Chat
-                  </option>
-                  <option value="deepseek-reasoner">
-                    DeepSeek Reasoner
-                  </option>
-                  <option value="doubao">
-                    豆包
-                  </option>
-                  <option value="doubao-reasoner">
-                    豆包-reasoner
-                  </option>
-                </select>
+            <div class="chat-header-inner">
+              <div class="header-left">
+                <h2 class="chat-title">
+                  {{ currentSessionTitle }}
+                </h2>
+              </div>
+              
+              <div class="header-right">
+                <div class="model-selector">
+                  <label class="model-label">AI模型：</label>
+                  <select
+                    v-model="chatStore.selectedModel"
+                    class="model-select"
+                  >
+                    <option value="deepseek-chat">
+                      DeepSeek Chat
+                    </option>
+                    <option value="deepseek-reasoner">
+                      DeepSeek Reasoner
+                    </option>
+                    <option value="doubao">
+                      豆包
+                    </option>
+                    <option value="doubao-reasoner">
+                      豆包-reasoner
+                    </option>
+                  </select>
+                </div>
               </div>
             </div>
           </div>
@@ -126,14 +128,15 @@
                   <!-- 深度思考区域 -->
                   <div 
                     v-if="message.reasoning_content" 
-                    class="reasoning-container"
+                    class="reasoning-message"
+                    :class="{ collapsed: message.isReasoningCollapsed }"
                   >
                     <div 
                       class="reasoning-header" 
                       @click="toggleReasoning(message)"
                     >
                       <div class="reasoning-title-wrapper">
-                        <i class="fas fa-brain reasoning-icon"></i>
+                        <i class="fas fa-brain reasoning-icon" />
                         <span class="reasoning-title">深度思考</span>
                       </div>
                       <i 
@@ -146,8 +149,8 @@
                       class="reasoning-body"
                     >
                       <div
-                        class="message-text reasoning-text"
-                        v-html="formatMessage(message.reasoning_content)"
+                        class="reasoning-text"
+                        v-html="formatMessage(sanitizeNullRuns(message.reasoning_content))"
                       />
                     </div>
                   </div>
@@ -155,14 +158,14 @@
                   <div
                     v-if="message.content"
                     class="message-text"
-                    v-html="formatMessage(message.content)"
+                    v-html="formatMessage(sanitizeNullRuns(message.content))"
                   />
                   <!-- 如果没有内容但有reasoning_content，显示占位符或仅显示reasoning -->
                   <div
                     v-else-if="!message.reasoning_content"
                     class="message-text"
                   >
-                    <span class="typing-cursor"></span>
+                    <span class="typing-cursor" />
                   </div>
                 </div>
                 <div class="message-time">
@@ -355,11 +358,18 @@ onUnmounted(() => {
 })
 
 // 监听消息变化，自动滚动到底部
-watch(() => chatStore.messages, () => {
-  nextTick(() => {
-    scrollToBottom()
-  })
-}, { deep: true })
+watch(
+  [
+    () => chatStore.messages.length,
+    () => chatStore.messages[chatStore.messages.length - 1]?.content,
+    () => chatStore.messages[chatStore.messages.length - 1]?.reasoning_content
+  ],
+  () => {
+    nextTick(() => {
+      scrollToBottom()
+    })
+  }
+)
 
 const createNewSession = async () => {
   const result = await chatStore.createSession()
@@ -633,6 +643,11 @@ const restoreMathFormula = (content, placeholders) => {
     return placeholders[parseInt(index)] || match;
   });
 };
+
+const sanitizeNullRuns = (content) => {
+  if (typeof content !== 'string') return content
+  return content.replace(/(?:null){2,}/g, '')
+}
 
 const formatMessage = (content) => {
   try {
@@ -968,7 +983,7 @@ const scrollToBottom = () => {
 .chat-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   padding: 20px 24px;
   background-color: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
@@ -976,10 +991,21 @@ const scrollToBottom = () => {
   z-index: 10;
 }
 
+.chat-header-inner {
+  width: 100%;
+  max-width: 980px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
 .header-left {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex: 1;
+  min-width: 0;
 }
 
 .chat-title {
@@ -988,12 +1014,16 @@ const scrollToBottom = () => {
   color: var(--text-primary);
   margin: 0;
   letter-spacing: 0.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .header-right {
   display: flex;
   align-items: center;
   gap: 16px;
+  flex-shrink: 0;
 }
 
 .model-selector {
@@ -1033,6 +1063,9 @@ const scrollToBottom = () => {
   padding: 32px 40px;
   scroll-behavior: smooth;
   background-color: var(--bg-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .messages-container::-webkit-scrollbar {
@@ -1061,6 +1094,8 @@ const scrollToBottom = () => {
   height: 100%;
   color: var(--text-secondary);
   padding: 40px 20px;
+  width: 100%;
+  max-width: 980px;
 }
 
 .empty-icon {
@@ -1091,6 +1126,8 @@ const scrollToBottom = () => {
   margin-bottom: 28px;
   animation: slideUp 0.3s ease-out;
   padding: 0 8px;
+  width: 100%;
+  max-width: 980px;
 }
 
 @keyframes slideUp {
@@ -1428,6 +1465,8 @@ body.dark-mode .message-copy-button {
   margin-bottom: 40px; /* 增加底部边距，为复制按钮留出空间 */
   animation: slideUp 0.3s ease-out;
   padding: 0 8px;
+  width: 100%;
+  max-width: 980px;
 }
 
 /* 重置message-bubble的相对定位 */
@@ -1469,10 +1508,13 @@ body.dark-mode .message-copy-button {
   background-color: var(--bg-secondary);
   border-top: 1px solid var(--border-color);
   box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+  display: flex;
+  justify-content: center;
 }
 
 .input-form {
   width: 100%;
+  max-width: 980px;
 }
 
 .input-wrapper {
@@ -1598,28 +1640,33 @@ body.dark-mode .message-copy-button {
   }
 }
 
-.reasoning-container {
+.reasoning-message {
   margin-bottom: 8px;
-  border-radius: var(--border-radius-md);
+  border-radius: var(--border-radius-lg);
   border: 1px solid var(--border-color);
-  background-color: var(--bg-tertiary);
+  background-color: var(--bg-secondary);
   overflow: hidden;
   max-width: 100%;
+  box-shadow: var(--shadow-sm);
+}
+
+.message.assistant .reasoning-message {
+  border-top-left-radius: 4px;
 }
 
 .reasoning-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: 12px 16px;
   cursor: pointer;
-  background-color: rgba(0, 0, 0, 0.02);
+  background-color: rgba(0, 0, 0, 0.01);
   user-select: none;
   transition: background-color 0.2s;
 }
 
 .reasoning-header:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: rgba(0, 0, 0, 0.04);
 }
 
 .reasoning-title-wrapper {
@@ -1643,20 +1690,22 @@ body.dark-mode .message-copy-button {
   transition: transform 0.2s;
 }
 
+.reasoning-message:not(.collapsed) .reasoning-toggle-icon {
+  transform: rotate(180deg);
+}
+
 .reasoning-body {
   padding: 0;
   border-top: 1px solid var(--border-color);
-  background-color: var(--bg-secondary);
+  background-color: transparent;
 }
 
 .reasoning-text {
   font-size: 13px;
   color: var(--text-secondary);
   padding: 12px 16px;
-  background-color: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
   line-height: 1.6;
+  word-wrap: break-word;
 }
 
 .reasoning-text :deep(p) {
