@@ -104,7 +104,9 @@
               class="message"
               :class="message.role === 'user' ? 'user' : 'assistant'"
             >
+              <!-- AI头像 - 仅在assistant角色时显示 -->
               <div
+                v-if="message.role === 'assistant'"
                 class="message-avatar"
                 :class="{ 'has-image': !!getMessageAvatarSrc(message) }"
               >
@@ -115,14 +117,11 @@
                   alt=""
                 >
                 <i
-                  v-else-if="message.role === 'user'"
-                  class="fas fa-user"
-                />
-                <i
                   v-else
                   class="fas fa-robot"
                 />
               </div>
+
               <div class="message-content">
                 <div class="message-bubble">
                   <!-- 深度思考区域 -->
@@ -137,7 +136,9 @@
                     >
                       <div class="reasoning-title-wrapper">
                         <i class="fas fa-brain reasoning-icon" />
-                        <span class="reasoning-title">深度思考</span>
+                        <span class="reasoning-title">
+                          {{ message.isReasoningCollapsed ? '已完成思考' : '正在思考...' }}
+                        </span>
                       </div>
                       <i 
                         class="fas reasoning-toggle-icon" 
@@ -172,6 +173,10 @@
                   {{ formatTime(message.timestamp) }}
                 </div>
               </div>
+
+              <!-- 用户头像 - 移除或改为在user角色下不显示以匹配图2 -->
+              <!-- 如果需要保留头像但放在右侧，可以在这里添加 v-if="message.role === 'user'" -->
+              
               <!-- 复制按钮 - 位于消息容器外的左下角 -->
               <button 
                 class="message-copy-button" 
@@ -1142,7 +1147,7 @@ const scrollToBottom = () => {
 }
 
 .message.user {
-  flex-direction: row-reverse;
+  justify-content: flex-end;
 }
 
 .message-avatar {
@@ -1189,10 +1194,19 @@ const scrollToBottom = () => {
   gap: 6px;
 }
 
+.message.user .message-content {
+  align-items: flex-end;
+}
+
 .message-bubble {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  width: fit-content;
+}
+
+.message.user .message-bubble {
+  align-items: flex-end;
 }
 
 .message-text {
@@ -1211,16 +1225,19 @@ const scrollToBottom = () => {
 }
 
 .message.assistant .message-text {
-  background-color: var(--bg-secondary);
+  background-color: transparent;
   color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  border-top-left-radius: 4px;
+  border: none;
+  box-shadow: none;
+  padding: 8px 0;
 }
 
 .message.user .message-text {
-  background: var(--gradient-primary);
-  color: white;
-  border-top-right-radius: 4px;
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: none;
 }
 
 .message-text :deep(pre) {
@@ -1424,9 +1441,9 @@ body.dark-mode .message-copy-button {
   left: calc(44px + 16px); /* 头像宽度 + 间距 */
 }
 
-/* 用户消息（右对齐）的复制按钮在下方靠右，与消息内容右边界对齐 */
+/* 用户消息（右对齐）的复制按钮在下方靠右 */
 .message.user .message-copy-button {
-  right: calc(44px + 16px); /* 头像宽度 + 间距 */
+  right: 0;
 }
 
 .message:hover .message-copy-button {
@@ -1641,17 +1658,23 @@ body.dark-mode .message-copy-button {
 }
 
 .reasoning-message {
-  margin-bottom: 8px;
-  border-radius: var(--border-radius-lg);
+  margin-bottom: 12px;
+  border-radius: 12px;
   border: 1px solid var(--border-color);
-  background-color: var(--bg-secondary);
+  background-color: var(--bg-tertiary);
   overflow: hidden;
   max-width: 100%;
-  box-shadow: var(--shadow-sm);
+  transition: all 0.3s ease;
+}
+
+.reasoning-message.collapsed {
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
+  width: fit-content;
 }
 
 .message.assistant .reasoning-message {
-  border-top-left-radius: 4px;
+  border-top-left-radius: 12px;
 }
 
 .reasoning-header {
