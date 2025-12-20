@@ -104,23 +104,14 @@
               class="message"
               :class="message.role === 'user' ? 'user' : 'assistant'"
             >
-              <!-- AI头像 - 仅在assistant角色时显示 -->
-              <div
+              <!-- AI头像 - 移除以匹配图 2 风格 -->
+              <!-- <div
                 v-if="message.role === 'assistant'"
                 class="message-avatar"
                 :class="{ 'has-image': !!getMessageAvatarSrc(message) }"
               >
-                <img
-                  v-if="getMessageAvatarSrc(message)"
-                  class="message-avatar-img"
-                  :src="getMessageAvatarSrc(message)"
-                  alt=""
-                >
-                <i
-                  v-else
-                  class="fas fa-robot"
-                />
-              </div>
+                ...
+              </div> -->
 
               <div class="message-content">
                 <div class="message-bubble">
@@ -135,14 +126,15 @@
                       @click="toggleReasoning(message)"
                     >
                       <div class="reasoning-title-wrapper">
-                        <i class="fas fa-brain reasoning-icon" />
+                        <!-- 移除图标，仅保留文字以匹配图 2 -->
                         <span class="reasoning-title">
                           {{ message.isReasoningCollapsed ? '已完成思考' : '正在思考...' }}
                         </span>
                       </div>
+                      <!-- 切换为 expand 图标以匹配图 2 -->
                       <i 
                         class="fas reasoning-toggle-icon" 
-                        :class="message.isReasoningCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'" 
+                        :class="message.isReasoningCollapsed ? 'fa-expand-alt' : 'fa-compress-alt'" 
                       />
                     </div>
                     <div 
@@ -1230,6 +1222,30 @@ const scrollToBottom = () => {
   border: none;
   box-shadow: none;
   padding: 8px 0;
+  font-size: 15px;
+  line-height: 1.8;
+}
+
+.message.assistant .message-text :deep(h1),
+.message.assistant .message-text :deep(h2),
+.message.assistant .message-text :deep(h3) {
+  margin: 24px 0 12px;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.message.assistant .message-text :deep(p) {
+  margin-bottom: 12px;
+}
+
+.message.assistant .message-text :deep(ul),
+.message.assistant .message-text :deep(ol) {
+  margin-bottom: 12px;
+  padding-left: 24px;
+}
+
+.message.assistant .message-text :deep(li) {
+  margin-bottom: 6px;
 }
 
 .message.user .message-text {
@@ -1377,31 +1393,45 @@ body.dark-mode .copy-button {
 /* 表格样式 */
 .message-text :deep(table) {
   width: 100%;
-  border-collapse: collapse;
-  margin: 12px 0;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 16px 0;
   border: 1px solid var(--border-color);
-  overflow-x: auto;
-  display: block;
+  border-radius: 8px;
+  overflow: hidden;
+  display: table;
 }
 
 .message-text :deep(th) {
-  background-color: var(--bg-secondary);
+  background-color: var(--bg-tertiary);
   color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  padding: 12px;
+  border-bottom: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
+  padding: 12px 16px;
   text-align: left;
   font-weight: 600;
-  white-space: nowrap;
+  font-size: 14px;
 }
 
 .message-text :deep(td) {
-  border: 1px solid var(--border-color);
-  padding: 12px;
+  border-bottom: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
+  padding: 12px 16px;
   vertical-align: top;
+  font-size: 14px;
+}
+
+.message-text :deep(tr:last-child td) {
+  border-bottom: none;
+}
+
+.message-text :deep(th:last-child),
+.message-text :deep(td:last-child) {
+  border-right: none;
 }
 
 .message-text :deep(tr:nth-child(even)) {
-  background-color: var(--bg-tertiary);
+  background-color: rgba(0, 0, 0, 0.02);
 }
 
 .message-text :deep(tr:hover) {
@@ -1436,9 +1466,9 @@ body.dark-mode .message-copy-button {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-/* AI消息（左对齐）的复制按钮在下方靠左，与消息内容左边界对齐 */
+/* AI消息（左对齐）的复制按钮在下方靠左 */
 .message.assistant .message-copy-button {
-  left: calc(44px + 16px); /* 头像宽度 + 间距 */
+  left: 0;
 }
 
 /* 用户消息（右对齐）的复制按钮在下方靠右 */
@@ -1681,40 +1711,43 @@ body.dark-mode .message-copy-button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: 8px 12px;
   cursor: pointer;
-  background-color: rgba(0, 0, 0, 0.01);
+  background-color: white;
   user-select: none;
   transition: background-color 0.2s;
+  border-radius: 8px;
 }
 
 .reasoning-header:hover {
-  background-color: rgba(0, 0, 0, 0.04);
+  background-color: rgba(0, 0, 0, 0.02);
 }
 
 .reasoning-title-wrapper {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.reasoning-icon {
+  color: var(--text-primary);
   font-size: 14px;
-  color: var(--primary-color);
-  opacity: 0.8;
+  font-weight: 400;
 }
 
 .reasoning-toggle-icon {
   font-size: 12px;
   color: var(--text-tertiary);
-  transition: transform 0.2s;
+  transition: all 0.2s;
+  background: var(--bg-secondary);
+  padding: 6px;
+  border-radius: 6px;
+}
+
+.reasoning-message.collapsed .reasoning-header {
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
 }
 
 .reasoning-message:not(.collapsed) .reasoning-toggle-icon {
-  transform: rotate(180deg);
+  transform: none;
 }
 
 .reasoning-body {
@@ -1724,10 +1757,10 @@ body.dark-mode .message-copy-button {
 }
 
 .reasoning-text {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-secondary);
-  padding: 12px 16px;
-  line-height: 1.6;
+  padding: 16px;
+  line-height: 1.7;
   word-wrap: break-word;
 }
 
