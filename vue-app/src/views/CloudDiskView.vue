@@ -45,7 +45,7 @@
                 📁 新建文件夹
               </button>
               <button
-                class="btn btn-primary"
+                class="btn btn-secondary"
                 @click="$refs.fileInput.click()"
               >
                 📤 上传文件
@@ -58,7 +58,7 @@
                   class="btn btn-action"
                   @click="downloadSelected"
                 >
-                  💾 移动
+                  💾 下载
                 </button>
                 <button
                   class="btn btn-action delete"
@@ -775,28 +775,17 @@ const toggleSelectAll = () => {
   transition: all 0.2s ease;
 }
 
-.toolbar .btn-primary {
+.toolbar .btn-secondary {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
   box-shadow: var(--shadow-sm);
 }
 
-.toolbar .btn-primary:hover {
-  background-color: var(--bg-secondary);
-  transform: none;
-  box-shadow: var(--shadow-md);
-  filter: none;
-}
-
-.toolbar .btn-secondary {
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-}
-
 .toolbar .btn-secondary:hover {
   background-color: var(--bg-secondary);
+  box-shadow: var(--shadow-md);
+}
   border-color: var(--border-color);
   color: var(--text-primary);
   transform: none;
