@@ -340,29 +340,36 @@ const maxFolderDepth = computed(() => {
   return max
 })
 
-const isFolderExpanded = (folderId) => expandedFolders.value.has(folderId)
+const isFolderExpanded = (folderId) => {
+  const id = typeof folderId === 'object' ? folderId.id : folderId
+  return expandedFolders.value.has(id)
+}
 
 const toggleFolderExpand = (folderId) => {
-  if (expandedFolders.value.has(folderId)) {
-    expandedFolders.value.delete(folderId)
+  const id = typeof folderId === 'object' ? folderId.id : folderId
+  if (expandedFolders.value.has(id)) {
+    expandedFolders.value.delete(id)
   } else {
-    expandedFolders.value.add(folderId)
+    expandedFolders.value.add(id)
   }
 }
 
-const selectFolder = (folder) => {
-  cloudDiskStore.fetchFiles(folder.folderPath)
+const selectFolder = (folderPath, folderId) => {
+  cloudDiskStore.fetchFiles(folderPath)
+  cloudDiskStore.setActiveFolder({ folderId, folderPath })
 }
 
-const deleteFolderAction = async (folder) => {
-  if (confirm(`确定要删除文件夹 "${folder.name}" 及其所有内容吗？`)) {
-    await cloudDiskStore.deleteFolder(folder.folderPath)
+const deleteFolderAction = async (folderOrId) => {
+  const folder = typeof folderOrId === 'object' ? folderOrId : { id: folderOrId, folderName: '文件夹', folderPath: '' }
+  if (confirm(`确定要删除文件夹 "${folder.folderName || '该文件夹'}" 及其所有内容吗？`)) {
+    const path = folder.folderPath || ''
+    await cloudDiskStore.deleteFolder(path)
   }
 }
 
 const renameFolderAction = (folder) => {
   cloudDiskStore.renamingFolder = folder
-  cloudDiskStore.renameFolderName = folder.name
+  cloudDiskStore.renameFolderName = folder.folderName
   cloudDiskStore.showRenameFolderDialog = true
 }
 
