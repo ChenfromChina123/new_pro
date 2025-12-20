@@ -1,14 +1,28 @@
 <template>
   <div class="app-layout">
-    <!-- 移除顶部 AppHeader，改为全屏侧边栏布局 -->
+    <AppSidebar v-if="showSidebar" />
     <main class="main-content">
-      <slot />
+      <router-view v-slot="{ Component }">
+        <transition name="fade-slide" mode="out-in">
+          <keep-alive>
+            <component :is="Component" />
+          </keep-alive>
+        </transition>
+      </router-view>
     </main>
   </div>
 </template>
 
 <script setup>
-// AppHeader 已不再作为顶部导航使用
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+import AppSidebar from '@/components/Sidebar/AppSidebar.vue'
+
+const route = useRoute()
+const showSidebar = computed(() => {
+  // 只有需要认证的路由才显示侧边栏
+  return route.meta.requiresAuth
+})
 </script>
 
 <style scoped>
@@ -26,5 +40,20 @@
   overflow: hidden;
   position: relative;
 }
-</style>
 
+/* 页面切换动画：淡入淡出 + 轻微位移 */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fade-slide-enter-from {
+  opacity: 0;
+  transform: translateX(10px);
+}
+
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateX(-10px);
+}
+</style>

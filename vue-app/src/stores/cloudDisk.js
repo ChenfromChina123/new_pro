@@ -11,6 +11,10 @@ export const useCloudDiskStore = defineStore('cloudDisk', () => {
   const activeFolderPath = ref('')
   const selectedFiles = ref([])
   const isLoading = ref(false)
+  const showCreateFolderDialog = ref(false)
+  const showRenameFolderDialog = ref(false)
+  const renamingFolder = ref(null)
+  const renameFolderName = ref('')
   let latestFetchToken = 0
 
   function normalizeFolderPath(folderPath) {
