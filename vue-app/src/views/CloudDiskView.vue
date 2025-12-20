@@ -1131,7 +1131,7 @@ const toggleSelectAll = () => {
 
 <style scoped>
 .cloud-disk-page {
-  height: calc(100vh - 64px);
+  height: 100vh;
   overflow: hidden;
   position: relative;
 }
@@ -1163,26 +1163,26 @@ const toggleSelectAll = () => {
 .disk-container {
   display: flex;
   height: 100%;
-  max-width: 1400px;
-  margin: 0 auto;
+  width: 100%;
 }
 
 .folder-sidebar {
-  width: 250px;
+  width: 300px;
   background-color: var(--bg-secondary);
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   position: relative;
-  transition: transform 0.3s ease;
+  transition: all 0.3s ease;
   z-index: 70;
+  height: 100%;
 }
 
 .sidebar-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px;
+  padding: 24px 20px;
   border-bottom: 1px solid var(--border-color);
   gap: 8px;
 }
@@ -1199,26 +1199,34 @@ const toggleSelectAll = () => {
 }
 
 .icon-btn {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border: none;
-  background-color: var(--icon-btn-bg);
-  border-radius: 6px;
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 16px;
-  transition: all 0.3s ease;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  border: 1px solid var(--border-color);
 }
 
 .icon-btn:hover {
   background-color: var(--primary-color);
-  transform: scale(1.1);
+  color: white;
+  border-color: var(--primary-color);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
 }
 
 .folder-tree {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 8px;
+  padding: 16px 20px;
   overscroll-behavior: contain;
 }
 
@@ -1228,28 +1236,28 @@ const toggleSelectAll = () => {
 
 .folder-item {
   margin-bottom: 4px;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
 }
 
 .folder-item:hover .folder-header {
-  background-color: var(--toolbar-btn-bg);
+  background-color: var(--bg-tertiary);
 }
 
 .folder-item.active .folder-header {
-  background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-  color: white;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--primary-color);
 }
 
 .folder-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  border-radius: 6px;
-  transition: all 0.3s ease;
-  /* 确保所有子元素都能正常显示 */
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
 }
 
 .folder-icon {
@@ -1261,10 +1269,11 @@ const toggleSelectAll = () => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 14px;
-  /* 确保文件夹名称始终可见 */
+  font-size: 15px;
+  font-weight: 500;
   display: block;
   color: var(--text-primary);
+  letter-spacing: 0.2px;
 }
 
 /* 文件夹展开/折叠图标样式 */
@@ -1281,11 +1290,9 @@ const toggleSelectAll = () => {
   transition: all 0.2s ease;
 }
 
-/* 删除按钮样式已移除，简化文件夹显示 */
-
 /* 子文件夹样式 */
 .folder-children {
-  margin-left: 24px; /* 缩进 */
+  margin-left: 20px;
   padding-left: 12px;
   border-left: 1px solid var(--border-color);
 }
@@ -1294,62 +1301,119 @@ const toggleSelectAll = () => {
   margin-bottom: 2px;
 }
 
-/* 子文件夹样式已移除，使用统一的文件夹样式 */
-
 .file-main {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background-color: var(--chat-bg);
+  background-color: var(--bg-primary);
 }
 
 .file-header {
-  padding: 16px 24px;
+  padding: 24px 32px;
   background-color: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .breadcrumb {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  font-size: 14px;
+  gap: 4px;
+  font-size: 15px;
+  color: var(--text-secondary);
 }
 
 .breadcrumb-item {
   background: none;
   border: none;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: all 0.3s ease;
+  padding: 6px 12px;
+  border-radius: 8px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .breadcrumb-item:hover {
-  background-color: var(--toolbar-btn-bg);
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  transform: translateY(-1px);
 }
 
 .breadcrumb-item.current {
-  color: var(--primary-color);
-  font-weight: 500;
+  color: var(--text-primary);
+  font-weight: 600;
+  cursor: default;
+  background-color: var(--bg-tertiary);
+}
+
+.breadcrumb-item.current:hover {
+  transform: none;
 }
 
 .separator {
-  color: var(--text-secondary);
+  color: var(--text-tertiary);
+  font-size: 14px;
+  margin: 0 4px;
+  opacity: 0.6;
 }
 
 .toolbar {
   display: flex;
   gap: 12px;
+  flex-wrap: wrap;
+}
+
+.toolbar .btn {
+  padding: 10px 20px;
+  font-size: 14px;
+  height: 42px;
+  border-radius: 10px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.toolbar .btn-primary {
+  background: var(--gradient-primary);
+  color: white;
+  border: none;
+  box-shadow: 0 4px 12px rgba(29, 78, 216, 0.2);
+}
+
+.toolbar .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(29, 78, 216, 0.3);
+  filter: brightness(1.1);
+}
+
+.toolbar .btn-secondary {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.toolbar .btn-secondary:hover {
+  background-color: var(--bg-secondary);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
 }
 
 .file-list {
   flex: 1;
   overflow-y: auto;
-  padding: 0 24px;
-  background-color: var(--bg-secondary);
+  padding: 0 32px 32px;
+  background-color: var(--bg-primary);
 }
 
 .loading-state,
@@ -1358,52 +1422,89 @@ const toggleSelectAll = () => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 300px;
+  height: 100%;
   color: var(--text-secondary);
+  padding: 40px;
+  text-align: center;
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .empty-icon {
-  font-size: 64px;
+  font-size: 80px;
+  margin-bottom: 24px;
+  opacity: 0.8;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.1));
+}
+
+.empty-state h3 {
+  font-size: 20px;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.loading {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--bg-tertiary);
+  border-top: 3px solid var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
   margin-bottom: 16px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 /* 表格容器 */
 .file-table-container {
   width: 100%;
-  overflow-x: auto;
+  max-width: 1200px;
+  margin: 24px auto 0;
   background-color: var(--bg-secondary);
-  border-radius: 8px;
-  box-shadow: var(--shadow-soft);
-  margin: 16px 0;
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  border: 1px solid var(--border-color);
 }
 
 /* 表格样式 */
 .file-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: 15px;
 }
 
 /* 表头样式 */
 .file-table thead {
-  background-color: var(--toolbar-btn-bg);
+  background-color: var(--bg-tertiary);
   position: sticky;
   top: 0;
   z-index: 10;
 }
 
 .file-table th {
-  padding: 12px 16px;
+  padding: 16px 20px;
   text-align: left;
   font-weight: 600;
-  color: var(--text-primary);
-  border-bottom: 2px solid var(--border-color);
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-color);
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.8px;
 }
 
 .file-table th:hover {
-  background-color: var(--bg-primary);
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
 }
 
 /* 表头列 */
@@ -1443,7 +1544,7 @@ const toggleSelectAll = () => {
 .column-header {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 /* 排序指示器 */
@@ -1455,21 +1556,26 @@ const toggleSelectAll = () => {
 /* 表格行样式 */
 .file-table tbody tr {
   border-bottom: 1px solid var(--border-color);
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
+}
+
+.file-table tbody tr:last-child {
+  border-bottom: none;
 }
 
 .file-table tbody tr:hover {
-  background-color: var(--bg-primary);
+  background-color: var(--bg-tertiary);
 }
 
 .file-row.selected {
-  background-color: rgba(52, 152, 219, 0.05);
+  background-color: rgba(29, 78, 216, 0.04);
 }
 
 /* 表格单元格样式 */
 .file-table td {
-  padding: 12px 16px;
+  padding: 12px 20px;
   vertical-align: middle;
+  color: var(--text-primary);
 }
 
 /* 选择列 */
@@ -1491,13 +1597,17 @@ const toggleSelectAll = () => {
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 100%;
+  font-size: 15px;
+  color: var(--text-primary);
 }
 
 /* 文件图标 */
 .file-icon {
-  font-size: 24px;
+  font-size: 20px;
   width: 24px;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* 操作按钮容器 */
@@ -1511,16 +1621,27 @@ const toggleSelectAll = () => {
 .action-btn {
   background: none;
   border: none;
-  font-size: 18px;
+  font-size: 16px;
   cursor: pointer;
   padding: 6px;
   border-radius: 6px;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .action-btn:hover {
-  background-color: var(--toolbar-btn-bg);
-  transform: scale(1.1);
+  background-color: var(--bg-secondary);
+  color: var(--primary-color);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.action-btn.delete:hover {
+  color: var(--danger-color);
+  background-color: rgba(239, 68, 68, 0.1);
 }
 
 /* 复选框样式 */
@@ -1533,13 +1654,13 @@ input[type="checkbox"] {
 /* 响应式表格 */
 @media (max-width: 768px) {
   .file-list {
-    padding: 0 12px;
+    padding: 0 16px;
   }
   
   .file-table th,
   .file-table td {
-    padding: 8px 12px;
-    font-size: 13px;
+    padding: 12px 16px;
+    font-size: 14px;
   }
   
   .name-column {
@@ -1572,7 +1693,7 @@ input[type="checkbox"] {
   
   .action-btn {
     font-size: 16px;
-    padding: 4px;
+    padding: 6px;
   }
 }
 
@@ -1588,102 +1709,137 @@ input[type="checkbox"] {
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  backdrop-filter: blur(8px);
 }
 
 .modal-content {
   background-color: var(--bg-secondary);
-  border-radius: 12px;
-  padding: 24px;
+  border-radius: 20px;
+  padding: 32px;
   min-width: 400px;
   max-width: 90vw;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-color);
+  animation: modal-in 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 .modal-content.large {
   min-width: 800px;
   max-height: 90vh;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  padding: 24px 32px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .close-btn {
-  background: none;
-  border: none;
-  font-size: 24px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  font-size: 20px;
   cursor: pointer;
   color: var(--text-secondary);
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.close-btn:hover {
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+  transform: rotate(90deg);
 }
 
 .modal-body {
+  padding: 32px;
   max-height: 70vh;
   overflow-y: auto;
 }
 
-.loading-preview {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 300px;
-  width: 100%;
-}
-
-.preview-container {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.preview-frame {
-  width: 100%;
-  height: 60vh;
-  border: none;
-  border-radius: 8px;
-  background: #f5f5f5;
-}
-
-.preview-content {
-  max-width: 100%;
-  max-height: 70vh;
-  display: block;
-  margin: 0 auto;
-}
-
-.preview-image {
-  object-fit: contain;
-}
-
-.preview-video {
-  width: 100%;
-  height: auto;
-  max-height: 60vh;
-}
-
-.preview-audio {
-  width: 100%;
-  margin-top: 20px;
-}
-
-.not-previewable {
-  text-align: center;
-  padding: 40px;
-}
-
 .modal-content h3 {
-  margin: 0 0 16px 0;
-  font-size: 18px;
+  margin: 0 0 20px 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.modal-content .input {
+  width: 100%;
+  padding: 12px 16px;
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-size: 15px;
+  transition: all 0.2s;
+}
+
+.modal-content .input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.1);
+  background-color: var(--bg-secondary);
 }
 
 .modal-actions {
   display: flex;
   gap: 12px;
   justify-content: flex-end;
-  margin-top: 20px;
+  margin-top: 24px;
+}
+
+.modal-actions .btn {
+  padding: 10px 24px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 15px;
+  transition: all 0.2s;
+}
+
+.modal-actions .btn-primary {
+  background: var(--gradient-primary);
+  color: white;
+  border: none;
+}
+
+.modal-actions .btn-secondary {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.modal-actions .btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
 }
 
 .upload-progress {
@@ -1692,23 +1848,24 @@ input[type="checkbox"] {
   right: 24px;
   background-color: var(--bg-secondary);
   border-radius: 12px;
-  padding: 16px 24px;
-  box-shadow: var(--shadow-soft);
+  padding: 20px 24px;
+  box-shadow: var(--shadow-lg);
   min-width: 300px;
   z-index: 999;
+  border: 1px solid var(--border-color);
 }
 
 .progress-bar {
   height: 8px;
-  background-color: var(--light-gray);
+  background-color: var(--bg-tertiary);
   border-radius: 4px;
   overflow: hidden;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+  background: var(--gradient-primary);
   transition: width 0.3s ease;
 }
 
@@ -1720,8 +1877,8 @@ input[type="checkbox"] {
   .folder-sidebar {
     position: fixed;
     left: 0;
-    top: 68px;
-    height: calc(100vh - 68px);
+    top: 0;
+    height: 100vh;
     transform: translateX(-100%);
     z-index: 100;
     box-shadow: var(--shadow-lg);
@@ -1735,13 +1892,8 @@ input[type="checkbox"] {
     display: block;
   }
   
-  .file-grid {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 12px;
-  }
-  
   .file-header {
-    padding: 12px 16px;
+    padding: 16px;
   }
   
   .toolbar {
@@ -1754,42 +1906,9 @@ input[type="checkbox"] {
     width: 100%;
     justify-content: center;
   }
-  
-  .file-card {
-    padding: 12px;
-  }
-  
-  .file-icon {
-    font-size: 36px;
-    margin: 12px 0;
-  }
-  
-  .file-info {
-    text-align: center;
-  }
-  
-  .file-meta {
-    flex-direction: column;
-    gap: 4px;
-    font-size: 11px;
-  }
 }
 
 @media (max-width: 480px) {
-  .file-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-  
-  .file-card {
-    padding: 12px;
-  }
-  
-  .file-icon {
-    font-size: 32px;
-    margin: 8px 0;
-  }
-  
   .breadcrumb {
     font-size: 12px;
   }
@@ -1801,7 +1920,7 @@ input[type="checkbox"] {
   .modal-content {
     min-width: unset;
     width: 95vw;
-    padding: 16px;
+    padding: 24px 16px;
   }
   
   .modal-content.large {
@@ -1816,7 +1935,7 @@ input[type="checkbox"] {
   .upload-progress {
     min-width: unset;
     width: 90vw;
-    padding: 12px 16px;
+    padding: 16px;
   }
 }
 </style>
