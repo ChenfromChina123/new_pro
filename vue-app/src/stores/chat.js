@@ -11,6 +11,13 @@ export const useChatStore = defineStore('chat', () => {
   const messages = ref([])
   const isLoading = ref(false)
   const selectedModel = ref(localStorage.getItem('selectedModel') || 'deepseek-chat')
+
+  const normalizeStreamChunk = (chunk) => {
+    if (chunk === null || chunk === undefined) return ''
+    if (typeof chunk !== 'string') return ''
+    if (chunk === 'null') return ''
+    return chunk
+  }
   
   // 计算属性
   const currentSession = computed(() => 
@@ -125,13 +132,21 @@ export const useChatStore = defineStore('chat', () => {
     try {
       const response = await request.get(API_ENDPOINTS.chat.getSessionMessages(sessionId))
       // 确保消息角色正确映射
-      messages.value = (response.messages || []).map(msg => ({
-        ...msg,
+      messages.value = (response.messages || []).map(msg => {
+        const role = (msg.role === 'user' || msg.sender_type === 1) ? 'user' : 'assistant'
+        const reasoningContent = msg?.reasoning_content ?? ''
+        return {
+          ...msg,
         // 确保角色是前端期望的格式：user 或 assistant
         // 后端返回 sender_type: 1 (user), 2 (AI)
-        role: (msg.role === 'user' || msg.sender_type === 1) ? 'user' : 'assistant',
-        model: msg?.model ?? msg?.model_name ?? msg?.modelName ?? null
-      }))
+          role,
+          model: msg?.model ?? msg?.model_name ?? msg?.modelName ?? null,
+          reasoning_content: normalizeStreamChunk(reasoningContent),
+          isReasoningCollapsed: role === 'assistant'
+            ? (msg?.isReasoningCollapsed ?? true)
+            : undefined
+        }
+      })
       currentSessionId.value = sessionId
       return { success: true }
     } catch (error) {
@@ -158,7 +173,7 @@ export const useChatStore = defineStore('chat', () => {
       role: 'assistant',
       content: '',
       reasoning_content: '', // 新增推理内容字段
-      isReasoningCollapsed: false, // 默认展开推理过程
+      isReasoningCollapsed: false,
       timestamp: new Date().toISOString(),
       model: selectedModel.value
     }
@@ -220,15 +235,20 @@ export const useChatStore = defineStore('chat', () => {
               const parsed = JSON.parse(data)
               
               // 处理推理内容
-              if (parsed.reasoning_content) {
-                activeAiMessage.reasoning_content = (activeAiMessage.reasoning_content || '') + parsed.reasoning_content
+              const reasoningChunk = normalizeStreamChunk(parsed.reasoning_content)
+              if (reasoningChunk) {
+                activeAiMessage.reasoning_content = (activeAiMessage.reasoning_content || '') + reasoningChunk
               }
               
               // 处理回复内容
-              if (parsed.content) {
-                activeAiMessage.content += parsed.content
+              const contentChunk = normalizeStreamChunk(parsed.content)
+              if (contentChunk) {
+                if (!activeAiMessage.content) {
+                  activeAiMessage.isReasoningCollapsed = true
+                }
+                activeAiMessage.content += contentChunk
                 if (onChunk) {
-                  onChunk(parsed.content)
+                  onChunk(contentChunk)
                 }
               }
             } catch (e) {
@@ -245,14 +265,19 @@ export const useChatStore = defineStore('chat', () => {
           try {
             const parsed = JSON.parse(data)
             
-            if (parsed.reasoning_content) {
-              activeAiMessage.reasoning_content = (activeAiMessage.reasoning_content || '') + parsed.reasoning_content
+            const reasoningChunk = normalizeStreamChunk(parsed.reasoning_content)
+            if (reasoningChunk) {
+              activeAiMessage.reasoning_content = (activeAiMessage.reasoning_content || '') + reasoningChunk
             }
             
-            if (parsed.content) {
-              activeAiMessage.content += parsed.content
+            const contentChunk = normalizeStreamChunk(parsed.content)
+            if (contentChunk) {
+              if (!activeAiMessage.content) {
+                activeAiMessage.isReasoningCollapsed = true
+              }
+              activeAiMessage.content += contentChunk
               if (onChunk) {
-                onChunk(parsed.content)
+                onChunk(contentChunk)
               }
             }
           } catch (e) {
