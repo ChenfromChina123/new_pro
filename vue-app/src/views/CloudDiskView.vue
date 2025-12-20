@@ -67,12 +67,6 @@
                   🗑️ 删除
                 </button>
               </template>
-              <button
-                class="btn btn-link"
-                @click="downloadCurrentFolder"
-              >
-                🔗 我的分享
-              </button>
             </div>
           </div>
         </div>
