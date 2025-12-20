@@ -1148,19 +1148,30 @@ const adjustTextareaHeight = (event) => {
   gap: 8px;
   padding: 12px 16px !important;
   border-radius: 12px !important;
-  background: var(--gradient-primary) !important;
-  color: white !important;
+  background: #1d4ed8 !important; /* 使用明确的深蓝色 */
+  color: #ffffff !important; /* 确保文字是纯白色 */
   border: none !important;
   font-weight: 600 !important;
   width: 100%;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition: all 0.2s;
+  cursor: pointer;
 }
 
 .new-chat-btn:hover {
+  background-color: #1e40af !important; /* 悬停时颜色加深 */
   transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
-  opacity: 0.9 !important;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+}
+
+.new-chat-btn:active {
+  transform: translateY(0);
+}
+
+.new-chat-btn .btn-text,
+.new-chat-btn .btn-icon,
+.new-chat-btn i {
+  color: #ffffff !important; /* 强制所有内部元素为白色 */
 }
 
 .history-section-title {
