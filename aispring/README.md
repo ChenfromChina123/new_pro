@@ -302,6 +302,12 @@ export JWT_SECRET=your_secret_key
 # AI API
 export AI_DEEPSEEK_API_KEY=your_key
 export AI_DOUBAO_API_KEY=your_key
+export AI_DOUBAO_MODEL=your_endpoint_id
+
+# 兼容变量名（同样支持）
+export DEEPSEEK_API_KEY=your_key
+export DOUBAO_API_KEY=your_key
+export DOUBAO_MODEL=your_endpoint_id
 
 # 文件存储
 export FILE_UPLOAD_DIR=/path/to/uploads

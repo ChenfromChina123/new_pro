@@ -5,6 +5,8 @@ import com.aispring.repository.ChatRecordRepository;
 import com.aispring.entity.ChatRecord;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -41,6 +43,7 @@ import java.util.stream.Collectors;
 @Service
 public class AiChatServiceImpl implements AiChatService {
     
+    private static final Logger logger = LoggerFactory.getLogger(AiChatServiceImpl.class);
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private final ObjectProvider<ChatClient> chatClientProvider;
     private final ObjectProvider<StreamingChatClient> streamingChatClientProvider;
@@ -87,6 +90,50 @@ public class AiChatServiceImpl implements AiChatService {
             .writeTimeout(20, TimeUnit.SECONDS)
             .readTimeout(0, TimeUnit.MILLISECONDS)
             .build();
+    
+    /**
+     * 对注入的 URL / Key 做规范化处理，兼容用户配置中包含的引号/反引号/多余空格。
+     */
+    @PostConstruct
+    public void normalizeConfig() {
+        this.doubaoApiUrl = normalizeUrl(this.doubaoApiUrl);
+        this.deepseekApiUrl = normalizeUrl(this.deepseekApiUrl);
+        this.doubaoApiKey = normalizeToken(this.doubaoApiKey);
+        this.deepseekApiKey = normalizeToken(this.deepseekApiKey);
+        this.doubaoModel = normalizeToken(this.doubaoModel);
+    }
+    
+    /**
+     * 规范化 URL，去掉首尾空白、引号与反引号，并移除末尾多余的 `/`。
+     */
+    private String normalizeUrl(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String s = raw.trim();
+        if (s.isEmpty()) {
+            return s;
+        }
+        s = s.replace("`", "").replace("\"", "").trim();
+        while (s.endsWith("/")) {
+            s = s.substring(0, s.length() - 1);
+        }
+        return s;
+    }
+    
+    /**
+     * 规范化 Token（Key/Model），去掉首尾空白、引号与反引号。
+     */
+    private String normalizeToken(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String s = raw.trim();
+        if (s.isEmpty()) {
+            return s;
+        }
+        return s.replace("`", "").replace("\"", "").trim();
+    }
 
     public AiChatServiceImpl(ObjectProvider<ChatClient> chatClientProvider,
                              ObjectProvider<StreamingChatClient> streamingChatClientProvider,
@@ -108,11 +155,11 @@ public class AiChatServiceImpl implements AiChatService {
         // Initialize Doubao Client
         if (doubaoApiKey != null && !doubaoApiKey.isEmpty() && doubaoApiUrl != null && !doubaoApiUrl.isEmpty()) {
             try {
-                OpenAiApi doubaoApi = new OpenAiApi(doubaoApiUrl, doubaoApiKey);
+                OpenAiApi doubaoApi = new OpenAiApi(normalizeUrl(doubaoApiUrl), normalizeToken(doubaoApiKey));
                 OpenAiChatClient client = new OpenAiChatClient(doubaoApi);
                 this.doubaoChatClient = client;
                 this.doubaoStreamingChatClient = client;
-                System.out.println("Doubao AI client initialized successfully with URL: " + doubaoApiUrl);
+                System.out.println("Doubao AI client initialized successfully with URL: " + normalizeUrl(doubaoApiUrl));
             } catch (Exception e) {
                 System.err.println("Failed to initialize Doubao AI client: " + e.getMessage());
             }
@@ -121,11 +168,11 @@ public class AiChatServiceImpl implements AiChatService {
         // Initialize DeepSeek Client
         if (deepseekApiKey != null && !deepseekApiKey.isEmpty() && deepseekApiUrl != null && !deepseekApiUrl.isEmpty()) {
             try {
-                OpenAiApi deepseekApi = new OpenAiApi(deepseekApiUrl, deepseekApiKey);
+                OpenAiApi deepseekApi = new OpenAiApi(normalizeUrl(deepseekApiUrl), normalizeToken(deepseekApiKey));
                 OpenAiChatClient client = new OpenAiChatClient(deepseekApi);
                 this.deepseekChatClient = client;
                 this.deepseekStreamingChatClient = client;
-                System.out.println("DeepSeek AI client initialized successfully with URL: " + deepseekApiUrl);
+                System.out.println("DeepSeek AI client initialized successfully with URL: " + normalizeUrl(deepseekApiUrl));
             } catch (Exception e) {
                 System.err.println("Failed to initialize DeepSeek AI client: " + e.getMessage());
             }
@@ -407,11 +454,11 @@ public class AiChatServiceImpl implements AiChatService {
      */
     private String resolveDoubaoActualModel() {
         if (doubaoApiKey == null || doubaoApiKey.trim().isEmpty()) {
-            throw new IllegalStateException("豆包API密钥未配置（DOUBAO_API_KEY）");
+            throw new IllegalStateException("豆包API密钥未配置（DOUBAO_API_KEY 或 AI_DOUBAO_API_KEY）");
         }
         String m = doubaoModel == null ? "" : doubaoModel.trim();
         if (m.isEmpty()) {
-            throw new IllegalStateException("豆包模型未配置（DOUBAO_MODEL，通常为 Endpoint ID）");
+            throw new IllegalStateException("豆包模型未配置（DOUBAO_MODEL 或 AI_DOUBAO_MODEL，通常为 Endpoint ID）");
         }
         return m;
     }
@@ -538,9 +585,11 @@ public class AiChatServiceImpl implements AiChatService {
                 break;
             }
         }
-        System.err.println("Doubao call failed: " + (last != null ? last.getMessage() : "unknown"));
         if (last != null) {
-            last.printStackTrace();
+            logger.error("Doubao call failed.", last);
+            if (last instanceof IllegalStateException) {
+                return last.getMessage();
+            }
         }
         return fallbackAnswer(prompt);
     }
