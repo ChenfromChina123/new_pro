@@ -265,13 +265,14 @@ const afterLeave = (el) => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
   cursor: pointer;
-  font-size: 10px;
+  font-size: 14px;
   font-weight: bold;
-  color: var(--text-secondary);
+  color: var(--text-tertiary);
   transition: all 0.2s ease;
+  margin-right: 4px;
 }
 
 .folder-toggle.empty {

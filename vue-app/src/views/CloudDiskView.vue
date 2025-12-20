@@ -9,13 +9,12 @@
               class="breadcrumb-item"
               @click="goToRoot"
             >
-              🏠 根目录
+              全部文件
             </button>
-            <!-- 只在有子文件夹时显示斜杠和当前文件夹 -->
             <template v-if="cloudDiskStore.currentFolder && cloudDiskStore.currentFolder !== ''">
-              <span class="separator">/</span>
+              <span class="separator">></span>
               <span class="breadcrumb-item current">
-                {{ cloudDiskStore.currentFolder.replace(/^\//, '') }}
+                {{ cloudDiskStore.currentFolder.split('/').pop() }}
               </span>
             </template>
           </div>
@@ -37,39 +36,44 @@
               style="display: none"
               @change="handleFolderSelect"
             >
-            <button
-              class="btn btn-primary"
-              @click="$refs.fileInput.click()"
-            >
-              📤 上传文件
-            </button>
-            <button
-              class="btn btn-secondary"
-              @click="$refs.folderInput.click()"
-            >
-              📁 上传文件夹
-            </button>
-            <button
-              class="btn btn-secondary"
-              @click="downloadCurrentFolder"
-            >
-              💾 下载文件夹
-            </button>
             
-            <template v-if="cloudDiskStore.selectedFiles.length > 0">
+            <div class="toolbar-left">
               <button
                 class="btn btn-secondary"
-                @click="downloadSelected"
+                @click="handleNewFolder"
               >
-                💾 下载 ({{ cloudDiskStore.selectedFiles.length }})
+                📁 新建文件夹
               </button>
               <button
-                class="btn btn-secondary"
-                @click="deleteSelected"
+                class="btn btn-primary"
+                @click="$refs.fileInput.click()"
               >
-                🗑️ 删除 ({{ cloudDiskStore.selectedFiles.length }})
+                📤 上传文件
               </button>
-            </template>
+            </div>
+
+            <div class="toolbar-right">
+              <template v-if="cloudDiskStore.selectedFiles.length > 0">
+                <button
+                  class="btn btn-action"
+                  @click="downloadSelected"
+                >
+                  💾 移动
+                </button>
+                <button
+                  class="btn btn-action delete"
+                  @click="deleteSelected"
+                >
+                  🗑️ 删除
+                </button>
+              </template>
+              <button
+                class="btn btn-link"
+                @click="downloadCurrentFolder"
+              >
+                🔗 我的分享
+              </button>
+            </div>
           </div>
         </div>
         
@@ -100,7 +104,7 @@
             <table class="file-table">
               <thead>
                 <tr>
-                  <th class="select-all-column">
+                  <th class="select-column">
                     <input
                       type="checkbox"
                       :checked="areAllFilesSelected"
@@ -112,7 +116,7 @@
                     @click="sortFiles('filename')"
                   >
                     <div class="column-header">
-                      <span>名称</span>
+                      <span>文件名</span>
                       <span
                         v-if="sortField === 'filename'"
                         class="sort-indicator"
@@ -126,7 +130,7 @@
                     @click="sortFiles('upload_time')"
                   >
                     <div class="column-header">
-                      <span>修改日期</span>
+                      <span>修改时间</span>
                       <span
                         v-if="sortField === 'upload_time'"
                         class="sort-indicator"
@@ -134,37 +138,6 @@
                         {{ sortAscending ? '↑' : '↓' }}
                       </span>
                     </div>
-                  </th>
-                  <th
-                    class="type-column"
-                    @click="sortFiles('file_type')"
-                  >
-                    <div class="column-header">
-                      <span>类型</span>
-                      <span
-                        v-if="sortField === 'file_type'"
-                        class="sort-indicator"
-                      >
-                        {{ sortAscending ? '↑' : '↓' }}
-                      </span>
-                    </div>
-                  </th>
-                  <th
-                    class="size-column"
-                    @click="sortFiles('file_size')"
-                  >
-                    <div class="column-header">
-                      <span>大小</span>
-                      <span
-                        v-if="sortField === 'file_size'"
-                        class="sort-indicator"
-                      >
-                        {{ sortAscending ? '↑' : '↓' }}
-                      </span>
-                    </div>
-                  </th>
-                  <th class="actions-column">
-                    操作
                   </th>
                 </tr>
               </thead>
@@ -174,17 +147,20 @@
                   :key="file.id"
                   class="file-row"
                   :class="{ selected: isFileSelected(file.id) }"
+                  @click="toggleFileSelection(file.id)"
                 >
                   <td class="select-column">
                     <input
                       type="checkbox"
                       :checked="isFileSelected(file.id)"
-                      @click="toggleFileSelection(file.id)"
+                      @click.stop="toggleFileSelection(file.id)"
                     >
                   </td>
                   <td class="name-column">
                     <div class="file-cell">
-                      <span class="file-icon">{{ getFileIcon(file.filename) }}</span>
+                      <span class="file-icon-wrapper">
+                        <span class="file-icon-img">{{ getFileIcon(file.filename) }}</span>
+                      </span>
                       <span
                         class="file-name"
                         :title="file.filename"
@@ -193,37 +169,6 @@
                   </td>
                   <td class="date-column">
                     {{ formatDate(file.upload_time) }}
-                  </td>
-                  <td class="type-column">
-                    {{ getFileTypeLabel(file.filename) }}
-                  </td>
-                  <td class="size-column">
-                    {{ formatFileSize(file.file_size) }}
-                  </td>
-                  <td class="actions-column">
-                    <div class="file-actions">
-                      <button
-                        class="action-btn"
-                        title="预览"
-                        @click="previewFile(file)"
-                      >
-                        👁️
-                      </button>
-                      <button
-                        class="action-btn"
-                        title="下载"
-                        @click="downloadFile(file.id)"
-                      >
-                        💾
-                      </button>
-                      <button
-                        class="action-btn delete"
-                        title="删除"
-                        @click="deleteFile(file.id)"
-                      >
-                        🗑️
-                      </button>
-                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -766,21 +711,20 @@ const toggleSelectAll = () => {
 }
 
 .file-header {
-  padding: 24px 32px;
-  background-color: var(--bg-secondary);
+  padding: 20px 32px;
+  background-color: var(--bg-primary);
   border-bottom: 1px solid var(--border-color);
-  box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 }
 
 .breadcrumb {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 15px;
-  color: var(--text-secondary);
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text-tertiary);
 }
 
 .breadcrumb-item {
@@ -788,88 +732,108 @@ const toggleSelectAll = () => {
   border: none;
   color: var(--text-secondary);
   cursor: pointer;
-  padding: 6px 12px;
-  border-radius: 8px;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  padding: 4px 0;
+  transition: all 0.2s ease;
+  font-weight: 400;
 }
 
 .breadcrumb-item:hover {
-  background-color: var(--bg-tertiary);
-  color: var(--text-primary);
-  transform: translateY(-1px);
+  color: var(--primary-color);
+  background: none;
+  transform: none;
 }
 
 .breadcrumb-item.current {
   color: var(--text-primary);
-  font-weight: 600;
+  font-weight: 500;
   cursor: default;
-  background-color: var(--bg-tertiary);
-}
-
-.breadcrumb-item.current:hover {
-  transform: none;
+  background: none;
 }
 
 .separator {
   color: var(--text-tertiary);
-  font-size: 14px;
+  font-size: 12px;
   margin: 0 4px;
-  opacity: 0.6;
 }
 
 .toolbar {
   display: flex;
+  justify-content: space-between;
+  align-items: center;
   gap: 12px;
-  flex-wrap: wrap;
+}
+
+.toolbar-left, .toolbar-right {
+  display: flex;
+  gap: 12px;
+  align-items: center;
 }
 
 .toolbar .btn {
-  padding: 10px 20px;
-  font-size: 14px;
-  height: 42px;
-  border-radius: 10px;
-  font-weight: 600;
+  padding: 8px 16px;
+  font-size: 13px;
+  height: 36px;
+  border-radius: 6px;
+  font-weight: 500;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   transition: all 0.2s ease;
 }
 
 .toolbar .btn-primary {
-  background: var(--gradient-primary);
-  color: white;
-  border: none;
-  box-shadow: 0 4px 12px rgba(29, 78, 216, 0.2);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
 }
 
 .toolbar .btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(29, 78, 216, 0.3);
-  filter: brightness(1.1);
+  background-color: var(--bg-secondary);
+  transform: none;
+  box-shadow: var(--shadow-md);
+  filter: none;
 }
 
 .toolbar .btn-secondary {
-  background-color: var(--bg-tertiary);
+  background-color: var(--bg-primary);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
 }
 
 .toolbar .btn-secondary:hover {
   background-color: var(--bg-secondary);
-  border-color: var(--primary-color);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+  transform: none;
+}
+
+.toolbar .btn-action {
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.toolbar .btn-action:hover {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.toolbar .btn-link {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.toolbar .btn-link:hover {
   color: var(--primary-color);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-sm);
 }
 
 .file-list {
   flex: 1;
   overflow-y: auto;
-  padding: 0 32px 32px;
+  padding: 0;
   background-color: var(--bg-primary);
 }
 
@@ -922,62 +886,59 @@ const toggleSelectAll = () => {
 /* 表格容器 */
 .file-table-container {
   width: 100%;
-  max-width: 1200px;
-  margin: 24px auto 0;
-  background-color: var(--bg-secondary);
-  border-radius: 16px;
-  box-shadow: var(--shadow-md);
-  overflow: hidden;
-  border: 1px solid var(--border-color);
+  margin: 0;
+  background-color: var(--bg-primary);
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+  border: none;
 }
 
 /* 表格样式 */
 .file-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 15px;
+  font-size: 14px;
 }
 
 /* 表头样式 */
 .file-table thead {
-  background-color: var(--bg-tertiary);
+  background-color: transparent;
   position: sticky;
   top: 0;
   z-index: 10;
 }
 
 .file-table th {
-  padding: 16px 20px;
+  padding: 12px 24px;
   text-align: left;
-  font-weight: 600;
-  color: var(--text-secondary);
+  font-weight: 400;
+  color: var(--text-tertiary);
   border-bottom: 1px solid var(--border-color);
   cursor: pointer;
   transition: all 0.2s ease;
-  text-transform: uppercase;
-  font-size: 12px;
-  letter-spacing: 0.8px;
+  text-transform: none;
+  font-size: 13px;
+  letter-spacing: normal;
 }
 
 .file-table th:hover {
   background-color: var(--bg-secondary);
-  color: var(--text-primary);
 }
 
-/* 表头列 */
-.select-all-column {
-  width: 50px;
-  text-align: center;
+.select-column {
+  width: 48px;
+  padding-left: 24px !important;
 }
 
 .name-column {
-  min-width: 250px;
-  width: 40%;
+  padding-left: 0 !important;
 }
 
 .date-column {
-  min-width: 150px;
-  width: 20%;
+  text-align: right !important;
+  padding-right: 32px !important;
+  width: 200px;
 }
 
 .type-column {
@@ -1011,21 +972,18 @@ const toggleSelectAll = () => {
 }
 
 /* 表格行样式 */
-.file-table tbody tr {
-  border-bottom: 1px solid var(--border-color);
-  transition: all 0.2s ease;
+.file-row {
+  transition: background-color 0.2s ease;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
 }
 
-.file-table tbody tr:last-child {
-  border-bottom: none;
-}
-
-.file-table tbody tr:hover {
-  background-color: var(--bg-tertiary);
+.file-row:hover {
+  background-color: var(--bg-secondary);
 }
 
 .file-row.selected {
-  background-color: rgba(29, 78, 216, 0.04);
+  background-color: rgba(59, 130, 246, 0.05);
 }
 
 /* 表格单元格样式 */
@@ -1035,27 +993,35 @@ const toggleSelectAll = () => {
   color: var(--text-primary);
 }
 
-/* 选择列 */
-.select-column {
-  text-align: center;
-}
-
 /* 文件单元格内容 */
 .file-cell {
   display: flex;
   align-items: center;
   gap: 12px;
+  padding: 12px 0;
+}
+
+.file-icon-wrapper {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(59, 130, 246, 0.1);
+  border-radius: 6px;
+  color: #3b82f6;
+  font-size: 16px;
 }
 
 /* 文件名样式 */
 .file-name {
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 100%;
-  font-size: 15px;
   color: var(--text-primary);
+  font-weight: 400;
+  font-size: 14px;
+}
+
+.file-row:hover .file-name {
+  color: var(--primary-color);
 }
 
 /* 文件图标 */
