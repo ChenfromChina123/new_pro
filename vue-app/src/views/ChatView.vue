@@ -30,22 +30,22 @@
           </div>
 
           <div class="sidebar-nav">
-            <router-link
-              to="/chat"
+            <div
               class="nav-item"
-              active-class="active"
+              :class="{ active: activeNav === 'chat' }"
+              @click="activeNav = 'chat'"
             >
               <i class="fas fa-comments" />
               <span>AI问答</span>
-            </router-link>
-            <router-link
-              to="/cloud-disk"
+            </div>
+            <div
               class="nav-item"
-              active-class="active"
+              :class="{ active: activeNav === 'cloud-disk' }"
+              @click="activeNav = 'cloud-disk'"
             >
               <i class="fas fa-cloud" />
               <span>云盘</span>
-            </router-link>
+            </div>
             <router-link
               to="/language-learning"
               class="nav-item"
@@ -67,45 +67,82 @@
 
           <div class="sidebar-divider" />
 
-          <div class="sidebar-header">
-            <button
-              class="btn btn-primary new-chat-btn"
-              @click="createNewSession"
-            >
-              <span class="btn-icon">
-                <i class="fas fa-plus" />
-              </span>
-              <span class="btn-text">新建对话</span>
-            </button>
-          </div>
-          
-          <div class="history-section-title">历史对话</div>
-          <div class="session-list">
-            <div
-              v-for="session in chatStore.sessions"
-              :key="session.id"
-              class="session-item"
-              :class="{ active: session.id === chatStore.currentSessionId }"
-              @click="loadSession(session.id)"
-            >
-              <div class="session-info">
-                <div class="session-title">
-                  {{ session.title || '新对话' }}
-                </div>
-                <div class="session-meta">
-                  <span class="session-date">{{ formatSessionDate(session.createdAt) }}</span>
-                </div>
-              </div>
+          <!-- 会话列表 (AI问答模式) -->
+          <template v-if="activeNav === 'chat'">
+            <div class="sidebar-header">
               <button
-                class="delete-btn"
-                title="删除会话"
-                aria-label="删除会话"
-                @click.stop="deleteSession(session.id)"
+                class="btn btn-primary new-chat-btn"
+                @click="createNewSession"
               >
-                <i class="fas fa-trash" />
+                <span class="btn-icon">
+                  <i class="fas fa-plus" />
+                </span>
+                <span class="btn-text">新建对话</span>
               </button>
             </div>
-          </div>
+            
+            <div class="history-section-title">历史对话</div>
+            <div class="session-list">
+              <div
+                v-for="session in chatStore.sessions"
+                :key="session.id"
+                class="session-item"
+                :class="{ active: session.id === chatStore.currentSessionId }"
+                @click="loadSession(session.id)"
+              >
+                <div class="session-info">
+                  <div class="session-title">
+                    {{ session.title || '新对话' }}
+                  </div>
+                  <div class="session-meta">
+                    <span class="session-date">{{ formatSessionDate(session.createdAt) }}</span>
+                  </div>
+                </div>
+                <button
+                  class="delete-btn"
+                  title="删除会话"
+                  aria-label="删除会话"
+                  @click.stop="deleteSession(session.id)"
+                >
+                  <i class="fas fa-trash" />
+                </button>
+              </div>
+            </div>
+          </template>
+
+          <!-- 文件夹树 (云盘模式) -->
+          <template v-else-if="activeNav === 'cloud-disk'">
+            <div class="sidebar-header">
+              <div class="sidebar-section-header">
+                <span class="history-section-title">文件夹</span>
+                <button
+                  class="icon-btn-small"
+                  title="新建文件夹"
+                  @click="showCreateFolderDialog"
+                >
+                  <i class="fas fa-plus" />
+                </button>
+              </div>
+            </div>
+            
+            <div
+              class="folder-tree-container"
+              :style="{ '--folder-indent': `${folderIndentPx}px` }"
+            >
+              <FolderTreeItem
+                v-for="rootFolder in cloudDiskStore.folders"
+                :key="rootFolder.id"
+                :folder="rootFolder"
+                :select-folder="selectFolder"
+                :toggle-folder-expand="toggleFolderExpand"
+                :is-folder-expanded="isFolderExpanded"
+                :delete-folder-action="deleteFolderAction"
+                :rename-folder-action="renameFolderAction"
+                :depth="0"
+                :indent="folderIndentPx"
+              />
+            </div>
+          </template>
 
           <div class="sidebar-footer">
             <button class="logout-btn" @click="handleLogout">
@@ -115,219 +152,82 @@
           </div>
         </aside>
         
-        <!-- 主聊天区域 -->
+        <!-- 主内容区域 -->
         <main class="chat-main">
-          <div class="chat-header">
-            <div class="chat-header-inner">
-              <div class="header-left">
-                <h2 class="chat-title">
-                  {{ currentSessionTitle }}
-                </h2>
-              </div>
-            </div>
-          </div>
-          
-          <div
-            ref="messagesContainer"
-            class="messages-container"
-          >
-            <div
-              v-if="chatStore.messages.length === 0"
-              class="empty-state"
-            >
-              <h3 class="empty-title">
-                开始新的对话
-              </h3>
-              <p class="empty-description">
-                向AI助手提问任何问题，获取专业的解答和帮助
-              </p>
-            </div>
-            
-            <div
-              v-for="(message, index) in chatStore.messages"
-              :key="index"
-              class="message"
-              :class="message.role === 'user' ? 'user' : 'assistant'"
-            >
-              <!-- AI头像 - 移除以匹配图 2 风格 -->
-              <!-- <div
-                v-if="message.role === 'assistant'"
-                class="message-avatar"
-                :class="{ 'has-image': !!getMessageAvatarSrc(message) }"
-              >
-                ...
-              </div> -->
+          <!-- AI问答视图 -->
+          <template v-if="activeNav === 'chat'">
+            <!-- ... 原有内容 ... -->
+          </template>
 
-              <div class="message-content">
-                <div class="message-bubble">
-                  <!-- 深度思考区域 -->
-                  <div 
-                    v-if="message.reasoning_content" 
-                    class="reasoning-message"
-                    :class="{ collapsed: message.isReasoningCollapsed }"
-                  >
-                    <div 
-                      class="reasoning-header" 
-                      @click="toggleReasoning(message)"
-                    >
-                      <div class="reasoning-title-wrapper">
-                        <!-- 移除图标，仅保留文字以匹配图 2 -->
-                        <span class="reasoning-title">
-                          {{ message.isReasoningCollapsed ? '已完成思考' : '正在思考...' }}
-                        </span>
-                      </div>
-                      <!-- 切换为 expand 图标以匹配图 2 -->
-                      <i 
-                        class="fas reasoning-toggle-icon" 
-                        :class="message.isReasoningCollapsed ? 'fa-expand-alt' : 'fa-compress-alt'" 
-                      />
-                    </div>
-                    <div 
-                      v-show="!message.isReasoningCollapsed" 
-                      class="reasoning-body"
-                    >
-                      <div
-                        class="reasoning-text"
-                        v-html="formatMessage(sanitizeNullRuns(message.reasoning_content))"
-                      />
-                    </div>
-                  </div>
-
-                  <div
-                    v-if="message.content"
-                    class="message-text"
-                    v-html="formatMessage(sanitizeNullRuns(message.content))"
-                  />
-                  <!-- 如果没有内容但有reasoning_content，显示占位符或仅显示reasoning -->
-                  <div
-                    v-else-if="!message.reasoning_content"
-                    class="message-text"
-                  >
-                    <span class="typing-cursor" />
-                  </div>
-                </div>
-                <div class="message-time">
-                  {{ formatTime(message.timestamp) }}
-                </div>
-              </div>
-
-              <!-- 用户头像 - 移除或改为在user角色下不显示以匹配图2 -->
-              <!-- 如果需要保留头像但放在右侧，可以在这里添加 v-if="message.role === 'user'" -->
-              
-              <!-- 复制按钮 - 位于消息容器外的左下角 -->
-              <button 
-                class="message-copy-button" 
-                title="复制这条消息"
-                @click="copyMessage(message.content)"
-              >
-                <i class="fas fa-copy" />
-                <span class="copy-text">复制</span>
-              </button>
-            </div>
-            
-            <div
-              v-if="chatStore.isLoading"
-              class="loading-indicator"
-            >
-              <div class="loading" />
-              <span>AI正在思考...</span>
-            </div>
-          </div>
-          
-          <div class="chat-input-area">
-            <div class="input-container">
-              <textarea
-                v-model="inputMessage"
-                class="chat-input"
-                placeholder="发送消息或输入 / 选择技能"
-                :disabled="chatStore.isLoading"
-                rows="1"
-                @input="adjustTextareaHeight"
-                @keydown.enter.exact.prevent="sendMessage"
-              />
-              
-              <div class="input-toolbar">
-                <div class="toolbar-left">
-                  <button class="tool-btn" title="上传附件">
-                    <i class="fas fa-paperclip" />
-                  </button>
-                  <button 
-                    class="tool-btn-special" 
-                    :class="{ active: chatStore.selectedModel.includes('reasoner') }"
-                    @click="toggleDeepThinking"
-                  >
-                    <i class="fas fa-atom" />
-                    <span>深度思考</span>
-                  </button>
-                  <div class="tool-btn-pill model-pill" ref="modelMenuRef">
-                    <div 
-            class="model-selector-trigger" 
-            @click="isModelMenuOpen = !isModelMenuOpen"
-            :class="{ active: isModelMenuOpen }"
-          >
-            <span class="brand-name">{{ currentBrand.name }}</span>
-            <i class="fas fa-chevron-up toggle-arrow" :class="{ rotate: isModelMenuOpen }" />
-          </div>
-                    
-                    <transition name="menu-fade">
-                      <div v-if="isModelMenuOpen" class="model-dropdown-menu">
-                        <div 
-                  v-for="brand in brands" 
-                  :key="brand.id"
-                  class="model-menu-item"
-                  :class="{ active: currentBrand.id === brand.id }"
-                  @click="selectBrand(brand)"
-                >
-                  <div class="item-info">
-                    <span class="item-name">{{ brand.name }}</span>
-                    <span class="item-desc">{{ brand.id === 'deepseek' ? 'DeepSeek-V3' : '豆包-pro-128k' }}</span>
-                  </div>
-                  <i v-if="currentBrand.id === brand.id" class="fas fa-check check-icon" />
-                </div>
-                      </div>
-                    </transition>
-                  </div>
-                </div>
-                
-                <div class="toolbar-right">
-                  <button class="tool-btn" title="截图">
-                    <i class="fas fa-cut" />
-                  </button>
-                  <button class="tool-btn" title="语音通话">
-                    <i class="fas fa-phone" />
-                  </button>
-                  <button class="tool-btn" title="语音输入">
-                    <i class="fas fa-microphone" />
-                  </button>
-                  
-                  <div class="toolbar-divider" />
-                  
-                  <button
-                    v-if="chatStore.isLoading"
-                    class="stop-btn"
-                    title="停止生成"
-                    @click="chatStore.stopGeneration"
-                  >
-                    <div class="stop-icon-wrapper">
-                      <i class="fas fa-stop" />
-                    </div>
-                  </button>
-                  <button
-                    v-else
-                    class="send-btn-new"
-                    :disabled="!inputMessage.trim()"
-                    title="发送消息"
-                    @click="sendMessage"
-                  >
-                    <div class="send-icon-wrapper">
-                      <i class="fas fa-arrow-up" />
-                    </div>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+          <!-- 云盘视图 -->
+          <template v-else-if="activeNav === 'cloud-disk'">
+            <CloudDiskMain :show-sidebar="false" />
+          </template>
         </main>
+      </div>
+
+      <!-- 创建文件夹对话框 -->
+      <div
+        v-if="showCreateFolder"
+        class="modal-overlay"
+        @click.self="showCreateFolder = false"
+      >
+        <div class="modal-content">
+          <h3>创建新文件夹</h3>
+          <input
+            v-model="newFolderName"
+            type="text"
+            class="input-field"
+            placeholder="输入文件夹名称"
+            @keyup.enter="createFolder"
+          >
+          <div class="modal-actions">
+            <button
+              class="btn btn-primary"
+              @click="createFolder"
+            >
+              创建
+            </button>
+            <button
+              class="btn btn-secondary"
+              @click="showCreateFolder = false"
+            >
+              取消
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 重命名文件夹对话框 -->
+      <div
+        v-if="showRenameFolder"
+        class="modal-overlay"
+        @click.self="closeRenameFolderDialog"
+      >
+        <div class="modal-content">
+          <h3>重命名文件夹</h3>
+          <input
+            v-model="renameFolderName"
+            type="text"
+            class="input-field"
+            placeholder="输入新文件夹名称"
+            @keyup.enter="confirmRenameFolder"
+          >
+          <div class="modal-actions">
+            <button
+              class="btn btn-primary"
+              @click="confirmRenameFolder"
+            >
+              确定
+            </button>
+            <button
+              class="btn btn-secondary"
+              @click="closeRenameFolderDialog"
+            >
+              取消
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </AppLayout>
@@ -339,20 +239,189 @@ import { useRouter } from 'vue-router'
 import { useChatStore } from '@/stores/chat'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
+import { useCloudDiskStore } from '@/stores/cloudDisk'
 import { marked } from 'marked'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
 import AppLayout from '@/components/AppLayout.vue'
+import CloudDiskMain from '@/components/CloudDiskMain.vue'
+import FolderTreeItem from '@/components/FolderTreeItem.vue'
 import { API_CONFIG } from '@/config/api'
 
 const chatStore = useChatStore()
 const authStore = useAuthStore()
 const themeStore = useThemeStore() // 导入主题 store
+const cloudDiskStore = useCloudDiskStore()
 const router = useRouter() // 导入路由
 const inputMessage = ref('')
 const messagesContainer = ref(null)
+
+const activeNav = ref('chat') // 当前激活的导航项：'chat' 或 'cloud-disk'
+
+// --- 云盘侧边栏逻辑 ---
+const expandedFolders = ref(new Set())
+const viewportWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1024)
+const showCreateFolder = ref(false)
+const showRenameFolder = ref(false)
+const renamingFolder = ref(null)
+const renameFolderName = ref('')
+const newFolderName = ref('')
+
+/**
+ * 判断当前路径是否位于指定文件夹下
+ */
+const isInActiveChain = (folder) => {
+  const folderPath = (folder?.folderPath || '').replace(/\/+$/, '')
+  const current = (cloudDiskStore.currentFolder || '').replace(/\/+$/, '')
+  if (folderPath === '') return true
+  return current.startsWith(folderPath + '/')
+}
+
+/**
+ * 切换文件夹展开状态
+ */
+const toggleFolderExpand = (folderId, event) => {
+  if (event) event.stopPropagation()
+  const next = new Set(expandedFolders.value)
+  if (next.has(folderId)) {
+    next.delete(folderId)
+  } else {
+    next.add(folderId)
+  }
+  expandedFolders.value = next
+}
+
+/**
+ * 判断文件夹是否展开
+ */
+const isFolderExpanded = (folder) => {
+  if (expandedFolders.value.has(folder.id)) return true
+  if (isInActiveChain(folder)) return true
+  return false
+}
+
+/**
+ * 计算文件夹树最大深度
+ */
+const maxFolderDepth = computed(() => {
+  const roots = cloudDiskStore.folders || []
+  let max = 0
+  const stack = roots.map(r => ({ node: r, depth: 0 }))
+  while (stack.length) {
+    const { node, depth } = stack.pop()
+    if (depth > max) max = depth
+    const children = node?.children || []
+    for (const child of children) {
+      stack.push({ node: child, depth: depth + 1 })
+    }
+  }
+  return max
+})
+
+/**
+ * 动态计算缩进
+ */
+const folderIndentPx = computed(() => {
+  const depth = maxFolderDepth.value
+  const isMobile = viewportWidth.value <= 768
+  if (isMobile) return depth > 6 ? 10 : 12
+  return depth > 8 ? 10 : depth > 5 ? 12 : 14
+})
+
+const selectFolder = async (folderPath, folderId, event) => {
+  if (event && typeof event.stopPropagation === 'function') {
+    event.stopPropagation()
+  }
+  cloudDiskStore.setActiveFolder({ folderPath, folderId })
+}
+
+const showCreateFolderDialog = () => {
+  newFolderName.value = ''
+  showCreateFolder.value = true
+}
+
+const createFolder = async () => {
+  if (!newFolderName.value.trim()) return
+  const result = await cloudDiskStore.createFolder(newFolderName.value)
+  if (result.success) {
+    showCreateFolder.value = false
+    newFolderName.value = ''
+  } else if (result.error === 'FOLDER_EXISTS') {
+    alert('文件夹已存在')
+  }
+}
+
+/**
+ * 删除文件夹操作
+ */
+const deleteFolderAction = async (folderId) => {
+  // 查找文件夹名称用于确认
+  const findFolder = (folders, id) => {
+    for (const f of folders) {
+      if (f.id === id) return f
+      if (f.children) {
+        const found = findFolder(f.children, id)
+        if (found) return found
+      }
+    }
+    return null
+  }
+  const folder = findFolder(cloudDiskStore.folders, folderId)
+  const folderName = folder ? folder.folderName : '该文件夹'
+
+  if (confirm(`确定要删除文件夹 "${folderName}" 及其所有内容吗？`)) {
+    const result = await cloudDiskStore.deleteFolder(folderId)
+    if (!result.success) {
+      alert('删除失败: ' + (result.message || '未知错误'))
+    }
+  }
+}
+
+/**
+ * 开启重命名对话框
+ */
+const renameFolderAction = (folder) => {
+  renamingFolder.value = folder
+  renameFolderName.value = folder.folderName
+  showRenameFolder.value = true
+}
+
+/**
+ * 关闭重命名对话框
+ */
+const closeRenameFolderDialog = () => {
+  showRenameFolder.value = false
+  renamingFolder.value = null
+  renameFolderName.value = ''
+}
+
+/**
+ * 确认重命名
+ */
+const confirmRenameFolder = async () => {
+  if (!renameFolderName.value.trim() || !renamingFolder.value) return
+  
+  if (renameFolderName.value === renamingFolder.value.folderName) {
+    closeRenameFolderDialog()
+    return
+  }
+
+  const result = await cloudDiskStore.renameFolder(
+    renamingFolder.value.id,
+    renameFolderName.value.trim()
+  )
+
+  if (result.success) {
+    closeRenameFolderDialog()
+  } else if (result.error === 'FOLDER_EXISTS') {
+    alert('文件夹名称已存在')
+  } else {
+    alert('重命名失败: ' + (result.message || '未知错误'))
+  }
+}
+// --- 云盘侧边栏逻辑结束 ---
 
 const avatarUrl = ref(null) // 用于侧边栏头像
 const userAvatarUrl = ref(null) // 用于消息列表头像
@@ -2128,6 +2197,146 @@ body.dark-mode .message-copy-button {
   color: var(--text-primary);
 }
 
+/* 云盘相关样式 */
+.sidebar-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.icon-btn-small {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.icon-btn-small:hover {
+  background-color: var(--bg-tertiary);
+  color: var(--primary-color);
+}
+
+.folder-tree-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 12px 20px;
+}
+
+.folder-tree-container::-webkit-scrollbar {
+  width: 5px;
+}
+
+.folder-tree-container::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 10px;
+}
+
+/* 弹窗通用样式 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  background-color: var(--bg-primary);
+  padding: 24px;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -6px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border-color);
+  animation: modal-in 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-content h3 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.input-field {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 14px;
+  margin-bottom: 24px;
+  transition: all 0.2s;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.btn {
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.btn-primary {
+  background: var(--gradient-primary);
+  color: white;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.btn-secondary:hover {
+  background-color: var(--border-color);
+}
+</style>
 .item-desc {
   font-size: 11px;
   color: var(--text-tertiary);
