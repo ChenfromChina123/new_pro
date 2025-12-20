@@ -113,10 +113,14 @@ export const useCloudDiskStore = defineStore('cloudDisk', () => {
   async function fetchQuota() {
     try {
       const response = await request.get(API_ENDPOINTS.cloudDisk.quota)
-      if (response && response.data) {
-        quota.value = response.data
-      } else if (response) {
-        quota.value = response
+      // 兼容直接返回数据或包裹在data字段中的情况
+      const data = (response && response.data) || response
+      
+      // 验证数据完整性
+      if (data && typeof data.limitSize === 'number') {
+        quota.value = data
+      } else {
+        console.warn('Invalid quota data received:', data)
       }
       return { success: true }
     } catch (error) {
