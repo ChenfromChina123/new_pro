@@ -129,15 +129,25 @@ public class ChatRecordService {
     }
     
     /**
-     * 更新会话标题和建议
+     * 更新或创建会话标题和建议
      */
     @Transactional
-    public void updateSessionTitleAndSuggestions(String sessionId, String title, String suggestions) {
-        chatSessionRepository.findBySessionId(sessionId).ifPresent(session -> {
-            if (title != null) session.setTitle(title);
-            if (suggestions != null) session.setSuggestions(suggestions);
-            chatSessionRepository.save(session);
+    public void updateSessionTitleAndSuggestions(String sessionId, String title, String suggestions, String userId) {
+        ChatSession session = chatSessionRepository.findBySessionId(sessionId).orElseGet(() -> {
+            return ChatSession.builder()
+                .sessionId(sessionId)
+                .userId(userId)
+                .title("新对话")
+                .build();
         });
+        
+        if (title != null && !title.isEmpty()) {
+            session.setTitle(title);
+        }
+        if (suggestions != null && !suggestions.isEmpty()) {
+            session.setSuggestions(suggestions);
+        }
+        chatSessionRepository.save(session);
     }
     
     /**

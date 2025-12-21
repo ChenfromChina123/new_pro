@@ -379,7 +379,7 @@ const currentSessionTitle = computed(() => {
   return chatStore.currentSession?.title || '新对话'
 })
 
-// 监听消息变化，实现流式更新
+// 监听消息变化，实现流式更新和智能滚动
 watch(
   () => chatStore.messages,
   async (newMessages, oldMessages) => {
@@ -397,11 +397,98 @@ watch(
           // 如果用户在底部，立即滚动到最新内容
           scrollToBottom('auto');
         }
+        
+        // 如果正在加载新消息，使用智能滚动
+        if (chatStore.isLoading) {
+          smartScroll();
+        }
       });
     }
   },
   { deep: true }
 );
+
+// 监听消息数量变化，智能滚动
+watch(() => filteredMessages.value.length, (newLength, oldLength) => {
+  if (newLength > oldLength && chatStore.isLoading) {
+    // 只有在加载新消息时才执行智能滚动
+    nextTick(() => {
+      smartScroll()
+    })
+  }
+})
+
+// 虚拟滚动和内容分块加载
+const virtualScrollContainer = ref(null)
+const visibleStartIndex = ref(0)
+const visibleEndIndex = ref(20) // 初始显示20条消息
+const itemHeight = ref(120) // 估算的每条消息高度
+const containerHeight = ref(600) // 容器高度
+const scrollTop = ref(0)
+const isScrolling = ref(false)
+let scrollTimeout = null
+
+// 计算可见区域的消息索引
+const calculateVisibleRange = () => {
+  if (!virtualScrollContainer.value) return
+  
+  const start = Math.floor(scrollTop.value / itemHeight.value)
+  const end = Math.min(
+    start + Math.ceil(containerHeight.value / itemHeight.value) + 5, // 额外渲染5条
+    filteredMessages.value.length
+  )
+  
+  visibleStartIndex.value = Math.max(0, start - 3) // 预渲染3条
+  visibleEndIndex.value = end
+}
+
+// 滚动事件处理（使用防抖）
+const handleVirtualScroll = () => {
+  if (!virtualScrollContainer.value) return
+  
+  scrollTop.value = virtualScrollContainer.value.scrollTop
+  isScrolling.value = true
+  
+  // 清除之前的定时器
+  if (scrollTimeout) {
+    clearTimeout(scrollTimeout)
+  }
+  
+  // 设置新的定时器，滚动结束后更新可见范围
+  scrollTimeout = setTimeout(() => {
+    calculateVisibleRange()
+    isScrolling.value = false
+  }, 16) // 约60fps
+  
+  // 滚动时也更新可见范围，但使用requestAnimationFrame优化
+  if (!scrollTimeout) {
+    requestAnimationFrame(calculateVisibleRange)
+  }
+}
+
+// 监听滚动位置变化
+watch(scrollTop, () => {
+  if (!isScrolling.value) {
+    requestAnimationFrame(calculateVisibleRange)
+  }
+})
+
+// 监听消息数量变化，重新计算可见范围
+watch(() => filteredMessages.value.length, () => {
+  nextTick(() => {
+    calculateVisibleRange()
+  })
+})
+
+// 虚拟滚动的总高度
+const totalHeight = computed(() => {
+  return filteredMessages.value.length * itemHeight.value
+})
+
+// 可见的消息列表
+const visibleMessages = computed(() => {
+  return filteredMessages.value.slice(visibleStartIndex.value, visibleEndIndex.value)
+})
 
 // 检查用户是否在页面底部附近
 const isUserNearBottom = () => {
@@ -431,6 +518,60 @@ const scrollToBottom = (behavior = 'smooth') => {
     }
   });
 };
+
+// 优化的平滑滚动到底部函数
+const scrollToBottomSmooth = () => {
+  if (!messagesContainer.value) return
+  
+  // 使用requestAnimationFrame确保平滑滚动
+  requestAnimationFrame(() => {
+    const targetScrollTop = messagesContainer.value.scrollHeight - messagesContainer.value.clientHeight
+    
+    // 平滑滚动动画
+    const startScrollTop = messagesContainer.value.scrollTop
+    const distance = targetScrollTop - startScrollTop
+    const duration = 300 // 300ms动画时长
+    let startTime = null
+    
+    const animateScroll = (currentTime) => {
+      if (!startTime) startTime = currentTime
+      const timeElapsed = currentTime - startTime
+      const progress = Math.min(timeElapsed / duration, 1)
+      
+      // 使用缓动函数使滚动更平滑
+      const easeInOutCubic = progress < 0.5
+        ? 4 * progress * progress * progress
+        : 1 - Math.pow(-2 * progress + 2, 3) / 2
+      
+      messagesContainer.value.scrollTop = startScrollTop + (distance * easeInOutCubic)
+      
+      if (progress < 1) {
+        requestAnimationFrame(animateScroll)
+      }
+    }
+    
+    requestAnimationFrame(animateScroll)
+  })
+}
+
+// 检查是否在底部附近（用于虚拟滚动）
+const isNearBottom = () => {
+  if (!virtualScrollContainer.value) return true
+  
+  const threshold = 100 // 距离底部100px内视为"在底部"
+  return virtualScrollContainer.value.scrollHeight - 
+         virtualScrollContainer.value.scrollTop - 
+         virtualScrollContainer.value.clientHeight < threshold
+}
+
+// 智能滚动：根据用户位置决定是否自动滚动
+const smartScroll = () => {
+  if (isNearBottom()) {
+    // 如果用户在底部附近，自动滚动到新内容
+    scrollToBottomSmooth()
+  }
+  // 如果用户不在底部，不自动滚动，让用户保持当前浏览位置
+}
 
 /**
  * 统一的滚动到底部触发函数
