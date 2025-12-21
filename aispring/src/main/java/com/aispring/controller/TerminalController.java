@@ -167,4 +167,15 @@ public class TerminalController {
         );
         return ApiResponse.success(null);
     }
+
+    /**
+     * 删除终端会话
+     */
+    @DeleteMapping("/sessions/{sessionId}")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<Void> deleteSession(@AuthenticationPrincipal CustomUserDetails currentUser,
+                                         @PathVariable String sessionId) {
+        chatRecordService.deleteSession(currentUser.getUser().getId().toString(), sessionId);
+        return ApiResponse.success(null);
+    }
 }
