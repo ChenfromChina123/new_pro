@@ -100,6 +100,16 @@
                 {{ formatTime(message.timestamp) }}
               </div>
 
+              <!-- 复制按钮 - 移动到建议问题上方 -->
+              <button 
+                class="message-copy-button" 
+                title="复制这条消息"
+                @click="copyMessage(message.content)"
+              >
+                <i class="fas fa-copy" />
+                <span class="copy-text">复制</span>
+              </button>
+
               <!-- 建议问题区域 - 仅在最新一条 AI 消息下方显示 -->
               <div 
                 v-if="message.role === 'assistant' && index === chatStore.messages.length - 1 && chatStore.suggestions && chatStore.suggestions.length > 0 && !chatStore.isLoading" 
@@ -122,15 +132,6 @@
             <!-- 用户头像 - 移除或改为在user角色下不显示以匹配图2 -->
             <!-- 如果需要保留头像但放在右侧，可以在这里添加 v-if="message.role === 'user'" -->
             
-            <!-- 复制按钮 - 位于消息容器外的左下角 -->
-            <button 
-              class="message-copy-button" 
-              title="复制这条消息"
-              @click="copyMessage(message.content)"
-            >
-              <i class="fas fa-copy" />
-              <span class="copy-text">复制</span>
-            </button>
           </div>
         </div>
         
@@ -1811,77 +1812,58 @@ body.dark-mode .copy-button.copied {
 
 /* 消息复制按钮样式 */
 .message-copy-button {
-  position: absolute;
-  bottom: -24px;
-  background-color: transparent; /* 透明背景 */
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-md);
-  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  background-color: #3b82f6; /* 蓝色背景，匹配图片 */
+  color: white;
+  border: none;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
-  opacity: 0;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  z-index: 10;
-  box-shadow: none;
-  backdrop-filter: blur(4px);
-}
-
-/* 深色模式下的消息复制按钮样式 */
-body.dark-mode .message-copy-button {
-  background-color: transparent;
-  color: var(--text-primary);
-  box-shadow: none;
-}
-
-/* AI消息（左对齐）的复制按钮在下方靠左 */
-.message.assistant .message-copy-button {
-  left: 0;
-}
-
-/* 用户消息（右对齐）的复制按钮在下方靠右 */
-.message.user .message-copy-button {
-  right: 0;
+  width: fit-content;
+  margin-top: 12px;
+  margin-bottom: 4px;
+  opacity: 0.9;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
 }
 
 .message:hover .message-copy-button {
   opacity: 1;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);
 }
 
 .message-copy-button:hover {
-  background-color: var(--primary-color);
-  color: white;
-  border-color: var(--primary-color);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
-  opacity: 1 !important;
+  background-color: #2563eb;
+  transform: translateY(-2px);
 }
 
 .message-copy-button:active {
   transform: translateY(0);
-  box-shadow: var(--shadow-sm);
-  background-color: var(--primary-dark);
-  border-color: var(--primary-dark);
 }
 
 /* 复制成功状态样式 */
 .message-copy-button.copied {
-  background-color: var(--success-color);
+  background-color: #10b981; /* 复制成功显示绿色 */
   color: white;
-  border-color: var(--success-color);
   animation: copiedPulse 0.6s ease-in-out;
-  box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.2);
+}
+
+/* 深色模式下的消息复制按钮样式 */
+body.dark-mode .message-copy-button {
+  background-color: #3b82f6;
+  color: white;
 }
 
 .message {
   position: relative;
   display: flex;
   gap: 16px;
-  margin-bottom: 40px; /* 增加底部边距，为复制按钮留出空间 */
+  margin-bottom: 28px; /* 恢复正常的底部边距 */
   animation: slideUp 0.3s ease-out;
   padding: 0 8px;
   width: 100%;
