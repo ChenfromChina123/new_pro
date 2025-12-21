@@ -175,12 +175,14 @@ public class ChatRecordController {
      * Python: POST /api/chat-records/new-session
      */
     @PostMapping("/new-session")
-    public ResponseEntity<Map<String, String>> createNewSession() {
+    public ResponseEntity<Map<String, String>> createNewSession(
+            @AuthenticationPrincipal CustomUserDetails customUserDetails) {
         
-        String sessionId = chatRecordService.createNewSession();
+        String userId = customUserDetails.getUser().getId().toString();
+        ChatSession session = chatRecordService.createChatSession(userId, "chat");
         
         Map<String, String> response = new HashMap<>();
-        response.put("session_id", sessionId);
+        response.put("session_id", session.getSessionId());
         
         return ResponseEntity.ok(response);
     }
