@@ -28,6 +28,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -431,8 +432,13 @@ public class AiChatServiceImpl implements AiChatService {
                     }
                 }
 
-                String systemPrompt = "你是一个助手，请根据用户的询问内容，生成 3 个用户视角的引导询问问题（即用户接下来可能会问的问题）。" +
-                        "请确保问题是站在用户的立场提出的，而不是以 AI 的身份。例如：'你可以帮我做什么？' 而不是 '我还能为你提供什么帮助？'。\n";
+                String systemPrompt = "你是一个中文助手，需要基于【当前用户询问】（最重要）以及【历史用户询问】（仅供参考）生成结果。\n" +
+                        "仅输出 JSON，不要输出任何额外文字（包括 Markdown/代码块）。\n" +
+                        "请生成 3 个“用户视角”的下一步追问（用户对助手说的话），要求：\n" +
+                        "1) 每个都是完整问题，优先更具体、更可执行；\n" +
+                        "2) 不要以 AI 口吻表达（如“我可以为你…/我还能…”），不要自称“AI/助手”；\n" +
+                        "3) 不要复述历史问题，不要照抄历史原句；\n" +
+                        "4) 每个问题 8~25 个汉字，末尾使用“？”。\n";
                 if (needTitle) {
                     systemPrompt += "由于这是会话的第一条消息，请同时生成一个简短的标题（不超过15个字）。\n";
                 }
@@ -444,12 +450,13 @@ public class AiChatServiceImpl implements AiChatService {
 
                 OpenAiChatOptions options = OpenAiChatOptions.builder()
                         .withModel("deepseek-chat")
-                        .withTemperature(0.7f)
+                        .withTemperature(0.3f)
                         .build();
 
+                String userPromptWithHistory = buildTitleAndSuggestionsUserPrompt(userPrompt, sessionId, userId);
                 List<Message> messages = List.of(
                         new org.springframework.ai.chat.messages.SystemMessage(systemPrompt),
-                        new UserMessage(userPrompt)
+                        new UserMessage(userPromptWithHistory)
                 );
 
                 ChatResponse response = deepseekChatClient.call(new Prompt(messages, options));
@@ -469,6 +476,24 @@ public class AiChatServiceImpl implements AiChatService {
                         for (JsonNode node : suggestionsNode) {
                             suggestionsList.add(node.asText());
                         }
+                    }
+
+                    LinkedHashSet<String> normalized = new LinkedHashSet<>();
+                    for (String s : suggestionsList) {
+                        if (s == null) continue;
+                        String t = s.trim();
+                        if (t.isEmpty()) continue;
+                        t = t.replaceAll("^\\s*[0-9]+[\\.、\\)]\\s*", "");
+                        t = t.replaceAll("^\\s*[-•]\\s*", "");
+                        if (!t.endsWith("？") && !t.endsWith("?")) t = t + "？";
+                        normalized.add(t);
+                        if (normalized.size() >= 3) break;
+                    }
+                    suggestionsList = new ArrayList<>(normalized);
+                    while (suggestionsList.size() < 3) {
+                        if (suggestionsList.size() == 0) suggestionsList.add("我下一步应该先做什么？");
+                        else if (suggestionsList.size() == 1) suggestionsList.add("你能给我一个可执行的步骤清单吗？");
+                        else suggestionsList.add("有哪些常见坑需要我提前避免？");
                     }
 
                     String suggestionsJson = objectMapper.writeValueAsString(suggestionsList);
@@ -493,6 +518,59 @@ public class AiChatServiceImpl implements AiChatService {
                 System.err.println("Error generating title and suggestions: " + e.getMessage());
             }
         }).start();
+    }
+
+    /**
+     * 构建用于“标题+引导问题”生成的用户输入：以当前询问为主，历史询问仅作参考，并限制长度。
+     */
+    private String buildTitleAndSuggestionsUserPrompt(String userPrompt, String sessionId, String userId) {
+        final int maxHistoryQuestions = 6;
+        final int maxEachQuestionChars = 180;
+        final int maxHistoryTotalChars = 1200;
+
+        String current = userPrompt == null ? "" : userPrompt.trim();
+        if (current.isEmpty()) current = "(空)";
+        String currentForCompare = current.replaceAll("\\s+", " ").trim();
+
+        if (sessionId == null || sessionId.isEmpty() || userId == null || userId.isEmpty()) {
+            return "【当前用户询问（最重要）】\n" + current + "\n";
+        }
+
+        List<ChatRecord> history = chatRecordRepository.findByUserIdAndSessionIdOrderByMessageOrderAsc(userId, sessionId);
+        if (history == null || history.isEmpty()) {
+            return "【当前用户询问（最重要）】\n" + current + "\n";
+        }
+
+        List<String> userQuestions = new ArrayList<>();
+        for (int i = history.size() - 1; i >= 0; i--) {
+            ChatRecord record = history.get(i);
+            if (record == null) continue;
+            if (record.getSenderType() != 1) continue;
+            String q = record.getContent();
+            if (q == null) continue;
+            q = q.trim();
+            if (q.isEmpty()) continue;
+            if (q.length() > maxEachQuestionChars) q = q.substring(0, maxEachQuestionChars) + "...";
+            String qForCompare = q.replaceAll("\\s+", " ").trim();
+            if (qForCompare.equals(currentForCompare)) continue;
+            userQuestions.add(q);
+            if (userQuestions.size() >= maxHistoryQuestions) break;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("【当前用户询问（最重要）】\n").append(current).append("\n");
+        if (!userQuestions.isEmpty()) {
+            sb.append("\n【历史用户询问（仅供参考，已截断）】\n");
+            int appended = 0;
+            for (int i = userQuestions.size() - 1; i >= 0; i--) {
+                String q = userQuestions.get(i);
+                int nextLen = q.length() + 3;
+                if (appended + nextLen > maxHistoryTotalChars) break;
+                sb.append("- ").append(q).append("\n");
+                appended += nextLen;
+            }
+        }
+        return sb.toString();
     }
 
     private Prompt buildPrompt(String promptText, String sessionId, String userId, OpenAiChatOptions options) {
