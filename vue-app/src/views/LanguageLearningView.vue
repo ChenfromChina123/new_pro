@@ -1050,7 +1050,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, reactive, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, reactive, watch, onActivated, onDeactivated } from 'vue'
 import request from '@/utils/request'
 import { API_ENDPOINTS } from '@/config/api'
 import { useVocabularyStore } from '@/stores/vocabulary'
@@ -1225,7 +1225,16 @@ const onVisibilityChange = () => {
 }
 
 onMounted(async () => {
+  /**
+   * 仅在组件首次挂载时获取单词本列表
+   */
   await vocabularyStore.fetchLists()
+})
+
+onActivated(async () => {
+  /**
+   * 每次组件激活时刷新统计数据和复习单词
+   */
   await Promise.all([
     vocabularyStore.fetchStats(),
     vocabularyStore.fetchReviewWords()
@@ -1237,7 +1246,10 @@ onMounted(async () => {
 
   markActive()
   lastTickAt.value = Date.now()
-  durationTimer = window.setInterval(tickDuration, 1000)
+  if (!durationTimer) {
+    durationTimer = window.setInterval(tickDuration, 1000)
+  }
+  
   window.addEventListener('mousemove', markActive, { passive: true })
   window.addEventListener('keydown', markActive)
   window.addEventListener('scroll', markActive, { passive: true })
@@ -1247,7 +1259,28 @@ onMounted(async () => {
   document.addEventListener('visibilitychange', onVisibilityChange)
 })
 
+onDeactivated(() => {
+  /**
+   * 组件停用时清除定时器和事件监听
+   */
+  if (durationTimer) {
+    window.clearInterval(durationTimer)
+    durationTimer = null
+  }
+  window.removeEventListener('mousemove', markActive)
+  window.removeEventListener('keydown', markActive)
+  window.removeEventListener('scroll', markActive)
+  window.removeEventListener('click', markActive)
+  window.removeEventListener('focus', markActive)
+  window.removeEventListener('blur', flushDuration)
+  document.removeEventListener('visibilitychange', onVisibilityChange)
+  void flushDuration()
+})
+
 onUnmounted(() => {
+  /**
+   * 组件销毁时确保资源释放
+   */
   if (durationTimer) {
     window.clearInterval(durationTimer)
     durationTimer = null

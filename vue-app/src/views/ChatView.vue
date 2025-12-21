@@ -257,7 +257,7 @@
 
 <script setup>
 import DOMPurify from 'dompurify'
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch, onActivated, onDeactivated } from 'vue'
 import { useChatStore } from '@/stores/chat'
 import { useAuthStore } from '@/stores/auth'
 import { useRoute, useRouter } from 'vue-router'
@@ -825,6 +825,16 @@ const formatMessage = (content) => {
     // 移除包裹 \int ... 的反引号 (需要匹配到对应的结束反引号)
     // 匹配 `\int ... `，确保内部不包含反引号
     cleanContent = cleanContent.replace(/`(\\int(?:\\[\s\S]|[^`])+?)`/g, '$1');
+    
+    // 1. 处理孤立的反引号（不在代码块内的单个反引号）
+    // 匹配不在代码块内的单个反引号
+    cleanContent = cleanContent.replace(/(?<!`)(`)(?!`)/g, '');
+    // 匹配不在代码块内的两个反引号
+    cleanContent = cleanContent.replace(/(?<!`)(``)(?!`)/g, '');
+    
+    // 2. 处理多余的代码块标记（连续的三个或更多反引号）
+    // 匹配四个或更多反引号，替换为三个（标准代码块标记）
+    cleanContent = cleanContent.replace(/`{4,}/g, '```');
     
     // 预处理：清理公式行中的编号（如 "5."、"1." 等）
     // 只处理包含LaTeX命令的行，避免误删正常文本

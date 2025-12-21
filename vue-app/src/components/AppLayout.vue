@@ -10,7 +10,7 @@
           <keep-alive>
             <component
               :is="Component"
-              :key="route.fullPath"
+              :key="route.name"
             />
           </keep-alive>
         </transition>
