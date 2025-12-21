@@ -1683,7 +1683,10 @@ const downloadArticle = (type) => {
   if (!activeArticle.value) return
   showDownloadMenu.value = false
   if (type === 'pdf') {
-    window.print()
+    // 确保菜单在打印前已关闭，并给 Vue 一个渲染周期的延迟
+    setTimeout(() => {
+      window.print()
+    }, 100)
     return
   }
   const title = activeArticle.value.topic || '未命名文章'
@@ -3368,21 +3371,114 @@ select {
 }
 
 @media print {
-  body * {
-    visibility: hidden;
+  /* 隐藏非内容组件 */
+  .app-sidebar, 
+  .app-header, 
+  .ai-card-header, 
+  .ai-toolbar, 
+  .ai-form-grid, 
+  .ai-word-selection-section, 
+  .ai-empty-hint, 
+  .ai-myarticles-header,
+  .modal-close-btn,
+  .ai-download,
+  .ai-download-menu,
+  .article-generation-notification,
+  .sidebar-toggle,
+  .mobile-nav-toggle {
+    display: none !important;
   }
-  #printable-article, #printable-article * {
-    visibility: visible;
+
+  /* 重置 body 和 overlay */
+  body, html {
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
   }
-  #printable-article {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    border: none;
+
+  .modal-overlay {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    background: white !important;
+    display: block !important;
+    backdrop-filter: none !important;
+    z-index: auto !important;
   }
+
+  .modal-card.modal-xxl {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    background: white !important;
+    border: none !important;
+    display: block !important;
+  }
+
+  .modal-wide-header {
+    border-bottom: 2px solid #333 !important;
+    padding: 20pt 0 !important;
+    margin-bottom: 20pt !important;
+    justify-content: center !important;
+  }
+
+  .ai-article-modal-title {
+    font-size: 24pt !important;
+    text-align: center !important;
+    color: black !important;
+    margin: 0 !important;
+  }
+
+  .ai-article-modal-meta {
+    display: block !important;
+    text-align: center !important;
+    font-size: 12pt !important;
+    color: #666 !important;
+    margin-bottom: 30pt !important;
+    border-bottom: 1px solid #eee !important;
+    padding-bottom: 10pt !important;
+  }
+
+  .ai-article-modal-content {
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  .ai-article-paragraph-pair {
+    display: block !important; /* 打印时建议改为上下结构或保持并排但优化 */
+    page-break-inside: avoid !important;
+    border-bottom: 1px solid #eee !important;
+    padding-bottom: 20pt !important;
+    margin-bottom: 20pt !important;
+  }
+
+  .ai-article-en {
+    font-size: 14pt !important;
+    line-height: 1.6 !important;
+    color: black !important;
+    margin-bottom: 10pt !important;
+  }
+
+  .ai-article-zh {
+    font-size: 12pt !important;
+    line-height: 1.5 !important;
+    color: #444 !important;
+    background: #f9f9f9 !important;
+    padding: 10pt !important;
+    border-radius: 4pt !important;
+    border: 1px solid #eee !important;
+  }
+
   .print-only {
-    display: block;
+    display: block !important;
   }
 }
 
