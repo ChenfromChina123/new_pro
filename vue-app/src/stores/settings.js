@@ -2,19 +2,16 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import request from '@/utils/request'
 import { API_ENDPOINTS } from '@/config/api'
+import { useThemeStore } from './theme'
 
 export const useSettingsStore = defineStore('settings', () => {
   // 状态 - 与后端UserSettings模型匹配
   const settings = ref({
-    // 默认设置
-    model_name: 'deepseek',
-    api_base: '',
-    api_key: '',
-    model_params: {
-      temperature: 0.7,
-      max_tokens: 2000,
-      top_p: 1.0
-    }
+    aiModel: 'deepseek',
+    theme: 'light',
+    language: 'zh-CN',
+    notificationsEnabled: true,
+    emailNotifications: false
   })
   
   const isLoading = ref(false)
@@ -30,22 +27,20 @@ export const useSettingsStore = defineStore('settings', () => {
       
       // 处理API响应
       if (response) {
-        // 转换model_params为JSON对象（如果是字符串）
-        let modelParams = response.model_params || {}
-        if (typeof modelParams === 'string') {
-          try {
-            modelParams = JSON.parse(modelParams)
-          } catch (e) {
-            console.error('Failed to parse model_params:', e)
-            modelParams = {}
-          }
+        settings.value = {
+          aiModel: response.aiModel || 'deepseek',
+          theme: response.theme || 'light',
+          language: response.language || 'zh-CN',
+          notificationsEnabled: response.notificationsEnabled !== undefined ? response.notificationsEnabled : true,
+          emailNotifications: response.emailNotifications !== undefined ? response.emailNotifications : false
         }
         
-        settings.value = {
-          model_name: response.model_name || 'deepseek',
-          api_base: response.api_base || '',
-          api_key: response.api_key || '', // API密钥会被后端掩码处理
-          model_params: modelParams
+        // 同步本地主题设置
+        const themeStore = useThemeStore()
+        if (settings.value.theme === 'dark' && !themeStore.isDarkMode) {
+          themeStore.setDarkMode(true)
+        } else if (settings.value.theme === 'light' && themeStore.isDarkMode) {
+          themeStore.setDarkMode(false)
         }
       }
       
@@ -67,11 +62,21 @@ export const useSettingsStore = defineStore('settings', () => {
     try {
       const updatedSettings = { ...settings.value, ...newSettings }
       
-      // 直接使用后端字段名，无需转换
       const response = await request.post(API_ENDPOINTS.settings.update, updatedSettings)
       
       if (response) {
         settings.value = updatedSettings
+        
+        // 如果更新了主题，立即应用
+        if (newSettings.theme) {
+          const themeStore = useThemeStore()
+          if (newSettings.theme === 'dark') {
+            themeStore.setDarkMode(true)
+          } else if (newSettings.theme === 'light') {
+            themeStore.setDarkMode(false)
+          }
+        }
+        
         return { success: true, message: '设置更新成功' }
       }
       
@@ -85,7 +90,7 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   }
   
-  // 重置设置
+  // 重置设置 (如果有后端API支持)
   async function resetSettings() {
     isLoading.value = true
     error.value = null
@@ -96,18 +101,19 @@ export const useSettingsStore = defineStore('settings', () => {
       if (response) {
         // 重置为默认设置
         settings.value = {
-          model_name: 'deepseek',
-          api_base: '',
-          api_key: '',
-          model_params: {
-            temperature: 0.7,
-            max_tokens: 2000,
-            top_p: 1.0
-          }
+          aiModel: 'deepseek',
+          theme: 'light',
+          language: 'zh-CN',
+          notificationsEnabled: true,
+          emailNotifications: false
         }
+        
+        // 重置主题
+        const themeStore = useThemeStore()
+        themeStore.setDarkMode(false)
+        
         return { success: true, message: '设置已重置' }
       }
-      
       return { success: false, message: '重置设置失败' }
     } catch (err) {
       console.error('Failed to reset settings:', err)
@@ -118,30 +124,12 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   }
   
-  // 更新AI模型
-  async function updateAiModel(model_name) {
-    return updateSettings({ model_name })
-  }
-  
-  // 更新API配置
-  async function updateApiConfig(api_base, api_key) {
-    return updateSettings({ api_base, api_key })
-  }
-  
-  // 更新模型参数
-  async function updateModelParams(model_params) {
-    return updateSettings({ model_params })
-  }
-  
-  return {
-    settings,
-    isLoading,
-    error,
-    fetchSettings,
+  return { 
+    settings, 
+    isLoading, 
+    error, 
+    fetchSettings, 
     updateSettings,
-    resetSettings,
-    updateAiModel,
-    updateApiConfig,
-    updateModelParams
+    resetSettings
   }
 })
