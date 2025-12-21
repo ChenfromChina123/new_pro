@@ -13,10 +13,6 @@ export const useChatStore = defineStore('chat', () => {
   const isLoading = ref(false)
   const abortController = ref(null)
   const selectedModel = ref(localStorage.getItem('selectedModel') || 'deepseek-chat')
-  
-  // 流式更新节流控制
-  let updateThrottle = null
-  let chunkCount = 0
 
   const normalizeStreamChunk = (chunk) => {
     if (chunk === null || chunk === undefined) return ''
@@ -224,12 +220,63 @@ export const useChatStore = defineStore('chat', () => {
       content: '',
       reasoning_content: '', // 新增推理内容字段
       isReasoningCollapsed: false,
+      isStreaming: true,
       timestamp: new Date().toISOString(),
       model: selectedModel.value
     }
     messages.value.push(aiMessage)
     // 获取响应式对象
     const activeAiMessage = messages.value[messages.value.length - 1]
+
+    const raf = (typeof window !== 'undefined' && window.requestAnimationFrame)
+      ? window.requestAnimationFrame.bind(window)
+      : (fn) => setTimeout(fn, 16)
+
+    const cancelRaf = (typeof window !== 'undefined' && window.cancelAnimationFrame)
+      ? window.cancelAnimationFrame.bind(window)
+      : (id) => clearTimeout(id)
+
+    const pending = {
+      content: '',
+      reasoning: ''
+    }
+
+    const MAX_APPEND_CHARS_PER_FLUSH = 4000
+    let flushHandle = null
+
+    const flushPendingToReactive = () => {
+      const hasPending = (pending.content && pending.content.length > 0) || (pending.reasoning && pending.reasoning.length > 0)
+      if (!hasPending) return
+
+      const contentAppend = pending.content ? pending.content.slice(0, MAX_APPEND_CHARS_PER_FLUSH) : ''
+      const reasoningAppend = pending.reasoning ? pending.reasoning.slice(0, MAX_APPEND_CHARS_PER_FLUSH) : ''
+
+      if (contentAppend) {
+        pending.content = pending.content.slice(contentAppend.length)
+        if (!activeAiMessage.content) {
+          activeAiMessage.isReasoningCollapsed = true
+        }
+        activeAiMessage.content += contentAppend
+        if (onChunk) onChunk(contentAppend)
+      }
+
+      if (reasoningAppend) {
+        pending.reasoning = pending.reasoning.slice(reasoningAppend.length)
+        activeAiMessage.reasoning_content = (activeAiMessage.reasoning_content || '') + reasoningAppend
+      }
+
+      if ((pending.content && pending.content.length > 0) || (pending.reasoning && pending.reasoning.length > 0)) {
+        scheduleFlush()
+      }
+    }
+
+    const scheduleFlush = () => {
+      if (flushHandle !== null) return
+      flushHandle = raf(() => {
+        flushHandle = null
+        flushPendingToReactive()
+      })
+    }
     
     try {
       const authStore = useAuthStore()
@@ -308,36 +355,15 @@ export const useChatStore = defineStore('chat', () => {
               // 处理推理内容
               const reasoningChunk = normalizeStreamChunk(parsed.reasoning_content)
               if (reasoningChunk) {
-                activeAiMessage.reasoning_content = (activeAiMessage.reasoning_content || '') + reasoningChunk
+                pending.reasoning += reasoningChunk
+                scheduleFlush()
               }
               
               // 处理回复内容
               const contentChunk = normalizeStreamChunk(parsed.content)
               if (contentChunk) {
-                if (!activeAiMessage.content) {
-                  activeAiMessage.isReasoningCollapsed = true
-                }
-                activeAiMessage.content += contentChunk
-                chunkCount++
-                
-                // 节流机制：每100ms或每5个chunk更新一次UI，减少渲染压力
-                if (!updateThrottle) {
-                  updateThrottle = setTimeout(() => {
-                    updateThrottle = null
-                    chunkCount = 0
-                  }, 100)
-                }
-                
-                // 如果达到5个chunk，立即触发UI更新
-                if (chunkCount >= 5) {
-                  clearTimeout(updateThrottle)
-                  updateThrottle = null
-                  chunkCount = 0
-                }
-                
-                if (onChunk) {
-                  onChunk(contentChunk)
-                }
+                pending.content += contentChunk
+                scheduleFlush()
               }
             } catch (e) {
               console.warn('Failed to parse SSE data:', data)
@@ -375,24 +401,31 @@ export const useChatStore = defineStore('chat', () => {
             
             const reasoningChunk = normalizeStreamChunk(parsed.reasoning_content)
             if (reasoningChunk) {
-              activeAiMessage.reasoning_content = (activeAiMessage.reasoning_content || '') + reasoningChunk
+              pending.reasoning += reasoningChunk
             }
             
             const contentChunk = normalizeStreamChunk(parsed.content)
             if (contentChunk) {
-              if (!activeAiMessage.content) {
-                activeAiMessage.isReasoningCollapsed = true
-              }
-              activeAiMessage.content += contentChunk
-              if (onChunk) {
-                onChunk(contentChunk)
-              }
+              pending.content += contentChunk
             }
           } catch (e) {
             console.warn('Failed to parse final SSE data:', data)
           }
         }
       }
+
+      if (flushHandle !== null) {
+        cancelRaf(flushHandle)
+        flushHandle = null
+      }
+      while ((pending.content && pending.content.length > 0) || (pending.reasoning && pending.reasoning.length > 0)) {
+        flushPendingToReactive()
+      }
+      if (flushHandle !== null) {
+        cancelRaf(flushHandle)
+        flushHandle = null
+      }
+      activeAiMessage.isStreaming = false
       
       // 保存消息记录
       await saveMessages(userMessage, activeAiMessage)
@@ -401,6 +434,18 @@ export const useChatStore = defineStore('chat', () => {
     } catch (error) {
       if (error.name === 'AbortError') {
         console.log('Generation aborted by user')
+        if (flushHandle !== null) {
+          cancelRaf(flushHandle)
+          flushHandle = null
+        }
+        while ((pending.content && pending.content.length > 0) || (pending.reasoning && pending.reasoning.length > 0)) {
+          flushPendingToReactive()
+        }
+        if (flushHandle !== null) {
+          cancelRaf(flushHandle)
+          flushHandle = null
+        }
+        activeAiMessage.isStreaming = false
         // 被用户中止时，也要尝试保存已生成的内容
         if (activeAiMessage.content || activeAiMessage.reasoning_content) {
           await saveMessages(userMessage, activeAiMessage)

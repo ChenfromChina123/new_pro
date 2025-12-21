@@ -16,6 +16,7 @@
         <div
           ref="messagesContainer"
           class="messages-container"
+          @scroll.passive="handleMessagesScroll"
         >
           <div
             v-if="chatStore.messages.length === 0"
@@ -74,17 +75,28 @@
                   >
                     <!-- eslint-disable-next-line vue/no-v-html -->
                     <div
+                      v-if="!message.isStreaming"
                       class="reasoning-text"
-                      v-html="formatMessage(sanitizeNullRuns(message.reasoning_content))"
+                      v-html="formatMessageCached(message, 'reasoning_content')"
+                    />
+                    <div
+                      v-else
+                      class="reasoning-text reasoning-text-raw"
+                      v-text="sanitizeNullRuns(message.reasoning_content)"
                     />
                   </div>
                 </div>
 
                 <!-- eslint-disable-next-line vue/no-v-html -->
                 <div
-                  v-if="message.content"
+                  v-if="message.content && !message.isStreaming"
                   class="message-text"
-                  v-html="formatMessage(sanitizeNullRuns(message.content))"
+                  v-html="formatMessageCached(message, 'content')"
+                />
+                <div
+                  v-else-if="message.content && message.isStreaming"
+                  class="message-text message-text-raw"
+                  v-text="sanitizeNullRuns(message.content)"
                 />
                 <!-- 如果没有内容但有reasoning_content，显示占位符或仅显示reasoning -->
                 <div
@@ -140,6 +152,39 @@
         </div>
         
         <div class="chat-input-area">
+          <!-- 上传文件列表 -->
+          <div
+            v-if="uploadedFiles.length > 0"
+            class="uploaded-files-list"
+          >
+            <div 
+              v-for="(file, index) in uploadedFiles" 
+              :key="index"
+              class="uploaded-file-item"
+            >
+              <i
+                v-if="file.type.includes('pdf')"
+                class="fas fa-file-pdf"
+              />
+              <i
+                v-else-if="file.type.includes('image')"
+                class="fas fa-file-image"
+              />
+              <i
+                v-else
+                class="fas fa-file"
+              />
+              <span class="file-name">{{ file.name }}</span>
+              <button 
+                class="remove-file-btn" 
+                title="移除文件"
+                @click="removeUploadedFile(index)"
+              >
+                <i class="fas fa-times" />
+              </button>
+            </div>
+          </div>
+          
           <div class="input-container">
             <textarea
               v-model="inputMessage"
@@ -156,9 +201,17 @@
                 <button 
                   class="tool-btn" 
                   title="上传附件"
+                  @click="triggerFileUpload"
                 >
                   <i class="fas fa-paperclip" />
                 </button>
+                <input 
+                  ref="fileInput"
+                  type="file" 
+                  multiple 
+                  style="display: none;"
+                  @change="handleFileUpload"
+                >
                 <button 
                   class="tool-btn-special" 
                   :class="{ active: chatStore.selectedModel.includes('reasoner') }"
@@ -274,46 +327,47 @@ import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
 import { API_CONFIG } from '@/config/api'
 
-// 性能优化相关变量
-let rafId = null
-let lastFrameTime = 0
-let frameCount = 0
-let fps = 0
+const chatStore = useChatStore()
+const authStore = useAuthStore()
+
+// 文件上传相关
+const uploadedFiles = ref([])
+const fileInput = ref(null)
 
 /**
- * 性能监控函数，用于监控页面帧率
+ * 触发文件上传
  */
-const monitorPerformance = () => {
-  const now = performance.now()
-  frameCount++
-  
-  // 每秒计算一次FPS
-  if (now - lastFrameTime >= 1000) {
-    fps = Math.round((frameCount * 1000) / (now - lastFrameTime))
-    frameCount = 0
-    lastFrameTime = now
-    
-    // 如果FPS低于60，记录警告
-    if (fps < 60) {
-      console.warn(`性能警告: 当前FPS为 ${fps}，低于60fps`)
-    }
-  }
-  
-  rafId = requestAnimationFrame(monitorPerformance)
+const triggerFileUpload = () => {
+  fileInput.value?.click()
 }
 
 /**
- * 优化的消息格式化函数，使用防抖和缓存提高性能
+ * 处理文件上传
  */
-const formatMessageCache = new Map()
-const formatMessageDebounce = new Map()
+const handleFileUpload = (event) => {
+  const files = event.target.files
+  if (files) {
+    for (let i = 0; i < files.length; i++) {
+      uploadedFiles.value.push(files[i])
+    }
+  }
+  // 重置文件输入
+  event.target.value = ''
+}
 
-const chatStore = useChatStore()
-const authStore = useAuthStore()
+/**
+ * 移除上传的文件
+ */
+const removeUploadedFile = (index) => {
+  uploadedFiles.value.splice(index, 1)
+}
 const router = useRouter()
 const route = useRoute()
 const inputMessage = ref('')
 const messagesContainer = ref(null)
+const isPinnedToBottom = ref(true)
+const SCROLL_BOTTOM_THRESHOLD_PX = 40
+let autoScrollScheduled = false
 
 const userAvatarUrl = ref(null) // 用于消息列表头像
 
@@ -379,198 +433,42 @@ const currentSessionTitle = computed(() => {
   return chatStore.currentSession?.title || '新对话'
 })
 
-// 监听消息变化，实现流式更新和智能滚动
-watch(
-  () => chatStore.messages,
-  async (newMessages, oldMessages) => {
-    // 检查是否有新消息或内容更新
-    if (newMessages.length !== oldMessages?.length || 
-        (newMessages.length > 0 && oldMessages?.length > 0 && 
-         newMessages[newMessages.length - 1].content !== oldMessages[oldMessages.length - 1].content)) {
-      
-      // 使用requestAnimationFrame确保在下一帧渲染，提高性能
-      requestAnimationFrame(() => {
-        // 检查用户是否在底部附近（100px范围内）
-        const isNearBottom = isUserNearBottom();
-        
-        if (isNearBottom) {
-          // 如果用户在底部，立即滚动到最新内容
-          scrollToBottom('auto');
-        }
-        
-        // 如果正在加载新消息，使用智能滚动
-        if (chatStore.isLoading) {
-          smartScroll();
-        }
-      });
-    }
-  },
-  { deep: true }
-);
-
-// 监听消息数量变化，智能滚动
-watch(() => filteredMessages.value.length, (newLength, oldLength) => {
-  if (newLength > oldLength && chatStore.isLoading) {
-    // 只有在加载新消息时才执行智能滚动
-    nextTick(() => {
-      smartScroll()
-    })
-  }
-})
-
-// 虚拟滚动和内容分块加载
-const virtualScrollContainer = ref(null)
-const visibleStartIndex = ref(0)
-const visibleEndIndex = ref(20) // 初始显示20条消息
-const itemHeight = ref(120) // 估算的每条消息高度
-const containerHeight = ref(600) // 容器高度
-const scrollTop = ref(0)
-const isScrolling = ref(false)
-let scrollTimeout = null
-
-// 计算可见区域的消息索引
-const calculateVisibleRange = () => {
-  if (!virtualScrollContainer.value) return
-  
-  const start = Math.floor(scrollTop.value / itemHeight.value)
-  const end = Math.min(
-    start + Math.ceil(containerHeight.value / itemHeight.value) + 5, // 额外渲染5条
-    filteredMessages.value.length
-  )
-  
-  visibleStartIndex.value = Math.max(0, start - 3) // 预渲染3条
-  visibleEndIndex.value = end
-}
-
-// 滚动事件处理（使用防抖）
-const handleVirtualScroll = () => {
-  if (!virtualScrollContainer.value) return
-  
-  scrollTop.value = virtualScrollContainer.value.scrollTop
-  isScrolling.value = true
-  
-  // 清除之前的定时器
-  if (scrollTimeout) {
-    clearTimeout(scrollTimeout)
-  }
-  
-  // 设置新的定时器，滚动结束后更新可见范围
-  scrollTimeout = setTimeout(() => {
-    calculateVisibleRange()
-    isScrolling.value = false
-  }, 16) // 约60fps
-  
-  // 滚动时也更新可见范围，但使用requestAnimationFrame优化
-  if (!scrollTimeout) {
-    requestAnimationFrame(calculateVisibleRange)
-  }
-}
-
-// 监听滚动位置变化
-watch(scrollTop, () => {
-  if (!isScrolling.value) {
-    requestAnimationFrame(calculateVisibleRange)
-  }
-})
-
-// 监听消息数量变化，重新计算可见范围
-watch(() => filteredMessages.value.length, () => {
-  nextTick(() => {
-    calculateVisibleRange()
-  })
-})
-
-// 虚拟滚动的总高度
-const totalHeight = computed(() => {
-  return filteredMessages.value.length * itemHeight.value
-})
-
-// 可见的消息列表
-const visibleMessages = computed(() => {
-  return filteredMessages.value.slice(visibleStartIndex.value, visibleEndIndex.value)
-})
-
-// 检查用户是否在页面底部附近
-const isUserNearBottom = () => {
-  if (!messagesContainer.value) return true;
-  
-  const container = messagesContainer.value;
-  const threshold = 100; // 底部阈值，100px范围内认为在底部
-  
-  return container.scrollHeight - container.scrollTop - container.clientHeight <= threshold;
-};
-
-// 优化的滚动函数，减少重排和重绘
 const scrollToBottom = (behavior = 'smooth') => {
-  if (!messagesContainer.value) return;
-  
-  // 使用requestAnimationFrame确保在下一帧执行，减少阻塞
-  requestAnimationFrame(() => {
+  if (messagesContainer.value) {
+    // 优先使用 scrollTop 直接设置，这样最可靠
     if (behavior === 'auto') {
-      // 直接设置scrollTop，性能最好
-      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
     } else {
-      // 使用scrollToWithOptions，支持更好的性能优化
       messagesContainer.value.scrollTo({
         top: messagesContainer.value.scrollHeight,
         behavior: behavior
-      });
+      })
     }
-  });
-};
+  }
+}
 
-// 优化的平滑滚动到底部函数
-const scrollToBottomSmooth = () => {
-  if (!messagesContainer.value) return
-  
-  // 使用requestAnimationFrame确保平滑滚动
-  requestAnimationFrame(() => {
-    const targetScrollTop = messagesContainer.value.scrollHeight - messagesContainer.value.clientHeight
-    
-    // 平滑滚动动画
-    const startScrollTop = messagesContainer.value.scrollTop
-    const distance = targetScrollTop - startScrollTop
-    const duration = 300 // 300ms动画时长
-    let startTime = null
-    
-    const animateScroll = (currentTime) => {
-      if (!startTime) startTime = currentTime
-      const timeElapsed = currentTime - startTime
-      const progress = Math.min(timeElapsed / duration, 1)
-      
-      // 使用缓动函数使滚动更平滑
-      const easeInOutCubic = progress < 0.5
-        ? 4 * progress * progress * progress
-        : 1 - Math.pow(-2 * progress + 2, 3) / 2
-      
-      messagesContainer.value.scrollTop = startScrollTop + (distance * easeInOutCubic)
-      
-      if (progress < 1) {
-        requestAnimationFrame(animateScroll)
-      }
-    }
-    
-    requestAnimationFrame(animateScroll)
+const updatePinnedState = () => {
+  const el = messagesContainer.value
+  if (!el) return
+  const distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+  isPinnedToBottom.value = distanceToBottom <= SCROLL_BOTTOM_THRESHOLD_PX
+}
+
+const scheduleAutoScrollToBottom = () => {
+  if (!isPinnedToBottom.value) return
+  if (autoScrollScheduled) return
+  autoScrollScheduled = true
+  const raf = (typeof window !== 'undefined' && window.requestAnimationFrame)
+    ? window.requestAnimationFrame.bind(window)
+    : (fn) => setTimeout(fn, 16)
+  raf(() => {
+    autoScrollScheduled = false
+    scrollToBottom('auto')
   })
 }
 
-// 检查是否在底部附近（用于虚拟滚动）
-const isNearBottom = () => {
-  if (!virtualScrollContainer.value) return true
-  
-  const threshold = 100 // 距离底部100px内视为"在底部"
-  return virtualScrollContainer.value.scrollHeight - 
-         virtualScrollContainer.value.scrollTop - 
-         virtualScrollContainer.value.clientHeight < threshold
-}
-
-// 智能滚动：根据用户位置决定是否自动滚动
-const smartScroll = () => {
-  if (isNearBottom()) {
-    // 如果用户在底部附近，自动滚动到新内容
-    scrollToBottomSmooth()
-  }
-  // 如果用户不在底部，不自动滚动，让用户保持当前浏览位置
+const handleMessagesScroll = () => {
+  updatePinnedState()
 }
 
 /**
@@ -579,26 +477,15 @@ const smartScroll = () => {
  */
 const triggerScrollToBottom = (delay = 100) => {
   nextTick(() => {
-    // 使用requestAnimationFrame优化渲染性能
-    requestAnimationFrame(() => {
-      scrollToBottom('auto');
-      
-      // 延迟滚动，确保内容渲染完成
-      setTimeout(() => {
-        requestAnimationFrame(() => {
-          scrollToBottom('auto');
-        });
-      }, delay);
-      
-      // 二次延迟，确保公式等复杂内容渲染完成
-      setTimeout(() => {
-        requestAnimationFrame(() => {
-          scrollToBottom('auto');
-        });
-      }, delay + 200);
-    });
-  });
-};
+    // 第一次尝试：立即执行
+    scrollToBottom('auto')
+    // 第二次尝试：短延迟
+    setTimeout(() => scrollToBottom('auto'), delay)
+    // 第三次尝试：长延迟，确保公式渲染
+    setTimeout(() => scrollToBottom('auto'), delay + 200)
+    setTimeout(() => updatePinnedState(), delay + 250)
+  })
+}
 
 onMounted(async () => {
   // 0. 确保会话列表已加载
@@ -720,7 +607,7 @@ const createNewSession = async () => {
 }
 
 const sendMessage = async () => {
-  if (!inputMessage.value.trim() || chatStore.isLoading) return
+  if ((!inputMessage.value.trim() && uploadedFiles.value.length === 0) || chatStore.isLoading) return
   
   // 如果没有当前会话，先创建一个
   if (!chatStore.currentSessionId) {
@@ -736,7 +623,67 @@ const sendMessage = async () => {
     textarea.style.height = 'auto'
   }
   
-  await chatStore.sendMessage(message)
+  isPinnedToBottom.value = true
+  
+  // 处理文件上传
+  if (uploadedFiles.value.length > 0) {
+    await uploadFilesAndSendMessage(message)
+  } else {
+    await chatStore.sendMessage(message, () => {
+      scheduleAutoScrollToBottom()
+    })
+  }
+  
+  // 清空上传文件列表
+  uploadedFiles.value = []
+}
+
+/**
+ * 上传文件并发送消息
+ */
+const uploadFilesAndSendMessage = async (message) => {
+  const formData = new FormData()
+  
+  // 添加文件
+  uploadedFiles.value.forEach(file => {
+    formData.append('files', file)
+  })
+  
+  // 添加消息文本
+  if (message) {
+    formData.append('message', message)
+  }
+  
+  try {
+    // 上传文件
+    const uploadResponse = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData
+    })
+    
+    if (!uploadResponse.ok) {
+      throw new Error('文件上传失败')
+    }
+    
+    const uploadResult = await uploadResponse.json()
+    
+    // 发送包含文件信息的消息
+    const fileMessage = {
+      text: message,
+      files: uploadResult.files.map(file => ({
+        id: file.id,
+        name: file.name,
+        url: file.url
+      }))
+    }
+    
+    await chatStore.sendMessage(JSON.stringify(fileMessage), () => {
+      scheduleAutoScrollToBottom()
+    })
+  } catch (error) {
+    console.error('文件上传失败:', error)
+    // 可以添加错误提示
+  }
 }
 
 // 渲染数学公式
@@ -979,18 +926,25 @@ const sanitizeNullRuns = (content) => {
   return content.replace(/(?:null){2,}/g, '')
 }
 
+const formatMessageCached = (() => {
+  const cache = new WeakMap()
+  return (message, field) => {
+    if (!message || !field) return ''
+    const raw = sanitizeNullRuns(message[field] || '')
+    let entry = cache.get(message)
+    if (!entry) {
+      entry = {}
+      cache.set(message, entry)
+    }
+    const prev = entry[field]
+    if (prev && prev.raw === raw) return prev.html
+    const html = formatMessage(raw)
+    entry[field] = { raw, html }
+    return html
+  }
+})()
+
 const formatMessage = (content) => {
-  // 使用缓存提高性能
-  const cacheKey = content
-  if (formatMessageCache.has(cacheKey)) {
-    return formatMessageCache.get(cacheKey)
-  }
-  
-  // 防抖处理，避免频繁格式化
-  if (formatMessageDebounce.has(cacheKey)) {
-    return formatMessageDebounce.get(cacheKey)
-  }
-  
   try {
     // 1. 先清理原始内容中的问题
     let cleanContent = content;
@@ -1095,20 +1049,10 @@ const formatMessage = (content) => {
     html = html.replace(/\]\s*$/g, '');
     
     // 7. 安全过滤，防止 XSS
-    const result = DOMPurify.sanitize(html, {
+    return DOMPurify.sanitize(html, {
       ADD_ATTR: ['onclick', 'style'], // 允许 onclick 和 style 属性，因为我们自定义了复制按钮
       ADD_TAGS: ['button', 'i'] // 允许 button 和 i 标签
     });
-    
-    // 缓存结果，但限制缓存大小
-    if (formatMessageCache.size > 100) {
-      // 清理最旧的缓存项
-      const firstKey = formatMessageCache.keys().next().value;
-      formatMessageCache.delete(firstKey);
-    }
-    formatMessageCache.set(cacheKey, result);
-    
-    return result;
   } catch (error) {
     console.error('消息格式化错误:', error);
     return content;
@@ -1462,6 +1406,11 @@ const adjustTextareaHeight = (event) => {
   letter-spacing: 0.2px;
 }
 
+.message-text-raw {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .message-text:hover {
   box-shadow: var(--shadow-md);
 }
@@ -1780,6 +1729,66 @@ body.dark-mode .message-copy-button {
   padding: 0 4px;
   align-self: flex-end;
   letter-spacing: 0.2px;
+}
+
+/* 上传文件列表样式 */
+.uploaded-files-list {
+  background-color: var(--bg-secondary);
+  border-radius: var(--border-radius-md);
+  padding: 12px;
+  margin-bottom: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.uploaded-file-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  margin-bottom: 8px;
+  background-color: var(--bg-primary);
+  border-radius: var(--border-radius-sm);
+  border: 1px solid var(--border-color);
+  transition: all 0.2s ease;
+}
+
+.uploaded-file-item:last-child {
+  margin-bottom: 0;
+}
+
+.uploaded-file-item:hover {
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-sm);
+}
+
+.uploaded-file-item i {
+  color: var(--primary-color);
+  font-size: 16px;
+}
+
+.uploaded-file-item .file-name {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.remove-file-btn {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--border-radius-sm);
+  transition: all 0.2s ease;
+}
+
+.remove-file-btn:hover {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
 }
 
 .loading-indicator {
@@ -2324,6 +2333,11 @@ body.dark-mode .message-copy-button {
   padding: 16px;
   line-height: 1.7;
   word-wrap: break-word;
+}
+
+.reasoning-text-raw {
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .reasoning-text :deep(p) {
