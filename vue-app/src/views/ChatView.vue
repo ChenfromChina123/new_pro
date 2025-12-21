@@ -122,6 +122,23 @@
           </div>
         </div>
         
+        <!-- 建议问题区域 -->
+        <div 
+          v-if="chatStore.suggestions && chatStore.suggestions.length > 0 && !chatStore.isLoading" 
+          class="suggestions-area"
+        >
+          <div class="suggestions-list">
+            <button 
+              v-for="(suggestion, index) in chatStore.suggestions" 
+              :key="index"
+              class="suggestion-item"
+              @click="sendSuggestion(suggestion)"
+            >
+              {{ suggestion }}
+            </button>
+          </div>
+        </div>
+        
         <div class="chat-input-area">
           <div class="input-container">
             <textarea
@@ -453,6 +470,15 @@ onUnmounted(() => {
 
 const toggleReasoning = (message) => {
   message.isReasoningCollapsed = !message.isReasoningCollapsed
+}
+
+/**
+ * 点击建议问题发送
+ * @param {string} suggestion 建议问题文本
+ */
+const sendSuggestion = (suggestion) => {
+  inputMessage.value = suggestion
+  sendMessage()
 }
 
 const sendMessage = async () => {
@@ -1513,7 +1539,50 @@ body.dark-mode .message-copy-button {
     position: sticky;
     top: 20px;
     z-index: 20;
-  }
+}
+
+.suggestions-area {
+  padding: 0 32px 12px;
+  display: flex;
+  justify-content: center;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.suggestions-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 980px;
+  width: 100%;
+}
+
+.suggestion-item {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 6px 16px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.suggestion-item:hover {
+  background-color: var(--toolbar-btn-bg);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
 .chat-input-area {
   padding: 20px 32px 32px;
