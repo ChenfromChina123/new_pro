@@ -35,6 +35,12 @@ public class ChatRecordService {
     @Transactional
     public ChatRecord createChatRecord(String content, Integer senderType, String userId, 
                                       String sessionId, String aiModel, String status) {
+        return createChatRecord(content, senderType, userId, sessionId, aiModel, status, "chat");
+    }
+
+    @Transactional
+    public ChatRecord createChatRecord(String content, Integer senderType, String userId, 
+                                      String sessionId, String aiModel, String status, String sessionType) {
         // 如果没有会话ID，生成新的
         if (sessionId == null || sessionId.isEmpty()) {
             sessionId = UUID.randomUUID().toString().replace("-", "");
@@ -42,11 +48,13 @@ public class ChatRecordService {
         
         // 确保 ChatSession 存在
         final String finalSessionId = sessionId;
+        final String finalSessionType = sessionType != null ? sessionType : "chat";
         chatSessionRepository.findBySessionId(sessionId).orElseGet(() -> {
             ChatSession newSession = ChatSession.builder()
                 .sessionId(finalSessionId)
                 .userId(userId)
                 .title("新对话")
+                .sessionType(finalSessionType)
                 .build();
             return chatSessionRepository.save(newSession);
         });
@@ -150,6 +158,13 @@ public class ChatRecordService {
         chatSessionRepository.save(session);
     }
     
+    /**
+     * 获取用户的所有终端会话
+     */
+    public List<ChatSession> getTerminalSessions(String userId) {
+        return chatSessionRepository.findByUserIdAndSessionTypeOrderByCreatedAtDesc(userId, "terminal");
+    }
+
     /**
      * 删除特定会话
      */

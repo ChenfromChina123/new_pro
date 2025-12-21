@@ -27,4 +27,9 @@ public interface AiChatService {
      * @return 非流式响应
      */
     String ask(String prompt, String sessionId, String model, String userId);
+
+    /**
+     * AI Agent流式问答 (支持自定义System Prompt)
+     */
+    SseEmitter askAgentStream(String prompt, String sessionId, String model, String userId, String systemPrompt);
 }

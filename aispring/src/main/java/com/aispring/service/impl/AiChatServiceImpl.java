@@ -188,10 +188,15 @@ public class AiChatServiceImpl implements AiChatService {
 
     @Override
     public SseEmitter askStream(String prompt, String sessionId, String model, String userId) {
+        return askAgentStream(prompt, sessionId, model, userId, null);
+    }
+
+    @Override
+    public SseEmitter askAgentStream(String prompt, String sessionId, String model, String userId, String systemPrompt) {
         // 创建SSE发射器，设置超时时间为3分钟
         SseEmitter emitter = new SseEmitter(180_000L);
         
-        System.out.println("=== askStream Called ===");
+        System.out.println("=== askAgentStream Called ===");
         System.out.println("Model: " + model);
         System.out.println("Prompt: " + (prompt != null ? prompt.substring(0, Math.min(50, prompt.length())) + "..." : "null"));
         System.out.println("Session ID: " + sessionId);
@@ -199,7 +204,7 @@ public class AiChatServiceImpl implements AiChatService {
         
         // 检查是否为推理模型，如果是则使用OkHttp自定义流式调用
         if ("deepseek-reasoner".equals(model) || "doubao-reasoner".equals(model)) {
-            return askStreamWithOkHttp(prompt, sessionId, model, userId, emitter);
+            return askStreamWithOkHttp(prompt, sessionId, model, userId, emitter, systemPrompt);
         }
 
         // 确定使用的客户端和模型名称
@@ -208,26 +213,17 @@ public class AiChatServiceImpl implements AiChatService {
         
         if ("doubao".equals(model)) {
             System.out.println("[Doubao] Selected model: doubao");
-            System.out.println("[Doubao] doubaoStreamingChatClient reference: " + (doubaoStreamingChatClient != null ? "exists" : "null"));
             if (doubaoStreamingChatClient != null) {
                 clientToUse = doubaoStreamingChatClient;
-                System.out.println("[Doubao] Using initialized Doubao streaming client");
-                System.out.println("[Doubao] Client type: " + doubaoStreamingChatClient.getClass().getSimpleName());
             } else {
-                // 如果豆包客户端未初始化，尝试使用默认客户端
-                System.err.println("[Doubao ERROR] Client not initialized, falling back to default.");
                 clientToUse = streamingChatClientProvider.getIfAvailable();
-                System.out.println("[Doubao] Fallback to default streaming client: " + (clientToUse != null ? "available" : "not available"));
-                System.out.println("[Doubao] Default client type: " + (clientToUse != null ? clientToUse.getClass().getSimpleName() : "null"));
             }
         } else if ("deepseek".equals(model) || "deepseek-chat".equals(model)) {
             System.out.println("Selected model: deepseek");
             if (deepseekStreamingChatClient != null) {
                 clientToUse = deepseekStreamingChatClient;
-                System.out.println("Using initialized DeepSeek streaming client");
             } else {
                 clientToUse = streamingChatClientProvider.getIfAvailable();
-                System.out.println("Fallback to default streaming client: " + (clientToUse != null ? "available" : "not available"));
             }
             actualModel = "deepseek-chat";
         } else {
@@ -235,7 +231,6 @@ public class AiChatServiceImpl implements AiChatService {
             clientToUse = streamingChatClientProvider.getIfAvailable();
             if (model == null || model.isEmpty()) {
                 actualModel = "deepseek-chat";
-                System.out.println("Model is null/empty, using default: deepseek-chat");
             }
         }
         
@@ -250,17 +245,10 @@ public class AiChatServiceImpl implements AiChatService {
                 .withMaxTokens(maxTokens)
                 .build();
         
-        System.out.println("Building prompt with options:");
-        System.out.println("- Model: " + options.getModel());
-        System.out.println("- Temperature: " + options.getTemperature());
-        System.out.println("- Max Tokens: " + options.getMaxTokens());
-        
         // 构建包含上下文的Prompt
-        Prompt promptObj = buildPrompt(prompt, sessionId, userId, options);
-        System.out.println("Prompt built");
+        Prompt promptObj = buildPrompt(prompt, sessionId, userId, options, systemPrompt);
         
         final StreamingChatClient finalClient = clientToUse;
-        System.out.println("Final client: " + (finalClient != null ? finalClient.getClass().getSimpleName() : "null"));
         
         // 异步处理流式响应
         new Thread(() -> {
@@ -309,6 +297,10 @@ public class AiChatServiceImpl implements AiChatService {
     }
 
     private SseEmitter askStreamWithOkHttp(String prompt, String sessionId, String model, String userId, SseEmitter emitter) {
+        return askStreamWithOkHttp(prompt, sessionId, model, userId, emitter, null);
+    }
+
+    private SseEmitter askStreamWithOkHttp(String prompt, String sessionId, String model, String userId, SseEmitter emitter, String systemPrompt) {
         new Thread(() -> {
             try {
                 // 异步生成标题（仅限第一条消息）和建议问题（每条消息）
@@ -338,6 +330,15 @@ public class AiChatServiceImpl implements AiChatService {
 
                 // 准备消息历史
                 List<Map<String, String>> messages = new ArrayList<>();
+                
+                // Add System Prompt if exists
+                if (systemPrompt != null && !systemPrompt.isEmpty()) {
+                    Map<String, String> sysMsg = new HashMap<>();
+                    sysMsg.put("role", "system");
+                    sysMsg.put("content", systemPrompt);
+                    messages.add(sysMsg);
+                }
+
                 if (sessionId != null && !sessionId.isEmpty()) {
                     List<ChatRecord> history = chatRecordRepository.findByUserIdAndSessionIdOrderByMessageOrderAsc(userId, sessionId);
                     int start = Math.max(0, history.size() - MAX_CONTEXT_MESSAGES);
@@ -595,8 +596,17 @@ public class AiChatServiceImpl implements AiChatService {
     }
 
     private Prompt buildPrompt(String promptText, String sessionId, String userId, OpenAiChatOptions options) {
+        return buildPrompt(promptText, sessionId, userId, options, null);
+    }
+
+    private Prompt buildPrompt(String promptText, String sessionId, String userId, OpenAiChatOptions options, String systemPrompt) {
         List<Message> messages = new ArrayList<>();
         
+        // Add System Prompt if exists
+        if (systemPrompt != null && !systemPrompt.isEmpty()) {
+            messages.add(new org.springframework.ai.chat.messages.SystemMessage(systemPrompt));
+        }
+
         // 获取历史消息
         if (sessionId != null && !sessionId.isEmpty()) {
             List<ChatRecord> history = chatRecordRepository.findByUserIdAndSessionIdOrderByMessageOrderAsc(userId, sessionId);
@@ -610,6 +620,10 @@ public class AiChatServiceImpl implements AiChatService {
                     messages.add(new UserMessage(record.getContent()));
                 } else if (record.getSenderType() == 2) { // AI
                     messages.add(new AssistantMessage(record.getContent()));
+                } else if (record.getSenderType() == 3) { // Command Result / System Feedback
+                    // Feed command results back as User messages or System messages
+                    // In agent loops, command results are usually treated as environment feedback (User-like)
+                    messages.add(new UserMessage("Command execution result: " + record.getContent()));
                 }
             }
         }
