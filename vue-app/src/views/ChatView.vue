@@ -47,6 +47,36 @@
 
             <div class="message-content">
               <div class="message-bubble">
+                <!-- 深度思考内容 -->
+                <div 
+                  v-if="message.reasoning_content" 
+                  class="reasoning-block"
+                  :class="{ 'streaming': message.isStreaming && !message.content }"
+                >
+                  <div
+                    class="reasoning-header"
+                    @click="toggleReasoning(message)"
+                  >
+                    <div class="header-left">
+                      <i class="fas fa-brain" />
+                      <span>深度思考</span>
+                    </div>
+                    <i 
+                      class="fas toggle-icon"
+                      :class="message.isReasoningCollapsed ? 'fa-chevron-right' : 'fa-chevron-down'" 
+                    />
+                  </div>
+                  <div 
+                    v-show="!message.isReasoningCollapsed" 
+                    class="reasoning-content"
+                  >
+                    <div 
+                      class="markdown-body"
+                      v-html="formatMessage(message.reasoning_content)" 
+                    />
+                  </div>
+                </div>
+
                 <!-- eslint-disable-next-line vue/no-v-html -->
                 <div
                   v-if="message.content && !message.isStreaming"
@@ -1222,10 +1252,12 @@ const adjustTextareaHeight = (event) => {
   border-radius: var(--border-radius-lg);
   line-height: 1.65;
   word-wrap: break-word;
+  word-break: break-word;
   box-shadow: var(--shadow-sm);
   transition: all 0.2s ease;
   font-size: 16px;
   letter-spacing: 0.2px;
+  max-width: 100%;
 }
 
 .message-text-raw {
@@ -1245,6 +1277,8 @@ const adjustTextareaHeight = (event) => {
   padding: 8px 0;
   font-size: 17px;
   line-height: 1.8;
+  max-width: 100%;
+  word-break: break-word;
 }
 
 .message.assistant .message-text :deep(h1),
@@ -1290,6 +1324,8 @@ const adjustTextareaHeight = (event) => {
     line-height: 1.5;
     position: relative;
     border: 1px solid var(--border-color); /* 添加边框 */
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
 .message-text :deep(code) {
@@ -2130,5 +2166,67 @@ body.dark-mode .message-copy-button {
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
+}
+
+.reasoning-block {
+  margin-bottom: 12px;
+  border-radius: 8px;
+  background-color: var(--bg-tertiary);
+  border-left: 3px solid var(--border-color);
+  overflow: hidden;
+}
+
+.reasoning-block.streaming {
+  border-left-color: var(--primary-color);
+}
+
+.reasoning-block .reasoning-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  cursor: pointer;
+  background-color: var(--bg-secondary);
+  font-size: 13px;
+  color: var(--text-secondary);
+  user-select: none;
+  border-radius: 0;
+}
+
+.reasoning-block .reasoning-header:hover {
+  background-color: var(--bg-hover);
+}
+
+.reasoning-block .header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reasoning-block .reasoning-header i {
+  font-size: 12px;
+}
+
+.reasoning-block .reasoning-content {
+  padding: 12px;
+  background-color: var(--bg-primary);
+  font-size: 13px;
+  color: var(--text-secondary);
+  border-top: 1px solid var(--border-color);
+  line-height: 1.6;
+}
+
+.reasoning-block .reasoning-content .markdown-body {
+  background-color: transparent;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.reasoning-block .reasoning-content .markdown-body p {
+  margin-bottom: 8px;
+}
+
+.reasoning-block .reasoning-content .markdown-body p:last-child {
+  margin-bottom: 0;
 }
 </style>
