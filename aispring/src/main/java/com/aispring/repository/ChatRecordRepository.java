@@ -43,6 +43,18 @@ public interface ChatRecordRepository extends JpaRepository<ChatRecord, Long> {
     Integer findMaxMessageOrderBySessionIdAndUserId(@Param("sessionId") String sessionId, @Param("userId") String userId);
     
     /**
+     * 获取用户所有会话的基本信息，过滤会话类型
+     */
+    @Query(value = "SELECT c.session_id, MAX(c.send_time) AS last_message_time, " +
+           "(SELECT c2.content FROM chat_records c2 WHERE c2.session_id = c.session_id AND c2.user_id = c.user_id " +
+           "ORDER BY c2.send_time DESC LIMIT 1) AS last_message " +
+           "FROM chat_records c " +
+           "JOIN chat_sessions s ON c.session_id = s.session_id " +
+           "WHERE c.user_id = :userId AND s.session_type = :sessionType " +
+           "GROUP BY c.session_id ORDER BY last_message_time DESC", nativeQuery = true)
+    List<Object[]> findSessionInfoByUserIdAndType(@Param("userId") String userId, @Param("sessionType") String sessionType);
+
+    /**
      * 获取用户所有会话的基本信息
      */
     @Query(value = "SELECT c.session_id, MAX(c.send_time) AS last_message_time, " +

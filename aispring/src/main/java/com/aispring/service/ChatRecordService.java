@@ -90,42 +90,37 @@ public class ChatRecordService {
      * 获取用户的所有会话列表
      */
     public List<Map<String, Object>> getUserSessions(String userId) {
-        List<Object[]> results = chatRecordRepository.findSessionInfoByUserId(userId);
+        return getUserSessions(userId, "chat");
+    }
+
+    /**
+     * 获取用户指定类型的会话列表
+     */
+    public List<Map<String, Object>> getUserSessions(String userId, String sessionType) {
+        // 1. 先获取该类型的所有会话
+        List<ChatSession> sessions = chatSessionRepository.findByUserIdAndSessionTypeOrderByCreatedAtDesc(userId, sessionType);
         
-        return results.stream().map(row -> {
-            Map<String, Object> session = new HashMap<>();
-            String sessionId = row[0].toString();
-            session.put("session_id", sessionId);
+        // 2. 转换为 Map 并补充最后一条消息信息
+        return sessions.stream().map(session -> {
+            Map<String, Object> sessionMap = new HashMap<>();
+            String sessionId = session.getSessionId();
+            sessionMap.put("session_id", sessionId);
+            sessionMap.put("title", session.getTitle());
+            sessionMap.put("suggestions", session.getSuggestions());
+            sessionMap.put("created_at", session.getCreatedAt() != null ? session.getCreatedAt().format(FORMATTER) : "");
             
-            Object t1 = row[1];
-            String tm1 = "";
-            if (t1 != null) {
-                LocalDateTime dt1 = (t1 instanceof LocalDateTime) ? (LocalDateTime) t1
-                        : (t1 instanceof java.sql.Timestamp) ? ((java.sql.Timestamp) t1).toLocalDateTime() : null;
-                tm1 = dt1 != null ? dt1.format(FORMATTER) : "";
-            }
-            session.put("last_message_time", tm1);
-            
-            // 优先从 ChatSession 获取标题，如果没有则使用最后一条消息
-            String title = chatSessionRepository.findBySessionId(sessionId)
-                .map(ChatSession::getTitle)
-                .orElse(null);
-            
-            if (title == null || title.isEmpty() || "新对话".equals(title)) {
-                String lastMessage = row[2] != null ? row[2].toString() : "";
-                if (lastMessage.length() > 50) {
-                    lastMessage = lastMessage.substring(0, 50) + "...";
-                }
-                title = lastMessage;
+            // 获取该会话的最后一条消息和时间
+            List<ChatRecord> records = chatRecordRepository.findByUserIdAndSessionIdOrderByMessageOrderAsc(userId, sessionId);
+            if (!records.isEmpty()) {
+                ChatRecord lastRecord = records.get(records.size() - 1);
+                sessionMap.put("last_message", lastRecord.getContent());
+                sessionMap.put("last_message_time", lastRecord.getSendTime() != null ? lastRecord.getSendTime().format(FORMATTER) : "");
+            } else {
+                sessionMap.put("last_message", session.getTitle());
+                sessionMap.put("last_message_time", session.getCreatedAt() != null ? session.getCreatedAt().format(FORMATTER) : "");
             }
             
-            session.put("last_message", title);
-            
-            // 获取建议问题
-            chatSessionRepository.findBySessionId(sessionId)
-                .ifPresent(cs -> session.put("suggestions", cs.getSuggestions()));
-            
-            return session;
+            return sessionMap;
         }).collect(Collectors.toList());
     }
     
@@ -202,6 +197,21 @@ public class ChatRecordService {
      */
     public String createNewSession() {
         return UUID.randomUUID().toString().replace("-", "");
+    }
+
+    /**
+     * 创建并保存新会话
+     */
+    @Transactional
+    public ChatSession createChatSession(String userId, String sessionType) {
+        String sessionId = createNewSession();
+        ChatSession session = ChatSession.builder()
+            .sessionId(sessionId)
+            .userId(userId)
+            .title("新对话")
+            .sessionType(sessionType)
+            .build();
+        return chatSessionRepository.save(session);
     }
     
     /**
