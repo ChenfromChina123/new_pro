@@ -13,6 +13,7 @@ export const useChatStore = defineStore('chat', () => {
   const isLoading = ref(false)
   const abortController = ref(null)
   const selectedModel = ref(localStorage.getItem('selectedModel') || 'deepseek-chat')
+  const scrollPositions = ref({}) // 保存每个会话的滚动位置
 
   const normalizeStreamChunk = (chunk) => {
     if (chunk === null || chunk === undefined) return ''
@@ -452,6 +453,18 @@ export const useChatStore = defineStore('chat', () => {
     localStorage.setItem('selectedModel', model)
   }
   
+  // 保存滚动位置
+  function saveScrollPosition(sessionId, scrollTop) {
+    if (sessionId) {
+      scrollPositions.value[sessionId] = scrollTop
+    }
+  }
+  
+  // 获取滚动位置
+  function getScrollPosition(sessionId) {
+    return sessionId ? scrollPositions.value[sessionId] : 0
+  }
+  
   return {
     sessions,
     currentSessionId,
@@ -460,12 +473,15 @@ export const useChatStore = defineStore('chat', () => {
     suggestions,
     isLoading,
     selectedModel,
+    scrollPositions,
     fetchSessions,
     createSession,
     fetchSessionMessages,
     sendMessage,
     stopGeneration,
     deleteSession,
-    setModel
+    setModel,
+    saveScrollPosition,
+    getScrollPosition
   }
 })
