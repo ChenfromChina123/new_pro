@@ -1086,7 +1086,7 @@ const adjustTextareaHeight = (event) => {
   display: flex;
   align-items: center;
   padding: 20px 24px;
-  background-color: var(--bg-secondary);
+  background-color: transparent;
   z-index: 10;
 }
 
