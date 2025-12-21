@@ -123,6 +123,13 @@ public class TerminalController {
         return ApiResponse.success(response);
     }
 
+    @PostMapping("/new-session")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<ChatSession> createNewSession(@AuthenticationPrincipal CustomUserDetails currentUser) {
+        ChatSession session = chatRecordService.createTerminalSession(currentUser.getUser().getId().toString());
+        return ApiResponse.success(session);
+    }
+
     /**
      * 获取所有终端会话
      */
