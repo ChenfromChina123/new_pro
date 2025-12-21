@@ -1812,11 +1812,11 @@ body.dark-mode .copy-button.copied {
 .message-copy-button {
   position: absolute;
   bottom: -24px;
-  background-color: rgba(255, 255, 255, 0.9); /* 半透明白色背景 */
+  background-color: transparent; /* 透明背景 */
   color: var(--text-primary);
   border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-md); /* 使用更大的圆角 */
-  padding: 8px 16px; /* 增加内边距 */
+  border-radius: var(--border-radius-md);
+  padding: 8px 16px;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -1826,14 +1826,15 @@ body.dark-mode .copy-button.copied {
   align-items: center;
   gap: 6px;
   z-index: 10;
-  box-shadow: var(--shadow-sm);
+  box-shadow: none;
+  backdrop-filter: blur(4px);
 }
 
 /* 深色模式下的消息复制按钮样式 */
 body.dark-mode .message-copy-button {
-  background-color: rgba(31, 41, 55, 0.95); /* 深色背景 */
+  background-color: transparent;
   color: var(--text-primary);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: none;
 }
 
 /* AI消息（左对齐）的复制按钮在下方靠左 */
@@ -1936,7 +1937,7 @@ body.dark-mode .message-copy-button {
 }
 
 .suggestion-item {
-  background-color: var(--bg-primary);
+  background-color: transparent;
   border: 1px solid var(--border-color);
   border-radius: 16px;
   padding: 6px 16px;
@@ -1948,6 +1949,7 @@ body.dark-mode .message-copy-button {
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
+  backdrop-filter: blur(4px);
 }
 
 .suggestion-item:hover {
@@ -2039,7 +2041,7 @@ body.dark-mode .message-copy-button {
 }
 
 .tool-btn-special {
-  background-color: var(--bg-secondary);
+  background-color: transparent;
   border: 1px solid var(--border-color);
   color: var(--text-secondary);
   padding: 6px 12px;
@@ -2053,8 +2055,8 @@ body.dark-mode .message-copy-button {
 }
 
 .tool-btn-special.active {
-  background-color: #ebf5ff;
-  border-color: #bfdbfe;
+  background-color: rgba(37, 99, 235, 0.08);
+  border-color: #2563eb;
   color: #2563eb;
 }
 
@@ -2073,7 +2075,7 @@ body.dark-mode .message-copy-button {
 }
 
 .tool-btn-pill:hover {
-  background-color: var(--bg-secondary);
+  background-color: rgba(0, 0, 0, 0.02);
 }
 
 .model-pill {
@@ -2089,16 +2091,16 @@ body.dark-mode .message-copy-button {
   gap: 8px;
   padding: 8px 14px;
   border-radius: 14px;
-  background-color: var(--bg-primary);
+  background-color: transparent;
   border: 1px solid var(--border-color);
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   user-select: none;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: none;
 }
 
 .model-selector-trigger:hover, .model-selector-trigger.active {
-  background-color: var(--bg-primary);
+  background-color: transparent;
   border-color: var(--primary-color);
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
   transform: translateY(-1px);
@@ -2246,39 +2248,47 @@ body.dark-mode .message-copy-button {
 .stop-icon-wrapper {
   width: 32px;
   height: 32px;
-  background-color: var(--text-primary);
-  color: white;
+  background-color: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 12px;
+  transition: all 0.2s;
 }
 
 .send-icon-wrapper {
   width: 32px;
   height: 32px;
-  background-color: var(--text-primary);
-  color: white;
+  background-color: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 14px;
-  transition: opacity 0.2s;
+  transition: all 0.2s;
 }
 
 .send-btn-new:disabled .send-icon-wrapper {
-  background-color: var(--border-color);
+  border-color: var(--border-color);
+  color: var(--text-tertiary);
   cursor: not-allowed;
 }
 
 .send-btn-new:not(:disabled):hover .send-icon-wrapper {
-  opacity: 0.8;
+  background-color: var(--bg-secondary);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
 }
 
 .stop-btn:hover .stop-icon-wrapper {
-  opacity: 0.8;
+  background-color: var(--bg-secondary);
+  border-color: var(--danger-color);
+  color: var(--danger-color);
 }
 
 .send-btn {
@@ -2483,21 +2493,21 @@ body.dark-mode .message-copy-button {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background-color: var(--bg-secondary);
+  background-color: transparent;
   border: 1px solid var(--border-color);
   color: var(--text-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: var(--shadow-md);
+  box-shadow: none;
   transition: all 0.2s ease;
   opacity: 0.8;
 }
 
 .nav-arrow-btn:hover {
-  background-color: var(--primary-color);
-  color: white;
+  background-color: var(--bg-secondary);
+  color: var(--primary-color);
   transform: scale(1.1);
   opacity: 1;
 }
@@ -2511,9 +2521,9 @@ body.dark-mode .message-copy-button {
 }
 
 .scroll-to-bottom-btn {
-  background-color: var(--primary-color);
-  color: white;
-  border: none;
+  background-color: transparent;
+  color: var(--primary-color);
+  border: 1px solid var(--primary-color);
   border-radius: 20px;
   padding: 8px 16px;
   display: flex;
@@ -2521,14 +2531,16 @@ body.dark-mode .message-copy-button {
   gap: 8px;
   font-size: 14px;
   font-weight: 500;
-  box-shadow: var(--shadow-lg);
+  box-shadow: none;
   cursor: pointer;
   transition: all 0.3s ease;
+  backdrop-filter: blur(4px);
 }
 
 .scroll-to-bottom-btn:hover {
-  background-color: var(--primary-dark);
+  background-color: rgba(37, 99, 235, 0.05);
   transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
 }
 
 .history-nav-container {
@@ -2542,20 +2554,21 @@ body.dark-mode .message-copy-button {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background-color: var(--bg-secondary);
+  background-color: transparent;
   border: 1px solid var(--border-color);
   color: var(--text-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: var(--shadow-md);
+  box-shadow: none;
   transition: all 0.2s ease;
 }
 
 .history-nav-toggle:hover {
-  background-color: var(--bg-tertiary);
+  background-color: var(--bg-secondary);
   color: var(--primary-color);
+  border-color: var(--primary-color);
 }
 
 .history-nav-panel {
