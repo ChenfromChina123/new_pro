@@ -116,6 +116,20 @@
           </div>
         </div>
         
+        <!-- 返回底部按钮（引导问题上方） -->
+        <transition name="fade">
+          <div v-if="showScrollToBottomBtn" class="scroll-to-bottom-container">
+            <button 
+              class="scroll-to-bottom-btn"
+              title="返回底部"
+              @click="scrollToBottom('smooth')"
+            >
+              <i class="fas fa-arrow-down" />
+              <span>最新消息</span>
+            </button>
+          </div>
+        </transition>
+        
         <!-- 建议问题区域 -->
         <div 
           v-if="chatStore.suggestions && chatStore.suggestions.length > 0 && !chatStore.isLoading" 
@@ -274,19 +288,6 @@
           <i class="fas fa-chevron-down" />
         </button>
       </div>
-
-      <!-- 返回底部按钮（输入框上方） -->
-      <transition name="fade">
-        <button 
-          v-if="showScrollToBottomBtn" 
-          class="scroll-to-bottom-btn"
-          title="返回底部"
-          @click="scrollToBottom('smooth')"
-        >
-          <i class="fas fa-arrow-down" />
-          <span>最新消息</span>
-        </button>
-      </transition>
 
       <!-- 历史提问导航面板（右上角悬浮） -->
       <div class="history-nav-container">
@@ -2501,11 +2502,15 @@ body.dark-mode .message-copy-button {
   opacity: 1;
 }
 
+.scroll-to-bottom-container {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  padding: 8px 0;
+  z-index: 100;
+}
+
 .scroll-to-bottom-btn {
-  position: absolute;
-  bottom: 100px;
-  left: 50%;
-  transform: translateX(-50%);
   background-color: var(--primary-color);
   color: white;
   border: none;
@@ -2518,13 +2523,12 @@ body.dark-mode .message-copy-button {
   font-weight: 500;
   box-shadow: var(--shadow-lg);
   cursor: pointer;
-  z-index: 100;
   transition: all 0.3s ease;
 }
 
 .scroll-to-bottom-btn:hover {
   background-color: var(--primary-dark);
-  transform: translateX(-50%) translateY(-2px);
+  transform: translateY(-2px);
 }
 
 .history-nav-container {
