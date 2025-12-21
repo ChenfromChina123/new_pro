@@ -1085,21 +1085,19 @@ const adjustTextareaHeight = (event) => {
 .chat-header {
   display: flex;
   align-items: center;
-  justify-content: center;
   padding: 20px 24px;
   background-color: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
-  box-shadow: var(--shadow-sm);
   z-index: 10;
 }
 
 .chat-header-inner {
   width: 100%;
-  max-width: 980px;
+  max-width: 1200px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  margin-left: 40px;
 }
 
 .header-left {
