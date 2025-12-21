@@ -2,6 +2,43 @@
   <div class="language-learning-page">
     <!-- Main Content Area -->
     <div class="main-content">
+      <!-- Function Navigation -->
+      <div class="function-nav">
+        <div class="nav-container">
+          <a
+            href="#"
+            class="nav-item"
+            :class="{ active: currentView === 'dashboard' }"
+            @click.prevent="currentView = 'dashboard'"
+          >
+            <span class="label">学习概览</span>
+          </a>
+          <a
+            href="#"
+            class="nav-item"
+            :class="{ active: currentView === 'my-words' }"
+            @click.prevent="currentView = 'my-words'"
+          >
+            <span class="label">我的单词</span>
+          </a>
+          <a
+            href="#"
+            class="nav-item"
+            :class="{ active: currentView === 'public-library' }"
+            @click.prevent="currentView = 'public-library'"
+          >
+            <span class="label">公共词库</span>
+          </a>
+          <a
+            href="#"
+            class="nav-item"
+            :class="{ active: currentView === 'ai-articles' }"
+            @click.prevent="currentView = 'ai-articles'"
+          >
+            <span class="label">AI文章</span>
+          </a>
+        </div>
+      </div>
       <!-- Dashboard View -->
       <div
         v-if="currentView === 'dashboard'"
@@ -1985,6 +2022,46 @@ const formatDuration = (seconds) => {
 
 .nav-item .icon {
   font-size: 18px;
+}
+
+/* Function Navigation */
+.function-nav {
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0 32px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.nav-container {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 12px 0;
+}
+
+.nav-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 20px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: all 0.2s;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.nav-item:hover {
+  background-color: var(--bg-tertiary);
+  color: var(--primary-color);
+}
+
+.nav-item.active {
+  background-color: var(--chip-bg);
+  color: var(--primary-color);
 }
 
 /* Main Content */
