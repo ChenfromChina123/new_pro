@@ -462,11 +462,10 @@ public class VocabularyService {
     }
 
     private void registerPdfFonts(PdfRendererBuilder builder) {
-        tryUseFont(builder, "C:/Windows/Fonts/msyh.ttf", "Microsoft YaHei");
-        tryUseFont(builder, "C:/Windows/Fonts/msyh.ttc", "Microsoft YaHei");
-        tryUseFont(builder, "C:/Windows/Fonts/msyhbd.ttf", "Microsoft YaHei");
-        tryUseFont(builder, "C:/Windows/Fonts/msyhbd.ttc", "Microsoft YaHei");
+        // 优先使用 SimHei (黑体)，因为它是标准的 ttf 文件，兼容性最好
         tryUseFont(builder, "C:/Windows/Fonts/simhei.ttf", "SimHei");
+        // 备选方案
+        tryUseFont(builder, "C:/Windows/Fonts/msyh.ttc", "Microsoft YaHei");
         tryUseFont(builder, "C:/Windows/Fonts/simsun.ttc", "SimSun");
         tryUseFont(builder, "C:/Windows/Fonts/arialuni.ttf", "Arial Unicode MS");
     }
@@ -474,9 +473,15 @@ public class VocabularyService {
     private void tryUseFont(PdfRendererBuilder builder, String fontPath, String fontFamily) {
         try {
             File fontFile = new File(fontPath);
-            if (!fontFile.exists() || !fontFile.isFile()) return;
+            if (!fontFile.exists() || !fontFile.isFile()) {
+                System.out.println("PDF Font not found: " + fontPath);
+                return;
+            }
+            // openhtmltopdf 对 ttc 的支持可能有限，如果是 ttc，尝试直接加载
             builder.useFont(fontFile, fontFamily);
-        } catch (Exception ignored) {
+            System.out.println("Successfully registered PDF font: " + fontFamily + " from " + fontPath);
+        } catch (Exception e) {
+            System.err.println("Failed to register PDF font " + fontFamily + ": " + e.getMessage());
         }
     }
 }
