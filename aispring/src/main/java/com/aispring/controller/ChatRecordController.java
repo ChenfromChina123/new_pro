@@ -142,6 +142,12 @@ public class ChatRecordController {
         Map<String, Object> response = new HashMap<>();
         response.put("messages", messages.stream().map(ChatRecord::toMap).toList());
         
+        // 添加会话级别的建议问题
+        chatRecordService.getChatSession(sessionId).ifPresent(session -> {
+            response.put("suggestions", session.getSuggestions());
+            response.put("title", session.getTitle());
+        });
+        
         return ResponseEntity.ok(response);
     }
     

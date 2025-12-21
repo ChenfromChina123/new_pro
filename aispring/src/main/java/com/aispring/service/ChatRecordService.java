@@ -1,8 +1,10 @@
 package com.aispring.service;
 
 import com.aispring.entity.ChatRecord;
+import com.aispring.entity.ChatSession;
 import com.aispring.entity.User;
 import com.aispring.repository.ChatRecordRepository;
+import com.aispring.repository.ChatSessionRepository;
 import com.aispring.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,10 +24,11 @@ import java.util.stream.Collectors;
 public class ChatRecordService {
     
     private final ChatRecordRepository chatRecordRepository;
+    private final ChatSessionRepository chatSessionRepository;
     private final UserRepository userRepository;
     
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-    
+
     /**
      * 创建聊天记录
      */
@@ -37,6 +40,17 @@ public class ChatRecordService {
             sessionId = UUID.randomUUID().toString().replace("-", "");
         }
         
+        // 确保 ChatSession 存在
+        final String finalSessionId = sessionId;
+        chatSessionRepository.findBySessionId(sessionId).orElseGet(() -> {
+            ChatSession newSession = ChatSession.builder()
+                .sessionId(finalSessionId)
+                .userId(userId)
+                .title("新对话")
+                .build();
+            return chatSessionRepository.save(newSession);
+        });
+
         // 获取该会话中最新的消息顺序号
         Integer lastMessageOrder = chatRecordRepository
             .findMaxMessageOrderBySessionIdAndUserId(sessionId, userId);
@@ -65,7 +79,9 @@ public class ChatRecordService {
         
         return results.stream().map(row -> {
             Map<String, Object> session = new HashMap<>();
-            session.put("session_id", row[0]);
+            String sessionId = row[0].toString();
+            session.put("session_id", sessionId);
+            
             Object t1 = row[1];
             String tm1 = "";
             if (t1 != null) {
@@ -75,12 +91,24 @@ public class ChatRecordService {
             }
             session.put("last_message_time", tm1);
             
-            // 限制会话标题长度为50个字符
-            String lastMessage = row[2] != null ? row[2].toString() : "";
-            if (lastMessage.length() > 50) {
-                lastMessage = lastMessage.substring(0, 50) + "...";
+            // 优先从 ChatSession 获取标题，如果没有则使用最后一条消息
+            String title = chatSessionRepository.findBySessionId(sessionId)
+                .map(ChatSession::getTitle)
+                .orElse(null);
+            
+            if (title == null || title.isEmpty() || "新对话".equals(title)) {
+                String lastMessage = row[2] != null ? row[2].toString() : "";
+                if (lastMessage.length() > 50) {
+                    lastMessage = lastMessage.substring(0, 50) + "...";
+                }
+                title = lastMessage;
             }
-            session.put("last_message", lastMessage);
+            
+            session.put("last_message", title);
+            
+            // 获取建议问题
+            chatSessionRepository.findBySessionId(sessionId)
+                .ifPresent(cs -> session.put("suggestions", cs.getSuggestions()));
             
             return session;
         }).collect(Collectors.toList());
@@ -91,6 +119,25 @@ public class ChatRecordService {
      */
     public List<ChatRecord> getSessionMessages(String userId, String sessionId) {
         return chatRecordRepository.findByUserIdAndSessionIdOrderByMessageOrderAsc(userId, sessionId);
+    }
+
+    /**
+     * 获取会话详情
+     */
+    public Optional<ChatSession> getChatSession(String sessionId) {
+        return chatSessionRepository.findBySessionId(sessionId);
+    }
+    
+    /**
+     * 更新会话标题和建议
+     */
+    @Transactional
+    public void updateSessionTitleAndSuggestions(String sessionId, String title, String suggestions) {
+        chatSessionRepository.findBySessionId(sessionId).ifPresent(session -> {
+            if (title != null) session.setTitle(title);
+            if (suggestions != null) session.setSuggestions(suggestions);
+            chatSessionRepository.save(session);
+        });
     }
     
     /**
