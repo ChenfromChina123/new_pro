@@ -1103,12 +1103,14 @@ const adjustTextareaHeight = (event) => {
 
 .messages-container {
   flex: 1;
-  overflow-y: auto;
+  overflow: auto;
   padding: 32px 40px;
   background-color: var(--bg-primary);
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .messages-container::-webkit-scrollbar {
@@ -1170,7 +1172,7 @@ const adjustTextareaHeight = (event) => {
   animation: slideUp 0.3s ease-out;
   padding: 0 8px;
   width: 100%;
-  max-width: 980px;
+  max-width: 100%;
 }
 
 @keyframes slideUp {
@@ -1230,6 +1232,8 @@ const adjustTextareaHeight = (event) => {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .message.user .message-content {
@@ -1570,7 +1574,7 @@ body.dark-mode .message-copy-button {
   animation: slideUp 0.3s ease-out;
   padding: 0 8px;
   width: 100%;
-  max-width: 980px;
+  max-width: 100%;
 }
 
 /* 重置message-bubble的相对定位 */
