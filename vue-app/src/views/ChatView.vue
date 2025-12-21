@@ -301,14 +301,25 @@ const getMessageAvatarSrc = (message) => {
 window.copyCodeBlock = (element) => {
   const code = element.previousElementSibling.textContent
   const button = element
+  const icon = button.querySelector('i')
+  const text = button.querySelector('span')
+  
   navigator.clipboard.writeText(code)
     .then(() => {
       // 显示复制成功的反馈
-      const originalText = button.textContent
-      button.textContent = '已复制!'
+      const originalIconClass = icon ? icon.className : ''
+      const originalText = text ? text.textContent : button.textContent
+      
+      if (icon) icon.className = 'fas fa-check'
+      if (text) text.textContent = '已复制!'
+      else if (!icon) button.textContent = '已复制!'
+      
       button.classList.add('copied')
+      
       setTimeout(() => {
-        button.textContent = originalText
+        if (icon) icon.className = originalIconClass
+        if (text) text.textContent = originalText
+        else if (!icon) button.textContent = originalText
         button.classList.remove('copied')
       }, 2000)
     })
@@ -322,9 +333,9 @@ const renderer = new marked.Renderer()
 const originalCode = renderer.code
 renderer.code = function(code, language, escaped) {
   const originalResult = originalCode.call(this, code, language, escaped)
-  // 在pre标签内添加复制按钮
+  // 在pre标签内添加复制按钮，包含图标和文字
   return originalResult.replace('<pre', '<pre style="position: relative">')
-    .replace('</pre>', '<button class="copy-button" onclick="copyCodeBlock(this)">复制</button></pre>')
+    .replace('</pre>', '<button class="copy-button" onclick="copyCodeBlock(this)"><i class="far fa-copy"></i><span>复制</span></button></pre>')
 }
 
 // 配置marked
@@ -1354,37 +1365,36 @@ const adjustTextareaHeight = (event) => {
   position: absolute;
   top: 8px;
   right: 8px;
-  background-color: rgba(255, 255, 255, 0.9); /* 半透明白色背景 */
-  color: var(--text-primary);
-  border: 1px solid var(--border-color); /* 添加边框 */
-  border-radius: var(--border-radius-md); /* 使用更大的圆角 */
-  padding: 8px 16px; /* 增加内边距 */
-  font-size: 13px;
+  background-color: rgba(243, 244, 246, 0.8); /* 浅灰色半透明背景 */
+  color: #4b5563; /* 中灰色文字 */
+  border: 1px solid #d1d5db; /* 浅灰色边框 */
+  border-radius: 6px; /* 圆角 */
+  padding: 4px 8px; /* 减小内边距，使其更精致 */
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
-  opacity: 0;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0; /* 默认隐藏 */
   z-index: 100;
-  /* 确保按钮位于右上角 */
-  margin: 0;
-  transform: none;
-  box-sizing: border-box;
-  box-shadow: var(--shadow-sm);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
+  backdrop-filter: blur(4px); /* 背景模糊效果 */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 /* 深色模式下的复制按钮样式 */
 body.dark-mode .copy-button {
-  background-color: rgba(31, 41, 55, 0.95); /* 深色背景 */
-  color: var(--text-primary);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  background-color: rgba(31, 41, 55, 0.8); /* 深色半透明背景 */
+  color: #e5e7eb;
+  border-color: #4b5563;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 /* 确保代码块是相对定位的容器 */
 .message-text :deep(pre) {
   position: relative !important;
+  padding-top: 32px !important; /* 为按钮留出顶部空间 */
 }
 
 /* 确保复制按钮样式正确应用 */
@@ -1392,35 +1402,44 @@ body.dark-mode .copy-button {
   position: absolute;
   top: 8px;
   right: 8px;
-  z-index: 100;
+  opacity: 0;
 }
 
+/* 鼠标悬停在代码块上时显示按钮 */
 .message-text :deep(pre):hover .copy-button {
   opacity: 1;
 }
 
 .copy-button:hover {
-  background-color: var(--primary-color);
-  color: white;
+  background-color: #f9fafb;
+  color: var(--primary-color);
   border-color: var(--primary-color);
   transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   opacity: 1 !important;
+}
+
+body.dark-mode .copy-button:hover {
+  background-color: #374151;
+  color: #60a5fa;
+  border-color: #60a5fa;
 }
 
 .copy-button:active {
   transform: translateY(0);
-  box-shadow: var(--shadow-sm);
-  background-color: var(--primary-dark);
-  border-color: var(--primary-dark);
 }
 
 .copy-button.copied {
-  background-color: var(--success-color);
-  color: white;
-  border-color: var(--success-color);
-  animation: copiedPulse 0.6s ease-in-out;
-  box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.2);
+  background-color: #ecfdf5;
+  color: #10b981;
+  border-color: #10b981;
+  opacity: 1 !important;
+}
+
+body.dark-mode .copy-button.copied {
+  background-color: rgba(6, 78, 59, 0.4);
+  color: #34d399;
+  border-color: #34d399;
 }
 
 @keyframes copiedPulse {
