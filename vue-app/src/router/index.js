@@ -25,6 +25,12 @@ const router = createRouter({
           meta: { requiresAuth: true }
         },
         {
+          path: 'terminal',
+          name: 'Terminal',
+          component: () => import('@/views/TerminalView.vue'),
+          meta: { requiresAuth: true }
+        },
+        {
           path: 'language-learning',
           name: 'LanguageLearning',
           component: () => import('@/views/LanguageLearningView.vue'),
