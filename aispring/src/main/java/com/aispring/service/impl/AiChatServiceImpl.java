@@ -3,6 +3,7 @@ package com.aispring.service.impl;
 import com.aispring.service.AiChatService;
 import com.aispring.repository.ChatRecordRepository;
 import com.aispring.entity.ChatRecord;
+import com.aispring.entity.ChatSession;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.*;
@@ -29,6 +30,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.*;
@@ -232,21 +234,6 @@ public class AiChatServiceImpl implements AiChatService {
         // 异步处理流式响应
         new Thread(() -> {
             try {
-                // 检查是否为该会话的第一条消息，如果是，则生成标题和建议问题
-                boolean isFirstMessage = false;
-                if (sessionId != null && !sessionId.isEmpty()) {
-                    Integer count = chatRecordRepository.findMaxMessageOrderBySessionIdAndUserId(sessionId, userId);
-                    if (count == null || count == 0) {
-                        isFirstMessage = true;
-                    }
-                } else {
-                    isFirstMessage = true;
-                }
-
-                if (isFirstMessage) {
-                    generateTitleAndSuggestionsAsync(prompt, sessionId, userId, emitter);
-                }
-
                 if (finalClient == null) {
                     String content = fallbackAnswer(prompt);
                     String json = objectMapper.writeValueAsString(Map.of("content", content));
@@ -255,6 +242,10 @@ public class AiChatServiceImpl implements AiChatService {
                     emitter.complete();
                     return;
                 }
+
+                // 异步生成标题（仅限第一条消息）和建议问题（每条消息）
+                generateTitleAndSuggestionsAsync(prompt, sessionId, userId, emitter);
+
                 finalClient.stream(promptObj)
                     .doOnNext(chatResponse -> {
                         try {
@@ -291,20 +282,8 @@ public class AiChatServiceImpl implements AiChatService {
     private SseEmitter askStreamWithOkHttp(String prompt, String sessionId, String model, String userId, SseEmitter emitter) {
         new Thread(() -> {
             try {
-                // 检查是否为该会话的第一条消息，如果是，则生成标题和建议问题
-                boolean isFirstMessage = false;
-                if (sessionId != null && !sessionId.isEmpty()) {
-                    Integer count = chatRecordRepository.findMaxMessageOrderBySessionIdAndUserId(sessionId, userId);
-                    if (count == null || count == 0) {
-                        isFirstMessage = true;
-                    }
-                } else {
-                    isFirstMessage = true;
-                }
-
-                if (isFirstMessage) {
-                    generateTitleAndSuggestionsAsync(prompt, sessionId, userId, emitter);
-                }
+                // 异步生成标题（仅限第一条消息）和建议问题（每条消息）
+                generateTitleAndSuggestionsAsync(prompt, sessionId, userId, emitter);
 
                 String apiKey = "";
                 String apiUrl = "";
@@ -442,10 +421,24 @@ public class AiChatServiceImpl implements AiChatService {
             try {
                 if (deepseekChatClient == null) return;
 
-                String systemPrompt = "你是一个助手，请根据用户的第一条询问内容，生成一个简短的标题（不超过15个字）和3个相关的引导询问问题。\n" +
-                        "请严格按照以下 JSON 格式返回，不要包含任何其他文字：\n" +
+                // 检查是否需要生成标题
+                boolean needTitle = true;
+                if (sessionId != null && !sessionId.isEmpty()) {
+                    Optional<ChatSession> sessionOpt = chatRecordService.getChatSession(sessionId);
+                    if (sessionOpt.isPresent() && sessionOpt.get().getTitle() != null && 
+                        !"新对话".equals(sessionOpt.get().getTitle()) && !sessionOpt.get().getTitle().isEmpty()) {
+                        needTitle = false;
+                    }
+                }
+
+                String systemPrompt = "你是一个助手，请根据用户的询问内容，生成 3 个用户视角的引导询问问题（即用户接下来可能会问的问题）。" +
+                        "请确保问题是站在用户的立场提出的，而不是以 AI 的身份。例如：'你可以帮我做什么？' 而不是 '我还能为你提供什么帮助？'。\n";
+                if (needTitle) {
+                    systemPrompt += "由于这是会话的第一条消息，请同时生成一个简短的标题（不超过15个字）。\n";
+                }
+                systemPrompt += "请严格按照以下 JSON 格式返回，不要包含任何其他文字：\n" +
                         "{\n" +
-                        "  \"title\": \"标题内容\",\n" +
+                        (needTitle ? "  \"title\": \"标题内容\",\n" : "") +
                         "  \"suggestions\": [\"问题1\", \"问题2\", \"问题3\"]\n" +
                         "}";
 
@@ -468,7 +461,8 @@ public class AiChatServiceImpl implements AiChatService {
                 if (jsonStart >= 0 && jsonEnd > jsonStart) {
                     String jsonStr = content.substring(jsonStart, jsonEnd + 1);
                     JsonNode root = objectMapper.readTree(jsonStr);
-                    String title = root.path("title").asText();
+                    
+                    String title = needTitle ? root.path("title").asText() : null;
                     JsonNode suggestionsNode = root.path("suggestions");
                     List<String> suggestionsList = new ArrayList<>();
                     if (suggestionsNode.isArray()) {
@@ -480,13 +474,13 @@ public class AiChatServiceImpl implements AiChatService {
                     String suggestionsJson = objectMapper.writeValueAsString(suggestionsList);
 
                     // 保存到数据库
-                    chatRecordService.updateSessionTitleAndSuggestions(sessionId, title, suggestionsJson);
+                    chatRecordService.updateSessionTitleAndSuggestions(sessionId, title, suggestionsJson, userId);
 
                     // 发送 SSE 事件（如果有 emitter）
                     if (emitter != null) {
                         Map<String, Object> sseData = new HashMap<>();
                         sseData.put("type", "session_update");
-                        sseData.put("title", title);
+                        if (title != null) sseData.put("title", title);
                         sseData.put("suggestions", suggestionsList);
                         try {
                             emitter.send(SseEmitter.event().name("session_update").data(objectMapper.writeValueAsString(sseData)));
@@ -549,21 +543,8 @@ public class AiChatServiceImpl implements AiChatService {
     @Override
     public String ask(String prompt, String sessionId, String model, String userId) {
         try {
-            // 检查是否为该会话的第一条消息
-            boolean isFirstMessage = false;
-            if (sessionId != null && !sessionId.isEmpty()) {
-                Integer count = chatRecordRepository.findMaxMessageOrderBySessionIdAndUserId(sessionId, userId);
-                if (count == null || count == 0) {
-                    isFirstMessage = true;
-                }
-            } else {
-                isFirstMessage = true;
-            }
-
-            if (isFirstMessage) {
-                // 非流式下，我们同步或异步生成标题和建议，这里选择异步以不阻塞主回答
-                generateTitleAndSuggestionsAsync(prompt, sessionId, userId, null);
-            }
+            // 异步生成标题（仅限第一条消息）和建议问题（每条消息）
+            generateTitleAndSuggestionsAsync(prompt, sessionId, userId, null);
 
             ChatClient clientToUse = null;
             String actualModel = model;
