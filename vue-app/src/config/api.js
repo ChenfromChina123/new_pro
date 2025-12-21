@@ -101,7 +101,8 @@ export const API_ENDPOINTS = {
     generateTopics: '/api/vocabulary/articles/topics',
     generateArticle: '/api/vocabulary/articles/generate',
     getArticles: '/api/vocabulary/articles',
-    getArticle: (articleId) => `/api/vocabulary/articles/${articleId}`
+    getArticle: (articleId) => `/api/vocabulary/articles/${articleId}`,
+    downloadArticlePdf: (articleId) => `/api/vocabulary/articles/${articleId}/download-pdf`
   }
 }
 

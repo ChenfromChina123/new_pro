@@ -1,21 +1,39 @@
 <template>
   <div class="settings-container">
-    <h2 class="settings-title">设置</h2>
+    <h2 class="settings-title">
+      设置
+    </h2>
     
-    <div v-if="settingsStore.isLoading" class="loading-indicator">
+    <div
+      v-if="settingsStore.isLoading"
+      class="loading-indicator"
+    >
       <div class="loading-spinner" />
       <p>加载中...</p>
     </div>
     
-    <div v-else-if="settingsStore.error" class="error-message">
+    <div
+      v-else-if="settingsStore.error"
+      class="error-message"
+    >
       <p>{{ settingsStore.error }}</p>
-      <button class="retry-btn" @click="settingsStore.fetchSettings">重试</button>
+      <button
+        class="retry-btn"
+        @click="settingsStore.fetchSettings"
+      >
+        重试
+      </button>
     </div>
     
-    <div v-else class="settings-content">
+    <div
+      v-else
+      class="settings-content"
+    >
       <!-- 常规设置 -->
       <div class="settings-section">
-        <h3 class="section-title">常规设置</h3>
+        <h3 class="section-title">
+          常规设置
+        </h3>
         
         <div class="setting-item">
           <label class="setting-label">界面主题</label>
@@ -25,8 +43,12 @@
               class="select-control"
               @change="handleUpdate('theme')"
             >
-              <option value="light">浅色模式</option>
-              <option value="dark">深色模式</option>
+              <option value="light">
+                浅色模式
+              </option>
+              <option value="dark">
+                深色模式
+              </option>
             </select>
           </div>
         </div>
@@ -39,8 +61,12 @@
               class="select-control"
               @change="handleUpdate('language')"
             >
-              <option value="zh-CN">简体中文</option>
-              <option value="en-US">English</option>
+              <option value="zh-CN">
+                简体中文
+              </option>
+              <option value="en-US">
+                English
+              </option>
             </select>
           </div>
         </div>
@@ -48,7 +74,9 @@
       
       <!-- AI 模型设置 -->
       <div class="settings-section">
-        <h3 class="section-title">AI 设置</h3>
+        <h3 class="section-title">
+          AI 设置
+        </h3>
         
         <div class="setting-item">
           <label class="setting-label">默认模型</label>
@@ -58,8 +86,12 @@
               class="select-control"
               @change="handleUpdate('aiModel')"
             >
-              <option value="deepseek">DeepSeek</option>
-              <option value="doubao">豆包</option>
+              <option value="deepseek">
+                DeepSeek
+              </option>
+              <option value="doubao">
+                豆包
+              </option>
             </select>
           </div>
         </div>
@@ -67,18 +99,20 @@
 
       <!-- 通知设置 -->
       <div class="settings-section">
-        <h3 class="section-title">通知设置</h3>
+        <h3 class="section-title">
+          通知设置
+        </h3>
         
         <div class="setting-item">
           <label class="setting-label">启用系统通知</label>
           <div class="setting-control">
-             <label class="switch">
+            <label class="switch">
               <input 
-                type="checkbox" 
-                v-model="localSettings.notificationsEnabled"
+                v-model="localSettings.notificationsEnabled" 
+                type="checkbox"
                 @change="handleUpdate('notificationsEnabled')"
               >
-              <span class="slider round"></span>
+              <span class="slider round" />
             </label>
           </div>
         </div>
@@ -88,11 +122,11 @@
           <div class="setting-control">
             <label class="switch">
               <input 
-                type="checkbox" 
-                v-model="localSettings.emailNotifications"
+                v-model="localSettings.emailNotifications" 
+                type="checkbox"
                 @change="handleUpdate('emailNotifications')"
               >
-              <span class="slider round"></span>
+              <span class="slider round" />
             </label>
           </div>
         </div>
@@ -100,12 +134,19 @@
       
       <!-- 危险区域 -->
       <div class="settings-section danger-zone">
-        <h3 class="section-title danger-title">危险区域</h3>
+        <h3 class="section-title danger-title">
+          危险区域
+        </h3>
         
         <div class="setting-item">
           <label class="setting-label">重置所有设置</label>
           <div class="setting-control">
-            <button class="btn btn-danger" @click="handleReset">重置设置</button>
+            <button
+              class="btn btn-danger"
+              @click="handleReset"
+            >
+              重置设置
+            </button>
           </div>
         </div>
       </div>
