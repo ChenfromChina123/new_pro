@@ -402,9 +402,15 @@ const triggerScrollToBottom = (delay = 100) => {
     scrollToBottom('auto')
     // 第二次尝试：短延迟
     setTimeout(() => scrollToBottom('auto'), delay)
-    // 第三次尝试：长延迟，确保公式渲染
+    // 第三次尝试：中等延迟
     setTimeout(() => scrollToBottom('auto'), delay + 200)
-    setTimeout(() => updatePinnedState(), delay + 250)
+    // 第四次尝试：长延迟，确保公式和复杂内容渲染
+    setTimeout(() => scrollToBottom('auto'), delay + 500)
+    // 第五次尝试：超长延迟，针对低性能设备或大量内容
+    setTimeout(() => {
+      scrollToBottom('auto')
+      updatePinnedState()
+    }, delay + 1000)
   })
 }
 
@@ -420,6 +426,8 @@ onMounted(async () => {
     chatStore.currentSessionId = querySessionId
     await chatStore.fetchSessionMessages(querySessionId)
     triggerScrollToBottom(100)
+    // 增加一个额外的延迟滚动，确保组件重新挂载后页面完全渲染
+    setTimeout(() => scrollToBottom('auto'), 500)
     return
   }
 
@@ -428,6 +436,7 @@ onMounted(async () => {
     chatStore.currentSessionId = chatStore.sessions[0].id
     await chatStore.fetchSessionMessages(chatStore.sessions[0].id)
     triggerScrollToBottom(100)
+    setTimeout(() => scrollToBottom('auto'), 500)
     // 更新 URL
     router.replace(`/chat?session=${chatStore.sessions[0].id}`)
   } 
