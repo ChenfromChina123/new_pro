@@ -314,17 +314,28 @@
               搜索
             </button>
           </div>
-          <div
-            v-if="!currentListId"
-            class="search-tips"
-          >
-            ⚠️ 请先在"我的单词"中选择或创建一个目标单词表
-          </div>
-          <div
-            v-else
-            class="search-tips"
-          >
-            添加到: <strong>{{ currentList?.name }}</strong>
+          <div class="wordlist-selection">
+            <label for="wordlist-select">添加到：</label>
+            <select
+              id="wordlist-select"
+              v-model="currentListId"
+              class="select-input"
+              @change="onListChange"
+            >
+              <option
+                :value="null"
+                disabled
+              >
+                请选择单词表
+              </option>
+              <option
+                v-for="list in vocabularyLists"
+                :key="list.id"
+                :value="list.id"
+              >
+                {{ list.name }} ({{ list.wordCount || 0 }}词)
+              </option>
+            </select>
           </div>
         </div>
 
@@ -2268,6 +2279,177 @@ body.dark-mode .copy-button {
   font-style: italic;
   font-weight: 400;
   margin-left: 8px;
+}
+
+/* Search Bar Styles */
+.search-bar-container {
+  margin-bottom: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.search-input-wrapper {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  max-width: 600px;
+  width: 100%;
+}
+
+.search-input {
+  flex: 1;
+  padding: 12px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 14px;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  background-color: var(--bg-primary);
+}
+
+.search-btn {
+  min-width: 80px;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+/* Wordlist Selection Styles */
+.wordlist-selection {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 600px;
+  padding: 16px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.wordlist-selection:hover {
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-sm);
+}
+
+.wordlist-selection label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  min-width: 60px;
+  white-space: nowrap;
+}
+
+.wordlist-selection .select-input {
+  flex: 1;
+  padding: 10px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 14px;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.wordlist-selection .select-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Public Results Grid Styles */
+.public-results-grid {
+  margin-bottom: 32px;
+}
+
+.public-library-view .review-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.public-library-view .review-card-item {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 20px;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 180px;
+}
+
+.public-library-view .review-card-item:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary-color);
+}
+
+.public-library-view .review-content {
+  flex: 1;
+  margin-bottom: 16px;
+}
+
+.public-library-view .review-word {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--primary-color);
+  margin: 0 0 8px 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.public-library-view .review-def {
+  font-size: 14px;
+  color: var(--text-primary);
+  line-height: 1.6;
+  margin: 0 0 12px 0;
+}
+
+.public-library-view .review-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.public-library-view .review-actions .btn {
+  min-width: 80px;
+  font-size: 14px;
+  padding: 8px 16px;
+}
+
+/* Loading and Empty States */
+.loading-state, .empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.loading-state .spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--border-color);
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  margin: 0 auto 16px;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 /* My Words Layout */
