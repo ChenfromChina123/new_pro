@@ -1664,7 +1664,7 @@ body.dark-mode .message-copy-button {
 
 .chat-input-area {
   padding: 20px 32px 32px;
-  background-color: var(--bg-secondary);
+  background-color: transparent;
   display: flex;
   justify-content: center;
 }

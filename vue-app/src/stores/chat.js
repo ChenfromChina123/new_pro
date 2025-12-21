@@ -142,7 +142,8 @@ export const useChatStore = defineStore('chat', () => {
         // 确保角色是前端期望的格式：user 或 assistant
         // 后端返回 sender_type: 1 (user), 2 (AI)
           role,
-          model: msg?.model ?? msg?.model_name ?? msg?.modelName ?? null,
+          model: msg?.model ?? msg?.ai_model ?? msg?.model_name ?? msg?.modelName ?? null,
+          timestamp: msg?.timestamp ?? msg?.send_time ?? msg?.sendTime ?? null,
           reasoning_content: normalizeStreamChunk(reasoningContent),
           isReasoningCollapsed: role === 'assistant'
             ? (msg?.isReasoningCollapsed ?? true)
