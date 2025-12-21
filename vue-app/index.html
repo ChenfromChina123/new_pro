@@ -3,12 +3,43 @@
   <head>
     <meta charset="UTF-8">
     <link rel="icon" type="image/svg+xml" href="/vite.svg">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
     <title>AI智能学习助手系统</title>
   </head>
   <body>
     <div id="app"></div>
     <script type="module" src="/src/main.js"></script>
+    <script>
+      // 阻止浏览器缩放
+      window.addEventListener('keydown', function(e) {
+        // 阻止Ctrl+和Ctrl-缩放
+        if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '-' || e.key === '=')) {
+          e.preventDefault();
+        }
+        // 阻止Ctrl滚轮缩放
+        if ((e.ctrlKey || e.metaKey) && e.key === 'MouseWheel') {
+          e.preventDefault();
+        }
+      });
+      
+      // 阻止鼠标滚轮缩放
+      window.addEventListener('wheel', function(e) {
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+        }
+      }, { passive: false });
+      
+      // 重置缩放比例为100%
+      function resetZoom() {
+        document.body.style.zoom = '100%';
+        document.documentElement.style.zoom = '100%';
+      }
+      
+      // 页面加载时重置缩放
+      window.addEventListener('load', resetZoom);
+      // 窗口大小变化时重置缩放
+      window.addEventListener('resize', resetZoom);
+    </script>
   </body>
 </html>
 
