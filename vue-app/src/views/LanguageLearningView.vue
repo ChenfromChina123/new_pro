@@ -1050,7 +1050,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, onActivated, onDeactivated, reactive, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, reactive, watch } from 'vue'
 import request from '@/utils/request'
 import { API_ENDPOINTS } from '@/config/api'
 import { useVocabularyStore } from '@/stores/vocabulary'
@@ -1234,9 +1234,7 @@ onMounted(async () => {
   if (currentView.value === 'public-library') {
     await searchPublic()
   }
-})
 
-onActivated(() => {
   markActive()
   lastTickAt.value = Date.now()
   durationTimer = window.setInterval(tickDuration, 1000)
@@ -1249,7 +1247,7 @@ onActivated(() => {
   document.addEventListener('visibilitychange', onVisibilityChange)
 })
 
-onDeactivated(() => {
+onUnmounted(() => {
   if (durationTimer) {
     window.clearInterval(durationTimer)
     durationTimer = null
