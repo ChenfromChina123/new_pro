@@ -2516,8 +2516,10 @@ body.dark-mode .message-copy-button {
   display: flex;
   justify-content: center;
   width: 100%;
-  padding: 8px 0;
+  padding: 4px 0;
   z-index: 100;
+  background-color: transparent;
+  pointer-events: none;
 }
 
 .scroll-to-bottom-btn {
@@ -2535,6 +2537,7 @@ body.dark-mode .message-copy-button {
   cursor: pointer;
   transition: all 0.3s ease;
   backdrop-filter: blur(4px);
+  pointer-events: auto;
 }
 
 .scroll-to-bottom-btn:hover {
