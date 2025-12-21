@@ -9,6 +9,7 @@ export const useChatStore = defineStore('chat', () => {
   const sessions = ref([])
   const currentSessionId = ref(null)
   const messages = ref([])
+  const suggestions = ref([]) // 新增：当前会话的建议问题
   const isLoading = ref(false)
   const abortController = ref(null)
   const selectedModel = ref(localStorage.getItem('selectedModel') || 'deepseek-chat')
@@ -149,6 +150,21 @@ export const useChatStore = defineStore('chat', () => {
         }
       })
       currentSessionId.value = sessionId
+      
+      // 解析建议问题
+      if (response.suggestions) {
+        try {
+          suggestions.value = typeof response.suggestions === 'string' 
+            ? JSON.parse(response.suggestions) 
+            : response.suggestions
+        } catch (e) {
+          console.warn('Failed to parse suggestions:', e)
+          suggestions.value = []
+        }
+      } else {
+        suggestions.value = []
+      }
+      
       return { success: true }
     } catch (error) {
       console.error('Fetch messages error:', error)
@@ -237,6 +253,20 @@ export const useChatStore = defineStore('chat', () => {
             try {
               const parsed = JSON.parse(data)
               
+              // 处理会话更新（标题和建议问题）
+              if (parsed.type === 'session_update') {
+                if (parsed.suggestions) {
+                  suggestions.value = parsed.suggestions
+                }
+                if (parsed.title) {
+                  const session = sessions.value.find(s => s.id === currentSessionId.value)
+                  if (session) {
+                    session.title = parsed.title
+                  }
+                }
+                continue
+              }
+              
               // 处理推理内容
               const reasoningChunk = normalizeStreamChunk(parsed.reasoning_content)
               if (reasoningChunk) {
@@ -267,6 +297,20 @@ export const useChatStore = defineStore('chat', () => {
         if (data !== '[DONE]') {
           try {
             const parsed = JSON.parse(data)
+            
+            // 处理会话更新（标题和建议问题）
+            if (parsed.type === 'session_update') {
+              if (parsed.suggestions) {
+                suggestions.value = parsed.suggestions
+              }
+              if (parsed.title) {
+                const session = sessions.value.find(s => s.id === currentSessionId.value)
+                if (session) {
+                  session.title = parsed.title
+                }
+              }
+              return // 结束当前 buffer 处理
+            }
             
             const reasoningChunk = normalizeStreamChunk(parsed.reasoning_content)
             if (reasoningChunk) {
@@ -363,6 +407,7 @@ export const useChatStore = defineStore('chat', () => {
     currentSessionId,
     currentSession,
     messages,
+    suggestions,
     isLoading,
     selectedModel,
     fetchSessions,
