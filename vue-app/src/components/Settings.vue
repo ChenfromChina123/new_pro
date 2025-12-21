@@ -154,6 +154,12 @@
   </div>
 </template>
 
+<script>
+export default {
+  name: 'AppSettings'
+}
+</script>
+
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { useSettingsStore } from '@/stores/settings'

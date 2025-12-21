@@ -235,9 +235,11 @@
 <script setup>
 import { ref, nextTick, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useUIStore } from '@/stores/ui'
 import { API_CONFIG } from '@/config/api'
 
 const authStore = useAuthStore()
+const uiStore = useUIStore()
 const messages = ref([])
 const terminalLogs = ref([])
 const inputMessage = ref('')
@@ -251,42 +253,127 @@ const currentSessionId = ref(null)
 const sessions = ref([])
 const sidebarCollapsed = ref(false)
 
-onMounted(async () => {
-  await fetchSessions()
-  if (sessions.value.length > 0) {
-    selectSession(sessions.value[0].sessionId)
-  } else {
-    createNewSession()
-  }
-})
-
-const fetchSessions = async () => {
-  try {
-    const res = await fetch(`${API_CONFIG.baseURL}/api/terminal/sessions`, {
-      headers: { 'Authorization': `Bearer ${authStore.token}` }
-    })
-    const data = await res.json()
-    if (data.code === 200) {
-      sessions.value = data.data
-    }
-  } catch (error) {
-    console.error('Failed to fetch sessions:', error)
+/**
+ * 将后端 snake_case 的会话对象规范化为前端统一结构
+ * @param {any} raw 会话原始数据
+ * @returns {{sessionId: string, title?: string, createdAt?: string, sessionType?: string, localOnly?: boolean}} 规范化会话
+ */
+const normalizeSession = (raw) => {
+  if (!raw) return null
+  return {
+    sessionId: raw.sessionId ?? raw.session_id,
+    title: raw.title,
+    createdAt: raw.createdAt ?? raw.created_at,
+    sessionType: raw.sessionType ?? raw.session_type,
+    localOnly: raw.localOnly === true
   }
 }
 
+/**
+ * 将后端 snake_case 的聊天记录对象规范化为前端统一结构
+ * @param {any} raw 记录原始数据
+ * @returns {{senderType: number, content: string}} 规范化记录
+ */
+const normalizeRecord = (raw) => {
+  if (!raw) return null
+  return {
+    senderType: raw.senderType ?? raw.sender_type,
+    content: raw.content
+  }
+}
+
+/**
+ * 安全解析 JSON 响应，避免 401/500 返回非 JSON 导致页面无提示
+ * @param {Response} res fetch 响应
+ * @returns {Promise<any|null>} 解析成功返回对象，否则返回 null
+ */
+const safeReadJson = async (res) => {
+  try {
+    return await res.json()
+  } catch {
+    return null
+  }
+}
+
+onMounted(async () => {
+  try {
+    await fetchSessions()
+    if (sessions.value.length > 0) {
+      const firstSession = sessions.value[0]
+      if (firstSession && firstSession.sessionId) {
+        await selectSession(firstSession.sessionId)
+      }
+    } else {
+      await createNewSession()
+    }
+  } catch (error) {
+    console.error('Initialization error:', error)
+    uiStore.showToast('初始化失败，请刷新页面')
+  }
+})
+
+/**
+ * 拉取会话列表，并与本地临时会话合并
+ */
+const fetchSessions = async () => {
+  try {
+    if (!authStore.token) {
+      uiStore.showToast('未登录或登录已失效')
+      return
+    }
+    const res = await fetch(`${API_CONFIG.baseURL}/api/terminal/sessions`, {
+      headers: { 'Authorization': `Bearer ${authStore.token}` }
+    })
+    const data = await safeReadJson(res)
+    if (!data || data.code !== 200) {
+      uiStore.showToast(data?.message || '会话列表加载失败')
+      return
+    }
+
+    const serverSessionsRaw = Array.isArray(data.data) ? data.data : []
+    const serverSessions = serverSessionsRaw.map(normalizeSession).filter(s => s?.sessionId)
+    const localSessions = sessions.value
+      .map(normalizeSession)
+      .filter(s => s && s.localOnly && s.sessionId)
+
+    const serverSessionIdSet = new Set(serverSessions.map(s => s.sessionId))
+    const remainingLocal = localSessions.filter(s => !serverSessionIdSet.has(s.sessionId))
+    sessions.value = [...remainingLocal, ...serverSessions]
+  } catch (error) {
+    console.error('Failed to fetch sessions:', error)
+    uiStore.showToast('会话列表加载失败')
+  }
+}
+
+/**
+ * 切换当前会话并加载历史记录
+ * @param {string} sessionId 会话ID
+ */
 const selectSession = async (sessionId) => {
+  if (!sessionId) {
+    uiStore.showToast('会话ID无效')
+    return
+  }
   currentSessionId.value = sessionId
   messages.value = []
   terminalLogs.value = []
   
   try {
+    if (!authStore.token) {
+      uiStore.showToast('未登录或登录已失效')
+      return
+    }
     const res = await fetch(`${API_CONFIG.baseURL}/api/terminal/history/${sessionId}`, {
       headers: { 'Authorization': `Bearer ${authStore.token}` }
     })
-    const data = await res.json()
-    if (data.code === 200) {
+    const data = await safeReadJson(res)
+    if (!data || data.code !== 200) {
+      uiStore.showToast(data?.message || '会话历史加载失败')
+      return
+    }
       // Map history to view messages
-      messages.value = data.data.map(record => {
+      const normalizedRecords = (Array.isArray(data.data) ? data.data : []).map(normalizeRecord).filter(Boolean)
+      messages.value = normalizedRecords.map(record => {
         if (record.senderType === 1) return { role: 'user', content: record.content }
         if (record.senderType === 2) {
           // Try to parse JSON from AI response if it contains tool calls
@@ -313,7 +400,7 @@ const selectSession = async (sessionId) => {
       
       // Also populate terminal logs from history if they were commands
       let lastCommand = ''
-      data.data.forEach(record => {
+      normalizedRecords.forEach(record => {
         if (record.senderType === 2) {
           try {
             const jsonMatch = record.content.match(/\{[\s\S]*\}/)
@@ -335,41 +422,104 @@ const selectSession = async (sessionId) => {
       })
       
       scrollToBottom()
-    }
+      uiStore.showToast('会话已切换', 1200)
   } catch (error) {
     console.error('Failed to fetch history:', error)
+    uiStore.showToast('会话历史加载失败')
   }
 }
 
-const createNewSession = () => {
-  const newId = 'term_' + Date.now()
-  currentSessionId.value = newId
-  messages.value = []
-  terminalLogs.value = []
-  // Session will be created on server upon first message save
+/**
+ * 新建终端会话（优先走后端，失败则创建本地临时会话）
+ */
+const createNewSession = async () => {
+  try {
+    if (!authStore.token) {
+      uiStore.showToast('未登录或登录已失效')
+      return
+    }
+    const res = await fetch(`${API_CONFIG.baseURL}/api/terminal/new-session`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${authStore.token}` }
+    })
+    const data = await safeReadJson(res)
+    const newSession = normalizeSession(data?.data)
+    if (data?.code === 200 && newSession?.sessionId) {
+      sessions.value = [newSession, ...sessions.value.filter(s => s?.sessionId !== newSession.sessionId)]
+      await selectSession(newSession.sessionId)
+      uiStore.showToast('会话创建成功')
+      return
+    }
+  } catch (error) {
+    console.error('Failed to create session:', error)
+  }
+
+  const newSession = {
+    sessionId: 'term_' + Date.now(),
+    title: '未命名会话',
+    createdAt: new Date().toISOString(),
+    sessionType: 'terminal',
+    localOnly: true
+  }
+  sessions.value = [newSession, ...sessions.value]
+  await selectSession(newSession.sessionId)
+  uiStore.showToast('已创建本地临时会话')
 }
 
+/**
+ * 删除终端会话（本地临时会话直接移除；服务端会话调用删除接口）
+ * @param {string} sessionId 会话ID
+ */
 const deleteSession = async (sessionId) => {
+  if (!sessionId) {
+    uiStore.showToast('会话ID无效')
+    return
+  }
   if (!confirm('确定要删除这个会话吗？')) return
   
   try {
+    const localIndex = sessions.value.findIndex(s => s?.sessionId === sessionId)
+    const localSession = localIndex >= 0 ? sessions.value[localIndex] : null
+
+    if (localSession?.localOnly) {
+      sessions.value = sessions.value.filter(s => s?.sessionId !== sessionId)
+      if (currentSessionId.value === sessionId) {
+        if (sessions.value.length > 0) {
+          await selectSession(sessions.value[0].sessionId)
+        } else {
+          await createNewSession()
+        }
+      }
+      uiStore.showToast('会话已删除')
+      return
+    }
+
+    if (!authStore.token) {
+      uiStore.showToast('未登录或登录已失效')
+      return
+    }
     const res = await fetch(`${API_CONFIG.baseURL}/api/terminal/sessions/${sessionId}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${authStore.token}` }
     })
-    const data = await res.json()
-    if (data.code === 200) {
+    const data = await safeReadJson(res)
+    if (data?.code === 200) {
+      sessions.value = sessions.value.filter(s => s?.sessionId !== sessionId)
       await fetchSessions()
       if (currentSessionId.value === sessionId) {
         if (sessions.value.length > 0) {
-          selectSession(sessions.value[0].sessionId)
+          await selectSession(sessions.value[0].sessionId)
         } else {
-          createNewSession()
+          await createNewSession()
         }
       }
+      uiStore.showToast('会话已删除')
+    } else {
+      uiStore.showToast(data?.message || '删除会话失败')
     }
   } catch (error) {
     console.error('Failed to delete session:', error)
+    uiStore.showToast('删除会话失败')
   }
 }
 
@@ -443,6 +593,7 @@ const sendMessage = async () => {
 }
 
 const processAgentLoop = async (prompt) => {
+  console.log('=== processAgentLoop Started ===', prompt)
   try {
     const response = await fetch(`${API_CONFIG.baseURL}/api/terminal/chat-stream`, {
       method: 'POST',
@@ -457,15 +608,27 @@ const processAgentLoop = async (prompt) => {
       })
     })
 
-    if (!response.ok) throw new Error('Network response was not ok')
+    if (!response.ok) {
+      const errorData = await safeReadJson(response)
+      throw new Error(errorData?.message || '网络请求失败')
+    }
 
     const reader = response.body.getReader()
     const decoder = new TextDecoder()
     let buffer = ''
-    let currentAiMsg = { role: 'ai', thought: '', message: '', tool: null, command: '', status: 'pending', showThought: true }
+    let currentAiMsg = { 
+      role: 'ai', 
+      thought: '', 
+      message: '', 
+      tool: null, 
+      command: '', 
+      status: 'pending', 
+      showThought: true 
+    }
     messages.value.push(currentAiMsg)
     
     let fullContent = ''
+    let currentEvent = null
 
     while (true) {
       const { done, value } = await reader.read()
@@ -476,37 +639,88 @@ const processAgentLoop = async (prompt) => {
       buffer = lines.pop()
 
       for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6)
+        const trimmedLine = line.trim()
+        if (!trimmedLine) {
+          currentEvent = null
+          continue
+        }
+
+        if (trimmedLine.startsWith('event: ')) {
+          currentEvent = trimmedLine.slice(7)
+          continue
+        }
+
+        if (trimmedLine.startsWith('data: ')) {
+          const data = trimmedLine.slice(6)
+          console.log('SSE Data:', data)
           if (data === '[DONE]') continue
           
           try {
             const json = JSON.parse(data)
-            if (json.content) {
-                fullContent += json.content
-                // Simple heuristic to show content while streaming if it's not JSON yet
-                if (!fullContent.trim().startsWith('{')) {
-                    currentAiMsg.message = fullContent
-                }
+            
+            // Handle session_update event
+            if (currentEvent === 'session_update') {
+              if (json.title) {
+                const session = sessions.value.find(s => s.sessionId === currentSessionId.value)
+                if (session) session.title = json.title
+              }
+              currentEvent = null // Reset event after processing
+              continue
             }
-          } catch (e) {}
+
+            // Handle normal content (might be partial or JSON)
+            if (json.content || json.reasoning_content) {
+              if (json.reasoning_content) {
+                currentAiMsg.thought += json.reasoning_content
+              }
+              if (json.content) {
+                fullContent += json.content
+                // Improved logic to detect if we are likely streaming a JSON block
+                const trimmedFull = fullContent.trim()
+                const looksLikeJson = trimmedFull.startsWith('{') || trimmedFull.startsWith('```')
+                
+                if (!looksLikeJson) {
+                  currentAiMsg.message = fullContent
+                } else {
+                  // While streaming what looks like JSON/Markdown, show a hint
+                  currentAiMsg.message = 'AI 正在思考并生成指令...'
+                }
+              }
+            }
+          } catch (e) {
+            console.warn('Failed to parse SSE data:', data, e)
+          }
         }
       }
     }
     
     isTyping.value = false
     
-    // Save full AI response
-    await saveMessage(fullContent, 2)
-
-    try {
-      const jsonMatch = fullContent.match(/\{[\s\S]*\}/)
-      if (jsonMatch) {
-        const jsonStr = jsonMatch[0]
-        const action = JSON.parse(jsonStr)
+    // Process full content once stream ends
+    const trimmedFull = fullContent.trim()
+    const looksLikeJson = trimmedFull.startsWith('{') || trimmedFull.includes('```json') || trimmedFull.includes('```')
+    
+    if (looksLikeJson) {
+      try {
+        // Try to find the JSON part - it might be wrapped in markdown or have extra text
+        let jsonStr = trimmedFull
         
-        currentAiMsg.thought = action.thought
-        currentAiMsg.message = action.message
+        // Handle ```json ... ``` or ``` ... ```
+        const markdownMatch = trimmedFull.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
+        if (markdownMatch) {
+          jsonStr = markdownMatch[1]
+        } else {
+          // Fallback: just find the first { and last }
+          const startBrace = trimmedFull.indexOf('{')
+          const endBrace = trimmedFull.lastIndexOf('}')
+          if (startBrace !== -1 && endBrace !== -1 && endBrace > startBrace) {
+            jsonStr = trimmedFull.substring(startBrace, endBrace + 1)
+          }
+        }
+
+        const action = JSON.parse(jsonStr)
+        currentAiMsg.thought = action.thought || currentAiMsg.thought
+        currentAiMsg.message = action.message || ''
         
         if (action.tool === 'execute_command' && action.command) {
             currentAiMsg.tool = action.tool
@@ -518,31 +732,38 @@ const processAgentLoop = async (prompt) => {
             
             currentAiMsg.status = cmdRes.exitCode === 0 ? 'success' : 'error'
             
-            const feedback = `Command execution result:\nExit Code: ${cmdRes.exitCode}\nStdout: ${cmdRes.stdout}\nStderr: ${cmdRes.stderr}`
+            const feedback = `命令执行结果:\n状态码: ${cmdRes.exitCode}\n标准输出: ${cmdRes.stdout}\n标准错误: ${cmdRes.stderr}`
             appendTerminalLog(action.command, cmdRes.stdout || cmdRes.stderr, cmdRes.exitCode === 0 ? 'stdout' : 'stderr')
             
-            // Save command result as system message
+            // Save result
             await saveMessage(cmdRes.stdout || cmdRes.stderr, 3)
             
-            // Loop back
+            // Loop back with feedback
             await processAgentLoop(feedback)
+          }
+        } else {
+          currentAiMsg.message = fullContent
         }
-      } else {
+      } catch (e) {
+        console.error("JSON Parse Error at end of stream", e)
         currentAiMsg.message = fullContent
       }
-    } catch (e) {
-      console.error("JSON Parse Error", e)
+    } else if (fullContent) {
       currentAiMsg.message = fullContent
     }
 
+    // Save final AI response to history
+    await saveMessage(fullContent, 2)
+
   } catch (error) {
-    console.error(error)
-    messages.value.push({ role: 'system', content: 'Error: ' + error.message })
+    console.error('Agent loop error:', error)
+    uiStore.showToast(error.message || '通信发生错误')
     isTyping.value = false
   }
 }
 
 const executeCommand = async (cmd) => {
+  try {
     const res = await fetch(`${API_CONFIG.baseURL}/api/terminal/execute`, {
       method: 'POST',
       headers: {
@@ -553,8 +774,20 @@ const executeCommand = async (cmd) => {
         command: cmd
       })
     })
-    const data = await res.json()
+    
+    const data = await safeReadJson(res)
+    if (!data || data.code !== 200) {
+      throw new Error(data?.message || '命令执行失败')
+    }
     return data.data
+  } catch (error) {
+    console.error('Command execution failed:', error)
+    return {
+      exitCode: -1,
+      stdout: '',
+      stderr: error.message || 'Unknown error'
+    }
+  }
 }
 </script>
 
@@ -654,7 +887,7 @@ const executeCommand = async (cmd) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0;
+  opacity: 1;
   transition: all 0.2s;
   font-size: 1rem;
   line-height: 1;
