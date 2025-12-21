@@ -74,7 +74,7 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
       lists.value = (response.lists || []).map(normalizeList)
       return { success: true }
     } catch (error) {
-      return { success: false, message: error.response?.data?.message || '获取单词表失败' }
+      return { success: false, message: error.response?.data?.detail || error.response?.data?.message || '获取单词表失败' }
     } finally {
       isLoading.value = false
     }
@@ -87,7 +87,7 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
       lists.value = [normalizeList(created), ...lists.value]
       return { success: true, data: created }
     } catch (error) {
-      return { success: false, message: error.response?.data?.message || '创建单词表失败' }
+      return { success: false, message: error.response?.data?.detail || error.response?.data?.message || '创建单词表失败' }
     } finally {
       isLoading.value = false
     }
@@ -103,7 +103,7 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
       wordsByListId.value = next
       return { success: true }
     } catch (error) {
-      return { success: false, message: error.response?.data?.message || '删除单词表失败' }
+      return { success: false, message: error.response?.data?.detail || error.response?.data?.message || '删除单词表失败' }
     } finally {
       isLoading.value = false
     }
@@ -121,7 +121,7 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
       }
       return { success: true, data: words }
     } catch (error) {
-      return { success: false, message: error.response?.data?.message || '获取单词失败' }
+      return { success: false, message: error.response?.data?.detail || error.response?.data?.message || '获取单词失败' }
     } finally {
       isLoading.value = false
     }
@@ -140,7 +140,7 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
       progressByWordId.value = map
       return { success: true, data: progress }
     } catch (error) {
-      return { success: false, message: error.response?.data?.message || '获取进度失败' }
+      return { success: false, message: error.response?.data?.detail || error.response?.data?.message || '获取进度失败' }
     }
   }
 
@@ -156,7 +156,7 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
       }
       return { success: true, data: created }
     } catch (error) {
-      return { success: false, message: error.response?.data?.message || '添加单词失败' }
+      return { success: false, message: error.response?.data?.detail || error.response?.data?.message || '添加单词失败' }
     } finally {
       isLoading.value = false
     }
@@ -177,7 +177,7 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
       }
       return { success: true }
     } catch (error) {
-      return { success: false, message: error.response?.data?.message || '删除单词失败' }
+      return { success: false, message: error.response?.data?.detail || error.response?.data?.message || '删除单词失败' }
     } finally {
       isLoading.value = false
     }
@@ -196,7 +196,7 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
       }
       return { success: true, data: response }
     } catch (error) {
-      return { success: false, message: error.response?.data?.message || '更新进度失败' }
+      return { success: false, message: error.response?.data?.detail || error.response?.data?.message || '更新进度失败' }
     }
   }
 
@@ -213,7 +213,7 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
       progressByWordId.value = map
       return { success: true }
     } catch (error) {
-      return { success: false, message: error.response?.data?.message || '获取复习列表失败' }
+      return { success: false, message: error.response?.data?.detail || error.response?.data?.message || '获取复习列表失败' }
     }
   }
 
@@ -223,7 +223,7 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
       stats.value = normalizeStats(response)
       return { success: true }
     } catch (error) {
-      return { success: false, message: error.response?.data?.message || '获取统计失败' }
+      return { success: false, message: error.response?.data?.detail || error.response?.data?.message || '获取统计失败' }
     }
   }
 
@@ -236,7 +236,7 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
       })
       return { success: true }
     } catch (error) {
-      return { success: false, message: error.response?.data?.message || '记录学习活动失败' }
+      return { success: false, message: error.response?.data?.detail || error.response?.data?.message || '记录学习活动失败' }
     }
   }
 
@@ -249,16 +249,16 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
       publicSearchTotal.value = response.total ?? response.totalElements ?? response.total_elements ?? publicSearchResults.value.length
       return { success: true, data: publicSearchResults.value }
     } catch (error) {
-      return { success: false, message: error.response?.data?.message || '搜索公共词库失败' }
+      return { success: false, message: error.response?.data?.detail || error.response?.data?.message || '搜索公共词库失败' }
     }
   }
 
   async function generateTopics(words, language) {
     try {
-      const response = await request.post(API_ENDPOINTS.vocabulary.generateTopics, { words, language })
+      const response = await request.post(API_ENDPOINTS.vocabulary.generateTopics, { words, language }, { timeout: 60000 })
       return { success: true, data: response }
     } catch (error) {
-      return { success: false, message: error.response?.data?.message || '生成主题失败' }
+      return { success: false, message: error.response?.data?.detail || error.response?.data?.message || '生成主题失败' }
     }
   }
 
@@ -270,10 +270,10 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
         topic: payload.topic,
         difficulty: payload.difficulty,
         length: payload.length
-      })
+      }, { timeout: 180000 })
       return { success: true, data: response }
     } catch (error) {
-      return { success: false, message: error.response?.data?.message || '生成文章失败' }
+      return { success: false, message: error.response?.data?.detail || error.response?.data?.message || '生成文章失败' }
     }
   }
 
@@ -285,7 +285,7 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
       const response = await request.get(API_ENDPOINTS.vocabulary.getArticles)
       return { success: true, data: response || [] }
     } catch (error) {
-      return { success: false, message: error.response?.data?.message || '获取文章列表失败' }
+      return { success: false, message: error.response?.data?.detail || error.response?.data?.message || '获取文章列表失败' }
     }
   }
 
@@ -297,7 +297,7 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
       const response = await request.get(API_ENDPOINTS.vocabulary.getArticle(articleId))
       return { success: true, data: response }
     } catch (error) {
-      return { success: false, message: error.response?.data?.message || '获取文章详情失败' }
+      return { success: false, message: error.response?.data?.detail || error.response?.data?.message || '获取文章详情失败' }
     }
   }
 
