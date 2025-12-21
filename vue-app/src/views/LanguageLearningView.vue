@@ -355,38 +355,40 @@
           </div>
           <div
             v-else
-            class="public-results"
+            class="public-results-container"
           >
-            <div
-              class="review-grid"
-            >
+            <div class="public-results-scroll-container">
               <div
-                v-for="w in paginatedResults"
-                :key="w.id"
-                class="review-card-item"
+                class="review-grid"
               >
-                <div class="review-content">
-                  <h4 class="review-word">
-                    {{ w.word }}
-                    <span
-                      v-if="w.partOfSpeech"
-                      class="public-pos"
+                <div
+                  v-for="w in paginatedResults"
+                  :key="w.id"
+                  class="review-card-item"
+                >
+                  <div class="review-content">
+                    <h4 class="review-word">
+                      {{ w.word }}
+                      <span
+                        v-if="w.partOfSpeech"
+                        class="public-pos"
+                      >
+                        {{ w.partOfSpeech }}
+                      </span>
+                    </h4>
+                    <p class="review-def">
+                      {{ w.definition }}
+                    </p>
+                  </div>
+                  <div class="review-actions">
+                    <button
+                      class="btn btn-sm btn-primary"
+                      :disabled="!currentListId"
+                      @click="addPublicWord(w)"
                     >
-                      {{ w.partOfSpeech }}
-                    </span>
-                  </h4>
-                  <p class="review-def">
-                    {{ w.definition }}
-                  </p>
-                </div>
-                <div class="review-actions">
-                  <button
-                    class="btn btn-sm btn-primary"
-                    :disabled="!currentListId"
-                    @click="addPublicWord(w)"
-                  >
-                    添加
-                  </button>
+                      添加
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2326,45 +2328,112 @@ body.dark-mode .copy-button {
 .wordlist-selection {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
   width: 100%;
   max-width: 600px;
-  padding: 16px;
+  padding: 20px;
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  transition: all 0.2s ease;
+  border-radius: 12px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 20px;
 }
 
 .wordlist-selection:hover {
   border-color: var(--primary-color);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
 }
 
 .wordlist-selection label {
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 600;
   color: var(--text-primary);
-  min-width: 60px;
+  min-width: 70px;
   white-space: nowrap;
+  letter-spacing: 0.5px;
 }
 
-.wordlist-selection .select-input {
+/* Custom Select Styles */
+.wordlist-selection select {
   flex: 1;
-  padding: 10px 16px;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  font-size: 14px;
+  padding: 12px 16px;
+  border: 2px solid var(--border-color);
+  border-radius: 10px;
+  font-size: 15px;
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
+  font-weight: 500;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  background-size: 16px;
+  padding-right: 45px !important;
 }
 
-.wordlist-selection .select-input:focus {
+.wordlist-selection select:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+  background-color: var(--bg-primary);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%233b82f6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+
+.wordlist-selection select:hover {
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Option Styles */
+.wordlist-selection select option {
+  padding: 12px 16px;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.wordlist-selection select option:checked {
+  background-color: var(--chip-bg);
+  color: var(--primary-color);
+}
+
+.wordlist-selection select option:hover {
+  background-color: var(--bg-tertiary);
+  color: var(--primary-color);
+}
+
+/* Focus styles for the entire selection area */
+.wordlist-selection:focus-within {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+}
+
+/* Ensure consistent spacing */
+.wordlist-selection label, .wordlist-selection select {
+  margin: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .wordlist-selection {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .wordlist-selection label {
+    min-width: auto;
+  }
+  
+  .wordlist-selection select {
+    width: 100%;
+  }
 }
 
 /* Public Results Grid Styles */
@@ -2372,50 +2441,92 @@ body.dark-mode .copy-button {
   margin-bottom: 32px;
 }
 
+.public-results-container {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.3s ease;
+}
+
+.public-results-scroll-container {
+  max-height: 500px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 20px;
+  transition: all 0.3s ease;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) var(--bg-tertiary);
+}
+
+/* Custom scrollbar */
+.public-results-scroll-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.public-results-scroll-container::-webkit-scrollbar-track {
+  background-color: var(--bg-tertiary);
+  border-radius: 4px;
+}
+
+.public-results-scroll-container::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.public-results-scroll-container::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-tertiary);
+}
+
 .public-library-view .review-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  transition: all 0.3s ease;
 }
 
 .public-library-view .review-card-item {
-  background: var(--bg-secondary);
+  background: var(--bg-primary);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 20px;
-  transition: all 0.2s ease;
+  border-radius: 10px;
+  padding: 18px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  min-height: 180px;
+  min-height: 160px;
+  box-shadow: var(--shadow-sm);
 }
 
 .public-library-view .review-card-item:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
   border-color: var(--primary-color);
 }
 
 .public-library-view .review-content {
   flex: 1;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
 .public-library-view .review-word {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--primary-color);
-  margin: 0 0 8px 0;
+  margin: 0 0 6px 0;
   display: flex;
   align-items: baseline;
   gap: 8px;
+  transition: all 0.2s ease;
 }
 
 .public-library-view .review-def {
   font-size: 14px;
   color: var(--text-primary);
-  line-height: 1.6;
-  margin: 0 0 12px 0;
+  line-height: 1.5;
+  margin: 0 0 10px 0;
 }
 
 .public-library-view .review-actions {
@@ -2425,10 +2536,61 @@ body.dark-mode .copy-button {
 }
 
 .public-library-view .review-actions .btn {
-  min-width: 80px;
-  font-size: 14px;
-  padding: 8px 16px;
+  min-width: 70px;
+  font-size: 13px;
+  padding: 6px 12px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/* Pagination Styles */
+.pagination-container {
+  padding: 16px 20px;
+  background-color: var(--bg-tertiary);
+  border-top: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+}
+
+/* Optimize select dropdown */
+select {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  background-size: 16px;
+  padding-right: 40px !important;
+}
+
+/* Smooth transition for all interactive elements */
+.btn, .select-input, .list-item, .review-card-item, .search-input, .wordlist-selection {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Add subtle animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.public-library-view .review-card-item {
+  animation: fadeInUp 0.4s ease-out;
+  animation-fill-mode: both;
+}
+
+.public-library-view .review-card-item:nth-child(1) { animation-delay: 0.05s; }
+.public-library-view .review-card-item:nth-child(2) { animation-delay: 0.1s; }
+.public-library-view .review-card-item:nth-child(3) { animation-delay: 0.15s; }
+.public-library-view .review-card-item:nth-child(4) { animation-delay: 0.2s; }
+.public-library-view .review-card-item:nth-child(5) { animation-delay: 0.25s; }
+.public-library-view .review-card-item:nth-child(6) { animation-delay: 0.3s; }
+.public-library-view .review-card-item:nth-child(7) { animation-delay: 0.35s; }
+.public-library-view .review-card-item:nth-child(8) { animation-delay: 0.4s; }
 
 /* Loading and Empty States */
 .loading-state, .empty-state {
