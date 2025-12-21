@@ -97,6 +97,11 @@ public class TerminalController {
     @PreAuthorize("isAuthenticated()")
     public SseEmitter chatStream(@AuthenticationPrincipal CustomUserDetails currentUser,
                                  @Valid @RequestBody TerminalChatRequest request) {
+        System.out.println("=== Terminal chat-stream Called ===");
+        System.out.println("User: " + currentUser.getUsername());
+        System.out.println("Prompt: " + request.getPrompt());
+        System.out.println("Session ID: " + request.getSession_id());
+        
         Long userId = currentUser.getUser().getId();
         String rootPath = terminalService.getUserTerminalRoot(userId);
         String os = System.getProperty("os.name");
