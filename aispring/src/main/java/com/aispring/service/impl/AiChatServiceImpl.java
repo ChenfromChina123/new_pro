@@ -106,8 +106,17 @@ public class AiChatServiceImpl implements AiChatService {
         if (doubaoApiKey != null && !doubaoApiKey.isEmpty() && doubaoApiUrl != null && !doubaoApiUrl.isEmpty()) {
             try {
                 System.out.println("[Doubao] Creating OpenAiApi instance for Doubao...");
-                System.out.println("[Doubao] OpenAiApi constructor params - URL: " + doubaoApiUrl + ", Key length: " + doubaoApiKey.length());
-                OpenAiApi doubaoApi = new OpenAiApi(doubaoApiUrl, doubaoApiKey);
+                // Doubao requires /api/v3 appended to base URL for OpenAiApi
+                String doubaoBaseUrl = doubaoApiUrl;
+                if (!doubaoBaseUrl.endsWith("/api/v3") && !doubaoBaseUrl.endsWith("/api/v3/")) {
+                    if (doubaoBaseUrl.endsWith("/")) {
+                        doubaoBaseUrl += "api/v3";
+                    } else {
+                        doubaoBaseUrl += "/api/v3";
+                    }
+                }
+                System.out.println("[Doubao] OpenAiApi constructor params - URL: " + doubaoBaseUrl + ", Key length: " + doubaoApiKey.length());
+                OpenAiApi doubaoApi = new OpenAiApi(doubaoBaseUrl, doubaoApiKey);
                 System.out.println("[Doubao] OpenAiApi instance created successfully");
                 
                 System.out.println("[Doubao] Creating OpenAiChatOptions for Doubao...");
@@ -156,6 +165,27 @@ public class AiChatServiceImpl implements AiChatService {
     
 
     
+    /**
+     * 统一发送聊天响应（SSE）
+     */
+    private void sendChatResponse(SseEmitter emitter, String content, String reasoningContent) {
+        try {
+            Map<String, String> resultMap = new HashMap<>();
+            if (reasoningContent != null && !reasoningContent.isEmpty()) {
+                resultMap.put("reasoning_content", reasoningContent);
+            }
+            if (content != null && !content.isEmpty()) {
+                resultMap.put("content", content);
+            }
+            if (!resultMap.isEmpty()) {
+                String json = objectMapper.writeValueAsString(resultMap);
+                emitter.send(SseEmitter.event().data(json));
+            }
+        } catch (Exception e) {
+            handleError(emitter, e);
+        }
+    }
+
     @Override
     public SseEmitter askStream(String prompt, String sessionId, String model, String userId) {
         // 创建SSE发射器，设置超时时间为3分钟
@@ -237,8 +267,7 @@ public class AiChatServiceImpl implements AiChatService {
             try {
                 if (finalClient == null) {
                     String content = fallbackAnswer(prompt);
-                    String json = objectMapper.writeValueAsString(Map.of("content", content));
-                    emitter.send(SseEmitter.event().data(json));
+                    sendChatResponse(emitter, content, null);
                     emitter.send(SseEmitter.event().data("[DONE]"));
                     emitter.complete();
                     return;
@@ -254,8 +283,7 @@ public class AiChatServiceImpl implements AiChatService {
                             String content = chatResponse.getResult().getOutput().getContent();
                             if (content != null && !content.isEmpty()) {
                                 // 发送SSE事件
-                                String json = objectMapper.writeValueAsString(Map.of("content", content));
-                                emitter.send(SseEmitter.event().data(json));
+                                sendChatResponse(emitter, content, null);
                             }
                         } catch (Exception e) {
                             handleError(emitter, e);
@@ -384,15 +412,7 @@ public class AiChatServiceImpl implements AiChatService {
                                     }
                                     
                                     if (!reasoningContent.isEmpty() || !content.isEmpty()) {
-                                        Map<String, String> resultMap = new HashMap<>();
-                                        if (!reasoningContent.isEmpty()) {
-                                            resultMap.put("reasoning_content", reasoningContent);
-                                        }
-                                        if (!content.isEmpty()) {
-                                            resultMap.put("content", content);
-                                        }
-                                        String json = objectMapper.writeValueAsString(resultMap);
-                                        emitter.send(SseEmitter.event().data(json));
+                                        sendChatResponse(emitter, content, reasoningContent);
                                     }
                                 }
                             } catch (Exception e) {

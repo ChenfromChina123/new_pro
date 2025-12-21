@@ -94,7 +94,7 @@ ai:
     api-url: ${DEEPSEEK_URL:https://api.deepseek.com}
   doubao:
     api-key: ${DOUBAO_KEY:6261fd4e-7ac5-46de-95a6-f68f00243230}
-    api-url: ${DOUBAO_BASEURL:https://api.doubao.com/v1}
+    api-url: ${DOUBAO_BASEURL:https://ark.cn-beijing.volces.com}
   max-tokens: ${MAX_TOKEN:4096}
 
 # 文件存储配置
