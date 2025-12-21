@@ -363,6 +363,7 @@ public class AiChatServiceImpl implements AiChatService {
                 payload.put("messages", messages);
                 payload.put("stream", true);
                 payload.put("temperature", 0.6); // 深度思考模型通常建议较低温度
+                payload.put("max_tokens", maxTokens); // 设置最大输出token
                 
                 if (isDoubao) {
                     // 豆包-reasoner 特有参数
