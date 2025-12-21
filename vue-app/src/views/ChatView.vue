@@ -96,7 +96,7 @@
                 <div
                   v-else-if="message.content && message.isStreaming"
                   class="message-text message-text-raw"
-                  v-text="sanitizeNullRuns(message.content)"
+                  v-html="formatMessage(sanitizeNullRuns(message.content))"
                 />
                 <!-- 如果没有内容但有reasoning_content，显示占位符或仅显示reasoning -->
                 <div
