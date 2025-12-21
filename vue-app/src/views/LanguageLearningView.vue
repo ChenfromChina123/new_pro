@@ -1050,7 +1050,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, reactive, watch, onActivated, onDeactivated } from 'vue'
+import { ref, computed, onMounted, onUnmounted, onActivated, onDeactivated, reactive, watch } from 'vue'
 import request from '@/utils/request'
 import { API_ENDPOINTS } from '@/config/api'
 import { useVocabularyStore } from '@/stores/vocabulary'
@@ -1224,17 +1224,37 @@ const onVisibilityChange = () => {
   lastTickAt.value = Date.now()
 }
 
-onMounted(async () => {
-  /**
-   * 仅在组件首次挂载时获取单词本列表
-   */
-  await vocabularyStore.fetchLists()
-})
+const setupEventListeners = () => {
+  window.addEventListener('mousemove', markActive, { passive: true })
+  window.addEventListener('keydown', markActive)
+  window.addEventListener('scroll', markActive, { passive: true })
+  window.addEventListener('click', markActive, { passive: true })
+  window.addEventListener('focus', markActive)
+  window.addEventListener('blur', flushDuration)
+  document.addEventListener('visibilitychange', onVisibilityChange)
+  
+  if (!durationTimer) {
+    lastTickAt.value = Date.now()
+    durationTimer = window.setInterval(tickDuration, 1000)
+  }
+}
 
-onActivated(async () => {
-  /**
-   * 每次组件激活时刷新统计数据和复习单词
-   */
+const removeEventListeners = () => {
+  if (durationTimer) {
+    window.clearInterval(durationTimer)
+    durationTimer = null
+  }
+  window.removeEventListener('mousemove', markActive)
+  window.removeEventListener('keydown', markActive)
+  window.removeEventListener('scroll', markActive)
+  window.removeEventListener('click', markActive)
+  window.removeEventListener('focus', markActive)
+  window.removeEventListener('blur', flushDuration)
+  document.removeEventListener('visibilitychange', onVisibilityChange)
+}
+
+onMounted(async () => {
+  await vocabularyStore.fetchLists()
   await Promise.all([
     vocabularyStore.fetchStats(),
     vocabularyStore.fetchReviewWords()
@@ -1245,53 +1265,21 @@ onActivated(async () => {
   }
 
   markActive()
-  lastTickAt.value = Date.now()
-  if (!durationTimer) {
-    durationTimer = window.setInterval(tickDuration, 1000)
-  }
-  
-  window.addEventListener('mousemove', markActive, { passive: true })
-  window.addEventListener('keydown', markActive)
-  window.addEventListener('scroll', markActive, { passive: true })
-  window.addEventListener('click', markActive, { passive: true })
-  window.addEventListener('focus', markActive)
-  window.addEventListener('blur', flushDuration)
-  document.addEventListener('visibilitychange', onVisibilityChange)
+  setupEventListeners()
+})
+
+onActivated(() => {
+  markActive()
+  setupEventListeners()
 })
 
 onDeactivated(() => {
-  /**
-   * 组件停用时清除定时器和事件监听
-   */
-  if (durationTimer) {
-    window.clearInterval(durationTimer)
-    durationTimer = null
-  }
-  window.removeEventListener('mousemove', markActive)
-  window.removeEventListener('keydown', markActive)
-  window.removeEventListener('scroll', markActive)
-  window.removeEventListener('click', markActive)
-  window.removeEventListener('focus', markActive)
-  window.removeEventListener('blur', flushDuration)
-  document.removeEventListener('visibilitychange', onVisibilityChange)
+  removeEventListeners()
   void flushDuration()
 })
 
 onUnmounted(() => {
-  /**
-   * 组件销毁时确保资源释放
-   */
-  if (durationTimer) {
-    window.clearInterval(durationTimer)
-    durationTimer = null
-  }
-  window.removeEventListener('mousemove', markActive)
-  window.removeEventListener('keydown', markActive)
-  window.removeEventListener('scroll', markActive)
-  window.removeEventListener('click', markActive)
-  window.removeEventListener('focus', markActive)
-  window.removeEventListener('blur', flushDuration)
-  document.removeEventListener('visibilitychange', onVisibilityChange)
+  removeEventListeners()
   void flushDuration()
 })
 

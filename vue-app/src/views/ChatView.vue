@@ -257,7 +257,7 @@
 
 <script setup>
 import DOMPurify from 'dompurify'
-import { ref, computed, onMounted, onUnmounted, nextTick, watch, onActivated, onDeactivated } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useChatStore } from '@/stores/chat'
 import { useAuthStore } from '@/stores/auth'
 import { useRoute, useRouter } from 'vue-router'
@@ -408,20 +408,6 @@ const triggerScrollToBottom = (delay = 100) => {
   })
 }
 
-const handleClickOutside = (event) => {
-  if (modelMenuRef.value && !modelMenuRef.value.contains(event.target)) {
-    isModelMenuOpen.value = false
-  }
-}
-
-onActivated(() => {
-  document.addEventListener('click', handleClickOutside)
-})
-
-onDeactivated(() => {
-  document.removeEventListener('click', handleClickOutside)
-})
-
 onMounted(async () => {
   // 0. 确保会话列表已加载
   if (chatStore.sessions.length === 0) {
@@ -513,7 +499,6 @@ watch(
 )
 
 onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside)
   if (userAvatarUrl.value) {
     URL.revokeObjectURL(userAvatarUrl.value)
     userAvatarUrl.value = null
@@ -1048,7 +1033,23 @@ const toggleDeepThinking = () => {
 }
 
 /**
+ * 处理点击外部关闭模型选择菜单
+ */
+onMounted(() => {
+  const handleClickOutside = (event) => {
+    if (modelMenuRef.value && !modelMenuRef.value.contains(event.target)) {
+      isModelMenuOpen.value = false
+    }
+  }
+  document.addEventListener('click', handleClickOutside)
+  onUnmounted(() => {
+    document.removeEventListener('click', handleClickOutside)
+  })
+})
+
+/**
  * 自动调整输入框高度
+ * @param {Event} event 输入事件
  */
 const adjustTextareaHeight = (event) => {
   const textarea = event.target

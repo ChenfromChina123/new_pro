@@ -286,7 +286,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, computed, onActivated, onDeactivated } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed, onActivated } from 'vue'
 import { useCloudDiskStore } from '@/stores/cloudDisk'
 import ConflictResolutionDialog from '@/components/ConflictResolutionDialog.vue'
 
@@ -351,16 +351,12 @@ const handleResize = () => {
 }
 
 onMounted(async () => {
-  await refreshData()
-})
-
-onActivated(async () => {
   window.addEventListener('resize', handleResize, { passive: true })
   await refreshData()
 })
 
-onDeactivated(() => {
-  window.removeEventListener('resize', handleResize)
+onActivated(async () => {
+  await refreshData()
 })
 
 onBeforeUnmount(() => {
