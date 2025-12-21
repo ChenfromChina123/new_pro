@@ -1359,10 +1359,10 @@ const renderHighlightedParagraph = (paragraph, metaMap) => {
   if (paragraph.startsWith('```') && paragraph.endsWith('```')) {
     const codeContent = paragraph.slice(3, -3).trim()
     return `
-      <pre class="code-block">
+      <pre class="code-block" style="position: relative">
         <code>${escapeHtml(codeContent)}</code>
         <button class="copy-button" onclick="window.copyCodeBlock(this)">
-          <span class="copy-icon">📋</span> 复制
+          <i class="far fa-copy"></i><span>复制</span>
         </button>
       </pre>
     `
@@ -1404,14 +1404,24 @@ window.copyCodeBlock = (element) => {
   
   const code = codeElement.textContent;
   const button = element;
+  const icon = button.querySelector('i');
+  const text = button.querySelector('span');
   
   navigator.clipboard.writeText(code)
     .then(() => {
-      const originalText = button.innerHTML;
-      button.innerHTML = '<span class="copy-icon">✓</span> 已复制';
+      const originalIconClass = icon ? icon.className : '';
+      const originalText = text ? text.textContent : button.textContent;
+      
+      if (icon) icon.className = 'fas fa-check';
+      if (text) text.textContent = '已复制';
+      else if (!icon) button.textContent = '已复制';
+      
       button.classList.add('copied');
+      
       setTimeout(() => {
-        button.innerHTML = originalText;
+        if (icon) icon.className = originalIconClass;
+        if (text) text.textContent = originalText;
+        else if (!icon) button.textContent = originalText;
         button.classList.remove('copied');
       }, 2000);
     })
@@ -2220,21 +2230,22 @@ const formatDuration = (seconds) => {
   position: absolute;
   top: 8px;
   right: 8px;
-  background-color: rgba(255, 255, 255, 0.9);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-md);
-  padding: 8px 16px;
-  font-size: 13px;
+  background-color: rgba(243, 244, 246, 0.8);
+  color: #4b5563;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   opacity: 0;
   z-index: 100;
-  box-shadow: var(--shadow-sm);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .code-block:hover .copy-button {
@@ -2242,11 +2253,11 @@ const formatDuration = (seconds) => {
 }
 
 .copy-button:hover {
-  background-color: var(--primary-color);
-  color: white;
+  background-color: #f9fafb;
+  color: var(--primary-color);
   border-color: var(--primary-color);
   transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
 .copy-button:active {
@@ -2254,25 +2265,29 @@ const formatDuration = (seconds) => {
 }
 
 .copy-button.copied {
-  background-color: #10b981;
+  background-color: #ecfdf5;
+  color: #10b981;
   border-color: #10b981;
-  color: white;
-  animation: copiedPulse 0.4s ease;
-}
-
-@keyframes copiedPulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
-}
-
-.copy-icon {
-  font-size: 14px;
+  opacity: 1 !important;
 }
 
 /* Dark Mode Adjustments */
 body.dark-mode .copy-button {
-  background-color: rgba(31, 41, 55, 0.9);
+  background-color: rgba(31, 41, 55, 0.8);
+  color: #e5e7eb;
+  border-color: #4b5563;
+}
+
+body.dark-mode .copy-button:hover {
+  background-color: #374151;
+  color: #60a5fa;
+  border-color: #60a5fa;
+}
+
+body.dark-mode .copy-button.copied {
+  background-color: rgba(6, 78, 59, 0.4);
+  color: #34d399;
+  border-color: #34d399;
 }
 
 .public-pos {
