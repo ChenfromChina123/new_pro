@@ -88,6 +88,7 @@ export const useChatStore = defineStore('chat', () => {
   // 发送消息（非流式）
   async function sendMessageNonStream(content) {
     isLoading.value = true
+    suggestions.value = [] // 清除之前的建议问题
     
     // 添加用户消息
     const userMessage = {
@@ -177,6 +178,7 @@ export const useChatStore = defineStore('chat', () => {
   // 发送消息（流式）
   async function sendMessage(content, onChunk) {
     isLoading.value = true
+    suggestions.value = [] // 清除之前的建议问题
     abortController.value = new AbortController()
 
     if (!currentSessionId.value) {

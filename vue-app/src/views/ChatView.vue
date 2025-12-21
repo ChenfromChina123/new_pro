@@ -99,6 +99,24 @@
               <div class="message-time">
                 {{ formatTime(message.timestamp) }}
               </div>
+
+              <!-- 建议问题区域 - 仅在最新一条 AI 消息下方显示 -->
+              <div 
+                v-if="message.role === 'assistant' && index === chatStore.messages.length - 1 && chatStore.suggestions && chatStore.suggestions.length > 0 && !chatStore.isLoading" 
+                class="suggestions-area"
+              >
+                <div class="suggestions-list">
+                  <button 
+                    v-for="(suggestion, sIndex) in chatStore.suggestions" 
+                    :key="sIndex"
+                    class="suggestion-item"
+                    @click="sendSuggestion(suggestion)"
+                  >
+                    <span class="suggestion-text">{{ suggestion }}</span>
+                    <i class="fas fa-arrow-right suggestion-arrow" />
+                  </button>
+                </div>
+              </div>
             </div>
 
             <!-- 用户头像 - 移除或改为在user角色下不显示以匹配图2 -->
@@ -129,23 +147,6 @@
             </button>
           </div>
         </transition>
-        
-        <!-- 建议问题区域 -->
-        <div 
-          v-if="chatStore.suggestions && chatStore.suggestions.length > 0 && !chatStore.isLoading" 
-          class="suggestions-area"
-        >
-          <div class="suggestions-list">
-            <button 
-              v-for="(suggestion, index) in chatStore.suggestions" 
-              :key="index"
-              class="suggestion-item"
-              @click="sendSuggestion(suggestion)"
-            >
-              {{ suggestion }}
-            </button>
-          </div>
-        </div>
         
         <div class="chat-input-area">
           <div class="input-container">
@@ -1922,42 +1923,57 @@ body.dark-mode .message-copy-button {
 }
 
 .suggestions-area {
-  padding: 0 32px 12px;
+  margin-top: 24px;
+  margin-bottom: 8px;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   animation: fadeIn 0.3s ease-out;
+  width: 100%;
 }
 
 .suggestions-list {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  max-width: 980px;
+  flex-direction: column;
+  gap: 12px;
   width: 100%;
+  max-width: 600px;
 }
 
 .suggestion-item {
-  background-color: transparent;
+  background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 16px;
-  padding: 6px 16px;
-  font-size: 14px;
-  color: var(--text-secondary);
+  border-radius: 18px;
+  padding: 10px 20px;
+  font-size: 15px;
+  color: var(--text-primary);
   cursor: pointer;
   transition: all 0.2s ease;
-  white-space: nowrap;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
   backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: fit-content;
+  text-align: left;
+  line-height: 1.4;
+}
+
+.suggestion-arrow {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  transition: transform 0.2s ease;
 }
 
 .suggestion-item:hover {
-  background-color: var(--toolbar-btn-bg);
+  background-color: var(--bg-primary);
   border-color: var(--primary-color);
-  color: var(--primary-color);
-  transform: translateY(-1px);
+  transform: translateX(4px);
   box-shadow: var(--shadow-sm);
+}
+
+.suggestion-item:hover .suggestion-arrow {
+  color: var(--primary-color);
+  transform: translateX(2px);
 }
 
 @keyframes fadeIn {
