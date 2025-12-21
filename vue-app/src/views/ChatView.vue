@@ -1108,7 +1108,7 @@ const adjustTextareaHeight = (event) => {
   background-color: var(--bg-primary);
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center; /* 居中对齐消息容器 */
   overflow-x: hidden;
 }
 
@@ -1139,7 +1139,7 @@ const adjustTextareaHeight = (event) => {
   color: var(--text-secondary);
   padding: 40px 20px;
   width: 100%;
-  max-width: 980px;
+  max-width: 980px; /* 与 input-container 一致 */
 }
 
 .empty-icon {
@@ -1171,7 +1171,7 @@ const adjustTextareaHeight = (event) => {
   animation: slideUp 0.3s ease-out;
   padding: 0 8px;
   width: 100%;
-  max-width: 100%;
+  max-width: 980px; /* 限制宽度与 input-container 一致 */
 }
 
 @keyframes slideUp {
@@ -1187,6 +1187,10 @@ const adjustTextareaHeight = (event) => {
 
 .message.user {
   justify-content: flex-end;
+}
+
+.message.assistant {
+  justify-content: flex-start;
 }
 
 .message-avatar {
@@ -1259,6 +1263,8 @@ const adjustTextareaHeight = (event) => {
   font-size: 16px;
   letter-spacing: 0.2px;
   max-width: 100%;
+  overflow-x: auto; /* 处理代码、表格等内容的横向溢出 */
+  box-sizing: border-box;
 }
 
 .message-text-raw {
@@ -1280,6 +1286,7 @@ const adjustTextareaHeight = (event) => {
   line-height: 1.8;
   max-width: 100%;
   word-break: break-word;
+  overflow-x: auto; /* 处理代码、表格等内容的横向溢出 */
 }
 
 .message.assistant .message-text :deep(h1),
@@ -1451,13 +1458,14 @@ body.dark-mode .copy-button {
 /* 表格样式 */
 .message-text :deep(table) {
   width: 100%;
+  max-width: 100%;
   border-collapse: separate;
   border-spacing: 0;
   margin: 16px 0;
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  overflow: hidden;
-  display: table;
+  overflow-x: auto;
+  display: block; /* 改为 block 以便 overflow-x 生效 */
 }
 
 .message-text :deep(th) {
@@ -1571,7 +1579,7 @@ body.dark-mode .message-copy-button {
   animation: slideUp 0.3s ease-out;
   padding: 0 8px;
   width: 100%;
-  max-width: 100%;
+  max-width: 980px; /* 限制宽度与 input-container 一致 */
 }
 
 /* 重置message-bubble的相对定位 */
