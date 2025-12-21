@@ -178,8 +178,25 @@ public class ChatRecordService {
     @Transactional
     public void deleteSession(String userId, String sessionId) {
         chatRecordRepository.deleteByUserIdAndSessionId(userId, sessionId);
+        chatSessionRepository.findBySessionId(sessionId).ifPresent(session -> {
+            if (Objects.equals(session.getUserId(), userId)) {
+                chatSessionRepository.deleteBySessionId(sessionId);
+            }
+        });
     }
     
+    @Transactional
+    public ChatSession createTerminalSession(String userId) {
+        String sessionId = createNewSession();
+        ChatSession session = ChatSession.builder()
+            .sessionId(sessionId)
+            .userId(userId)
+            .title("未命名会话")
+            .sessionType("terminal")
+            .build();
+        return chatSessionRepository.save(session);
+    }
+
     /**
      * 创建新会话
      */
