@@ -279,6 +279,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
 import { useThemeStore } from '@/stores/theme'
+import { useUIStore } from '@/stores/ui'
 import { useCloudDiskStore } from '@/stores/cloudDisk'
 import { API_CONFIG } from '@/config/api'
 import FolderTreeItem from '@/components/FolderTreeItem.vue'
@@ -289,6 +290,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 const chatStore = useChatStore()
 const themeStore = useThemeStore()
+const uiStore = useUIStore()
 const cloudDiskStore = useCloudDiskStore()
 
 // 状态
@@ -328,6 +330,14 @@ watch(
 
 // 聊天逻辑
 const handleNewChat = async () => {
+  // 检查当前会话是否为空（无消息且无草稿）
+  const isCurrentEmpty = chatStore.messages.length === 0 && !chatStore.getDraft(chatStore.currentSessionId)
+  
+  if (isCurrentEmpty && chatStore.currentSessionId) {
+    uiStore.showToast('当前已是新对话，请先开始聊天吧')
+    return
+  }
+  
   const result = await chatStore.createSession()
   if (result.success) {
     router.push(`/chat?session=${result.sessionId}`)
