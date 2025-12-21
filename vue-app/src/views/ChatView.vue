@@ -1890,12 +1890,14 @@ body.dark-mode .copy-button.copied {
   width: fit-content;
   margin-top: 12px;
   margin-bottom: 4px;
-  opacity: 0.9;
+  opacity: 0;
+  visibility: hidden;
   box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
 }
 
-.message:hover .message-copy-button {
+.message-content:hover .message-copy-button {
   opacity: 1;
+  visibility: visible;
   transform: translateY(-1px);
   box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);
 }
