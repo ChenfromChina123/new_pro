@@ -5,7 +5,6 @@ import com.aispring.exception.CustomException;
 import com.aispring.repository.*;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.openhtmltopdf.pdfboxout.PdfRendererBuilder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -14,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.OutputStream;
+import java.lang.reflect.Method;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -449,28 +450,33 @@ public class VocabularyService {
             throw new CustomException("PDF内容为空");
         }
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-            PdfRendererBuilder builder = new PdfRendererBuilder();
-            builder.useFastMode();
-            builder.withHtmlContent(html, null);
-            registerPdfFonts(builder);
-            builder.toStream(outputStream);
-            builder.run();
+            Class<?> builderClass = Class.forName("com.openhtmltopdf.pdfboxout.PdfRendererBuilder");
+            Object builder = builderClass.getDeclaredConstructor().newInstance();
+
+            invokeMethod(builder, builderClass, "useFastMode");
+            invokeMethod(builder, builderClass, "withHtmlContent", String.class, String.class, html, null);
+            registerPdfFonts(builder, builderClass);
+            invokeMethod(builder, builderClass, "toStream", OutputStream.class, outputStream);
+            invokeMethod(builder, builderClass, "run");
+
             return outputStream.toByteArray();
+        } catch (ClassNotFoundException e) {
+            throw new CustomException("生成PDF失败: 缺少PDF渲染组件(openhtmltopdf-pdfbox)，请联系管理员处理");
         } catch (Exception e) {
             throw new CustomException("生成PDF失败: " + e.getMessage());
         }
     }
 
-    private void registerPdfFonts(PdfRendererBuilder builder) {
+    private void registerPdfFonts(Object builder, Class<?> builderClass) {
         // 优先使用 SimHei (黑体)，因为它是标准的 ttf 文件，兼容性最好
-        tryUseFont(builder, "C:/Windows/Fonts/simhei.ttf", "SimHei");
+        tryUseFont(builder, builderClass, "C:/Windows/Fonts/simhei.ttf", "SimHei");
         // 备选方案
-        tryUseFont(builder, "C:/Windows/Fonts/msyh.ttc", "Microsoft YaHei");
-        tryUseFont(builder, "C:/Windows/Fonts/simsun.ttc", "SimSun");
-        tryUseFont(builder, "C:/Windows/Fonts/arialuni.ttf", "Arial Unicode MS");
+        tryUseFont(builder, builderClass, "C:/Windows/Fonts/msyh.ttc", "Microsoft YaHei");
+        tryUseFont(builder, builderClass, "C:/Windows/Fonts/simsun.ttc", "SimSun");
+        tryUseFont(builder, builderClass, "C:/Windows/Fonts/arialuni.ttf", "Arial Unicode MS");
     }
 
-    private void tryUseFont(PdfRendererBuilder builder, String fontPath, String fontFamily) {
+    private void tryUseFont(Object builder, Class<?> builderClass, String fontPath, String fontFamily) {
         try {
             File fontFile = new File(fontPath);
             if (!fontFile.exists() || !fontFile.isFile()) {
@@ -478,10 +484,25 @@ public class VocabularyService {
                 return;
             }
             // openhtmltopdf 对 ttc 的支持可能有限，如果是 ttc，尝试直接加载
-            builder.useFont(fontFile, fontFamily);
+            invokeMethod(builder, builderClass, "useFont", File.class, String.class, fontFile, fontFamily);
             System.out.println("Successfully registered PDF font: " + fontFamily + " from " + fontPath);
         } catch (Exception e) {
             System.err.println("Failed to register PDF font " + fontFamily + ": " + e.getMessage());
         }
+    }
+
+    private void invokeMethod(Object target, Class<?> targetClass, String methodName, Class<?> p1, Object a1) throws Exception {
+        Method m = targetClass.getMethod(methodName, p1);
+        m.invoke(target, a1);
+    }
+
+    private void invokeMethod(Object target, Class<?> targetClass, String methodName, Class<?> p1, Class<?> p2, Object a1, Object a2) throws Exception {
+        Method m = targetClass.getMethod(methodName, p1, p2);
+        m.invoke(target, a1, a2);
+    }
+
+    private void invokeMethod(Object target, Class<?> targetClass, String methodName) throws Exception {
+        Method m = targetClass.getMethod(methodName);
+        m.invoke(target);
     }
 }

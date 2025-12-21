@@ -1,11 +1,18 @@
 <template>
   <div class="terminal-container">
     <!-- Sessions Sidebar -->
-    <div class="sessions-sidebar" :class="{ collapsed: sidebarCollapsed }">
+    <div
+      class="sessions-sidebar"
+      :class="{ collapsed: sidebarCollapsed }"
+    >
       <div class="sidebar-header">
         <h3>终端会话</h3>
-        <button @click="createNewSession" class="new-session-btn" title="新建会话">
-          <i class="fas fa-plus">+</i>
+        <button
+          class="new-session-btn"
+          title="新建会话"
+          @click="createNewSession"
+        >
+          <span class="btn-icon">+</span>
         </button>
       </div>
       <div class="sessions-list">
@@ -17,11 +24,19 @@
           @click="selectSession(session.sessionId)"
         >
           <div class="session-info-wrapper">
-            <div class="session-title">{{ session.title || '未命名会话' }}</div>
-            <div class="session-time">{{ formatDate(session.createdAt) }}</div>
+            <div class="session-title">
+              {{ session.title || '未命名会话' }}
+            </div>
+            <div class="session-time">
+              {{ formatDate(session.createdAt) }}
+            </div>
           </div>
-          <button @click.stop="deleteSession(session.sessionId)" class="delete-session-btn" title="删除会话">
-            <i class="fas fa-trash">×</i>
+          <button
+            class="delete-session-btn"
+            title="删除会话"
+            @click.stop="deleteSession(session.sessionId)"
+          >
+            <span class="btn-icon">🗑️</span>
           </button>
         </div>
       </div>
@@ -33,62 +48,126 @@
         <div class="chat-panel">
           <div class="chat-header">
             <div class="header-left">
-              <button @click="sidebarCollapsed = !sidebarCollapsed" class="toggle-sidebar">
-                <i class="fas fa-bars">☰</i>
+              <button
+                class="toggle-sidebar"
+                @click="sidebarCollapsed = !sidebarCollapsed"
+              >
+                <span class="btn-icon">☰</span>
               </button>
               <h3>AI 终端助手</h3>
             </div>
             <div class="model-selector">
               <select v-model="currentModel">
-                <option value="deepseek-chat">DeepSeek Chat</option>
-                <option value="deepseek-reasoner">DeepSeek Reasoner</option>
-                <option value="doubao-pro-32k">豆包 Pro</option>
+                <option value="deepseek-chat">
+                  DeepSeek Chat
+                </option>
+                <option value="deepseek-reasoner">
+                  DeepSeek Reasoner
+                </option>
+                <option value="doubao-pro-32k">
+                  豆包 Pro
+                </option>
               </select>
             </div>
           </div>
           
-          <div class="messages-container" ref="messagesRef">
-            <div v-for="(msg, index) in messages" :key="index" class="message" :class="msg.role">
+          <div
+            ref="messagesRef"
+            class="messages-container"
+          >
+            <div
+              v-for="(msg, index) in messages"
+              :key="index"
+              class="message"
+              :class="msg.role"
+            >
               <div class="message-content">
                 <!-- User Message -->
-                <div v-if="msg.role === 'user'" class="user-bubble">
+                <div
+                  v-if="msg.role === 'user'"
+                  class="user-bubble"
+                >
                   {{ msg.content }}
                 </div>
 
                 <!-- AI Message -->
-                <div v-else-if="msg.role === 'ai'" class="ai-bubble">
-                  <div v-if="msg.thought" class="thought-block">
-                    <div class="thought-title" @click="msg.showThought = !msg.showThought">
+                <div
+                  v-else-if="msg.role === 'ai'"
+                  class="ai-bubble"
+                >
+                  <div
+                    v-if="msg.thought"
+                    class="thought-block"
+                  >
+                    <div
+                      class="thought-title"
+                      @click="msg.showThought = !msg.showThought"
+                    >
                       <span>思考过程</span>
                       <i class="toggle-icon">{{ msg.showThought ? '▼' : '▶' }}</i>
                     </div>
-                    <div v-if="msg.showThought" class="thought-content">{{ msg.thought }}</div>
+                    <div
+                      v-if="msg.showThought"
+                      class="thought-content"
+                    >
+                      {{ msg.thought }}
+                    </div>
                   </div>
-                  <div v-if="msg.message" class="ai-text">{{ msg.message }}</div>
+                  <div
+                    v-if="msg.message"
+                    class="ai-text"
+                  >
+                    {{ msg.message }}
+                  </div>
                   
                   <!-- Command Execution Info in Chat -->
-                  <div v-if="msg.tool === 'execute_command'" class="tool-call-card">
+                  <div
+                    v-if="msg.tool === 'execute_command'"
+                    class="tool-call-card"
+                  >
                     <div class="tool-header">
                       <span class="tool-icon">🐚</span>
                       <span class="tool-label">执行命令</span>
                     </div>
-                    <div class="tool-command"><code>{{ msg.command }}</code></div>
-                    <div class="tool-status" :class="msg.status">
-                      <span v-if="msg.status === 'pending'" class="spinner">⌛ 执行中...</span>
-                      <span v-else-if="msg.status === 'success'" class="status-success">✓ 执行成功</span>
-                      <span v-else class="status-error">✗ 执行失败</span>
+                    <div class="tool-command">
+                      <code>{{ msg.command }}</code>
+                    </div>
+                    <div
+                      class="tool-status"
+                      :class="msg.status"
+                    >
+                      <span
+                        v-if="msg.status === 'pending'"
+                        class="spinner"
+                      >⌛ 执行中...</span>
+                      <span
+                        v-else-if="msg.status === 'success'"
+                        class="status-success"
+                      >✓ 执行成功</span>
+                      <span
+                        v-else
+                        class="status-error"
+                      >✗ 执行失败</span>
                     </div>
                   </div>
                 </div>
 
                 <!-- Command Result Message (Special) -->
-                <div v-else-if="msg.role === 'command_result'" class="system-bubble">
-                  <div class="result-header">命令执行结果:</div>
+                <div
+                  v-else-if="msg.role === 'command_result'"
+                  class="system-bubble"
+                >
+                  <div class="result-header">
+                    命令执行结果:
+                  </div>
                   <pre class="result-content">{{ msg.content }}</pre>
                 </div>
               </div>
             </div>
-            <div v-if="isTyping" class="message ai">
+            <div
+              v-if="isTyping"
+              class="message ai"
+            >
               <div class="typing-indicator">
                 <span>.</span><span>.</span><span>.</span>
               </div>
@@ -98,11 +177,15 @@
           <div class="input-area">
             <textarea 
               v-model="inputMessage" 
-              @keydown.enter.prevent="handleEnter"
               placeholder="输入指令，例如：创建一个Vue项目..."
               :disabled="isTyping || isExecuting"
-            ></textarea>
-            <button class="send-btn" @click="sendMessage" :disabled="!inputMessage.trim() || isTyping || isExecuting">
+              @keydown.enter.prevent="handleEnter"
+            />
+            <button
+              class="send-btn"
+              :disabled="!inputMessage.trim() || isTyping || isExecuting"
+              @click="sendMessage"
+            >
               发送
             </button>
           </div>
@@ -112,18 +195,35 @@
         <div class="terminal-panel">
           <div class="terminal-header">
             <div class="terminal-tabs">
-              <div class="tab active">Terminal Output</div>
+              <div class="tab active">
+                Terminal Output
+              </div>
             </div>
-            <button @click="clearTerminal" class="clear-btn">Clear</button>
+            <button
+              class="clear-btn"
+              @click="clearTerminal"
+            >
+              Clear
+            </button>
           </div>
-          <div class="terminal-content" ref="terminalRef">
-            <div v-for="(log, index) in terminalLogs" :key="index" class="log-line">
+          <div
+            ref="terminalRef"
+            class="terminal-content"
+          >
+            <div
+              v-for="(log, index) in terminalLogs"
+              :key="index"
+              class="log-line"
+            >
               <div class="log-cmd-line">
                 <span class="prompt">➜</span>
                 <span class="cwd">~</span>
                 <span class="cmd">{{ log.command }}</span>
               </div>
-              <pre class="output" :class="log.type">{{ log.output }}</pre>
+              <pre
+                class="output"
+                :class="log.type"
+              >{{ log.output }}</pre>
             </div>
           </div>
         </div>
@@ -514,6 +614,13 @@ const executeCommand = async (cmd) => {
   color: #0f172a;
 }
 
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
 .sessions-list {
   flex: 1;
   overflow-y: auto;
@@ -530,7 +637,6 @@ const executeCommand = async (cmd) => {
   justify-content: space-between;
   align-items: center;
   position: relative;
-  group: hover;
 }
 
 .session-info-wrapper {
@@ -550,7 +656,7 @@ const executeCommand = async (cmd) => {
   justify-content: center;
   opacity: 0;
   transition: all 0.2s;
-  font-size: 1.2rem;
+  font-size: 1rem;
   line-height: 1;
 }
 
