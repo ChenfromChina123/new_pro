@@ -152,39 +152,6 @@
         </div>
         
         <div class="chat-input-area">
-          <!-- 上传文件列表 -->
-          <div
-            v-if="uploadedFiles.length > 0"
-            class="uploaded-files-list"
-          >
-            <div 
-              v-for="(file, index) in uploadedFiles" 
-              :key="index"
-              class="uploaded-file-item"
-            >
-              <i
-                v-if="file.type.includes('pdf')"
-                class="fas fa-file-pdf"
-              />
-              <i
-                v-else-if="file.type.includes('image')"
-                class="fas fa-file-image"
-              />
-              <i
-                v-else
-                class="fas fa-file"
-              />
-              <span class="file-name">{{ file.name }}</span>
-              <button 
-                class="remove-file-btn" 
-                title="移除文件"
-                @click="removeUploadedFile(index)"
-              >
-                <i class="fas fa-times" />
-              </button>
-            </div>
-          </div>
-          
           <div class="input-container">
             <textarea
               v-model="inputMessage"
@@ -201,17 +168,9 @@
                 <button 
                   class="tool-btn" 
                   title="上传附件"
-                  @click="triggerFileUpload"
                 >
                   <i class="fas fa-paperclip" />
                 </button>
-                <input 
-                  ref="fileInput"
-                  type="file" 
-                  multiple 
-                  style="display: none;"
-                  @change="handleFileUpload"
-                >
                 <button 
                   class="tool-btn-special" 
                   :class="{ active: chatStore.selectedModel.includes('reasoner') }"
@@ -329,38 +288,6 @@ import { API_CONFIG } from '@/config/api'
 
 const chatStore = useChatStore()
 const authStore = useAuthStore()
-
-// 文件上传相关
-const uploadedFiles = ref([])
-const fileInput = ref(null)
-
-/**
- * 触发文件上传
- */
-const triggerFileUpload = () => {
-  fileInput.value?.click()
-}
-
-/**
- * 处理文件上传
- */
-const handleFileUpload = (event) => {
-  const files = event.target.files
-  if (files) {
-    for (let i = 0; i < files.length; i++) {
-      uploadedFiles.value.push(files[i])
-    }
-  }
-  // 重置文件输入
-  event.target.value = ''
-}
-
-/**
- * 移除上传的文件
- */
-const removeUploadedFile = (index) => {
-  uploadedFiles.value.splice(index, 1)
-}
 const router = useRouter()
 const route = useRoute()
 const inputMessage = ref('')
@@ -463,6 +390,7 @@ const scheduleAutoScrollToBottom = () => {
     : (fn) => setTimeout(fn, 16)
   raf(() => {
     autoScrollScheduled = false
+    if (!isPinnedToBottom.value) return
     scrollToBottom('auto')
   })
 }
@@ -607,7 +535,7 @@ const createNewSession = async () => {
 }
 
 const sendMessage = async () => {
-  if ((!inputMessage.value.trim() && uploadedFiles.value.length === 0) || chatStore.isLoading) return
+  if (!inputMessage.value.trim() || chatStore.isLoading) return
   
   // 如果没有当前会话，先创建一个
   if (!chatStore.currentSessionId) {
@@ -624,66 +552,10 @@ const sendMessage = async () => {
   }
   
   isPinnedToBottom.value = true
-  
-  // 处理文件上传
-  if (uploadedFiles.value.length > 0) {
-    await uploadFilesAndSendMessage(message)
-  } else {
-    await chatStore.sendMessage(message, () => {
-      scheduleAutoScrollToBottom()
-    })
-  }
-  
-  // 清空上传文件列表
-  uploadedFiles.value = []
-}
-
-/**
- * 上传文件并发送消息
- */
-const uploadFilesAndSendMessage = async (message) => {
-  const formData = new FormData()
-  
-  // 添加文件
-  uploadedFiles.value.forEach(file => {
-    formData.append('files', file)
+  await chatStore.sendMessage(message, () => {
+    scheduleAutoScrollToBottom()
   })
-  
-  // 添加消息文本
-  if (message) {
-    formData.append('message', message)
-  }
-  
-  try {
-    // 上传文件
-    const uploadResponse = await fetch('/api/upload', {
-      method: 'POST',
-      body: formData
-    })
-    
-    if (!uploadResponse.ok) {
-      throw new Error('文件上传失败')
-    }
-    
-    const uploadResult = await uploadResponse.json()
-    
-    // 发送包含文件信息的消息
-    const fileMessage = {
-      text: message,
-      files: uploadResult.files.map(file => ({
-        id: file.id,
-        name: file.name,
-        url: file.url
-      }))
-    }
-    
-    await chatStore.sendMessage(JSON.stringify(fileMessage), () => {
-      scheduleAutoScrollToBottom()
-    })
-  } catch (error) {
-    console.error('文件上传失败:', error)
-    // 可以添加错误提示
-  }
+  scheduleAutoScrollToBottom()
 }
 
 // 渲染数学公式
@@ -1729,66 +1601,6 @@ body.dark-mode .message-copy-button {
   padding: 0 4px;
   align-self: flex-end;
   letter-spacing: 0.2px;
-}
-
-/* 上传文件列表样式 */
-.uploaded-files-list {
-  background-color: var(--bg-secondary);
-  border-radius: var(--border-radius-md);
-  padding: 12px;
-  margin-bottom: 12px;
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.uploaded-file-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px;
-  margin-bottom: 8px;
-  background-color: var(--bg-primary);
-  border-radius: var(--border-radius-sm);
-  border: 1px solid var(--border-color);
-  transition: all 0.2s ease;
-}
-
-.uploaded-file-item:last-child {
-  margin-bottom: 0;
-}
-
-.uploaded-file-item:hover {
-  border-color: var(--primary-color);
-  box-shadow: var(--shadow-sm);
-}
-
-.uploaded-file-item i {
-  color: var(--primary-color);
-  font-size: 16px;
-}
-
-.uploaded-file-item .file-name {
-  flex: 1;
-  font-size: 13px;
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.remove-file-btn {
-  background: none;
-  border: none;
-  color: var(--text-tertiary);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: var(--border-radius-sm);
-  transition: all 0.2s ease;
-}
-
-.remove-file-btn:hover {
-  background-color: var(--bg-tertiary);
-  color: var(--text-primary);
 }
 
 .loading-indicator {
