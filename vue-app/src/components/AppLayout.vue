@@ -3,9 +3,15 @@
     <AppSidebar v-if="showSidebar" />
     <main class="main-content">
       <router-view v-slot="{ Component }">
-        <transition name="fade-slide" mode="out-in">
+        <transition
+          name="fade-slide"
+          mode="out-in"
+        >
           <keep-alive>
-            <component :is="Component" :key="route.fullPath" />
+            <component
+              :is="Component"
+              :key="route.fullPath"
+            />
           </keep-alive>
         </transition>
       </router-view>

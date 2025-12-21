@@ -274,6 +274,40 @@ import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
 import { API_CONFIG } from '@/config/api'
 
+// 性能优化相关变量
+let rafId = null
+let lastFrameTime = 0
+let frameCount = 0
+let fps = 0
+
+/**
+ * 性能监控函数，用于监控页面帧率
+ */
+const monitorPerformance = () => {
+  const now = performance.now()
+  frameCount++
+  
+  // 每秒计算一次FPS
+  if (now - lastFrameTime >= 1000) {
+    fps = Math.round((frameCount * 1000) / (now - lastFrameTime))
+    frameCount = 0
+    lastFrameTime = now
+    
+    // 如果FPS低于60，记录警告
+    if (fps < 60) {
+      console.warn(`性能警告: 当前FPS为 ${fps}，低于60fps`)
+    }
+  }
+  
+  rafId = requestAnimationFrame(monitorPerformance)
+}
+
+/**
+ * 优化的消息格式化函数，使用防抖和缓存提高性能
+ */
+const formatMessageCache = new Map()
+const formatMessageDebounce = new Map()
+
 const chatStore = useChatStore()
 const authStore = useAuthStore()
 const router = useRouter()
@@ -345,19 +379,58 @@ const currentSessionTitle = computed(() => {
   return chatStore.currentSession?.title || '新对话'
 })
 
+// 监听消息变化，实现流式更新
+watch(
+  () => chatStore.messages,
+  async (newMessages, oldMessages) => {
+    // 检查是否有新消息或内容更新
+    if (newMessages.length !== oldMessages?.length || 
+        (newMessages.length > 0 && oldMessages?.length > 0 && 
+         newMessages[newMessages.length - 1].content !== oldMessages[oldMessages.length - 1].content)) {
+      
+      // 使用requestAnimationFrame确保在下一帧渲染，提高性能
+      requestAnimationFrame(() => {
+        // 检查用户是否在底部附近（100px范围内）
+        const isNearBottom = isUserNearBottom();
+        
+        if (isNearBottom) {
+          // 如果用户在底部，立即滚动到最新内容
+          scrollToBottom('auto');
+        }
+      });
+    }
+  },
+  { deep: true }
+);
+
+// 检查用户是否在页面底部附近
+const isUserNearBottom = () => {
+  if (!messagesContainer.value) return true;
+  
+  const container = messagesContainer.value;
+  const threshold = 100; // 底部阈值，100px范围内认为在底部
+  
+  return container.scrollHeight - container.scrollTop - container.clientHeight <= threshold;
+};
+
+// 优化的滚动函数，减少重排和重绘
 const scrollToBottom = (behavior = 'smooth') => {
-  if (messagesContainer.value) {
-    // 优先使用 scrollTop 直接设置，这样最可靠
+  if (!messagesContainer.value) return;
+  
+  // 使用requestAnimationFrame确保在下一帧执行，减少阻塞
+  requestAnimationFrame(() => {
     if (behavior === 'auto') {
-      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+      // 直接设置scrollTop，性能最好
+      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
     } else {
+      // 使用scrollToWithOptions，支持更好的性能优化
       messagesContainer.value.scrollTo({
         top: messagesContainer.value.scrollHeight,
         behavior: behavior
-      })
+      });
     }
-  }
-}
+  });
+};
 
 /**
  * 统一的滚动到底部触发函数
@@ -365,14 +438,26 @@ const scrollToBottom = (behavior = 'smooth') => {
  */
 const triggerScrollToBottom = (delay = 100) => {
   nextTick(() => {
-    // 第一次尝试：立即执行
-    scrollToBottom('auto')
-    // 第二次尝试：短延迟
-    setTimeout(() => scrollToBottom('auto'), delay)
-    // 第三次尝试：长延迟，确保公式渲染
-    setTimeout(() => scrollToBottom('auto'), delay + 200)
-  })
-}
+    // 使用requestAnimationFrame优化渲染性能
+    requestAnimationFrame(() => {
+      scrollToBottom('auto');
+      
+      // 延迟滚动，确保内容渲染完成
+      setTimeout(() => {
+        requestAnimationFrame(() => {
+          scrollToBottom('auto');
+        });
+      }, delay);
+      
+      // 二次延迟，确保公式等复杂内容渲染完成
+      setTimeout(() => {
+        requestAnimationFrame(() => {
+          scrollToBottom('auto');
+        });
+      }, delay + 200);
+    });
+  });
+};
 
 onMounted(async () => {
   // 0. 确保会话列表已加载
@@ -399,7 +484,10 @@ onMounted(async () => {
   } 
   // 3. 如果没有任何会话，创建一个新的
   else if (!chatStore.currentSessionId && chatStore.sessions.length === 0) {
-    await chatStore.createSession()
+    const result = await chatStore.createSession()
+    if (result?.success && result.sessionId) {
+      router.replace(`/chat?session=${result.sessionId}`)
+    }
     triggerScrollToBottom(100)
   }
 })
@@ -479,6 +567,15 @@ const toggleReasoning = (message) => {
 const sendSuggestion = (suggestion) => {
   inputMessage.value = suggestion
   sendMessage()
+}
+
+const createNewSession = async () => {
+  const result = await chatStore.createSession()
+  if (result?.success && result.sessionId) {
+    router.replace(`/chat?session=${result.sessionId}`)
+    return result.sessionId
+  }
+  return null
 }
 
 const sendMessage = async () => {
@@ -742,6 +839,17 @@ const sanitizeNullRuns = (content) => {
 }
 
 const formatMessage = (content) => {
+  // 使用缓存提高性能
+  const cacheKey = content
+  if (formatMessageCache.has(cacheKey)) {
+    return formatMessageCache.get(cacheKey)
+  }
+  
+  // 防抖处理，避免频繁格式化
+  if (formatMessageDebounce.has(cacheKey)) {
+    return formatMessageDebounce.get(cacheKey)
+  }
+  
   try {
     // 1. 先清理原始内容中的问题
     let cleanContent = content;
@@ -846,10 +954,20 @@ const formatMessage = (content) => {
     html = html.replace(/\]\s*$/g, '');
     
     // 7. 安全过滤，防止 XSS
-    return DOMPurify.sanitize(html, {
+    const result = DOMPurify.sanitize(html, {
       ADD_ATTR: ['onclick', 'style'], // 允许 onclick 和 style 属性，因为我们自定义了复制按钮
       ADD_TAGS: ['button', 'i'] // 允许 button 和 i 标签
     });
+    
+    // 缓存结果，但限制缓存大小
+    if (formatMessageCache.size > 100) {
+      // 清理最旧的缓存项
+      const firstKey = formatMessageCache.keys().next().value;
+      formatMessageCache.delete(firstKey);
+    }
+    formatMessageCache.set(cacheKey, result);
+    
+    return result;
   } catch (error) {
     console.error('消息格式化错误:', error);
     return content;

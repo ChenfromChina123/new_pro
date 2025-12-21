@@ -13,6 +13,10 @@ export const useChatStore = defineStore('chat', () => {
   const isLoading = ref(false)
   const abortController = ref(null)
   const selectedModel = ref(localStorage.getItem('selectedModel') || 'deepseek-chat')
+  
+  // 流式更新节流控制
+  let updateThrottle = null
+  let chunkCount = 0
 
   const normalizeStreamChunk = (chunk) => {
     if (chunk === null || chunk === undefined) return ''
@@ -69,7 +73,7 @@ export const useChatStore = defineStore('chat', () => {
       const newSession = {
         id: response.session_id,
         title: '新对话',
-        created_at: new Date().toISOString()
+        createdAt: new Date().toISOString()
       }
       sessions.value.unshift(newSession)
       currentSessionId.value = newSession.id
@@ -176,6 +180,34 @@ export const useChatStore = defineStore('chat', () => {
   async function sendMessage(content, onChunk) {
     isLoading.value = true
     abortController.value = new AbortController()
+
+    if (!currentSessionId.value) {
+      isLoading.value = false
+      return { success: false, message: '缺少会话ID' }
+    }
+
+    const truncateTitle = (text) => {
+      const str = String(text || '')
+      return str.length > 50 ? `${str.slice(0, 50)}...` : str
+    }
+
+    const nowIso = new Date().toISOString()
+    const sessionIndex = sessions.value.findIndex(s => s.id === currentSessionId.value)
+    if (sessionIndex === -1) {
+      sessions.value.unshift({
+        id: currentSessionId.value,
+        title: truncateTitle(content) || '新对话',
+        createdAt: nowIso
+      })
+    } else {
+      const session = sessions.value[sessionIndex]
+      if (!session.title || session.title === '新对话') {
+        session.title = truncateTitle(content) || '新对话'
+      }
+      if (sessionIndex !== 0) {
+        sessions.value.unshift(sessions.value.splice(sessionIndex, 1)[0])
+      }
+    }
     
     // 添加用户消息
     const userMessage = {
@@ -262,6 +294,12 @@ export const useChatStore = defineStore('chat', () => {
                   const session = sessions.value.find(s => s.id === currentSessionId.value)
                   if (session) {
                     session.title = parsed.title
+                  } else {
+                    sessions.value.unshift({
+                      id: currentSessionId.value,
+                      title: parsed.title,
+                      createdAt: new Date().toISOString()
+                    })
                   }
                 }
                 continue
@@ -280,6 +318,23 @@ export const useChatStore = defineStore('chat', () => {
                   activeAiMessage.isReasoningCollapsed = true
                 }
                 activeAiMessage.content += contentChunk
+                chunkCount++
+                
+                // 节流机制：每100ms或每5个chunk更新一次UI，减少渲染压力
+                if (!updateThrottle) {
+                  updateThrottle = setTimeout(() => {
+                    updateThrottle = null
+                    chunkCount = 0
+                  }, 100)
+                }
+                
+                // 如果达到5个chunk，立即触发UI更新
+                if (chunkCount >= 5) {
+                  clearTimeout(updateThrottle)
+                  updateThrottle = null
+                  chunkCount = 0
+                }
+                
                 if (onChunk) {
                   onChunk(contentChunk)
                 }
@@ -307,6 +362,12 @@ export const useChatStore = defineStore('chat', () => {
                 const session = sessions.value.find(s => s.id === currentSessionId.value)
                 if (session) {
                   session.title = parsed.title
+                } else {
+                  sessions.value.unshift({
+                    id: currentSessionId.value,
+                    title: parsed.title,
+                    createdAt: new Date().toISOString()
+                  })
                 }
               }
               return // 结束当前 buffer 处理

@@ -23,7 +23,10 @@
       <span class="folder-name">{{ displayName }}</span>
       
       <!-- 操作按钮 -->
-      <div v-if="canDelete" class="folder-actions">
+      <div
+        v-if="canDelete"
+        class="folder-actions"
+      >
         <button
           class="folder-rename-btn"
           title="重命名文件夹"
