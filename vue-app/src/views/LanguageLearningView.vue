@@ -1,1079 +1,1008 @@
 <template>
-  <AppLayout>
-    <div class="language-learning-page">
-      <!-- Mobile Header -->
-      <div class="mobile-header">
-        <button
-          class="mobile-menu-btn"
-          @click="showMobileSidebar = true"
-        >
-          <span class="icon">☰</span>
-        </button>
-        <h1 class="mobile-title">
-          📚 语言学习
-        </h1>
-      </div>
-
-      <!-- Sidebar Navigation -->
+  <div class="language-learning-page">
+    <!-- Main Content Area -->
+    <div class="main-content">
+      <!-- Dashboard View -->
       <div
-        class="sidebar"
-        :class="{ 'sidebar-mobile-open': showMobileSidebar }"
+        v-if="currentView === 'dashboard'"
+        class="view-section dashboard-view"
       >
-        <div class="sidebar-header">
-          <h2>📚 语言学习</h2>
-          <button
-            v-if="showMobileSidebar"
-            class="close-mobile-menu"
-            @click="showMobileSidebar = false"
-          >
-            <span class="icon">✕</span>
-          </button>
+        <div class="view-header">
+          <h2>学习概览</h2>
+          <p>查看你的学习进度和今日任务</p>
         </div>
-        <nav class="sidebar-nav">
-          <a
-            href="#"
-            class="nav-item"
-            :class="{ active: currentView === 'dashboard' }"
-            @click.prevent="currentView = 'dashboard'; showMobileSidebar = false"
-          >
 
-            <span class="label">学习概览</span>
-          </a>
-          <a
-            href="#"
-            class="nav-item"
-            :class="{ active: currentView === 'my-words' }"
-            @click.prevent="currentView = 'my-words'; showMobileSidebar = false"
-          >
-            
-            <span class="label">我的单词</span>
-          </a>
-          <a
-            href="#"
-            class="nav-item"
-            :class="{ active: currentView === 'public-library' }"
-            @click.prevent="currentView = 'public-library'; showMobileSidebar = false"
-          >
-            
-            <span class="label">公共词库</span>
-          </a>
-          <a
-            href="#"
-            class="nav-item"
-            :class="{ active: currentView === 'ai-articles' }"
-            @click.prevent="currentView = 'ai-articles'; showMobileSidebar = false"
-          >
-            
-            <span class="label">AI文章</span>
-          </a>
-        </nav>
-      </div>
-
-      <!-- Main Content Area -->
-      <div class="main-content">
-        <!-- Dashboard View -->
-        <div
-          v-if="currentView === 'dashboard'"
-          class="view-section dashboard-view"
-        >
-          <div class="view-header">
-            <h2>学习概览</h2>
-            <p>查看你的学习进度和今日任务</p>
-          </div>
-
-          <div class="dashboard-grid">
-            <div class="stat-card primary">
-              <div class="stat-icon">
-                📚
-              </div>
-              <div class="stat-content">
-                <div class="stat-value">
-                  {{ learningStats?.totalWords ?? 0 }}
-                </div>
-                <div class="stat-label">
-                  已学习单词
-                </div>
-              </div>
+        <div class="dashboard-grid">
+          <div class="stat-card primary">
+            <div class="stat-icon">
+              📚
             </div>
-            <div class="stat-card success">
-              <div class="stat-icon">
-                ✅
+            <div class="stat-content">
+              <div class="stat-value">
+                {{ learningStats?.totalWords ?? 0 }}
               </div>
-              <div class="stat-content">
-                <div class="stat-value">
-                  {{ learningStats?.masteredWords ?? 0 }}
-                </div>
-                <div class="stat-label">
-                  已掌握
-                </div>
-              </div>
-            </div>
-            <div class="stat-card warning">
-              <div class="stat-icon">
-                ⏱️
-              </div>
-              <div class="stat-content">
-                <div class="stat-value">
-                  {{ formatDuration(learningStats?.todayDuration ?? 0) }}
-                </div>
-                <div class="stat-label">
-                  今日时长
-                </div>
-              </div>
-            </div>
-            <div class="stat-card info">
-              <div class="stat-icon">
-                📈
-              </div>
-              <div class="stat-content">
-                <div class="stat-value">
-                  {{ formatDuration(learningStats?.totalDuration ?? 0) }}
-                </div>
-                <div class="stat-label">
-                  总时长
-                </div>
+              <div class="stat-label">
+                已学习单词
               </div>
             </div>
           </div>
-
-          <div class="review-section card mt-4">
-            <div class="card-header">
-              <h3>今日复习</h3>
-              <button
-                class="btn btn-text"
-                @click="refreshReview"
-              >
-                刷新
-              </button>
+          <div class="stat-card success">
+            <div class="stat-icon">
+              ✅
             </div>
-            <div
-              v-if="reviewItems.length === 0"
-              class="empty-state"
-            >
-              <div class="illustration">
-                🎉
+            <div class="stat-content">
+              <div class="stat-value">
+                {{ learningStats?.masteredWords ?? 0 }}
               </div>
-              <p>太棒了！今日复习任务已完成</p>
+              <div class="stat-label">
+                已掌握
+              </div>
             </div>
-            <div
-              v-else
-              class="review-grid"
-            >
-              <div
-                v-for="item in reviewItems"
-                :key="item.id"
-                class="review-card-item"
-              >
-                <div class="review-content">
-                  <h4 class="review-word">
-                    {{ item.word?.word || item.wordId }}
-                  </h4>
-                  <p class="review-def">
-                    {{ item.word?.definition }}
-                  </p>
-                </div>
-                <div class="review-actions">
-                  <button
-                    class="btn btn-sm btn-outline"
-                    @click="quickReview(getReviewWordId(item), Math.min((item.masteryLevel ?? 0) + 1, 5))"
-                  >
-                    认识
-                  </button>
-                  <button
-                    class="btn btn-sm btn-primary"
-                    @click="quickReview(getReviewWordId(item), 5)"
-                  >
-                    掌握
-                  </button>
-                </div>
+          </div>
+          <div class="stat-card warning">
+            <div class="stat-icon">
+              ⏱️
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                {{ formatDuration(learningStats?.todayDuration ?? 0) }}
+              </div>
+              <div class="stat-label">
+                今日时长
+              </div>
+            </div>
+          </div>
+          <div class="stat-card info">
+            <div class="stat-icon">
+              📈
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                {{ formatDuration(learningStats?.totalDuration ?? 0) }}
+              </div>
+              <div class="stat-label">
+                总时长
               </div>
             </div>
           </div>
         </div>
 
-        <!-- My Words View -->
-        <div
-          v-if="currentView === 'my-words'"
-          class="view-section my-words-view"
-        >
-          <div class="two-column-layout">
-            <div class="list-column card">
-              <div class="card-header">
-                <h3>单词表</h3>
+        <div class="review-section card mt-4">
+          <div class="card-header">
+            <h3>今日复习</h3>
+            <button
+              class="btn btn-text"
+              @click="refreshReview"
+            >
+              刷新
+            </button>
+          </div>
+          <div
+            v-if="reviewItems.length === 0"
+            class="empty-state"
+          >
+            <div class="illustration">
+              🎉
+            </div>
+            <p>太棒了！今日复习任务已完成</p>
+          </div>
+          <div
+            v-else
+            class="review-grid"
+          >
+            <div
+              v-for="item in reviewItems"
+              :key="item.id"
+              class="review-card-item"
+            >
+              <div class="review-content">
+                <h4 class="review-word">
+                  {{ item.word?.word || item.wordId }}
+                </h4>
+                <p class="review-def">
+                  {{ item.word?.definition }}
+                </p>
+              </div>
+              <div class="review-actions">
+                <button
+                  class="btn btn-sm btn-outline"
+                  @click="quickReview(getReviewWordId(item), Math.min((item.masteryLevel ?? 0) + 1, 5))"
+                >
+                  认识
+                </button>
                 <button
                   class="btn btn-sm btn-primary"
-                  @click="showCreateList = true"
+                  @click="quickReview(getReviewWordId(item), 5)"
                 >
-                  + 新建
+                  掌握
                 </button>
-              </div>
-              <div class="list-container">
-                <div
-                  v-for="list in vocabularyLists"
-                  :key="list.id"
-                  class="list-item"
-                  :class="{ active: currentListId === list.id }"
-                  @click="selectList(list.id)"
-                >
-                  <div class="list-info">
-                    <h4>{{ list.name }}</h4>
-                    <span class="badge">{{ (list.language || 'en').toUpperCase() }}</span>
-                    <span class="count">{{ list.wordCount || 0 }} 词</span>
-                  </div>
-                  <button
-                    class="btn-icon delete-btn"
-                    title="删除"
-                    @click.stop="removeList(list.id)"
-                  >
-                    ×
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div class="words-column card">
-              <div class="card-header">
-                <h3>{{ currentList ? currentList.name : '单词列表' }}</h3>
-                <div class="actions">
-                  <button
-                    v-if="currentListId"
-                    class="btn btn-sm btn-outline"
-                    @click="refreshCurrentList"
-                  >
-                    刷新
-                  </button>
-                  <button
-                    v-if="currentListId"
-                    class="btn btn-sm btn-primary"
-                    @click="showAddWord = true"
-                  >
-                    + 添加单词
-                  </button>
-                </div>
-              </div>
-
-              <div
-                v-if="!currentListId"
-                class="empty-state"
-              >
-                <p>请选择一个单词表查看详情</p>
-              </div>
-              <div
-                v-else-if="currentWords.length === 0"
-                class="empty-state"
-              >
-                <p>暂无单词，点击上方按钮添加</p>
-              </div>
-              <div
-                v-else
-                class="words-grid"
-              >
-                <div
-                  v-for="word in currentWords"
-                  :key="word.id"
-                  class="word-card-item"
-                >
-                  <div class="word-header">
-                    <h4>{{ word.word }}</h4>
-                    <span class="pos">{{ word.partOfSpeech }}</span>
-                  </div>
-                  <div class="word-body">
-                    <p class="definition">
-                      {{ word.definition }}
-                    </p>
-                    <p
-                      v-if="word.example"
-                      class="example"
-                    >
-                      {{ word.example }}
-                    </p>
-                  </div>
-                  <div class="word-footer">
-                    <span :class="['status-tag', getMasteryClass(getWordProgress(word.id).masteryLevel)]">
-                      {{ getMasteryText(getWordProgress(word.id).masteryLevel) }}
-                    </span>
-                    <div class="controls">
-                      <select
-                        class="select-sm"
-                        :value="getWordProgress(word.id).masteryLevel ?? 0"
-                        @change="changeMastery(word.id, $event.target.value)"
-                      >
-                        <option
-                          v-for="i in 6"
-                          :key="i"
-                          :value="i-1"
-                        >
-                          {{ i-1 }}
-                        </option>
-                      </select>
-                      <button
-                        class="btn-icon delete-btn"
-                        @click="removeWord(word.id)"
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- Public Library View -->
-        <div
-          v-if="currentView === 'public-library'"
-          class="view-section public-library-view"
-        >
-          <div class="view-header">
-            <h2>公共词库</h2>
-            <p>搜索并添加单词到你的个人词库</p>
-          </div>
-
-          <div class="search-bar-container">
-            <div class="search-input-wrapper">
-              <input
-                v-model="publicKeyword"
-                type="text"
-                class="search-input"
-                placeholder="搜索单词、释义..."
-                @keyup.enter="searchPublic"
-              >
+      <!-- My Words View -->
+      <div
+        v-if="currentView === 'my-words'"
+        class="view-section my-words-view"
+      >
+        <div class="two-column-layout">
+          <div class="list-column card">
+            <div class="card-header">
+              <h3>单词表</h3>
               <button
-                class="btn btn-primary search-btn"
-                @click="searchPublic"
+                class="btn btn-sm btn-primary"
+                @click="showCreateList = true"
               >
-                搜索
+                + 新建
               </button>
             </div>
-            <div
-              v-if="!currentListId"
-              class="search-tips"
-            >
-              ⚠️ 请先在"我的单词"中选择或创建一个目标单词表
-            </div>
-            <div
-              v-else
-              class="search-tips"
-            >
-              添加到: <strong>{{ currentList?.name }}</strong>
+            <div class="list-container">
+              <div
+                v-for="list in vocabularyLists"
+                :key="list.id"
+                class="list-item"
+                :class="{ active: currentListId === list.id }"
+                @click="selectList(list.id)"
+              >
+                <div class="list-info">
+                  <h4>{{ list.name }}</h4>
+                  <span class="badge">{{ (list.language || 'en').toUpperCase() }}</span>
+                  <span class="count">{{ list.wordCount || 0 }} 词</span>
+                </div>
+                <button
+                  class="btn-icon delete-btn"
+                  title="删除"
+                  @click.stop="removeList(list.id)"
+                >
+                  ×
+                </button>
+              </div>
             </div>
           </div>
 
-          <div class="public-results-grid">
-            <div
-              v-if="isLoading"
-              class="loading-state"
-            >
-              <div class="spinner" />
-              <p>正在获取词汇...</p>
+          <div class="words-column card">
+            <div class="card-header">
+              <h3>{{ currentList ? currentList.name : '单词列表' }}</h3>
+              <div class="actions">
+                <button
+                  v-if="currentListId"
+                  class="btn btn-sm btn-outline"
+                  @click="refreshCurrentList"
+                >
+                  刷新
+                </button>
+                <button
+                  v-if="currentListId"
+                  class="btn btn-sm btn-primary"
+                  @click="showAddWord = true"
+                >
+                  + 添加单词
+                </button>
+              </div>
             </div>
+
             <div
-              v-else-if="publicResults.length === 0"
+              v-if="!currentListId"
               class="empty-state"
             >
-              <p>未找到匹配的词汇，尝试更换关键词</p>
+              <p>请选择一个单词表查看详情</p>
+            </div>
+            <div
+              v-else-if="currentWords.length === 0"
+              class="empty-state"
+            >
+              <p>暂无单词，点击上方按钮添加</p>
             </div>
             <div
               v-else
-              class="public-results"
+              class="words-grid"
             >
               <div
-                class="review-grid"
+                v-for="word in currentWords"
+                :key="word.id"
+                class="word-card-item"
               >
-                <div
-                  v-for="w in paginatedResults"
-                  :key="w.id"
-                  class="review-card-item"
-                >
-                  <div class="review-content">
-                    <h4 class="review-word">
-                      {{ w.word }}
-                      <span
-                        v-if="w.partOfSpeech"
-                        class="public-pos"
-                      >
-                        {{ w.partOfSpeech }}
-                      </span>
-                    </h4>
-                    <p class="review-def">
-                      {{ w.definition }}
-                    </p>
-                  </div>
-                  <div class="review-actions">
-                    <button
-                      class="btn btn-sm btn-primary"
-                      :disabled="!currentListId"
-                      @click="addPublicWord(w)"
+                <div class="word-header">
+                  <h4>{{ word.word }}</h4>
+                  <span class="pos">{{ word.partOfSpeech }}</span>
+                </div>
+                <div class="word-body">
+                  <p class="definition">
+                    {{ word.definition }}
+                  </p>
+                  <p
+                    v-if="word.example"
+                    class="example"
+                  >
+                    {{ word.example }}
+                  </p>
+                </div>
+                <div class="word-footer">
+                  <span :class="['status-tag', getMasteryClass(getWordProgress(word.id).masteryLevel)]">
+                    {{ getMasteryText(getWordProgress(word.id).masteryLevel) }}
+                  </span>
+                  <div class="controls">
+                    <select
+                      class="select-sm"
+                      :value="getWordProgress(word.id).masteryLevel ?? 0"
+                      @change="changeMastery(word.id, $event.target.value)"
                     >
-                      添加
+                      <option
+                        v-for="i in 6"
+                        :key="i"
+                        :value="i-1"
+                      >
+                        {{ i-1 }}
+                      </option>
+                    </select>
+                    <button
+                      class="btn-icon delete-btn"
+                      @click="removeWord(word.id)"
+                    >
+                      🗑️
                     </button>
                   </div>
                 </div>
               </div>
-                
-              <!-- 分页组件 -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Public Library View -->
+      <div
+        v-if="currentView === 'public-library'"
+        class="view-section public-library-view"
+      >
+        <div class="view-header">
+          <h2>公共词库</h2>
+          <p>搜索并添加单词到你的个人词库</p>
+        </div>
+
+        <div class="search-bar-container">
+          <div class="search-input-wrapper">
+            <input
+              v-model="publicKeyword"
+              type="text"
+              class="search-input"
+              placeholder="搜索单词、释义..."
+              @keyup.enter="searchPublic"
+            >
+            <button
+              class="btn btn-primary search-btn"
+              @click="searchPublic"
+            >
+              搜索
+            </button>
+          </div>
+          <div
+            v-if="!currentListId"
+            class="search-tips"
+          >
+            ⚠️ 请先在"我的单词"中选择或创建一个目标单词表
+          </div>
+          <div
+            v-else
+            class="search-tips"
+          >
+            添加到: <strong>{{ currentList?.name }}</strong>
+          </div>
+        </div>
+
+        <div class="public-results-grid">
+          <div
+            v-if="isLoading"
+            class="loading-state"
+          >
+            <div class="spinner" />
+            <p>正在获取词汇...</p>
+          </div>
+          <div
+            v-else-if="publicResults.length === 0"
+            class="empty-state"
+          >
+            <p>未找到匹配的词汇，尝试更换关键词</p>
+          </div>
+          <div
+            v-else
+            class="public-results"
+          >
+            <div
+              class="review-grid"
+            >
               <div
-                v-if="totalPages > 1"
-                class="pagination-container"
+                v-for="w in paginatedResults"
+                :key="w.id"
+                class="review-card-item"
               >
-                <div class="pagination-info">
-                  显示第 {{ (currentPage - 1) * pageSize + 1 }} - {{ Math.min(currentPage * pageSize, vocabularyStore.publicSearchTotal) }} 条，共 {{ vocabularyStore.publicSearchTotal }} 条
+                <div class="review-content">
+                  <h4 class="review-word">
+                    {{ w.word }}
+                    <span
+                      v-if="w.partOfSpeech"
+                      class="public-pos"
+                    >
+                      {{ w.partOfSpeech }}
+                    </span>
+                  </h4>
+                  <p class="review-def">
+                    {{ w.definition }}
+                  </p>
                 </div>
-                <div class="pagination-buttons">
+                <div class="review-actions">
                   <button
-                    class="btn btn-sm btn-outline"
-                    :disabled="currentPage === 1"
-                    @click="goToPage(currentPage - 1)"
+                    class="btn btn-sm btn-primary"
+                    :disabled="!currentListId"
+                    @click="addPublicWord(w)"
                   >
-                    上一页
-                  </button>
-                  <span class="pagination-page">
-                    第 {{ currentPage }} 页 / 共 {{ totalPages }} 页
-                  </span>
-                  <button
-                    class="btn btn-sm btn-outline"
-                    :disabled="currentPage === totalPages"
-                    @click="goToPage(currentPage + 1)"
-                  >
-                    下一页
+                    添加
                   </button>
                 </div>
+              </div>
+            </div>
+                
+            <!-- 分页组件 -->
+            <div
+              v-if="totalPages > 1"
+              class="pagination-container"
+            >
+              <div class="pagination-info">
+                显示第 {{ (currentPage - 1) * pageSize + 1 }} - {{ Math.min(currentPage * pageSize, vocabularyStore.publicSearchTotal) }} 条，共 {{ vocabularyStore.publicSearchTotal }} 条
+              </div>
+              <div class="pagination-buttons">
+                <button
+                  class="btn btn-sm btn-outline"
+                  :disabled="currentPage === 1"
+                  @click="goToPage(currentPage - 1)"
+                >
+                  上一页
+                </button>
+                <span class="pagination-page">
+                  第 {{ currentPage }} 页 / 共 {{ totalPages }} 页
+                </span>
+                <button
+                  class="btn btn-sm btn-outline"
+                  :disabled="currentPage === totalPages"
+                  @click="goToPage(currentPage + 1)"
+                >
+                  下一页
+                </button>
               </div>
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- AI Articles View -->
-        <div
-          v-if="currentView === 'ai-articles'"
-          class="view-section ai-articles-view"
-        >
-          <div class="view-header">
-            <h2>AI 生成学习文章</h2>
-            <p>基于你的词汇表生成个性化阅读材料</p>
+      <!-- AI Articles View -->
+      <div
+        v-if="currentView === 'ai-articles'"
+        class="view-section ai-articles-view"
+      >
+        <div class="view-header">
+          <h2>AI 生成学习文章</h2>
+          <p>基于你的词汇表生成个性化阅读材料</p>
+        </div>
+
+        <div class="article-generator card">
+          <div class="ai-article-tabs">
+            <button
+              class="ai-tab-btn"
+              :class="{ active: aiArticleTab === 'generate' }"
+              @click="aiArticleTab = 'generate'"
+            >
+              ✨ 生成文章
+            </button>
+            <button
+              class="ai-tab-btn"
+              :class="{ active: aiArticleTab === 'mine' }"
+              @click="aiArticleTab = 'mine'; loadMyArticles()"
+            >
+              我的文章
+            </button>
           </div>
 
-          <div class="article-generator card">
-            <div class="ai-article-tabs">
-              <button
-                class="ai-tab-btn"
-                :class="{ active: aiArticleTab === 'generate' }"
-                @click="aiArticleTab = 'generate'"
-              >
-                ✨ 生成文章
-              </button>
-              <button
-                class="ai-tab-btn"
-                :class="{ active: aiArticleTab === 'mine' }"
-                @click="aiArticleTab = 'mine'; loadMyArticles()"
-              >
-                我的文章
-              </button>
-            </div>
-
-            <div
-              v-if="aiArticleTab === 'generate'"
-              class="ai-generate-panel"
-            >
-              <div class="ai-generate-grid">
-                <div class="ai-card ai-config-card">
-                  <div class="ai-card-header">
-                    <div class="ai-card-title">
-                      生成配置
-                    </div>
-                    <div class="ai-card-subtitle">
-                      选择词表、难度与篇幅，可用 AI 推荐主题
-                    </div>
+          <div
+            v-if="aiArticleTab === 'generate'"
+            class="ai-generate-panel"
+          >
+            <div class="ai-generate-grid">
+              <div class="ai-card ai-config-card">
+                <div class="ai-card-header">
+                  <div class="ai-card-title">
+                    生成配置
                   </div>
-                  <div class="ai-card-body">
-                    <div class="ai-form-grid">
-                      <!-- 单词表来源 -->
-                      <div class="form-group full-width">
-                        <label>📚 单词表来源</label>
-                        <select
-                          v-model="currentListId"
-                          class="select-input"
-                          @change="onListChange"
-                        >
-                          <option
-                            :value="null"
-                            disabled
-                          >
-                            请选择单词表
-                          </option>
-                          <option
-                            v-for="list in vocabularyLists"
-                            :key="list.id"
-                            :value="list.id"
-                          >
-                            {{ list.name }} ({{ list.wordCount || 0 }}词)
-                          </option>
-                        </select>
-                      </div>
-
-                      <!-- 文章长度 -->
-                      <div class="form-group">
-                        <label>📏 文章长度</label>
-                        <select
-                          v-model="articleOptions.length"
-                          class="select-input"
-                        >
-                          <option value="Short">
-                            短篇（约200词）
-                          </option>
-                          <option value="Medium">
-                            中篇（约400词）
-                          </option>
-                          <option value="Long">
-                            长篇（约700词）
-                          </option>
-                        </select>
-                      </div>
-
-                      <!-- 难度级别 -->
-                      <div class="form-group">
-                        <label>🎓 难度级别</label>
-                        <select
-                          v-model="articleOptions.difficulty"
-                          class="select-input"
-                        >
-                          <option value="基础英语">
-                            基础英语
-                          </option>
-                          <option value="四级">
-                            四级
-                          </option>
-                          <option value="六级">
-                            六级
-                          </option>
-                          <option value="托福">
-                            托福
-                          </option>
-                          <option value="雅思">
-                            雅思
-                          </option>
-                          <option value="商务英语">
-                            商务英语
-                          </option>
-                          <option value="学术英语">
-                            学术英语
-                          </option>
-                        </select>
-                      </div>
-
-                      <!-- 文章主题 -->
-                      <div class="form-group full-width">
-                        <label>📝 文章主题</label>
-                        <div class="ai-topic-input-group">
-                          <input
-                            v-model="articleOptions.topic"
-                            type="text"
-                            class="input"
-                            placeholder="输入文章主题（可选，留空则自动生成）"
-                          >
-                          <button
-                            class="btn btn-secondary btn-icon-text"
-                            :disabled="!currentListId || selectedWordIds.size === 0 || isGeneratingTopics"
-                            @click="generateTopics"
-                          >
-                            <span
-                              v-if="isGeneratingTopics"
-                              class="spinner-small"
-                            />
-                            <span v-else>✨</span>
-                            AI 推荐主题
-                          </button>
-                        </div>
-                        <div
-                          v-if="generatedTopics.length"
-                          class="ai-topic-suggestions"
-                        >
-                          <div class="ai-topic-suggestions-label">
-                            AI 推荐主题：
-                          </div>
-                          <div class="ai-topic-suggestions-list">
-                            <button
-                              v-for="topic in generatedTopics"
-                              :key="topic"
-                              class="ai-topic-chip"
-                              type="button"
-                              @click="selectTopic(topic)"
-                            >
-                              {{ topic }}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                  <div class="ai-card-subtitle">
+                    选择词表、难度与篇幅，可用 AI 推荐主题
                   </div>
                 </div>
+                <div class="ai-card-body">
+                  <div class="ai-form-grid">
+                    <!-- 单词表来源 -->
+                    <div class="form-group full-width">
+                      <label>📚 单词表来源</label>
+                      <select
+                        v-model="currentListId"
+                        class="select-input"
+                        @change="onListChange"
+                      >
+                        <option
+                          :value="null"
+                          disabled
+                        >
+                          请选择单词表
+                        </option>
+                        <option
+                          v-for="list in vocabularyLists"
+                          :key="list.id"
+                          :value="list.id"
+                        >
+                          {{ list.name }} ({{ list.wordCount || 0 }}词)
+                        </option>
+                      </select>
+                    </div>
 
-                <div class="ai-card ai-words-card">
-                  <div class="ai-card-header">
-                    <div class="ai-card-title">
-                      选词与生成
+                    <!-- 文章长度 -->
+                    <div class="form-group">
+                      <label>📏 文章长度</label>
+                      <select
+                        v-model="articleOptions.length"
+                        class="select-input"
+                      >
+                        <option value="Short">
+                          短篇（约200词）
+                        </option>
+                        <option value="Medium">
+                          中篇（约400词）
+                        </option>
+                        <option value="Long">
+                          长篇（约700词）
+                        </option>
+                      </select>
                     </div>
-                    <div class="ai-card-subtitle">
-                      <span v-if="currentListId">已加载 {{ currentWords.length }} 个单词</span>
-                      <span v-else>选择词表后可勾选单词生成文章</span>
+
+                    <!-- 难度级别 -->
+                    <div class="form-group">
+                      <label>🎓 难度级别</label>
+                      <select
+                        v-model="articleOptions.difficulty"
+                        class="select-input"
+                      >
+                        <option value="基础英语">
+                          基础英语
+                        </option>
+                        <option value="四级">
+                          四级
+                        </option>
+                        <option value="六级">
+                          六级
+                        </option>
+                        <option value="托福">
+                          托福
+                        </option>
+                        <option value="雅思">
+                          雅思
+                        </option>
+                        <option value="商务英语">
+                          商务英语
+                        </option>
+                        <option value="学术英语">
+                          学术英语
+                        </option>
+                      </select>
                     </div>
-                  </div>
-                  <div class="ai-card-body">
-                    <div
-                      v-if="currentListId"
-                      class="ai-word-selection-section"
-                    >
-                      <div class="ai-toolbar">
-                        <label class="checkbox-label">
-                          <input
-                            type="checkbox"
-                            :checked="isAllSelected"
-                            @change="toggleSelectAll"
-                          >
-                          全选/取消全选
-                          <span class="ai-toolbar-meta">已选 {{ selectedWordIds.size }} / {{ currentWords.length }}</span>
-                        </label>
-                        <div class="ai-toolbar-actions">
+
+                    <!-- 文章主题 -->
+                    <div class="form-group full-width">
+                      <label>📝 文章主题</label>
+                      <div class="ai-topic-input-group">
+                        <input
+                          v-model="articleOptions.topic"
+                          type="text"
+                          class="input"
+                          placeholder="输入文章主题（可选，留空则自动生成）"
+                        >
+                        <button
+                          class="btn btn-secondary btn-icon-text"
+                          :disabled="!currentListId || selectedWordIds.size === 0 || isGeneratingTopics"
+                          @click="generateTopics"
+                        >
+                          <span
+                            v-if="isGeneratingTopics"
+                            class="spinner-small"
+                          />
+                          <span v-else>✨</span>
+                          AI 推荐主题
+                        </button>
+                      </div>
+                      <div
+                        v-if="generatedTopics.length"
+                        class="ai-topic-suggestions"
+                      >
+                        <div class="ai-topic-suggestions-label">
+                          AI 推荐主题：
+                        </div>
+                        <div class="ai-topic-suggestions-list">
                           <button
-                            class="btn btn-outline btn-sm"
-                            :disabled="selectedWordIds.size === 0"
-                            @click="showSelectedWords = true"
+                            v-for="topic in generatedTopics"
+                            :key="topic"
+                            class="ai-topic-chip"
+                            type="button"
+                            @click="selectTopic(topic)"
                           >
-                            📘 查看已选
-                          </button>
-                          <button
-                            class="btn btn-primary"
-                            :disabled="!canGenerateArticle"
-                            @click="generateArticleNow"
-                          >
-                            ✨ 生成文章
+                            {{ topic }}
                           </button>
                         </div>
                       </div>
-
-                      <div class="ai-words-table-wrapper">
-                        <table class="ai-words-table">
-                          <thead>
-                            <tr>
-                              <th style="width: 50px;">
-                                选择
-                              </th>
-                              <th>单词</th>
-                              <th>释义</th>
-                              <th style="width: 100px;">
-                                词性
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr
-                              v-for="word in currentWords"
-                              :key="word.id"
-                              :class="{ 'selected': selectedWordIds.has(word.id) }"
-                              @click="toggleWordSelection(word.id)"
-                            >
-                              <td @click.stop>
-                                <input
-                                  type="checkbox"
-                                  :checked="selectedWordIds.has(word.id)"
-                                  @change="toggleWordSelection(word.id)"
-                                >
-                              </td>
-                              <td class="ai-word-text">
-                                {{ word.word }}
-                              </td>
-                              <td class="ai-word-definition">
-                                {{ word.definition }}
-                              </td>
-                              <td class="ai-word-pos">
-                                <span class="pos-tag">{{ word.partOfSpeech || '-' }}</span>
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-
-                    <div
-                      v-else
-                      class="ai-empty-hint ai-empty-in-card"
-                    >
-                      <div class="empty-icon">
-                        📭
-                      </div>
-                      <p>请先选择一个单词表开始</p>
                     </div>
                   </div>
                 </div>
               </div>
+
+              <div class="ai-card ai-words-card">
+                <div class="ai-card-header">
+                  <div class="ai-card-title">
+                    选词与生成
+                  </div>
+                  <div class="ai-card-subtitle">
+                    <span v-if="currentListId">已加载 {{ currentWords.length }} 个单词</span>
+                    <span v-else>选择词表后可勾选单词生成文章</span>
+                  </div>
+                </div>
+                <div class="ai-card-body">
+                  <div
+                    v-if="currentListId"
+                    class="ai-word-selection-section"
+                  >
+                    <div class="ai-toolbar">
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          :checked="isAllSelected"
+                          @change="toggleSelectAll"
+                        >
+                        全选/取消全选
+                        <span class="ai-toolbar-meta">已选 {{ selectedWordIds.size }} / {{ currentWords.length }}</span>
+                      </label>
+                      <div class="ai-toolbar-actions">
+                        <button
+                          class="btn btn-outline btn-sm"
+                          :disabled="selectedWordIds.size === 0"
+                          @click="showSelectedWords = true"
+                        >
+                          📘 查看已选
+                        </button>
+                        <button
+                          class="btn btn-primary"
+                          :disabled="!canGenerateArticle"
+                          @click="generateArticleNow"
+                        >
+                          ✨ 生成文章
+                        </button>
+                      </div>
+                    </div>
+
+                    <div class="ai-words-table-wrapper">
+                      <table class="ai-words-table">
+                        <thead>
+                          <tr>
+                            <th style="width: 50px;">
+                              选择
+                            </th>
+                            <th>单词</th>
+                            <th>释义</th>
+                            <th style="width: 100px;">
+                              词性
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr
+                            v-for="word in currentWords"
+                            :key="word.id"
+                            :class="{ 'selected': selectedWordIds.has(word.id) }"
+                            @click="toggleWordSelection(word.id)"
+                          >
+                            <td @click.stop>
+                              <input
+                                type="checkbox"
+                                :checked="selectedWordIds.has(word.id)"
+                                @change="toggleWordSelection(word.id)"
+                              >
+                            </td>
+                            <td class="ai-word-text">
+                              {{ word.word }}
+                            </td>
+                            <td class="ai-word-definition">
+                              {{ word.definition }}
+                            </td>
+                            <td class="ai-word-pos">
+                              <span class="pos-tag">{{ word.partOfSpeech || '-' }}</span>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div
+                    v-else
+                    class="ai-empty-hint ai-empty-in-card"
+                  >
+                    <div class="empty-icon">
+                      📭
+                    </div>
+                    <p>请先选择一个单词表开始</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+
+          <div
+            v-else
+            class="ai-myarticles-panel"
+          >
+            <div class="ai-myarticles-header">
+              <div class="ai-myarticles-meta">
+                共 {{ myArticles.length }} 篇
+              </div>
+              <button
+                class="btn btn-outline btn-sm"
+                :disabled="isLoadingArticles"
+                @click="loadMyArticles(true)"
+              >
+                刷新
+              </button>
             </div>
 
-
             <div
-              v-else
-              class="ai-myarticles-panel"
+              v-if="isLoadingArticles"
+              class="loading-state"
             >
-              <div class="ai-myarticles-header">
-                <div class="ai-myarticles-meta">
-                  共 {{ myArticles.length }} 篇
-                </div>
-                <button
-                  class="btn btn-outline btn-sm"
-                  :disabled="isLoadingArticles"
-                  @click="loadMyArticles(true)"
-                >
-                  刷新
-                </button>
+              <div class="spinner" />
+              <p>正在加载文章列表...</p>
+            </div>
+
+            <div v-else>
+              <div
+                v-if="myArticles.length === 0"
+                class="ai-empty-hint"
+              >
+                暂无文章，先去“生成文章”创建一篇吧
               </div>
 
               <div
-                v-if="isLoadingArticles"
-                class="loading-state"
+                v-else
+                class="ai-articles-table-wrapper"
               >
-                <div class="spinner" />
-                <p>正在加载文章列表...</p>
-              </div>
-
-              <div v-else>
-                <div
-                  v-if="myArticles.length === 0"
-                  class="ai-empty-hint"
-                >
-                  暂无文章，先去“生成文章”创建一篇吧
-                </div>
-
-                <div
-                  v-else
-                  class="ai-articles-table-wrapper"
-                >
-                  <table class="ai-articles-table">
-                    <thead>
-                      <tr>
-                        <th>标题</th>
-                        <th style="width: 120px;">
-                          难度
-                        </th>
-                        <th style="width: 120px;">
-                          长度
-                        </th>
-                        <th style="width: 180px;">
-                          创建时间
-                        </th>
-                        <th style="width: 120px;">
-                          操作
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr
-                        v-for="a in myArticles"
-                        :key="a.id"
-                      >
-                        <td class="ai-article-title">
-                          {{ a.topic || '未命名文章' }}
-                        </td>
-                        <td>{{ a.difficulty_level || a.difficultyLevel }}</td>
-                        <td>{{ a.article_length || a.articleLength }}</td>
-                        <td>{{ a.created_at || a.createdAt }}</td>
-                        <td>
-                          <button
-                            class="btn btn-outline btn-sm"
-                            @click="openMyArticle(a.id)"
-                          >
-                            查看
-                          </button>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+                <table class="ai-articles-table">
+                  <thead>
+                    <tr>
+                      <th>标题</th>
+                      <th style="width: 120px;">
+                        难度
+                      </th>
+                      <th style="width: 120px;">
+                        长度
+                      </th>
+                      <th style="width: 180px;">
+                        创建时间
+                      </th>
+                      <th style="width: 120px;">
+                        操作
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="a in myArticles"
+                      :key="a.id"
+                    >
+                      <td class="ai-article-title">
+                        {{ a.topic || '未命名文章' }}
+                      </td>
+                      <td>{{ a.difficulty_level || a.difficultyLevel }}</td>
+                      <td>{{ a.article_length || a.articleLength }}</td>
+                      <td>{{ a.created_at || a.createdAt }}</td>
+                      <td>
+                        <button
+                          class="btn btn-outline btn-sm"
+                          @click="openMyArticle(a.id)"
+                        >
+                          查看
+                        </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
+  </div>
     
-    <!-- Dialogs -->
+  <!-- Dialogs -->
+  <div
+    v-if="showSelectedWords"
+    class="modal-overlay"
+    @click.self="showSelectedWords = false"
+  >
+    <div class="modal-card modal-wide">
+      <div class="modal-wide-header">
+        <h3>已选择 {{ selectedWordsDetails.length }} 个单词</h3>
+        <button
+          class="modal-close-btn"
+          @click="showSelectedWords = false"
+        >
+          ×
+        </button>
+      </div>
+
+      <div class="ai-selected-words-table-wrapper">
+        <table class="ai-words-table">
+          <thead>
+            <tr>
+              <th>单词</th>
+              <th>释义</th>
+              <th style="width: 120px;">
+                词性
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="w in selectedWordsDetails"
+              :key="w.id"
+            >
+              <td class="ai-word-text">
+                {{ w.word }}
+              </td>
+              <td class="ai-word-definition">
+                {{ w.definition }}
+              </td>
+              <td class="ai-word-pos">
+                {{ w.partOfSpeech || '-' }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 非阻塞的文章生成状态通知 -->
+  <div
+    v-if="articleGenerationInProgress || articleGenerationComplete"
+    class="article-generation-notification"
+  >
     <div
-      v-if="showSelectedWords"
-      class="modal-overlay"
-      @click.self="showSelectedWords = false"
+      v-if="articleGenerationInProgress"
+      class="generation-progress"
     >
-      <div class="modal-card modal-wide">
-        <div class="modal-wide-header">
-          <h3>已选择 {{ selectedWordsDetails.length }} 个单词</h3>
+      <div class="spinner small" />
+      <span>正在生成文章...</span>
+    </div>
+    <div
+      v-if="articleGenerationComplete"
+      class="generation-complete"
+    >
+      <span>✓ 文章生成完成！请在"我的文章"中查看</span>
+    </div>
+  </div>
+
+  <div
+    v-if="showArticleModal"
+    class="modal-overlay"
+    @click.self="closeArticleModal"
+  >
+    <div class="modal-card modal-xxl">
+      <div class="modal-wide-header">
+        <div class="ai-article-modal-title">
+          {{ activeArticle?.topic || '未命名文章' }}
+        </div>
+        <div class="ai-article-modal-actions">
+          <div class="ai-download">
+            <button
+              class="btn btn-primary btn-sm"
+              @click="toggleDownloadMenu"
+            >
+              📥 下载文章 ▾
+            </button>
+            <div
+              v-if="showDownloadMenu"
+              class="ai-download-menu"
+            >
+              <button
+                class="ai-download-item"
+                type="button"
+                @click="downloadArticle('html')"
+              >
+                下载 HTML
+              </button>
+              <button
+                class="ai-download-item"
+                type="button"
+                @click="downloadArticle('txt')"
+              >
+                下载 TXT
+              </button>
+              <button
+                class="ai-download-item"
+                type="button"
+                @click="downloadArticle('pdf')"
+              >
+                打印/PDF
+              </button>
+            </div>
+          </div>
           <button
             class="modal-close-btn"
-            @click="showSelectedWords = false"
+            @click="closeArticleModal"
           >
             ×
           </button>
         </div>
-
-        <div class="ai-selected-words-table-wrapper">
-          <table class="ai-words-table">
-            <thead>
-              <tr>
-                <th>单词</th>
-                <th>释义</th>
-                <th style="width: 120px;">
-                  词性
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="w in selectedWordsDetails"
-                :key="w.id"
-              >
-                <td class="ai-word-text">
-                  {{ w.word }}
-                </td>
-                <td class="ai-word-definition">
-                  {{ w.definition }}
-                </td>
-                <td class="ai-word-pos">
-                  {{ w.partOfSpeech || '-' }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
       </div>
-    </div>
 
-    <!-- 非阻塞的文章生成状态通知 -->
-    <div
-      v-if="articleGenerationInProgress || articleGenerationComplete"
-      class="article-generation-notification"
-    >
+      <div class="ai-article-modal-meta">
+        难度：{{ activeArticle?.difficulty_level || activeArticle?.difficultyLevel }}｜
+        长度：{{ activeArticle?.article_length || activeArticle?.articleLength }}｜
+        使用单词：{{ selectedWordsCountForActive }} 个
+      </div>
+
       <div
-        v-if="articleGenerationInProgress"
-        class="generation-progress"
+        id="printable-article"
+        class="ai-article-modal-content"
       >
-        <div class="spinner small" />
-        <span>正在生成文章...</span>
-      </div>
-      <div
-        v-if="articleGenerationComplete"
-        class="generation-complete"
-      >
-        <span>✓ 文章生成完成！请在"我的文章"中查看</span>
-      </div>
-    </div>
-
-    <div
-      v-if="showArticleModal"
-      class="modal-overlay"
-      @click.self="closeArticleModal"
-    >
-      <div class="modal-card modal-xxl">
-        <div class="modal-wide-header">
-          <div class="ai-article-modal-title">
-            {{ activeArticle?.topic || '未命名文章' }}
-          </div>
-          <div class="ai-article-modal-actions">
-            <div class="ai-download">
-              <button
-                class="btn btn-primary btn-sm"
-                @click="toggleDownloadMenu"
-              >
-                📥 下载文章 ▾
-              </button>
-              <div
-                v-if="showDownloadMenu"
-                class="ai-download-menu"
-              >
-                <button
-                  class="ai-download-item"
-                  type="button"
-                  @click="downloadArticle('html')"
-                >
-                  下载 HTML
-                </button>
-                <button
-                  class="ai-download-item"
-                  type="button"
-                  @click="downloadArticle('txt')"
-                >
-                  下载 TXT
-                </button>
-                <button
-                  class="ai-download-item"
-                  type="button"
-                  @click="downloadArticle('pdf')"
-                >
-                  打印/PDF
-                </button>
-              </div>
-            </div>
-            <button
-              class="modal-close-btn"
-              @click="closeArticleModal"
-            >
-              ×
-            </button>
-          </div>
-        </div>
-
-        <div class="ai-article-modal-meta">
-          难度：{{ activeArticle?.difficulty_level || activeArticle?.difficultyLevel }}｜
-          长度：{{ activeArticle?.article_length || activeArticle?.articleLength }}｜
-          使用单词：{{ selectedWordsCountForActive }} 个
-        </div>
-
         <div
-          id="printable-article"
-          class="ai-article-modal-content"
+          v-for="(p, idx) in articleParagraphPairs"
+          :key="idx"
+          class="ai-article-paragraph-pair"
         >
+          <!-- eslint-disable-next-line vue/no-v-html -->
           <div
-            v-for="(p, idx) in articleParagraphPairs"
-            :key="idx"
-            class="ai-article-paragraph-pair"
-          >
-            <!-- eslint-disable-next-line vue/no-v-html -->
-            <div
-              class="ai-article-en"
-              v-html="p.enHtml"
-            />
-            <div class="ai-article-zh">
-              {{ p.zhText }}
-            </div>
+            class="ai-article-en"
+            v-html="p.enHtml"
+          />
+          <div class="ai-article-zh">
+            {{ p.zhText }}
           </div>
         </div>
       </div>
     </div>
+  </div>
 
-    <div
-      v-if="showCreateList"
-      class="modal-overlay"
-      @click.self="showCreateList = false"
-    >
-      <div class="modal-card">
-        <h3>创建单词表</h3>
+  <div
+    v-if="showCreateList"
+    class="modal-overlay"
+    @click.self="showCreateList = false"
+  >
+    <div class="modal-card">
+      <h3>创建单词表</h3>
+      <input
+        v-model="newList.name"
+        type="text"
+        class="input"
+        placeholder="输入单词表名称"
+        @keyup.enter="createList"
+      >
+      <textarea
+        v-model="newList.description"
+        class="input textarea"
+        placeholder="描述（可选）"
+      />
+      <select
+        v-model="newList.language"
+        class="input"
+      >
+        <option value="en">
+          英语
+        </option>
+        <option value="ja">
+          日语
+        </option>
+        <option value="ko">
+          韩语
+        </option>
+        <option value="fr">
+          法语
+        </option>
+        <option value="de">
+          德语
+        </option>
+        <option value="es">
+          西班牙语
+        </option>
+        <option value="zh">
+          中文
+        </option>
+      </select>
+      <div class="modal-actions">
+        <button
+          class="btn btn-secondary"
+          @click="showCreateList = false"
+        >
+          取消
+        </button>
+        <button
+          class="btn btn-primary"
+          @click="createList"
+        >
+          创建
+        </button>
+      </div>
+    </div>
+  </div>
+    
+  <div
+    v-if="showAddWord"
+    class="modal-overlay"
+    @click.self="showAddWord = false"
+  >
+    <div class="modal-card">
+      <h3>添加单词</h3>
+      <div class="form-group">
+        <label>单词</label>
         <input
-          v-model="newList.name"
+          v-model="newWord.word"
           type="text"
           class="input"
-          placeholder="输入单词表名称"
-          @keyup.enter="createList"
+          placeholder="单词"
         >
-        <textarea
-          v-model="newList.description"
-          class="input textarea"
-          placeholder="描述（可选）"
-        />
-        <select
-          v-model="newList.language"
+      </div>
+      <div class="form-group">
+        <label>释义</label>
+        <input
+          v-model="newWord.definition"
+          type="text"
           class="input"
+          placeholder="释义"
         >
-          <option value="en">
-            英语
-          </option>
-          <option value="ja">
-            日语
-          </option>
-          <option value="ko">
-            韩语
-          </option>
-          <option value="fr">
-            法语
-          </option>
-          <option value="de">
-            德语
-          </option>
-          <option value="es">
-            西班牙语
-          </option>
-          <option value="zh">
-            中文
-          </option>
-        </select>
-        <div class="modal-actions">
-          <button
-            class="btn btn-secondary"
-            @click="showCreateList = false"
-          >
-            取消
-          </button>
-          <button
-            class="btn btn-primary"
-            @click="createList"
-          >
-            创建
-          </button>
-        </div>
+      </div>
+      <div class="form-group">
+        <label>词性</label>
+        <input
+          v-model="newWord.partOfSpeech"
+          type="text"
+          class="input"
+          placeholder="例如: n., v., adj."
+        >
+      </div>
+      <div class="form-group">
+        <label>例句</label>
+        <textarea
+          v-model="newWord.example"
+          class="input textarea"
+          placeholder="例句（可选）"
+        />
+      </div>
+      <div class="modal-actions">
+        <button
+          class="btn btn-secondary"
+          @click="showAddWord = false"
+        >
+          取消
+        </button>
+        <button
+          class="btn btn-primary"
+          @click="addWord"
+        >
+          添加
+        </button>
       </div>
     </div>
-    
-    <div
-      v-if="showAddWord"
-      class="modal-overlay"
-      @click.self="showAddWord = false"
-    >
-      <div class="modal-card">
-        <h3>添加单词</h3>
-        <div class="form-group">
-          <label>单词</label>
-          <input
-            v-model="newWord.word"
-            type="text"
-            class="input"
-            placeholder="单词"
-          >
-        </div>
-        <div class="form-group">
-          <label>释义</label>
-          <input
-            v-model="newWord.definition"
-            type="text"
-            class="input"
-            placeholder="释义"
-          >
-        </div>
-        <div class="form-group">
-          <label>词性</label>
-          <input
-            v-model="newWord.partOfSpeech"
-            type="text"
-            class="input"
-            placeholder="例如: n., v., adj."
-          >
-        </div>
-        <div class="form-group">
-          <label>例句</label>
-          <textarea
-            v-model="newWord.example"
-            class="input textarea"
-            placeholder="例句（可选）"
-          />
-        </div>
-        <div class="modal-actions">
-          <button
-            class="btn btn-secondary"
-            @click="showAddWord = false"
-          >
-            取消
-          </button>
-          <button
-            class="btn btn-primary"
-            @click="addWord"
-          >
-            添加
-          </button>
-        </div>
-      </div>
-    </div>
-  </AppLayout>
+  </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, reactive, watch } from 'vue'
 import request from '@/utils/request'
 import { API_ENDPOINTS } from '@/config/api'
-import AppLayout from '@/components/AppLayout.vue'
 import { useVocabularyStore } from '@/stores/vocabulary'
 
 const currentView = ref('dashboard') // dashboard, my-words, public-library, ai-articles
