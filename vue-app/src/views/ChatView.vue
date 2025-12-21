@@ -343,16 +343,6 @@
         </transition>
       </div>
     </div>
-
-    <!-- 全局提示 (Toast) -->
-    <transition name="toast-fade">
-      <div v-if="showToastMsg" class="toast-container">
-        <div class="toast-content">
-          <i class="fas fa-info-circle" />
-          <span>{{ toastMessage }}</span>
-        </div>
-      </div>
-    </transition>
   </div>
 </template>
 
@@ -361,6 +351,7 @@ import DOMPurify from 'dompurify'
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useChatStore } from '@/stores/chat'
 import { useAuthStore } from '@/stores/auth'
+import { useUIStore } from '@/stores/ui'
 import { useRoute, useRouter } from 'vue-router'
 import { marked } from 'marked'
 import katex from 'katex'
@@ -371,6 +362,7 @@ import { API_CONFIG } from '@/config/api'
 
 const chatStore = useChatStore()
 const authStore = useAuthStore()
+const uiStore = useUIStore()
 const router = useRouter()
 const route = useRoute()
 const inputMessage = ref('')
@@ -698,6 +690,10 @@ onMounted(async () => {
   if (querySessionId) {
     chatStore.currentSessionId = querySessionId
     await chatStore.fetchSessionMessages(querySessionId)
+    
+    // 加载草稿
+    inputMessage.value = chatStore.getDraft(querySessionId)
+    
     // 恢复滚动位置
     nextTick(() => {
       const scrollTop = chatStore.getScrollPosition(querySessionId)
@@ -715,6 +711,10 @@ onMounted(async () => {
     const firstSessionId = chatStore.sessions[0].id
     chatStore.currentSessionId = firstSessionId
     await chatStore.fetchSessionMessages(firstSessionId)
+    
+    // 加载草稿
+    inputMessage.value = chatStore.getDraft(firstSessionId)
+    
     // 恢复滚动位置
     nextTick(() => {
       const scrollTop = chatStore.getScrollPosition(firstSessionId)
@@ -737,17 +737,46 @@ onMounted(async () => {
   }
 })
 
+// 监听输入框变化保存草稿
+watch(inputMessage, (newVal) => {
+  chatStore.saveDraft(chatStore.currentSessionId, newVal)
+})
+
 // 监听 URL 参数变化 (例如点击侧边栏时)
 watch(
   () => route.query.session,
   async (newSessionId, oldSessionId) => {
-    // 保存旧会话的滚动位置
-    if (oldSessionId && messagesContainer.value) {
-      chatStore.saveScrollPosition(oldSessionId, messagesContainer.value.scrollTop)
+    // 1. 处理旧会话的保存与清理
+    if (oldSessionId) {
+      // 保存旧会话的滚动位置
+      if (messagesContainer.value) {
+        chatStore.saveScrollPosition(oldSessionId, messagesContainer.value.scrollTop)
+      }
+      
+      // 检查旧会话是否需要自动清理 (无消息且无草稿)
+      const oldSession = chatStore.sessions.find(s => s.id === oldSessionId)
+      // 注意：这里需要检查该会话是否有实际消息。messages.value 已经被 fetchSessionMessages 覆盖，
+      // 所以我们需要一个更可靠的方法来检查旧会话是否为空。
+      // 为了简单起见，我们假设如果 messages 为空且没有草稿，就应该清理。
+      // 但 fetchSessionMessages 是异步的，这里逻辑需要小心。
+      
+      const oldDraft = chatStore.getDraft(oldSessionId)
+      // 如果旧会话没有草稿，且当前消息列表为空（因为即将加载新会话），
+      // 我们可能需要从后端或 store 的 sessions 列表中判断消息数。
+      // 暂时先处理最直接的情况：没有草稿且是“新对话”标题的会话。
+      if (oldSession && oldSession.title === '新对话' && !oldDraft) {
+        // 静默删除空的新会话
+        chatStore.deleteSession(oldSessionId)
+      }
     }
     
+    // 2. 加载新会话
     if (newSessionId) {
       await chatStore.fetchSessionMessages(newSessionId)
+      
+      // 加载草稿
+      inputMessage.value = chatStore.getDraft(newSessionId)
+      
       // 恢复新会话的滚动位置
       nextTick(() => {
         const scrollTop = chatStore.getScrollPosition(newSessionId)
@@ -838,9 +867,19 @@ onUnmounted(() => {
     URL.revokeObjectURL(userAvatarUrl.value)
     userAvatarUrl.value = null
   }
-  // 保存当前滚动位置
-  if (messagesContainer.value && chatStore.currentSessionId) {
-    chatStore.saveScrollPosition(chatStore.currentSessionId, messagesContainer.value.scrollTop)
+  
+  // 保存当前滚动位置和草稿
+  if (chatStore.currentSessionId) {
+    if (messagesContainer.value) {
+      chatStore.saveScrollPosition(chatStore.currentSessionId, messagesContainer.value.scrollTop)
+    }
+    chatStore.saveDraft(chatStore.currentSessionId, inputMessage.value)
+    
+    // 检查当前会话是否需要自动清理 (无消息且无草稿)
+    const currentSession = chatStore.sessions.find(s => s.id === chatStore.currentSessionId)
+    if (currentSession && currentSession.title === '新对话' && !inputMessage.value.trim() && chatStore.messages.length === 0) {
+      chatStore.deleteSession(chatStore.currentSessionId)
+    }
   }
 })
 
@@ -876,6 +915,9 @@ const sendMessage = async () => {
   
   const message = inputMessage.value.trim()
   inputMessage.value = ''
+  
+  // 清除草稿
+  chatStore.saveDraft(chatStore.currentSessionId, '')
   
   // 重置输入框高度
   const textarea = document.querySelector('.chat-input')
@@ -1329,22 +1371,6 @@ const formatSessionDate = (timestamp) => {
 
 const isModelMenuOpen = ref(false)
 const modelMenuRef = ref(null)
-const showToastMsg = ref(false)
-const toastMessage = ref('')
-let toastTimer = null
-
-/**
- * 显示友好提示
- * @param {string} msg 提示内容
- */
-const showToast = (msg) => {
-  toastMessage.value = msg
-  showToastMsg.value = true
-  if (toastTimer) clearTimeout(toastTimer)
-  toastTimer = setTimeout(() => {
-    showToastMsg.value = false
-  }, 3000)
-}
 
 const brands = [
   {
@@ -1391,7 +1417,7 @@ const toggleDeepThinking = () => {
   
   // 豆包限制：不能关闭深度思考
   if (brand.id === 'doubao' && isReasoning) {
-    showToast('豆包模型目前仅支持在“深度思考”模式下运行，以提供更优质的回复。')
+    uiStore.showToast('豆包模型目前仅支持在“深度思考”模式下运行，以提供更优质的回复。')
     return
   }
   
@@ -2896,51 +2922,5 @@ body.dark-mode .message-copy-button:hover {
 
 .reasoning-block .reasoning-content .markdown-body p:last-child {
   margin-bottom: 0;
-}
-
-/* Toast 样式 */
-.toast-container {
-  position: fixed;
-  top: 40px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 9999;
-  pointer-events: none;
-}
-
-.toast-content {
-  background-color: rgba(31, 41, 55, 0.9);
-  color: white;
-  padding: 12px 24px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 14px;
-  font-weight: 500;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  white-space: nowrap;
-}
-
-.toast-content i {
-  color: #3b82f6;
-  font-size: 16px;
-}
-
-.toast-fade-enter-active,
-.toast-fade-leave-active {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.toast-fade-enter-from {
-  opacity: 0;
-  transform: translateY(-20px);
-}
-
-.toast-fade-leave-to {
-  opacity: 0;
-  transform: translateY(-20px);
 }
 </style>
