@@ -137,7 +137,12 @@
         
         <!-- 返回底部按钮（引导问题上方） -->
         <transition name="fade">
-          <div v-if="showScrollToBottomBtn" class="scroll-to-bottom-container">
+          <div 
+            v-if="showScrollToBottomBtn" 
+            class="scroll-to-bottom-container"
+            @mouseenter="handleMouseEnterScrollBottom"
+            @mouseleave="handleMouseLeaveScrollBottom"
+          >
             <button 
               class="scroll-to-bottom-btn"
               title="返回底部"
@@ -272,6 +277,8 @@
       <div
         v-show="showNavArrows"
         class="nav-arrows"
+        @mouseenter="handleMouseEnterNavArrows"
+        @mouseleave="handleMouseLeaveNavArrows"
       >
         <button 
           v-show="canScrollUp"
@@ -368,6 +375,8 @@ const showScrollToBottomBtn = ref(false)
 const showHistoryPanel = ref(false)
 const canScrollUp = ref(false)
 const canScrollDown = ref(false)
+const isHoveringNavArrows = ref(false)
+const isHoveringScrollBottom = ref(false)
 let scrollDownCount = 0
 let scrollBottomTimer = null
 let navArrowsTimer = null
@@ -453,23 +462,77 @@ const handleWheel = (e) => {
   // 1. 快速导航箭头显示逻辑
   showNavArrows.value = true
   if (navArrowsTimer) clearTimeout(navArrowsTimer)
-  navArrowsTimer = setTimeout(() => {
-    showNavArrows.value = false
-  }, 2000) // 2秒无操作隐藏箭头
+  
+  // 仅在鼠标未悬停时开启自动隐藏计时器
+  if (!isHoveringNavArrows.value) {
+    navArrowsTimer = setTimeout(() => {
+      showNavArrows.value = false
+    }, 2000) // 2秒无操作隐藏箭头
+  }
 
   // 2. 返回底部按钮触发逻辑
-  if (e.deltaY > 0) { // 向下滑动
+  // 优化：只有当不在底部时，向下滑动才会累加计数并可能显示按钮
+  if (e.deltaY > 0 && !isPinnedToBottom.value) { 
     scrollDownCount++
-    if (scrollDownCount >= 3 && !isPinnedToBottom.value) {
+    if (scrollDownCount >= 3) {
       showScrollToBottomBtn.value = true
       if (scrollBottomTimer) clearTimeout(scrollBottomTimer)
-      scrollBottomTimer = setTimeout(() => {
-        showScrollToBottomBtn.value = false
-        scrollDownCount = 0
-      }, 3000)
+      
+      // 仅在鼠标未悬停时开启自动隐藏计时器
+      if (!isHoveringScrollBottom.value) {
+        scrollBottomTimer = setTimeout(() => {
+          showScrollToBottomBtn.value = false
+          scrollDownCount = 0
+        }, 3000)
+      }
     }
-  } else {
+  } else if (e.deltaY < 0) {
     scrollDownCount = 0 // 向上滑动重置计数
+  }
+}
+
+/**
+ * 鼠标进入/离开导航箭头的处理
+ */
+const handleMouseEnterNavArrows = () => {
+  isHoveringNavArrows.value = true
+  if (navArrowsTimer) {
+    clearTimeout(navArrowsTimer)
+    navArrowsTimer = null
+  }
+}
+
+const handleMouseLeaveNavArrows = () => {
+  isHoveringNavArrows.value = false
+  // 离开后重新开始计时隐藏
+  if (showNavArrows.value) {
+    if (navArrowsTimer) clearTimeout(navArrowsTimer)
+    navArrowsTimer = setTimeout(() => {
+      showNavArrows.value = false
+    }, 2000)
+  }
+}
+
+/**
+ * 鼠标进入/离开“最新消息”按钮的处理
+ */
+const handleMouseEnterScrollBottom = () => {
+  isHoveringScrollBottom.value = true
+  if (scrollBottomTimer) {
+    clearTimeout(scrollBottomTimer)
+    scrollBottomTimer = null
+  }
+}
+
+const handleMouseLeaveScrollBottom = () => {
+  isHoveringScrollBottom.value = false
+  // 离开后重新开始计时隐藏
+  if (showScrollToBottomBtn.value) {
+    if (scrollBottomTimer) clearTimeout(scrollBottomTimer)
+    scrollBottomTimer = setTimeout(() => {
+      showScrollToBottomBtn.value = false
+      scrollDownCount = 0
+    }, 3000)
   }
 }
 
