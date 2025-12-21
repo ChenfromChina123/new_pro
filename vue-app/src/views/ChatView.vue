@@ -1235,6 +1235,7 @@ const adjustTextareaHeight = (event) => {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  width: 100%; /* 确保占据可用宽度 */
 }
 
 .message.user .message-content {
@@ -1245,11 +1246,13 @@ const adjustTextareaHeight = (event) => {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  width: fit-content;
+  width: 100%; /* 默认占满，方便内部长内容触发溢出 */
+  max-width: 100%;
 }
 
 .message.user .message-bubble {
   align-items: flex-end;
+  width: fit-content; /* 用户消息保持紧凑 */
 }
 
 .message-text {
@@ -1262,9 +1265,9 @@ const adjustTextareaHeight = (event) => {
   transition: all 0.2s ease;
   font-size: 16px;
   letter-spacing: 0.2px;
-  max-width: 100%;
-  overflow-x: auto; /* 处理代码、表格等内容的横向溢出 */
+  width: 100%;
   box-sizing: border-box;
+  min-width: 0; /* 允许内部元素收缩 */
 }
 
 .message-text-raw {
@@ -1284,9 +1287,8 @@ const adjustTextareaHeight = (event) => {
   padding: 8px 0;
   font-size: 17px;
   line-height: 1.8;
-  max-width: 100%;
+  width: 100%;
   word-break: break-word;
-  overflow-x: auto; /* 处理代码、表格等内容的横向溢出 */
 }
 
 .message.assistant .message-text :deep(h1),
@@ -1325,6 +1327,8 @@ const adjustTextareaHeight = (event) => {
     padding: 16px;
     border-radius: var(--border-radius-md);
     overflow-x: auto;
+    white-space: pre; /* 确保不换行以触发滚动 */
+    word-wrap: normal;
     margin: 12px 0;
     box-shadow: var(--shadow-sm);
     font-family: 'Courier New', Courier, monospace;
@@ -1457,15 +1461,22 @@ body.dark-mode .copy-button {
 
 /* 表格样式 */
 .message-text :deep(table) {
+  display: block;
   width: 100%;
   max-width: 100%;
+  overflow-x: auto;
+  white-space: nowrap; /* 强制不换行以触发滚动，如果列内容很多 */
   border-collapse: separate;
   border-spacing: 0;
   margin: 16px 0;
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  overflow-x: auto;
-  display: block; /* 改为 block 以便 overflow-x 生效 */
+}
+
+.message-text :deep(table) td,
+.message-text :deep(table) th {
+  white-space: normal; /* 单元格内允许换行，除非列太多导致整体溢出 */
+  min-width: 120px; /* 给列一个最小宽度，增加触发滚动的机会 */
 }
 
 .message-text :deep(th) {
@@ -1992,7 +2003,7 @@ body.dark-mode .message-copy-button {
 
 @media (max-width: 1200px) {
   .message-content {
-    max-width: 85%;
+    max-width: 100%;
   }
 }
 
@@ -2015,7 +2026,7 @@ body.dark-mode .message-copy-button {
   }
   
   .message-content {
-    max-width: 90%;
+    max-width: 100%;
   }
   
   .chat-header {
@@ -2061,7 +2072,7 @@ body.dark-mode .message-copy-button {
   }
   
   .message-content {
-    max-width: 95%;
+    max-width: 100%;
   }
 }
 
@@ -2223,12 +2234,38 @@ body.dark-mode .message-copy-button {
   color: var(--text-secondary);
   border-top: 1px solid var(--border-color);
   line-height: 1.6;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+  overflow-x: hidden; /* 防止溢出 reasoning-block */
 }
 
 .reasoning-block .reasoning-content .markdown-body {
   background-color: transparent;
   font-size: 13px;
   color: var(--text-secondary);
+  width: 100%;
+}
+
+.reasoning-block .reasoning-content :deep(pre) {
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre;
+  word-wrap: normal;
+  background-color: var(--bg-tertiary);
+  padding: 12px;
+  border-radius: 6px;
+  margin: 8px 0;
+}
+
+.reasoning-block .reasoning-content :deep(table) {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: nowrap;
+  border-collapse: collapse;
+  margin: 8px 0;
 }
 
 .reasoning-block .reasoning-content .markdown-body p {
