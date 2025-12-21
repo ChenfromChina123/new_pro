@@ -526,15 +526,18 @@ const handleLogout = () => {
 }
 
 // 监听路由变化加载数据
-watch(route, async (newRoute) => {
-  if (newRoute.path.startsWith('/chat')) {
-    chatStore.fetchSessions()
-  } else if (newRoute.path.startsWith('/cloud-disk')) {
-    // 只有当路径确实变化或是进入云盘时才获取
-    await cloudDiskStore.fetchFolders()
-    await cloudDiskStore.fetchQuota()
-  }
-}, { immediate: true })
+watch(
+  () => route.path,
+  async (newPath) => {
+    if (newPath.startsWith('/chat')) {
+      await chatStore.fetchSessions()
+    } else if (newPath.startsWith('/cloud-disk')) {
+      await cloudDiskStore.fetchFolders()
+      await cloudDiskStore.fetchQuota()
+    }
+  },
+  { immediate: true }
+)
 
 // 初始化
 onMounted(() => {
