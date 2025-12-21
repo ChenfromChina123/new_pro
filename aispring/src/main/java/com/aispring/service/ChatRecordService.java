@@ -49,7 +49,7 @@ public class ChatRecordService {
         // 确保 ChatSession 存在
         final String finalSessionId = sessionId;
         final String finalSessionType = sessionType != null ? sessionType : "chat";
-        chatSessionRepository.findBySessionId(sessionId).orElseGet(() -> {
+        ChatSession session = chatSessionRepository.findBySessionId(sessionId).orElseGet(() -> {
             ChatSession newSession = ChatSession.builder()
                 .sessionId(finalSessionId)
                 .userId(userId)
@@ -58,6 +58,13 @@ public class ChatRecordService {
                 .build();
             return chatSessionRepository.save(newSession);
         });
+
+        // 如果是第一条用户消息且标题是默认的，自动更新标题
+        if (senderType == 1 && ("新对话".equals(session.getTitle()) || "未命名会话".equals(session.getTitle()))) {
+            String title = content.length() > 20 ? content.substring(0, 20) + "..." : content;
+            session.setTitle(title);
+            chatSessionRepository.save(session);
+        }
 
         // 获取该会话中最新的消息顺序号
         Integer lastMessageOrder = chatRecordRepository
