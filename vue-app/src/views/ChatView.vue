@@ -1880,9 +1880,9 @@ body.dark-mode .copy-button.copied {
   gap: 8px;
   padding: 6px 14px;
   border-radius: 8px;
-  background-color: #3b82f6; /* 蓝色背景，匹配图片 */
-  color: white;
-  border: none;
+  background-color: transparent; /* 初始背景透明 */
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -1892,19 +1892,20 @@ body.dark-mode .copy-button.copied {
   margin-bottom: 4px;
   opacity: 0;
   visibility: hidden;
-  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
 }
 
 .message-content:hover .message-copy-button {
   opacity: 1;
   visibility: visible;
   transform: translateY(-1px);
-  box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);
 }
 
 .message-copy-button:hover {
-  background-color: #2563eb;
+  background-color: #3b82f6; /* 鼠标悬浮在按钮上时变为蓝色 */
+  color: white;
+  border-color: #3b82f6;
   transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);
 }
 
 .message-copy-button:active {
@@ -1915,13 +1916,21 @@ body.dark-mode .copy-button.copied {
 .message-copy-button.copied {
   background-color: #10b981; /* 复制成功显示绿色 */
   color: white;
+  border-color: #10b981;
   animation: copiedPulse 0.6s ease-in-out;
 }
 
 /* 深色模式下的消息复制按钮样式 */
 body.dark-mode .message-copy-button {
+  background-color: transparent;
+  color: var(--text-secondary);
+  border-color: var(--border-color);
+}
+
+body.dark-mode .message-copy-button:hover {
   background-color: #3b82f6;
   color: white;
+  border-color: #3b82f6;
 }
 
 .message {
