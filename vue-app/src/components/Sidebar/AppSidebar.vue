@@ -56,6 +56,14 @@
         <span>云盘</span>
       </router-link>
       <router-link
+        to="/terminal"
+        class="nav-item"
+        active-class="active"
+      >
+        <i class="fas fa-terminal" />
+        <span>AI终端</span>
+      </router-link>
+      <router-link
         to="/language-learning"
         class="nav-item"
         active-class="active"
