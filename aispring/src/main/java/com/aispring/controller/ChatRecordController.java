@@ -1,6 +1,7 @@
 package com.aispring.controller;
 
 import com.aispring.entity.ChatRecord;
+import com.aispring.entity.ChatSession;
 import com.aispring.service.ChatRecordService;
 import com.aispring.dto.response.MessageResponse;
 import com.aispring.security.CustomUserDetails;
