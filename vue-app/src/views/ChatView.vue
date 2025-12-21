@@ -343,6 +343,16 @@
         </transition>
       </div>
     </div>
+
+    <!-- 全局提示 (Toast) -->
+    <transition name="toast-fade">
+      <div v-if="showToastMsg" class="toast-container">
+        <div class="toast-content">
+          <i class="fas fa-info-circle" />
+          <span>{{ toastMessage }}</span>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -1319,6 +1329,22 @@ const formatSessionDate = (timestamp) => {
 
 const isModelMenuOpen = ref(false)
 const modelMenuRef = ref(null)
+const showToastMsg = ref(false)
+const toastMessage = ref('')
+let toastTimer = null
+
+/**
+ * 显示友好提示
+ * @param {string} msg 提示内容
+ */
+const showToast = (msg) => {
+  toastMessage.value = msg
+  showToastMsg.value = true
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => {
+    showToastMsg.value = false
+  }, 3000)
+}
 
 const brands = [
   {
@@ -1345,9 +1371,14 @@ const currentBrand = computed(() => {
 
 // 切换品牌
 const selectBrand = (brand) => {
-  const isReasoning = chatStore.selectedModel.includes('reasoner')
-  const newModel = isReasoning ? brand.reasoner : brand.standard
-  chatStore.setModel(newModel)
+  if (brand.id === 'doubao') {
+    // 豆包强制开启深度思考
+    chatStore.setModel(brand.reasoner)
+  } else {
+    const isReasoning = chatStore.selectedModel.includes('reasoner')
+    const newModel = isReasoning ? brand.reasoner : brand.standard
+    chatStore.setModel(newModel)
+  }
   isModelMenuOpen.value = false
 }
 
@@ -1357,6 +1388,13 @@ const selectBrand = (brand) => {
 const toggleDeepThinking = () => {
   const brand = currentBrand.value
   const isReasoning = chatStore.selectedModel.includes('reasoner')
+  
+  // 豆包限制：不能关闭深度思考
+  if (brand.id === 'doubao' && isReasoning) {
+    showToast('豆包模型目前仅支持在“深度思考”模式下运行，以提供更优质的回复。')
+    return
+  }
+  
   const newModel = isReasoning ? brand.standard : brand.reasoner
   chatStore.setModel(newModel)
 }
@@ -2858,5 +2896,51 @@ body.dark-mode .message-copy-button:hover {
 
 .reasoning-block .reasoning-content .markdown-body p:last-child {
   margin-bottom: 0;
+}
+
+/* Toast 样式 */
+.toast-container {
+  position: fixed;
+  top: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.toast-content {
+  background-color: rgba(31, 41, 55, 0.9);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  white-space: nowrap;
+}
+
+.toast-content i {
+  color: #3b82f6;
+  font-size: 16px;
+}
+
+.toast-fade-enter-active,
+.toast-fade-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.toast-fade-enter-from {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+.toast-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-20px);
 }
 </style>
