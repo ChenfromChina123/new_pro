@@ -251,6 +251,75 @@
           </div>
         </div>
       </main>
+
+      <!-- 快速导航按钮（右侧中间） -->
+      <div class="nav-arrows" v-show="showNavArrows">
+        <button 
+          v-show="canScrollUp"
+          class="nav-arrow-btn up"
+          title="上一条对话"
+          @click="scrollToPrevMessage"
+        >
+          <i class="fas fa-chevron-up" />
+        </button>
+        <button 
+          v-show="canScrollDown"
+          class="nav-arrow-btn down"
+          title="下一条对话"
+          @click="scrollToNextMessage"
+        >
+          <i class="fas fa-chevron-down" />
+        </button>
+      </div>
+
+      <!-- 返回底部按钮（输入框上方） -->
+      <transition name="fade">
+        <button 
+          v-if="showScrollToBottomBtn" 
+          class="scroll-to-bottom-btn"
+          title="返回底部"
+          @click="scrollToBottom('smooth')"
+        >
+          <i class="fas fa-arrow-down" />
+          <span>最新消息</span>
+        </button>
+      </transition>
+
+      <!-- 历史提问导航面板（右上角悬浮） -->
+      <div class="history-nav-container">
+        <button 
+          class="history-nav-toggle"
+          title="提问历史"
+          @click="showHistoryPanel = !showHistoryPanel"
+        >
+          <i class="fas fa-list-ul" />
+        </button>
+        
+        <transition name="slide-fade">
+          <div v-if="showHistoryPanel" class="history-nav-panel">
+            <div class="panel-header">
+              <h3>提问历史</h3>
+              <button class="close-btn" @click="showHistoryPanel = false">
+                <i class="fas fa-times" />
+              </button>
+            </div>
+            <div class="panel-content">
+              <div 
+                v-for="(msg, index) in userMessages" 
+                :key="index"
+                class="history-item"
+                @click="scrollToMessage(msg.elementIndex)"
+              >
+                <span class="time">{{ formatTimeShort(msg.timestamp) }}</span>
+                <span class="text">{{ msg.content }}</span>
+              </div>
+              <div v-if="userMessages.length === 0" class="empty-history">
+                暂无提问记录
+              </div>
+            </div>
+          </div>
+        </transition>
+      </div>
     </div>
   </div>
 </template>
@@ -278,7 +347,116 @@ const isPinnedToBottom = ref(true)
 const SCROLL_BOTTOM_THRESHOLD_PX = 40
 let autoScrollScheduled = false
 
+// Navigation State
+const showNavArrows = ref(false)
+const showScrollToBottomBtn = ref(false)
+const showHistoryPanel = ref(false)
+const canScrollUp = ref(false)
+const canScrollDown = ref(false)
+let scrollDownCount = 0
+let scrollBottomTimer = null
+let navArrowsTimer = null
+
 const userAvatarUrl = ref(null) // 用于消息列表头像
+
+/**
+ * 计算属性：获取所有用户提问
+ */
+const userMessages = computed(() => {
+  return chatStore.messages
+    .map((msg, index) => ({ ...msg, elementIndex: index }))
+    .filter(msg => msg.role === 'user')
+    .sort((a, b) => b.timestamp - a.timestamp) // 倒序排列
+})
+
+/**
+ * 格式化短时间
+ */
+const formatTimeShort = (timestamp) => {
+  if (!timestamp) return ''
+  const date = new Date(timestamp)
+  return date.toLocaleTimeString('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+/**
+ * 滚动到指定消息
+ */
+const scrollToMessage = (index) => {
+  const elements = messagesContainer.value?.querySelectorAll('.message')
+  if (elements && elements[index]) {
+    elements[index].scrollIntoView({ behavior: 'smooth', block: 'center' })
+    // 添加高亮动画
+    elements[index].classList.add('highlight-message')
+    setTimeout(() => {
+      elements[index].classList.remove('highlight-message')
+    }, 2000)
+    // 移动端下点击后自动关闭面板
+    if (window.innerWidth < 768) {
+      showHistoryPanel.value = false
+    }
+  }
+}
+
+/**
+ * 滚动到上一条/下一条消息
+ */
+const scrollToPrevMessage = () => {
+  if (!messagesContainer.value) return
+  const scrollTop = messagesContainer.value.scrollTop
+  const elements = Array.from(messagesContainer.value.querySelectorAll('.message'))
+  
+  // 找到当前视口上方第一条消息
+  for (let i = elements.length - 1; i >= 0; i--) {
+    if (elements[i].offsetTop < scrollTop) {
+      elements[i].scrollIntoView({ behavior: 'smooth', block: 'start' })
+      return
+    }
+  }
+}
+
+const scrollToNextMessage = () => {
+  if (!messagesContainer.value) return
+  const scrollTop = messagesContainer.value.scrollTop
+  const elements = Array.from(messagesContainer.value.querySelectorAll('.message'))
+  
+  // 找到当前视口下方第一条消息
+  for (let i = 0; i < elements.length; i++) {
+    if (elements[i].offsetTop > scrollTop + messagesContainer.value.clientHeight) {
+      elements[i].scrollIntoView({ behavior: 'smooth', block: 'start' })
+      return
+    }
+  }
+}
+
+/**
+ * 处理鼠标滚轮事件
+ */
+const handleWheel = (e) => {
+  // 1. 快速导航箭头显示逻辑
+  showNavArrows.value = true
+  if (navArrowsTimer) clearTimeout(navArrowsTimer)
+  navArrowsTimer = setTimeout(() => {
+    showNavArrows.value = false
+  }, 2000) // 2秒无操作隐藏箭头
+
+  // 2. 返回底部按钮触发逻辑
+  if (e.deltaY > 0) { // 向下滑动
+    scrollDownCount++
+    if (scrollDownCount >= 3 && !isPinnedToBottom.value) {
+      showScrollToBottomBtn.value = true
+      if (scrollBottomTimer) clearTimeout(scrollBottomTimer)
+      scrollBottomTimer = setTimeout(() => {
+        showScrollToBottomBtn.value = false
+        scrollDownCount = 0
+      }, 3000)
+    }
+  } else {
+    scrollDownCount = 0 // 向上滑动重置计数
+  }
+}
 
 /**
  * 解析并返回消息头像图片地址；无可用图片时返回 `null` 以回退到默认图标
@@ -390,6 +568,13 @@ const scheduleAutoScrollToBottom = () => {
 
 const handleMessagesScroll = () => {
   updatePinnedState()
+  
+  // 更新导航箭头状态
+  if (messagesContainer.value) {
+    const { scrollTop, scrollHeight, clientHeight } = messagesContainer.value
+    canScrollUp.value = scrollTop > 10
+    canScrollDown.value = scrollTop + clientHeight < scrollHeight - 10
+  }
 }
 
 /**
@@ -507,7 +692,12 @@ watch(
   { immediate: true }
 )
 
+onMounted(() => {
+  window.addEventListener('wheel', handleWheel)
+})
+
 onUnmounted(() => {
+  window.removeEventListener('wheel', handleWheel)
   if (userAvatarUrl.value) {
     URL.revokeObjectURL(userAvatarUrl.value)
     userAvatarUrl.value = null
@@ -2210,6 +2400,206 @@ body.dark-mode .message-copy-button {
   border: 1px solid var(--border-color);
   margin: 8px 0;
   padding: 12px;
+}
+
+/* 导航功能样式 */
+.nav-arrows {
+  position: fixed;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 100;
+}
+
+.nav-arrow-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  transition: all 0.2s ease;
+  opacity: 0.8;
+}
+
+.nav-arrow-btn:hover {
+  background-color: var(--primary-color);
+  color: white;
+  transform: scale(1.1);
+  opacity: 1;
+}
+
+.scroll-to-bottom-btn {
+  position: absolute;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+  z-index: 100;
+  transition: all 0.3s ease;
+}
+
+.scroll-to-bottom-btn:hover {
+  background-color: var(--primary-dark);
+  transform: translateX(-50%) translateY(-2px);
+}
+
+.history-nav-container {
+  position: fixed;
+  top: 80px;
+  right: 24px;
+  z-index: 90;
+}
+
+.history-nav-toggle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  transition: all 0.2s ease;
+}
+
+.history-nav-toggle:hover {
+  background-color: var(--bg-tertiary);
+  color: var(--primary-color);
+}
+
+.history-nav-panel {
+  position: absolute;
+  top: 50px;
+  right: 0;
+  width: 300px;
+  max-height: 400px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.history-nav-panel .panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--bg-tertiary);
+}
+
+.history-nav-panel .panel-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.history-nav-panel .close-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  font-size: 14px;
+}
+
+.history-nav-panel .panel-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.history-item {
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: background-color 0.2s;
+}
+
+.history-item:hover {
+  background-color: var(--bg-tertiary);
+}
+
+.history-item .time {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.history-item .text {
+  font-size: 13px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.empty-history {
+  padding: 20px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+/* 动画效果 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.slide-fade-enter-active,
+.slide-fade-leave-active {
+  transition: all 0.3s ease;
+}
+
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+  transform: translateY(-10px);
+  opacity: 0;
+}
+
+.highlight-message {
+  animation: highlight-pulse 2s ease;
+}
+
+@keyframes highlight-pulse {
+  0% { background-color: rgba(59, 130, 246, 0.1); }
+  50% { background-color: rgba(59, 130, 246, 0.2); }
+  100% { background-color: transparent; }
 }
 
 .typing-cursor::after {
