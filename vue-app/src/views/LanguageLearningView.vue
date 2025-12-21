@@ -2360,7 +2360,7 @@ body.dark-mode .copy-button {
   flex: 1;
   padding: 12px 16px;
   border: 2px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: 10px;
   font-size: 15px;
   background-color: var(--bg-primary);
   color: var(--text-primary);
@@ -2373,7 +2373,6 @@ body.dark-mode .copy-button {
   background-position: right 16px center;
   background-size: 16px;
   padding-right: 45px !important;
-  box-shadow: var(--shadow-sm);
 }
 
 .wordlist-selection select:focus {
@@ -2391,40 +2390,22 @@ body.dark-mode .copy-button {
 
 /* Option Styles */
 .wordlist-selection select option {
-  padding: 14px 20px;
+  padding: 12px 16px;
   background-color: var(--bg-primary);
   color: var(--text-primary);
   font-size: 14px;
   font-weight: 500;
   transition: all 0.2s ease;
-  position: relative;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-radius: 8px;
-  margin: 4px;
 }
 
-/* 匹配图2 - 选中项蓝色背景 */
 .wordlist-selection select option:checked {
-  background-color: var(--primary-color);
-  color: white;
+  background-color: var(--chip-bg);
+  color: var(--primary-color);
 }
 
-/* 添加选中项对勾 - 匹配图2 */
-.wordlist-selection select option:checked::after {
-  content: '✓';
-  position: absolute;
-  right: 20px;
-  font-weight: bold;
-  font-size: 16px;
-  color: white;
-}
-
-/* 优化悬停效果 - 匹配图2 */
-.wordlist-selection select option:hover:not(:checked) {
+.wordlist-selection select option:hover {
   background-color: var(--bg-tertiary);
-  color: var(--text-primary);
+  color: var(--primary-color);
 }
 
 /* Focus styles for the entire selection area */
@@ -3158,149 +3139,19 @@ select {
 
 .select-input {
   width: 100%;
-  padding: 12px 40px 12px 16px;
-  border: 2px solid var(--border-color);
-  border-radius: 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
   font-size: 14px;
   background-color: var(--bg-secondary);
   color: var(--text-primary);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 16px center;
-  background-size: 16px;
-  cursor: pointer;
-  box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s;
 }
 
 .select-input:focus {
   outline: none;
   border-color: var(--primary-color);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-  background-color: var(--bg-primary);
-}
-
-.select-input:hover {
-  border-color: var(--primary-color);
-  background-color: var(--bg-primary);
-  box-shadow: var(--shadow-md);
-}
-
-/* Custom select dropdown styles */
-.select-input::-ms-expand {
-  display: none;
-}
-
-/* Dropdown styles */
-select {
-  /* Ensure consistent appearance across browsers */
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  border: none;
-  background: transparent;
-  outline: none;
-  font-family: inherit;
-  font-size: inherit;
-  color: inherit;
-  cursor: pointer;
-  width: 100%;
-  padding: 0;
-  margin: 0;
-  box-shadow: var(--shadow-lg);
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-/* Style for the dropdown options */
-select option {
-  padding: 14px 20px;
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-radius: 8px;
-  margin: 4px;
-  border: none;
-  position: relative;
-}
-
-/* Style for selected option */
-select option:checked {
-  background-color: var(--primary-color);
-  color: white;
-}
-
-/* Add checkmark to selected option */
-select option:checked::after {
-  content: '✓';
-  position: absolute;
-  right: 20px;
-  font-weight: bold;
-  font-size: 16px;
-  color: white;
-}
-
-/* Style for hovered option */
-select option:hover:not(:checked) {
-  background-color: var(--bg-tertiary);
-  color: var(--text-primary);
-}
-
-/* Improve accessibility for disabled options */
-select option:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  background-color: var(--bg-secondary);
-  color: var(--text-tertiary);
-}
-
-/* Ensure dropdown has proper spacing and appearance */
-select {
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  padding: 8px;
-}
-
-/* Ensure consistent styling for all select elements */
-select, .select-input {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Style for the wordlist selection section */
-.wordlist-selection {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  width: 100%;
-  max-width: 100%;
-}
-
-/* Make the select input take full width in the wordlist selection */
-.wordlist-selection .select-input {
-  flex: 1;
-  min-width: 200px;
-}
-
-/* Ensure proper styling on mobile */
-@media (max-width: 768px) {
-  .wordlist-selection {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-  
-  .wordlist-selection .select-input {
-    width: 100%;
-    min-width: auto;
-  }
 }
 
 .word-selection {

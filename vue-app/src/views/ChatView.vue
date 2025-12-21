@@ -53,10 +53,7 @@
                   class="reasoning-block"
                   :class="{ 'streaming': message.isStreaming && !message.content }"
                 >
-                  <div
-                    class="reasoning-header"
-                    @click="toggleReasoning(message)"
-                  >
+                  <div class="reasoning-header" @click="toggleReasoning(message)">
                     <div class="header-left">
                       <i class="fas fa-brain" />
                       <span>深度思考</span>
@@ -1103,14 +1100,12 @@ const adjustTextareaHeight = (event) => {
 
 .messages-container {
   flex: 1;
-  overflow: auto;
+  overflow-y: auto;
   padding: 32px 40px;
   background-color: var(--bg-primary);
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  width: 100%;
-  box-sizing: border-box;
+  align-items: center;
 }
 
 .messages-container::-webkit-scrollbar {
@@ -1172,7 +1167,7 @@ const adjustTextareaHeight = (event) => {
   animation: slideUp 0.3s ease-out;
   padding: 0 8px;
   width: 100%;
-  max-width: 100%;
+  max-width: 980px;
 }
 
 @keyframes slideUp {
@@ -1228,7 +1223,7 @@ const adjustTextareaHeight = (event) => {
 
 .message-content {
   flex: 1;
-  max-width: 100%;
+  max-width: 80%;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1244,7 +1239,7 @@ const adjustTextareaHeight = (event) => {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  width: 100%;
+  width: fit-content;
 }
 
 .message.user .message-bubble {
@@ -1574,7 +1569,7 @@ body.dark-mode .message-copy-button {
   animation: slideUp 0.3s ease-out;
   padding: 0 8px;
   width: 100%;
-  max-width: 100%;
+  max-width: 980px;
 }
 
 /* 重置message-bubble的相对定位 */
@@ -2170,67 +2165,5 @@ body.dark-mode .message-copy-button {
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
-}
-
-.reasoning-block {
-  margin-bottom: 12px;
-  border-radius: 8px;
-  background-color: var(--bg-tertiary);
-  border-left: 3px solid var(--border-color);
-  overflow: hidden;
-}
-
-.reasoning-block.streaming {
-  border-left-color: var(--primary-color);
-}
-
-.reasoning-block .reasoning-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  cursor: pointer;
-  background-color: var(--bg-secondary);
-  font-size: 13px;
-  color: var(--text-secondary);
-  user-select: none;
-  border-radius: 0;
-}
-
-.reasoning-block .reasoning-header:hover {
-  background-color: var(--bg-hover);
-}
-
-.reasoning-block .header-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.reasoning-block .reasoning-header i {
-  font-size: 12px;
-}
-
-.reasoning-block .reasoning-content {
-  padding: 12px;
-  background-color: var(--bg-primary);
-  font-size: 13px;
-  color: var(--text-secondary);
-  border-top: 1px solid var(--border-color);
-  line-height: 1.6;
-}
-
-.reasoning-block .reasoning-content .markdown-body {
-  background-color: transparent;
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
-.reasoning-block .reasoning-content .markdown-body p {
-  margin-bottom: 8px;
-}
-
-.reasoning-block .reasoning-content .markdown-body p:last-child {
-  margin-bottom: 0;
 }
 </style>
