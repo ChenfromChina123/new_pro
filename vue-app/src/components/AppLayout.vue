@@ -7,12 +7,10 @@
           name="fade-slide"
           mode="out-in"
         >
-          <keep-alive>
-            <component
-              :is="Component"
-              :key="route.name"
-            />
-          </keep-alive>
+          <component
+            :is="Component"
+            :key="route.fullPath"
+          />
         </transition>
       </router-view>
     </main>
