@@ -1,446 +1,270 @@
 <template>
   <div class="settings-container">
-    <h2 class="settings-title">
-      设置
-    </h2>
+    <h2 class="settings-title">设置</h2>
     
-    <div
-      v-if="settingsStore.isLoading"
-      class="loading-indicator"
-    >
+    <div v-if="settingsStore.isLoading" class="loading-indicator">
       <div class="loading-spinner" />
       <p>加载中...</p>
     </div>
     
-    <div
-      v-else-if="settingsStore.error"
-      class="error-message"
-    >
+    <div v-else-if="settingsStore.error" class="error-message">
       <p>{{ settingsStore.error }}</p>
-      <button
-        class="retry-btn"
-        @click="settingsStore.fetchSettings"
-      >
-        重试
-      </button>
+      <button class="retry-btn" @click="settingsStore.fetchSettings">重试</button>
     </div>
     
-    <div
-      v-else
-      class="settings-content"
-    >
-      <!-- AI 模型设置 -->
+    <div v-else class="settings-content">
+      <!-- 常规设置 -->
       <div class="settings-section">
-        <h3 class="section-title">
-          AI 模型设置
-        </h3>
+        <h3 class="section-title">常规设置</h3>
         
         <div class="setting-item">
-          <label class="setting-label">模型名称</label>
+          <label class="setting-label">界面主题</label>
           <div class="setting-control">
             <select 
-              v-model="localSettings.model_name" 
+              v-model="localSettings.theme" 
               class="select-control"
-              @change="handleUpdate('model_name')"
+              @change="handleUpdate('theme')"
             >
-              <option value="deepseek">
-                DeepSeek
-              </option>
-              <option value="gpt3">
-                GPT-3.5
-              </option>
-              <option value="gpt4">
-                GPT-4
-              </option>
-              <option value="claude">
-                Claude
-              </option>
+              <option value="light">浅色模式</option>
+              <option value="dark">深色模式</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="setting-item">
+          <label class="setting-label">语言</label>
+          <div class="setting-control">
+            <select 
+              v-model="localSettings.language" 
+              class="select-control"
+              @change="handleUpdate('language')"
+            >
+              <option value="zh-CN">简体中文</option>
+              <option value="en-US">English</option>
             </select>
           </div>
         </div>
       </div>
       
-      <!-- API 配置 -->
+      <!-- AI 模型设置 -->
       <div class="settings-section">
-        <h3 class="section-title">
-          API 配置
-        </h3>
+        <h3 class="section-title">AI 设置</h3>
         
         <div class="setting-item">
-          <label class="setting-label">API 基础地址</label>
+          <label class="setting-label">默认模型</label>
           <div class="setting-control">
-            <input 
-              v-model="localSettings.api_base" 
-              type="text" 
-              class="input-control"
-              placeholder="https://api.example.com/v1"
-              @change="handleUpdate('api_base')"
+            <select 
+              v-model="localSettings.aiModel" 
+              class="select-control"
+              @change="handleUpdate('aiModel')"
             >
+              <option value="deepseek">DeepSeek</option>
+              <option value="doubao">豆包</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- 通知设置 -->
+      <div class="settings-section">
+        <h3 class="section-title">通知设置</h3>
+        
+        <div class="setting-item">
+          <label class="setting-label">启用系统通知</label>
+          <div class="setting-control">
+             <label class="switch">
+              <input 
+                type="checkbox" 
+                v-model="localSettings.notificationsEnabled"
+                @change="handleUpdate('notificationsEnabled')"
+              >
+              <span class="slider round"></span>
+            </label>
           </div>
         </div>
         
         <div class="setting-item">
-          <label class="setting-label">API 密钥</label>
+          <label class="setting-label">启用邮件通知</label>
           <div class="setting-control">
-            <input 
-              v-model="localSettings.api_key" 
-              type="password" 
-              class="input-control"
-              placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-              @change="handleUpdate('api_key')"
-            >
+            <label class="switch">
+              <input 
+                type="checkbox" 
+                v-model="localSettings.emailNotifications"
+                @change="handleUpdate('emailNotifications')"
+              >
+              <span class="slider round"></span>
+            </label>
           </div>
         </div>
       </div>
       
-      <!-- 模型参数 -->
-      <div class="settings-section">
-        <h3 class="section-title">
-          模型参数
-        </h3>
+      <!-- 危险区域 -->
+      <div class="settings-section danger-zone">
+        <h3 class="section-title danger-title">危险区域</h3>
         
         <div class="setting-item">
-          <label class="setting-label">温度 (Temperature)</label>
+          <label class="setting-label">重置所有设置</label>
           <div class="setting-control">
-            <input 
-              v-model.number="localSettings.model_params.temperature" 
-              type="range" 
-              min="0"
-              max="2" 
-              step="0.1" 
-              class="range-control"
-              @change="handleUpdate('model_params')"
-            >
-            <span class="range-value">{{ localSettings.model_params.temperature }}</span>
+            <button class="btn btn-danger" @click="handleReset">重置设置</button>
           </div>
         </div>
-        
-        <div class="setting-item">
-          <label class="setting-label">最大令牌数 (Max Tokens)</label>
-          <div class="setting-control">
-            <input 
-              v-model.number="localSettings.model_params.max_tokens" 
-              type="range" 
-              min="500"
-              max="4000" 
-              step="100" 
-              class="range-control"
-              @change="handleUpdate('model_params')"
-            >
-            <span class="range-value">{{ localSettings.model_params.max_tokens }}</span>
-          </div>
-        </div>
-        
-        <div class="setting-item">
-          <label class="setting-label">Top P</label>
-          <div class="setting-control">
-            <input 
-              v-model.number="localSettings.model_params.top_p" 
-              type="range" 
-              min="0"
-              max="1" 
-              step="0.1" 
-              class="range-control"
-              @change="handleUpdate('model_params')"
-            >
-            <span class="range-value">{{ localSettings.model_params.top_p }}</span>
-          </div>
-        </div>
-      </div>
-      
-      <!-- 操作按钮 -->
-      <div class="settings-actions">
-        <button
-          class="reset-btn"
-          @click="resetSettings"
-        >
-          重置为默认设置
-        </button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
+import { useUIStore } from '@/stores/ui'
 
-defineOptions({ name: 'UserSettings' })
-
-// 初始化状态管理
 const settingsStore = useSettingsStore()
+const uiStore = useUIStore()
+const localSettings = ref({})
 
-// 本地设置副本，用于实时编辑 - 初始化为完整结构
-const localSettings = ref({
-  model_name: 'deepseek',
-  api_base: '',
-  api_key: '',
-  model_params: {
-    temperature: 0.7,
-    max_tokens: 2000,
-    top_p: 1.0
-  }
-})
+// Initialize local settings from store
+watch(() => settingsStore.settings, (newSettings) => {
+  localSettings.value = { ...newSettings }
+}, { deep: true })
 
-// 处理设置更新
-const handleUpdate = async (field) => {
-  // 确保model_params存在
-  if (field === 'model_params' && !localSettings.value.model_params) {
-    localSettings.value.model_params = {
-      temperature: 0.7,
-      max_tokens: 2000,
-      top_p: 1.0
-    }
-  }
-  
-  const updateData = { [field]: localSettings.value[field] }
-  const result = await settingsStore.updateSettings(updateData)
-  
-  if (result.success) {
-    console.log('设置更新成功')
-  }
-}
-
-// 重置设置
-const resetSettings = async () => {
-  if (confirm('确定要重置所有设置为默认值吗？')) {
-    const result = await settingsStore.resetSettings()
-    if (result.success) {
-      localSettings.value = { 
-        ...settingsStore.settings,
-        model_params: { ...(settingsStore.settings.model_params || {}) } // 安全深拷贝
-      }
-      alert('设置已重置')
-    }
-  }
-}
-
-// 初始化
 onMounted(async () => {
   await settingsStore.fetchSettings()
-  // 确保model_params存在且是对象
-  const settingsData = settingsStore.settings || {}
-  const modelParams = settingsData.model_params || {}
-  
-  localSettings.value = { 
-    ...settingsData,
-    model_params: { 
-      temperature: modelParams.temperature !== undefined ? modelParams.temperature : 0.7,
-      max_tokens: modelParams.max_tokens !== undefined ? modelParams.max_tokens : 2000,
-      top_p: modelParams.top_p !== undefined ? modelParams.top_p : 1.0
-    } // 安全合并model_params
-  }
+  localSettings.value = { ...settingsStore.settings }
 })
+
+const handleUpdate = async (field) => {
+  const updatePayload = {}
+  updatePayload[field] = localSettings.value[field]
+  
+  const result = await settingsStore.updateSettings(updatePayload)
+  if (result.success) {
+    uiStore.showToast('设置已保存')
+  } else {
+    uiStore.showToast(result.message || '保存失败')
+  }
+}
+
+const handleReset = async () => {
+  if (confirm('确定要重置所有设置吗？这将恢复默认设置。')) {
+    const result = await settingsStore.resetSettings()
+    if (result.success) {
+      uiStore.showToast('设置已重置')
+    } else {
+      uiStore.showToast(result.message || '重置失败')
+    }
+  }
+}
 </script>
 
 <style scoped>
 .settings-container {
   max-width: 800px;
   margin: 0 auto;
-  padding: 20px;
-  background-color: var(--bg-color, #ffffff);
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  transition: background-color 0.3s ease;
+  background-color: var(--bg-secondary);
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
 .settings-title {
   font-size: 24px;
   font-weight: 600;
   margin-bottom: 24px;
-  color: var(--text-color, #333333);
-  text-align: center;
-}
-
-.loading-indicator {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 0;
-}
-
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid var(--border-color, #e0e0e0);
-  border-top-color: var(--primary-color, #409eff);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 16px;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.error-message {
-  padding: 20px;
-  background-color: #fff2f0;
-  border: 1px solid #ffccc7;
-  border-radius: 4px;
-  color: #f56c6c;
-  text-align: center;
-}
-
-.retry-btn {
-  margin-top: 12px;
-  padding: 6px 16px;
-  background-color: var(--primary-color, #409eff);
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.3s ease;
-}
-
-.retry-btn:hover {
-  background-color: var(--primary-hover-color, #66b1ff);
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 16px;
 }
 
 .settings-content {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 30px;
 }
 
 .settings-section {
-  background-color: var(--card-bg-color, #fafafa);
-  padding: 20px;
+  background-color: var(--bg-primary);
   border-radius: 8px;
-  border: 1px solid var(--border-color, #e0e0e0);
-  transition: all 0.3s ease;
+  padding: 20px;
+  border: 1px solid var(--border-color);
 }
 
 .section-title {
   font-size: 18px;
   font-weight: 600;
-  margin-bottom: 16px;
-  color: var(--text-color, #333333);
-  border-bottom: 1px solid var(--border-color, #e0e0e0);
-  padding-bottom: 8px;
+  margin-bottom: 20px;
+  color: var(--text-primary);
 }
 
 .setting-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--border-color, #f0f0f0);
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .setting-item:last-child {
   margin-bottom: 0;
+  padding-bottom: 0;
   border-bottom: none;
 }
 
 .setting-label {
-  font-size: 16px;
-  color: var(--text-color, #333333);
-  flex: 1;
+  font-size: 15px;
+  color: var(--text-secondary);
+  font-weight: 500;
 }
 
 .setting-control {
+  min-width: 200px;
   display: flex;
-  align-items: center;
-  gap: 12px;
-  flex: 1;
   justify-content: flex-end;
 }
 
-.select-control {
-  padding: 8px 12px;
-  border: 1px solid var(--border-color, #dcdfe6);
-  border-radius: 4px;
-  background-color: var(--bg-color, #ffffff);
-  color: var(--text-color, #333333);
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  min-width: 150px;
-}
-
-.select-control:hover {
-  border-color: var(--primary-color, #409eff);
-}
-
-.select-control:focus {
-  outline: none;
-  border-color: var(--primary-color, #409eff);
-  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2);
-}
-
-.input-control {
-  padding: 8px 12px;
-  border: 1px solid var(--border-color, #dcdfe6);
-  border-radius: 4px;
-  background-color: var(--bg-color, #ffffff);
-  color: var(--text-color, #333333);
-  font-size: 14px;
+.select-control, .input-control {
   width: 100%;
-  max-width: 300px;
-  transition: all 0.3s ease;
-}
-
-.input-control:hover {
-  border-color: var(--primary-color, #409eff);
-}
-
-.input-control:focus {
-  outline: none;
-  border-color: var(--primary-color, #409eff);
-  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2);
-}
-
-.range-control {
-  flex: 1;
-  max-width: 200px;
-  cursor: pointer;
-}
-
-.range-value {
-  min-width: 50px;
-  text-align: center;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
   font-size: 14px;
-  color: var(--text-color, #333333);
+  transition: all 0.2s;
 }
 
-.toggle-control {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  justify-content: space-between;
+.select-control:focus, .input-control:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
 }
 
-.toggle-switch {
+/* Switch Styles */
+.switch {
   position: relative;
   display: inline-block;
   width: 50px;
   height: 24px;
 }
 
-.toggle-switch input {
+.switch input { 
   opacity: 0;
   width: 0;
   height: 0;
 }
 
-.toggle-slider {
+.slider {
   position: absolute;
   cursor: pointer;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: var(--border-color, #dcdfe6);
+  background-color: #ccc;
   transition: .4s;
-  border-radius: 24px;
 }
 
-.toggle-slider:before {
+.slider:before {
   position: absolute;
   content: "";
   height: 16px;
@@ -449,59 +273,108 @@ onMounted(async () => {
   bottom: 4px;
   background-color: white;
   transition: .4s;
-  border-radius: 50%;
 }
 
-input:checked + .toggle-slider {
-  background-color: var(--primary-color, #409eff);
+input:checked + .slider {
+  background-color: var(--primary-color, #3b82f6);
 }
 
-input:focus + .toggle-slider {
-  box-shadow: 0 0 1px var(--primary-color, #409eff);
+input:focus + .slider {
+  box-shadow: 0 0 1px var(--primary-color, #3b82f6);
 }
 
-input:checked + .toggle-slider:before {
+input:checked + .slider:before {
   transform: translateX(26px);
 }
 
-.settings-actions {
-  display: flex;
-  justify-content: center;
-  margin-top: 24px;
+.slider.round {
+  border-radius: 24px;
 }
 
-.reset-btn {
-  padding: 10px 20px;
-  background-color: var(--warning-color, #e6a23c);
+.slider.round:before {
+  border-radius: 50%;
+}
+
+/* Loading & Error */
+.loading-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: var(--text-tertiary);
+}
+
+.loading-spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 12px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.error-message {
+  padding: 20px;
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--danger-color);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.retry-btn {
+  margin-top: 10px;
+  padding: 6px 16px;
+  background-color: var(--danger-color);
   color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.3s ease;
 }
 
-.reset-btn:hover {
-  background-color: var(--warning-hover-color, #ebb563);
+/* Danger Zone */
+.danger-zone {
+  border-color: rgba(239, 68, 68, 0.3);
+  background-color: rgba(239, 68, 68, 0.05);
 }
 
-/* 深色主题适配 */
-@media (prefers-color-scheme: dark) {
+.danger-title {
+  color: var(--danger-color);
+}
+
+.btn-danger {
+  padding: 8px 16px;
+  background-color: var(--danger-color);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-danger:hover {
+  background-color: #dc2626;
+}
+
+@media (max-width: 640px) {
   .settings-container {
-    background-color: #1e1e1e;
-    color: #ffffff;
+    padding: 20px;
   }
   
-  .settings-section {
-    background-color: #2d2d2d;
-    border-color: #444444;
+  .setting-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
   }
   
-  .select-control,
-  .input-control {
-    background-color: #333333;
-    border-color: #555555;
-    color: #ffffff;
+  .setting-control {
+    width: 100%;
+    justify-content: flex-start;
   }
 }
 </style>

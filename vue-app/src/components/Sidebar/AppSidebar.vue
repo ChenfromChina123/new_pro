@@ -26,6 +26,14 @@
         >
           <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" />
         </button>
+        
+        <router-link 
+          to="/settings" 
+          class="sidebar-icon-btn"
+          title="设置"
+        >
+          <i class="fas fa-cog" />
+        </router-link>
       </div>
     </div>
 
