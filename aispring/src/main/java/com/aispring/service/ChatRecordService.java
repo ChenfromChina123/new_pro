@@ -97,28 +97,43 @@ public class ChatRecordService {
      * 获取用户指定类型的会话列表
      */
     public List<Map<String, Object>> getUserSessions(String userId, String sessionType) {
-        // 1. 先获取该类型的所有会话
-        List<ChatSession> sessions = chatSessionRepository.findByUserIdAndSessionTypeOrderByCreatedAtDesc(userId, sessionType);
+        // 1. 获取该用户在 chat_records 中的所有唯一会话 ID 和最后一条消息信息
+        // 使用自定义查询，支持 session_type 过滤且兼容旧数据（旧数据默认为 'chat'）
+        List<Object[]> results = chatRecordRepository.findSessionInfoByUserIdAndType(userId, sessionType);
         
-        // 2. 转换为 Map 并补充最后一条消息信息
-        return sessions.stream().map(session -> {
+        // 2. 转换为 Map
+        return results.stream().map(row -> {
             Map<String, Object> sessionMap = new HashMap<>();
-            String sessionId = session.getSessionId();
+            String sessionId = row[0].toString();
             sessionMap.put("session_id", sessionId);
-            sessionMap.put("title", session.getTitle());
-            sessionMap.put("suggestions", session.getSuggestions());
-            sessionMap.put("created_at", session.getCreatedAt() != null ? session.getCreatedAt().format(FORMATTER) : "");
             
-            // 获取该会话的最后一条消息和时间
-            List<ChatRecord> records = chatRecordRepository.findByUserIdAndSessionIdOrderByMessageOrderAsc(userId, sessionId);
-            if (!records.isEmpty()) {
-                ChatRecord lastRecord = records.get(records.size() - 1);
-                sessionMap.put("last_message", lastRecord.getContent());
-                sessionMap.put("last_message_time", lastRecord.getSendTime() != null ? lastRecord.getSendTime().format(FORMATTER) : "");
-            } else {
-                sessionMap.put("last_message", session.getTitle());
-                sessionMap.put("last_message_time", session.getCreatedAt() != null ? session.getCreatedAt().format(FORMATTER) : "");
+            // 处理时间
+            Object t1 = row[1];
+            String tm1 = "";
+            if (t1 != null) {
+                LocalDateTime dt1 = (t1 instanceof LocalDateTime) ? (LocalDateTime) t1
+                        : (t1 instanceof java.sql.Timestamp) ? ((java.sql.Timestamp) t1).toLocalDateTime() : null;
+                tm1 = dt1 != null ? dt1.format(FORMATTER) : "";
             }
+            sessionMap.put("last_message_time", tm1);
+            sessionMap.put("created_at", tm1); // 兼容前端字段
+
+            // 获取会话详情（标题和建议）
+            Optional<ChatSession> sessionOpt = chatSessionRepository.findBySessionId(sessionId);
+            String title = sessionOpt.map(ChatSession::getTitle).orElse(null);
+            
+            // 如果没有标题，使用最后一条消息内容
+            if (title == null || title.isEmpty() || "新对话".equals(title) || "未命名会话".equals(title)) {
+                String lastMessage = row[2] != null ? row[2].toString() : "";
+                if (lastMessage.length() > 50) {
+                    lastMessage = lastMessage.substring(0, 50) + "...";
+                }
+                title = lastMessage.isEmpty() ? "新对话" : lastMessage;
+            }
+            
+            sessionMap.put("title", title);
+            sessionMap.put("last_message", title);
+            sessionMap.put("suggestions", sessionOpt.map(ChatSession::getSuggestions).orElse(null));
             
             return sessionMap;
         }).collect(Collectors.toList());
