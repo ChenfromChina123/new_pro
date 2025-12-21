@@ -47,46 +47,6 @@
 
             <div class="message-content">
               <div class="message-bubble">
-                <!-- 深度思考区域 -->
-                <div 
-                  v-if="message.reasoning_content" 
-                  class="reasoning-message"
-                  :class="{ collapsed: message.isReasoningCollapsed }"
-                >
-                  <div 
-                    class="reasoning-header" 
-                    @click="toggleReasoning(message)"
-                  >
-                    <div class="reasoning-title-wrapper">
-                      <!-- 移除图标，仅保留文字以匹配图 2 -->
-                      <span class="reasoning-title">
-                        {{ message.isReasoningCollapsed ? '已完成思考' : '正在思考...' }}
-                      </span>
-                    </div>
-                    <!-- 切换为 expand 图标以匹配图 2 -->
-                    <i 
-                      class="fas reasoning-toggle-icon" 
-                      :class="message.isReasoningCollapsed ? 'fa-expand-alt' : 'fa-compress-alt'" 
-                    />
-                  </div>
-                  <div 
-                    v-show="!message.isReasoningCollapsed" 
-                    class="reasoning-body"
-                  >
-                    <!-- eslint-disable-next-line vue/no-v-html -->
-                    <div
-                      v-if="!message.isStreaming"
-                      class="reasoning-text"
-                      v-html="formatMessageCached(message, 'reasoning_content')"
-                    />
-                    <div
-                      v-else
-                      class="reasoning-text reasoning-text-raw"
-                      v-text="sanitizeNullRuns(message.reasoning_content)"
-                    />
-                  </div>
-                </div>
-
                 <!-- eslint-disable-next-line vue/no-v-html -->
                 <div
                   v-if="message.content && !message.isStreaming"
@@ -123,14 +83,6 @@
               <i class="fas fa-copy" />
               <span class="copy-text">复制</span>
             </button>
-          </div>
-          
-          <div
-            v-if="chatStore.isLoading"
-            class="loading-indicator"
-          >
-            <div class="loading" />
-            <span>AI正在思考...</span>
           </div>
         </div>
         
