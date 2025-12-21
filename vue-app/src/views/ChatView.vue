@@ -1226,7 +1226,7 @@ const adjustTextareaHeight = (event) => {
 
 .message-content {
   flex: 1;
-  max-width: 80%;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1240,7 +1240,7 @@ const adjustTextareaHeight = (event) => {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  width: fit-content;
+  width: 100%;
 }
 
 .message.user .message-bubble {
