@@ -40,6 +40,9 @@ public class ChatSession {
     @Column(name = "suggestions", columnDefinition = "TEXT")
     private String suggestions; // 存储为 JSON 字符串
     
+    @Column(name = "session_type", length = 20)
+    private String sessionType; // chat, terminal
+    
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
     
