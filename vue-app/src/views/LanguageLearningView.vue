@@ -885,9 +885,16 @@
                 <button
                   class="ai-download-item"
                   type="button"
+                  @click="downloadArticle('study')"
+                >
+                  下载（学习版）
+                </button>
+                <button
+                  class="ai-download-item"
+                  type="button"
                   @click="downloadArticle('pdf')"
                 >
-                  打印/PDF
+                  下载 PDF（学习版）
                 </button>
               </div>
             </div>
@@ -927,6 +934,68 @@
         </div>
       </div>
     </div>
+
+    <teleport to="body">
+      <div
+        v-if="showArticleModal && activeArticle"
+        id="article-print-area"
+        class="article-print-area"
+      >
+        <div class="article-print-title">
+          {{ activeArticle?.topic || '未命名文章' }}
+        </div>
+
+        <div class="article-print-content">
+          <div
+            v-for="(p, idx) in printParagraphPairs"
+            :key="idx"
+            class="article-print-paragraph"
+          >
+            <div class="article-print-en">
+              {{ p.enText }}
+            </div>
+            <div
+              v-if="p.zhText"
+              class="article-print-zh"
+            >
+              {{ p.zhText }}
+            </div>
+          </div>
+        </div>
+
+        <div
+          v-if="printUsedWords.length > 0"
+          class="article-print-words"
+        >
+          <div class="article-print-words-title">
+            单词列表
+          </div>
+          <table class="article-print-words-table">
+            <thead>
+              <tr>
+                <th style="width: 25%;">
+                  单词
+                </th>
+                <th style="width: 15%;">
+                  词性
+                </th>
+                <th>释义</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="(w, idx) in printUsedWords"
+                :key="idx"
+              >
+                <td>{{ w.word }}</td>
+                <td>{{ w.partOfSpeech || '-' }}</td>
+                <td>{{ w.definition || '' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </teleport>
 
     <div
       v-if="showCreateList"
@@ -1052,7 +1121,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, onActivated, onDeactivated, reactive, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, onActivated, onDeactivated, reactive, watch, nextTick } from 'vue'
 import request from '@/utils/request'
 import { API_ENDPOINTS } from '@/config/api'
 import { useVocabularyStore } from '@/stores/vocabulary'
@@ -1169,6 +1238,58 @@ const articleParagraphPairs = computed(() => {
     })
   }
   return pairs
+})
+
+/**
+ * 打印专用：构建纯文本段落对（避免高亮 HTML 影响打印布局）
+ */
+const printParagraphPairs = computed(() => {
+  const a = activeArticle.value
+  if (!a) return []
+  const original = a.original_text || a.originalText || ''
+  const translated = a.translated_text || a.translatedText || ''
+  const enParts = splitParagraphs(original)
+  const zhParts = splitParagraphs(translated)
+  const max = Math.max(enParts.length, zhParts.length)
+  const pairs = []
+  for (let i = 0; i < max; i += 1) {
+    pairs.push({
+      enText: enParts[i] || '',
+      zhText: zhParts[i] || ''
+    })
+  }
+  return pairs
+})
+
+/**
+ * 打印专用：从文章详情中提取使用单词列表（不足时回退到当前选择）
+ */
+const printUsedWords = computed(() => {
+  const a = activeArticle.value
+  const usedWords = a?.used_words || a?.usedWords
+  if (Array.isArray(usedWords) && usedWords.length > 0) {
+    return usedWords
+      .map((uw) => {
+        const w = uw?.word || null
+        const wordText = String(w?.word || uw?.word_text || uw?.wordText || '').trim()
+        const definition = String(w?.definition || w?.meaning || w?.translation || '').trim()
+        const partOfSpeech = String(w?.part_of_speech || w?.partOfSpeech || '').trim()
+        const occurrenceCount = Number(uw?.occurrence_count ?? uw?.occurrenceCount ?? 0) || 0
+        return {
+          word: wordText || String(uw?.word_text || uw?.wordText || '').trim(),
+          definition,
+          partOfSpeech,
+          occurrenceCount
+        }
+      })
+      .filter(item => String(item.word || '').trim())
+  }
+  return selectedWordsDetails.value.map(w => ({
+    word: w.word,
+    definition: w.definition,
+    partOfSpeech: w.partOfSpeech,
+    occurrenceCount: 0
+  }))
 })
 
 const lastActiveAt = ref(Date.now())
@@ -1519,6 +1640,100 @@ const buildHtmlForArticle = (article) => {
 </html>`
 }
 
+const escapeRegExp = (value) => {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+const renderHighlightedTextBySelection = (text, metaMap) => {
+  if (!text) return ''
+  const keys = Array.from(metaMap?.keys?.() || [])
+    .map(k => String(k || '').trim())
+    .filter(Boolean)
+  if (keys.length === 0) return escapeHtml(text)
+  keys.sort((a, b) => b.length - a.length)
+  const pattern = keys.map(escapeRegExp).join('|')
+  const re = new RegExp(`\\b(${pattern})\\b`, 'gi')
+  const escaped = escapeHtml(String(text).replaceAll('**', ''))
+  return escaped.replace(re, (matched) => {
+    const key = String(matched || '').toLowerCase()
+    const meta = metaMap?.get?.(key)
+    const tip = meta
+      ? `${meta.word}${meta.partOfSpeech ? ` (${meta.partOfSpeech})` : ''}：${meta.definition || ''}`
+      : matched
+    return `<span class="vocab-chip" title="${escapeHtml(tip)}">${escapeHtml(matched)}</span>`
+  })
+}
+
+const buildHtmlForStudyDownload = (article) => {
+  const title = article?.topic || '未命名文章'
+  const original = article?.original_text || article?.originalText || ''
+  const translated = article?.translated_text || article?.translatedText || ''
+  const enParts = splitParagraphs(String(original).replaceAll('**', ''))
+  const zhParts = splitParagraphs(translated)
+  const metaMap = buildSelectedWordMetaMap()
+  const max = Math.max(enParts.length, zhParts.length)
+  const blocks = []
+  for (let i = 0; i < max; i += 1) {
+    const enHtml = renderHighlightedTextBySelection(enParts[i] || '', metaMap)
+    const zhText = escapeHtml(zhParts[i] || '')
+    blocks.push(`
+      <div class="para">
+        <div class="en">${enHtml}</div>
+        ${zhText ? `<div class="zh">${zhText}</div>` : ''}
+      </div>
+    `)
+  }
+
+  const words = (printUsedWords.value || []).slice().sort((a, b) => String(a.word).localeCompare(String(b.word)))
+  const wordRows = words.map((w) => `
+    <tr>
+      <td class="w-word">${escapeHtml(w.word || '')}</td>
+      <td class="w-pos">${escapeHtml(w.partOfSpeech || '-')}</td>
+      <td class="w-def">${escapeHtml(w.definition || '')}</td>
+      <td class="w-cnt">${w.occurrenceCount ? escapeHtml(String(w.occurrenceCount)) : '-'}</td>
+    </tr>
+  `).join('\n')
+
+  return `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>${escapeHtml(title)}</title>
+    <style>
+      body { font-family: "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; max-width: 980px; margin: 0 auto; padding: 32px; line-height: 1.7; color: #0f172a; }
+      h1 { margin: 0 0 22px 0; font-size: 28px; text-align: center; }
+      .para { margin: 14px 0; padding: 14px 16px; border: 1px solid #e2e8f0; border-radius: 10px; background: #ffffff; page-break-inside: avoid; }
+      .en { margin: 0; font-size: 16px; white-space: pre-wrap; }
+      .zh { margin-top: 10px; color: #334155; white-space: pre-wrap; }
+      .vocab-chip { display: inline-block; padding: 0 6px; border-radius: 6px; background: #fef3c7; color: #1d4ed8; font-weight: 700; }
+      .word-title { margin: 28px 0 0 0; font-size: 18px; font-weight: 700; }
+      table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+      th, td { border: 1px solid #e5e7eb; padding: 10px 12px; text-align: left; vertical-align: top; font-size: 14px; }
+      th { background: #f8fafc; }
+      .w-cnt { width: 86px; text-align: center; }
+    </style>
+  </head>
+  <body>
+    <h1>${escapeHtml(title)}</h1>
+    ${blocks.join('\n')}
+    <div class="word-title">单词列表</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 25%;">单词</th>
+          <th style="width: 15%;">词性</th>
+          <th>释义</th>
+          <th class="w-cnt">次数</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${wordRows || ''}
+      </tbody>
+    </table>
+  </body>
+</html>`
+}
+
 // AI Article Methods
 const onListChange = async () => {
   markActive()
@@ -1675,21 +1890,55 @@ const toggleDownloadMenu = () => {
   showDownloadMenu.value = !showDownloadMenu.value
 }
 
-/**
- * 下载文章（HTML/TXT）或打印（PDF）
- */
-const downloadArticle = (type) => {
+const downloadArticle = async (type) => {
   markActive()
   if (!activeArticle.value) return
   showDownloadMenu.value = false
-  if (type === 'pdf') {
-    // 确保菜单在打印前已关闭，并给 Vue 一个渲染周期的延迟
-    setTimeout(() => {
-      window.print()
-    }, 100)
+  const title = activeArticle.value.topic || '未命名文章'
+  if (type === 'study') {
+    await nextTick()
+    const html = buildHtmlForStudyDownload(activeArticle.value)
+    downloadBlob(`${title}-学习版.html`, html, 'text/html;charset=utf-8')
     return
   }
-  const title = activeArticle.value.topic || '未命名文章'
+  if (type === 'pdf') {
+    await nextTick()
+    const html = buildHtmlForStudyDownload(activeArticle.value)
+    const articleId = activeArticle.value.id
+    if (!articleId) {
+      alert('文章ID不存在，无法下载PDF')
+      return
+    }
+    try {
+      const pdfBlob = await request.post(
+        API_ENDPOINTS.vocabulary.downloadArticlePdf(articleId),
+        { html, filename: title },
+        { responseType: 'blob', timeout: 60000 }
+      )
+      const blob = pdfBlob instanceof Blob ? pdfBlob : new Blob([pdfBlob], { type: 'application/pdf' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `${title}-学习版.pdf`)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      let message = error?.response?.data?.message || error?.response?.data?.detail || error?.message || '下载PDF失败'
+      const data = error?.response?.data
+      if (data instanceof Blob) {
+        try {
+          const text = await data.text()
+          const json = JSON.parse(text)
+          message = json?.message || json?.detail || message
+        } catch (_) {
+        }
+      }
+      alert(message)
+    }
+    return
+  }
   if (type === 'txt') {
     const original = activeArticle.value.original_text || activeArticle.value.originalText || ''
     const translated = activeArticle.value.translated_text || activeArticle.value.translatedText || ''
@@ -3371,26 +3620,8 @@ select {
 }
 
 @media print {
-  /* 隐藏非内容组件 */
-  .app-sidebar, 
-  .app-header, 
-  .ai-card-header, 
-  .ai-toolbar, 
-  .ai-form-grid, 
-  .ai-word-selection-section, 
-  .ai-empty-hint, 
-  .ai-myarticles-header,
-  .modal-close-btn,
-  .ai-download,
-  .ai-download-menu,
-  .article-generation-notification,
-  .sidebar-toggle,
-  .mobile-nav-toggle {
-    display: none !important;
-  }
-
-  /* 重置 body 和 overlay */
-  body, html {
+  :global(html),
+  :global(body) {
     background: white !important;
     margin: 0 !important;
     padding: 0 !important;
@@ -3399,87 +3630,80 @@ select {
     overflow: visible !important;
   }
 
-  .modal-overlay {
-    position: absolute !important;
-    top: 0 !important;
+  :global(body *) {
+    visibility: hidden !important;
+  }
+
+  :global(#article-print-area),
+  :global(#article-print-area *) {
+    visibility: visible !important;
+  }
+
+  :global(#article-print-area) {
+    display: block !important;
+    position: fixed !important;
     left: 0 !important;
+    top: 0 !important;
     width: 100% !important;
+    padding: 18pt 18pt 24pt !important;
+    box-sizing: border-box !important;
     background: white !important;
-    display: block !important;
-    backdrop-filter: none !important;
-    z-index: auto !important;
-  }
-
-  .modal-card.modal-xxl {
-    width: 100% !important;
-    max-width: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    box-shadow: none !important;
-    background: white !important;
-    border: none !important;
-    display: block !important;
-  }
-
-  .modal-wide-header {
-    border-bottom: 2px solid #333 !important;
-    padding: 20pt 0 !important;
-    margin-bottom: 20pt !important;
-    justify-content: center !important;
-  }
-
-  .ai-article-modal-title {
-    font-size: 24pt !important;
-    text-align: center !important;
     color: black !important;
-    margin: 0 !important;
   }
+}
 
-  .ai-article-modal-meta {
-    display: block !important;
-    text-align: center !important;
-    font-size: 12pt !important;
-    color: #666 !important;
-    margin-bottom: 30pt !important;
-    border-bottom: 1px solid #eee !important;
-    padding-bottom: 10pt !important;
-  }
+.article-print-area {
+  display: none;
+}
 
-  .ai-article-modal-content {
-    max-height: none !important;
-    overflow: visible !important;
-    padding: 0 !important;
-    background: white !important;
-  }
+.article-print-title {
+  font-size: 22pt;
+  font-weight: 700;
+  text-align: center;
+  margin: 0 0 16pt 0;
+}
 
-  .ai-article-paragraph-pair {
-    display: block !important; /* 打印时建议改为上下结构或保持并排但优化 */
-    page-break-inside: avoid !important;
-    border-bottom: 1px solid #eee !important;
-    padding-bottom: 20pt !important;
-    margin-bottom: 20pt !important;
-  }
+.article-print-paragraph {
+  page-break-inside: avoid;
+  margin: 0 0 14pt 0;
+}
 
-  .ai-article-en {
-    font-size: 14pt !important;
-    line-height: 1.6 !important;
-    color: black !important;
-    margin-bottom: 10pt !important;
-  }
+.article-print-en {
+  font-size: 12pt;
+  line-height: 1.7;
+  margin: 0 0 8pt 0;
+  white-space: pre-wrap;
+}
 
-  .ai-article-zh {
-    font-size: 12pt !important;
-    line-height: 1.5 !important;
-    color: #444 !important;
-    background: #f9f9f9 !important;
-    padding: 10pt !important;
-    border-radius: 4pt !important;
-    border: 1px solid #eee !important;
-  }
+.article-print-zh {
+  font-size: 11pt;
+  line-height: 1.6;
+  margin: 0;
+  white-space: pre-wrap;
+}
 
-  .print-only {
-    display: block !important;
-  }
+.article-print-words {
+  margin-top: 18pt;
+  page-break-inside: avoid;
+}
+
+.article-print-words-title {
+  font-size: 14pt;
+  font-weight: 700;
+  margin: 0 0 10pt 0;
+}
+
+.article-print-words-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.article-print-words-table th,
+.article-print-words-table td {
+  border: 1px solid #e5e7eb;
+  padding: 8pt 10pt;
+  font-size: 10.5pt;
+  vertical-align: top;
 }
 
 /* Modals */

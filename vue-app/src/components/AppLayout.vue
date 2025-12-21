@@ -17,7 +17,10 @@
 
     <!-- 全局提示 (Toast) -->
     <transition name="toast-fade">
-      <div v-if="uiStore.showToastMsg" class="toast-container">
+      <div
+        v-if="uiStore.showToastMsg"
+        class="toast-container"
+      >
         <div class="toast-content">
           <i class="fas fa-info-circle" />
           <span>{{ uiStore.toastMessage }}</span>

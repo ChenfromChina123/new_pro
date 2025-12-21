@@ -1,6 +1,7 @@
 package com.aispring.controller;
 
 import com.aispring.entity.*;
+import com.aispring.exception.CustomException;
 import com.aispring.service.VocabularyService;
 import com.aispring.dto.response.MessageResponse;
 import com.aispring.security.CustomUserDetails;
@@ -9,11 +10,15 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -77,6 +82,13 @@ public class VocabularyController {
         private String topic;
         private String difficulty;
         private String length;
+    }
+
+    @Data
+    public static class GeneratePdfRequest {
+        @NotBlank(message = "HTML内容不能为空")
+        private String html;
+        private String filename;
     }
     
     /**
@@ -319,5 +331,29 @@ public class VocabularyController {
             @PathVariable Integer articleId) {
         GeneratedArticle article = vocabularyService.getGeneratedArticle(articleId);
         return ResponseEntity.ok(article);
+    }
+
+    @PostMapping("/articles/{articleId}/download-pdf")
+    public ResponseEntity<byte[]> downloadArticlePdf(
+            @PathVariable Integer articleId,
+            @Valid @RequestBody GeneratePdfRequest request,
+            @AuthenticationPrincipal CustomUserDetails customUserDetails) {
+        Long userId = customUserDetails.getUser().getId();
+        GeneratedArticle article = vocabularyService.getGeneratedArticle(articleId);
+        if (article.getUserId() == null || !article.getUserId().equals(userId)) {
+            throw new CustomException("无权限访问该文章");
+        }
+
+        byte[] pdfBytes = vocabularyService.renderPdfFromHtml(request.getHtml());
+        String baseName = request.getFilename();
+        if (baseName == null || baseName.isBlank()) {
+            baseName = (article.getTopic() == null || article.getTopic().isBlank()) ? "未命名文章" : article.getTopic().trim();
+        }
+        String encodedFilename = URLEncoder.encode(baseName + "-学习版.pdf", StandardCharsets.UTF_8);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + encodedFilename + "\"")
+                .body(pdfBytes);
     }
 }

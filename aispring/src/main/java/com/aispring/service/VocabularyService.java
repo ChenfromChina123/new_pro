@@ -5,12 +5,15 @@ import com.aispring.exception.CustomException;
 import com.aispring.repository.*;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.openhtmltopdf.pdfboxout.PdfRendererBuilder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -439,5 +442,41 @@ public class VocabularyService {
         article.setUsedWords(usedWords);
         
         return article;
+    }
+
+    public byte[] renderPdfFromHtml(String html) {
+        if (html == null || html.isBlank()) {
+            throw new CustomException("PDF内容为空");
+        }
+        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            PdfRendererBuilder builder = new PdfRendererBuilder();
+            builder.useFastMode();
+            builder.withHtmlContent(html, null);
+            registerPdfFonts(builder);
+            builder.toStream(outputStream);
+            builder.run();
+            return outputStream.toByteArray();
+        } catch (Exception e) {
+            throw new CustomException("生成PDF失败: " + e.getMessage());
+        }
+    }
+
+    private void registerPdfFonts(PdfRendererBuilder builder) {
+        tryUseFont(builder, "C:/Windows/Fonts/msyh.ttf", "Microsoft YaHei");
+        tryUseFont(builder, "C:/Windows/Fonts/msyh.ttc", "Microsoft YaHei");
+        tryUseFont(builder, "C:/Windows/Fonts/msyhbd.ttf", "Microsoft YaHei");
+        tryUseFont(builder, "C:/Windows/Fonts/msyhbd.ttc", "Microsoft YaHei");
+        tryUseFont(builder, "C:/Windows/Fonts/simhei.ttf", "SimHei");
+        tryUseFont(builder, "C:/Windows/Fonts/simsun.ttc", "SimSun");
+        tryUseFont(builder, "C:/Windows/Fonts/arialuni.ttf", "Arial Unicode MS");
+    }
+
+    private void tryUseFont(PdfRendererBuilder builder, String fontPath, String fontFamily) {
+        try {
+            File fontFile = new File(fontPath);
+            if (!fontFile.exists() || !fontFile.isFile()) return;
+            builder.useFont(fontFile, fontFamily);
+        } catch (Exception ignored) {
+        }
     }
 }
