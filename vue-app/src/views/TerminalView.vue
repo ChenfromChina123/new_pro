@@ -1,67 +1,11 @@
 <template>
   <div class="terminal-container">
-    <!-- Sessions Sidebar -->
-    <div
-      class="sessions-sidebar"
-      :class="{ collapsed: sidebarCollapsed }"
-      :style="{ width: sidebarCollapsed ? '0' : `${sidebarWidth}px` }"
-    >
-      <div class="sidebar-header">
-        <button @click="createNewSession" class="new-chat-btn">
-          <i class="fas fa-plus"></i>
-          <span>新建会话</span>
-        </button>
-      </div>
-      <div class="sessions-list">
-        <div v-for="[groupName, groupSessions] in groupedSessions" :key="groupName" class="session-group">
-          <div class="group-title">{{ groupName }}</div>
-          <div
-            v-for="session in groupSessions"
-            :key="session.sessionId"
-            class="session-item"
-            :class="{ active: currentSessionId === session.sessionId }"
-            @click="selectSession(session.sessionId)"
-          >
-            <div class="session-info">
-              <div class="session-title" :title="session.title || '新会话'">{{ session.title || '新会话' }}</div>
-              <div class="session-meta">
-                <span class="session-time">{{ new Date(session.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }}</span>
-                <span v-if="session.localOnly" class="local-badge">Local</span>
-              </div>
-            </div>
-            <button
-              class="delete-session-btn"
-              @click.stop="deleteSession(session.sessionId)"
-              title="删除会话"
-            >
-              <i class="fas fa-trash-alt"></i>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Sidebar Resizer -->
-    <div
-      v-if="!sidebarCollapsed"
-      class="resizer-v sidebar-resizer"
-      @mousedown="initResizeSidebar"
-    ></div>
-
     <div class="terminal-main">
       <div class="terminal-layout">
         <!-- Left Panel: Chat -->
         <div class="chat-panel">
           <div class="chat-header">
             <div class="header-left">
-              <button
-                class="toggle-sidebar"
-                :class="{ rotated: sidebarCollapsed }"
-                @click="sidebarCollapsed = !sidebarCollapsed"
-                title="切换侧边栏"
-              >
-                <span class="btn-icon">📁</span>
-              </button>
               <h3>AI 终端助手</h3>
             </div>
             <div class="header-right">
@@ -321,8 +265,7 @@ const {
   messages, 
   terminalLogs, 
   currentTasks, 
-  currentCwd,
-  groupedSessions
+  currentCwd
 } = storeToRefs(terminalStore)
 
 const inputMessage = ref('')
@@ -339,18 +282,14 @@ const editedContent = ref(null)
 const isSaving = ref(false)
 
 // --- UI State Persistence (Mapped to UI Store) ---
-const sidebarCollapsed = ref(uiStore.sidebarCollapsed)
 const rightPanelCollapsed = ref(uiStore.rightPanelCollapsed)
 const taskListCollapsed = ref(uiStore.taskListCollapsed)
-const sidebarWidth = ref(uiStore.sidebarWidth)
 const rightPanelWidth = ref(uiStore.rightPanelWidth)
 const activeTab = ref(uiStore.activeTab)
 
 // Watchers for Persistence
-watch(sidebarCollapsed, (val) => uiStore.saveState('sidebarCollapsed', val))
 watch(rightPanelCollapsed, (val) => uiStore.saveState('rightPanelCollapsed', val))
 watch(taskListCollapsed, (val) => uiStore.saveState('taskListCollapsed', val))
-watch(sidebarWidth, (val) => uiStore.saveState('sidebarWidth', val))
 watch(rightPanelWidth, (val) => uiStore.saveState('rightPanelWidth', val))
 watch(activeTab, (val) => uiStore.saveState('activeTab', val))
 
@@ -408,31 +347,6 @@ const handleTabDrop = (e, targetTab) => {
 }
 
 /**
- * 初始化侧边栏宽度调节
- * @param {MouseEvent} e 鼠标事件
- */
-const initResizeSidebar = (e) => {
-  const startX = e.clientX
-  const startWidth = sidebarWidth.value
-  
-  const onMouseMove = (moveEvent) => {
-    const diff = moveEvent.clientX - startX
-    const newWidth = Math.max(150, Math.min(500, startWidth + diff))
-    sidebarWidth.value = newWidth
-  }
-  
-  const onMouseUp = () => {
-    document.removeEventListener('mousemove', onMouseMove)
-    document.removeEventListener('mouseup', onMouseUp)
-    document.body.style.cursor = 'default'
-  }
-  
-  document.addEventListener('mousemove', onMouseMove)
-  document.addEventListener('mouseup', onMouseUp)
-  document.body.style.cursor = 'col-resize'
-}
-
-/**
  * 初始化主面板与右面板宽度调节
  * @param {MouseEvent} e 鼠标事件
  */
@@ -475,15 +389,10 @@ onMounted(async () => {
   }
 })
 
-// Delegate session actions to store
-const createNewSession = () => terminalStore.createNewSession()
 watch(currentSessionId, async () => {
   await nextTick()
   scrollToBottom()
 })
-
-const deleteSession = (sessionId) => terminalStore.deleteSession(sessionId)
-const selectSession = (sessionId) => terminalStore.selectSession(sessionId)
 
 const handleFileSelect = async (file) => {
   try {
@@ -892,125 +801,7 @@ const writeFile = async (path, content, overwrite) => {
 
 /* Sidebar Styles */
 .sessions-sidebar { 
-  background: #ffffff; 
-  border-right: 1px solid #e2e8f0; 
-  display: flex; 
-  flex-direction: column; 
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
-  z-index: 10; 
-  overflow: hidden; 
-}
-.sessions-sidebar.collapsed { 
-  width: 0 !important; 
-  opacity: 0; 
-  pointer-events: none; 
-}
-.sidebar-header { 
-  padding: 16px; 
-  border-bottom: 1px solid #f1f5f9; 
-}
-.new-chat-btn {
-  width: 100%;
-  padding: 10px;
-  background: #3b82f6;
-  color: white;
-  border: none;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
-}
-.new-chat-btn:hover {
-  background: #2563eb;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);
-}
-
-.sessions-list { 
-  flex: 1; 
-  overflow-y: auto; 
-  padding: 12px; 
-}
-.session-group {
-  margin-bottom: 20px;
-}
-.group-title {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #94a3b8;
-  padding: 0 8px 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-.session-item { 
-  padding: 10px 12px; 
-  border-radius: 10px; 
-  cursor: pointer; 
-  display: flex; 
-  justify-content: space-between; 
-  align-items: center; 
-  margin-bottom: 4px;
-  transition: all 0.2s;
-  border: 1px solid transparent;
-}
-.session-item:hover { 
-  background: #f1f5f9; 
-}
-.session-item.active { 
-  background: #eff6ff; 
-  border-color: #bfdbfe;
-}
-.session-info {
-  flex: 1;
-  min-width: 0;
-}
-.session-title { 
-  font-size: 0.9rem; 
-  font-weight: 500; 
-  color: #334155;
-  overflow: hidden; 
-  text-overflow: ellipsis; 
-  white-space: nowrap; 
-}
-.session-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 2px;
-}
-.session-time { 
-  font-size: 0.75rem; 
-  color: #94a3b8; 
-}
-.local-badge {
-  font-size: 0.65rem;
-  background: #f1f5f9;
-  color: #64748b;
-  padding: 1px 4px;
-  border-radius: 4px;
-  font-weight: 600;
-}
-.delete-session-btn { 
-  background: none; 
-  border: none; 
-  opacity: 0; 
-  color: #94a3b8; 
-  cursor: pointer; 
-  padding: 4px;
-  border-radius: 4px;
-  transition: all 0.2s;
-}
-.delete-session-btn:hover {
-  background: #fee2e2;
-  color: #ef4444;
-}
-.session-item:hover .delete-session-btn { 
-  opacity: 1; 
+  display: none; 
 }
 
 /* Chat Layout */
