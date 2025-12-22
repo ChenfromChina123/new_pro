@@ -814,6 +814,11 @@ const processAgentLoop = async (prompt) => {
           updatedTasks[taskIndex] = { ...updatedTasks[taskIndex], status: action.status }
           currentTasks.value = updatedTasks
           currentAiMsg.message = `任务更新: ${updatedTasks[taskIndex].desc} -> ${action.status}`
+          
+          // 如果任务状态更新为 in_progress 或 completed，自动触发下一步
+          await saveMessage(`任务 ${updatedTasks[taskIndex].desc} 状态更新为 ${action.status}`, 3)
+          await processAgentLoop(`任务 ${updatedTasks[taskIndex].desc} (ID: ${action.taskId}) 状态已更新为 ${action.status}。请继续执行该任务的具体操作，或进行下一步。`)
+          return
         }
       } else if (action.tool === 'execute_command') {
          currentAiMsg.tool = 'execute_command'
