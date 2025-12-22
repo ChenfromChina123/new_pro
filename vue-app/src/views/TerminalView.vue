@@ -169,25 +169,27 @@
                 <span class="task-icon">
                   {{ task.status === 'completed' ? '✅' : (task.status === 'in_progress' ? '🔄' : '⭕') }}
                 </span>
-                <span class="task-desc">{{ task.desc }}</span>
+                <span class="task-desc" :title="task.desc">{{ task.desc }}</span>
               </div>
             </div>
           </div>
 
-          <div class="input-area">
-            <textarea 
-              v-model="inputMessage" 
-              placeholder="输入指令，例如：创建一个Vue项目..."
-              :disabled="isTyping || isExecuting"
-              @keydown.enter.prevent="handleEnter"
-            />
-            <button
-              class="send-btn"
-              :disabled="!inputMessage.trim() || isTyping || isExecuting"
-              @click="sendMessage"
-            >
-              发送
-            </button>
+          <div class="input-area-wrapper">
+            <div class="input-area">
+              <textarea 
+                v-model="inputMessage" 
+                placeholder="输入指令，例如：创建一个Vue项目..."
+                :disabled="isTyping || isExecuting"
+                @keydown.enter.prevent="handleEnter"
+              />
+              <button
+                class="send-btn"
+                :disabled="!inputMessage.trim() || isTyping || isExecuting"
+                @click="sendMessage"
+              >
+                发送
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1024,11 +1026,25 @@ const writeFile = async (path, content, overwrite) => {
 .status-success { color: #4ade80; }
 .status-error { color: #f87171; }
 
-.input-area { padding: 20px; border-top: 1px solid #e2e8f0; display: flex; gap: 10px; }
+.input-area-wrapper {
+  padding: 20px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: center;
+  background: #fff;
+}
+.input-area { 
+  display: flex; 
+  gap: 10px; 
+  width: 100%;
+  max-width: 980px;
+}
 
 /* Global Task Panel */
 .global-task-panel {
-  margin: 0 20px 10px 20px;
+  margin: 0 auto 10px auto;
+  width: calc(100% - 40px);
+  max-width: 980px;
   background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
@@ -1127,6 +1143,10 @@ const writeFile = async (path, content, overwrite) => {
 .task-desc {
   font-size: 0.9rem;
   color: #334155;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
 }
 .task-item.in_progress .task-desc {
   font-weight: 500;
