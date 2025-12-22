@@ -44,6 +44,9 @@ public class TerminalController {
 - **Current Working Directory (CWD)**: `%s`
 - **User Permission**: Restricted (Sandbox Mode, Quota: 1GB, Max Depth: 10)
 
+# Current Task Context
+%s
+
 # Command Style (PowerShell/Windows)
 由于运行环境是 Windows，你必须使用 PowerShell 兼容的命令：
 - **列出目录**: 使用 `dir` 或 `Get-ChildItem` (不要用 `ls -la`)。
@@ -93,14 +96,24 @@ public class TerminalController {
 # Output Format (Strict JSON Only)
 请直接输出以下 JSON 对象，不要使用 Markdown 代码块包裹。每次响应必须包含 content（必填，至少 200 字符，支持 Markdown）、thought（可选）、steps（可选）以及 tool（如有）。
 
-1. **普通思考/对话**:
+**关于 `steps` 字段的重要说明**：
+- 仅当用户提出明确的**任务需求**（如“创建一个项目”、“修复这个bug”）时，才需要包含 `steps` 字段来展示执行步骤。
+- 如果用户只是进行**普通对话**（如“你是谁”、“你好”）、**询问信息**或**没有具体操作需求**时，**请勿包含** `steps` 字段。
+
+1. **普通思考/对话 (无 steps)**:
 {
   "thought": "思考过程，包含推理细节...",
-  "content": "详细的解释、结果或下一步计划（至少 200 字符）。\n\n支持 **Markdown** 格式，例如列表：\n- 第一点\n- 第二点\n\n请确保回复具有明确的结论或解决方案。",
-  "steps": ["分析用户意图", "生成回复"]
+  "content": "详细的解释、结果或回复（至少 200 字符）。\n\n支持 **Markdown** 格式。"
 }
 
-2. **生成任务列表**:
+2. **执行任务 (包含 steps)**:
+{
+  "thought": "思考过程...",
+  "content": "任务执行结果...",
+  "steps": ["分析需求", "执行操作"]
+}
+
+3. **生成任务列表**:
 {
   "thought": "任务较多，先规划...",
   "type": "task_list",
@@ -111,7 +124,7 @@ public class TerminalController {
   "content": "根据您的需求，我制定了以下任务计划：\n\n1. 创建项目结构...\n2. 写入配置文件..."
 }
 
-3. **更新任务状态**:
+4. **更新任务状态**:
 {
   "thought": "第一步完成...",
   "type": "task_update",
@@ -120,16 +133,16 @@ public class TerminalController {
   "content": "任务 1 已完成。接下来我们将..."
 }
 
-4. **调用工具**:
+5. **调用工具**:
 {
   "thought": "执行命令...",
   "tool": "execute_command",
   "command": "ls -F",
   "content": "正在执行命令以查看文件列表...",
-  "steps": ["检查当前目录", "执行 ls 命令"]
+  "steps": ["检查当前目录", "执行 ls 命令"] // 仅在属于任务一部分时包含
 }
 
-5. **写文件**:
+6. **写文件**:
 {
   "thought": "需要创建 index.html 并写入内容。",
   "tool": "write_file",
@@ -146,6 +159,7 @@ public class TerminalController {
         private String prompt;
         private String session_id;
         private String model;
+        private List<Map<String, Object>> tasks;
     }
 
     @Data
@@ -177,9 +191,21 @@ public class TerminalController {
         // Escape backslashes for JSON/String format in prompt
         String escapedCwd = cwd.replace("\\", "/"); // Frontend friendly
         
+        // 构建当前任务链上下文
+        StringBuilder taskContext = new StringBuilder();
+        if (request.getTasks() != null && !request.getTasks().isEmpty()) {
+            taskContext.append("当前任务链状态：\n");
+            for (Map<String, Object> task : request.getTasks()) {
+                taskContext.append(String.format("- [%s] %s (ID: %s)\n", 
+                    task.get("status"), task.get("desc"), task.get("id")));
+            }
+        } else {
+            taskContext.append("当前暂无进行中的任务链。");
+        }
+
         // 使用虚拟根路径 "/" 代替物理路径，防止泄露
         String virtualRoot = "/";
-        String systemPrompt = String.format(SYSTEM_PROMPT_TEMPLATE, os, virtualRoot, escapedCwd, virtualRoot);
+        String systemPrompt = String.format(SYSTEM_PROMPT_TEMPLATE, os, virtualRoot, escapedCwd, taskContext.toString(), virtualRoot);
 
         // 如果是 Windows 环境，追加具体的 PowerShell 提示
         if (os.toLowerCase().contains("win")) {
