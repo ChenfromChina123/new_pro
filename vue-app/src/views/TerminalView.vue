@@ -622,8 +622,16 @@ const saveEditedFile = async (newContent) => {
 const formatDate = (d) => new Date(d).toLocaleString()
 
 let scrollScheduled = false
-const scrollToBottom = () => {
+const scrollToBottom = (force = false) => {
   if (scrollScheduled) return
+  
+  // 如果不是强制滚动，检查是否在底部附近
+  if (!force && scrollerRef.value) {
+    const el = scrollerRef.value.$el
+    const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100
+    if (!isNearBottom) return
+  }
+
   scrollScheduled = true
   requestAnimationFrame(() => {
     scrollScheduled = false
@@ -710,14 +718,12 @@ const processAgentLoop = async (prompt) => {
     const decoder = new TextDecoder()
     let buffer = ''
     let fullContent = ''
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      
-      const chunk = decoder.decode(value, { stream: true })
-      const lines = (buffer + chunk).split('\n')
-      buffer = lines.pop()
+    let animationFrameId = null
+    
+    const processBuffer = () => {
+      const lines = buffer.split('\n')
+      buffer = lines.pop() // Keep incomplete line
+      let needsScroll = false
 
       for (const line of lines) {
         if (line.startsWith('data:')) {
@@ -725,11 +731,12 @@ const processAgentLoop = async (prompt) => {
           if (dataStr === '[DONE]') continue
           try {
             const json = JSON.parse(dataStr)
+            
             if (json.content) {
               fullContent += json.content
+              needsScroll = true
               
               // 实时解析 JSON 中的字段
-              // 如果发现内容中包含 {，尝试进行字段提取
               if (fullContent.includes('{')) {
                 const extractedThought = tryExtractField(fullContent, 'thought')
                 const extractedMessage = tryExtractField(fullContent, 'content') || tryExtractField(fullContent, 'message')
@@ -737,7 +744,6 @@ const processAgentLoop = async (prompt) => {
                 if (extractedThought) currentAiMsg.thought = extractedThought
                 if (extractedMessage) currentAiMsg.message = extractedMessage
                 
-                // 如果还没有提取到 message，但 fullContent 中有非 JSON 的开头，先显示出来
                 if (!extractedMessage && !fullContent.trim().startsWith('{')) {
                    const jsonStart = fullContent.indexOf('{')
                    if (jsonStart > 0) {
@@ -747,18 +753,40 @@ const processAgentLoop = async (prompt) => {
                    }
                 }
               } else {
-                // 如果完全不包含 {，直接显示为消息
                 currentAiMsg.message = fullContent
               }
-              scrollToBottom()
             }
             if (json.reasoning_content) {
               currentAiMsg.thought += json.reasoning_content
-              scrollToBottom()
+              needsScroll = true
             }
           } catch (e) {}
         }
       }
+      if (needsScroll) {
+        scrollToBottom()
+      }
+    }
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      
+      const chunk = decoder.decode(value, { stream: true })
+      buffer += chunk
+      
+      // 使用 requestAnimationFrame 优化渲染频率
+      if (!animationFrameId) {
+        animationFrameId = requestAnimationFrame(() => {
+          processBuffer()
+          animationFrameId = null
+        })
+      }
+    }
+    
+    // Process remaining buffer
+    if (buffer) {
+       processBuffer()
     }
 
     isTyping.value = false
