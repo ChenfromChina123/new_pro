@@ -282,7 +282,7 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted, computed } from 'vue'
+import { ref, nextTick, onMounted, computed, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useUIStore } from '@/stores/ui'
 import { API_CONFIG } from '@/config/api'
@@ -310,12 +310,24 @@ const isSaving = ref(false)
 
 const currentSessionId = ref(null)
 const sessions = ref([])
-const sidebarCollapsed = ref(false)
-const rightPanelCollapsed = ref(false)
-const activeTab = ref('terminal')
+
+// --- UI State Persistence (Mapped to UI Store) ---
+const sidebarCollapsed = ref(uiStore.sidebarCollapsed)
+const rightPanelCollapsed = ref(uiStore.rightPanelCollapsed)
+const taskListCollapsed = ref(uiStore.taskListCollapsed)
+const sidebarWidth = ref(uiStore.sidebarWidth)
+const rightPanelWidth = ref(uiStore.rightPanelWidth)
+const activeTab = ref(uiStore.activeTab)
+
+// Watchers for Persistence
+watch(sidebarCollapsed, (val) => uiStore.saveState('sidebarCollapsed', val))
+watch(rightPanelCollapsed, (val) => uiStore.saveState('rightPanelCollapsed', val))
+watch(taskListCollapsed, (val) => uiStore.saveState('taskListCollapsed', val))
+watch(sidebarWidth, (val) => uiStore.saveState('sidebarWidth', val))
+watch(rightPanelWidth, (val) => uiStore.saveState('rightPanelWidth', val))
+watch(activeTab, (val) => uiStore.saveState('activeTab', val))
 
 const currentTasks = ref([])
-const taskListCollapsed = ref(true)
 
 const completedCount = computed(() => {
   return currentTasks.value.filter(t => t.status === 'completed').length
@@ -326,14 +338,19 @@ const taskProgress = computed(() => {
   return Math.round((completedCount.value / currentTasks.value.length) * 100)
 })
 
-const sidebarWidth = ref(260)
-const rightPanelWidth = ref(window.innerWidth * 0.4) // Default to 40%
+// Tab Logic with Persistence
+const tabMeta = {
+  'terminal': { id: 'terminal', label: '终端输出' },
+  'files': { id: 'files', label: '文件管理' },
+  'req': { id: 'req', label: '需求文档' }
+}
 
-const tabs = ref([
-  { id: 'terminal', label: '终端输出' },
-  { id: 'files', label: '文件管理' },
-  { id: 'req', label: '需求文档' }
-])
+const tabs = ref(uiStore.tabOrder.map(id => tabMeta[id]))
+
+watch(tabs, (newTabs) => {
+  const order = newTabs.map(t => t.id)
+  uiStore.saveState('tabOrder', order)
+}, { deep: true })
 
 let draggedTab = null
 
