@@ -212,27 +212,41 @@
           </div>
 
           <!-- File Explorer -->
-          <div v-if="activeTab === 'files'" class="panel-content">
-             <TerminalFileExplorer ref="fileExplorer" @select="handleFileSelect" />
+          <div v-if="activeTab === 'files'" class="panel-content file-panel-container">
+            <template v-if="!editingFile">
+              <TerminalFileExplorer ref="fileExplorer" @select="handleFileSelect" />
+            </template>
+            <template v-else>
+              <div class="file-editor-view">
+                <div class="editor-header">
+                  <button class="back-btn" @click="closeEditor">
+                    <span class="icon">←</span> 返回
+                  </button>
+                  <span class="file-name" :title="editingFile.path">{{ editingFile.name }}</span>
+                  <button 
+                    class="save-btn" 
+                    @click="saveEditedFile" 
+                    :disabled="isSaving"
+                  >
+                    {{ isSaving ? '保存中...' : '保存' }}
+                  </button>
+                </div>
+                <div class="editor-body">
+                  <textarea 
+                    v-model="editedContent" 
+                    class="file-editor"
+                    spellcheck="false"
+                    placeholder="文件内容为空"
+                  ></textarea>
+                </div>
+              </div>
+            </template>
           </div>
 
           <!-- Requirements -->
           <div v-if="activeTab === 'req'" class="panel-content">
              <RequirementManager />
           </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- File Viewer Modal -->
-    <div v-if="isViewingFile" class="file-viewer-overlay" @click.self="closeFileViewer">
-      <div class="file-viewer-modal">
-        <div class="viewer-header">
-          <span class="file-path">{{ viewingFile?.path }}</span>
-          <button class="close-btn" @click="closeFileViewer">✕</button>
-        </div>
-        <div class="viewer-content">
-          <pre><code>{{ fileContent }}</code></pre>
         </div>
       </div>
     </div>
@@ -261,10 +275,10 @@ const messagesRef = ref(null)
 const terminalRef = ref(null)
 const fileExplorer = ref(null)
 
-// File Viewer State
-const viewingFile = ref(null)
-const fileContent = ref('')
-const isViewingFile = ref(false)
+// File Editor State
+const editingFile = ref(null)
+const editedContent = ref(null)
+const isSaving = ref(false)
 
 const currentSessionId = ref(null)
 const sessions = ref([])
@@ -415,19 +429,48 @@ const handleFileSelect = async (file) => {
     })
     const data = await safeReadJson(res)
     if (data?.code === 200) {
-      viewingFile.value = file
-      fileContent.value = data.data
-      isViewingFile.value = true
+      editingFile.value = file
+      editedContent.value = data.data
     }
   } catch (e) {
     console.error('Failed to read file:', e)
   }
 }
 
-const closeFileViewer = () => {
-  isViewingFile.value = false
-  viewingFile.value = null
-  fileContent.value = ''
+const closeEditor = () => {
+  editingFile.value = null
+  editedContent.value = null
+}
+
+const saveEditedFile = async () => {
+  if (!editingFile.value) return
+  
+  isSaving.value = true
+  try {
+    const res = await fetch(`${API_CONFIG.baseURL}/api/terminal/write-file`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authStore.token}`
+      },
+      body: JSON.stringify({
+        path: editingFile.value.path,
+        content: editedContent.value,
+        overwrite: true
+      })
+    })
+    const data = await safeReadJson(res)
+    if (data?.code === 200) {
+      alert('保存成功')
+    } else {
+      alert('保存失败: ' + (data?.message || '未知错误'))
+    }
+  } catch (e) {
+    console.error('Failed to save file:', e)
+    alert('保存失败，请检查网络或权限')
+  } finally {
+    isSaving.value = false
+  }
 }
 
 const formatDate = (d) => new Date(d).toLocaleString()
@@ -851,75 +894,94 @@ textarea { flex: 1; height: 50px; padding: 10px; border: 1px solid #e2e8f0; bord
 
 .panel-content { flex: 1; overflow: hidden; }
 
-/* File Viewer Styles */
-.file-viewer-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-  backdrop-filter: blur(4px);
-}
-
-.file-viewer-modal {
-  width: 80%;
-  height: 80%;
-  background: #0f172a;
-  border-radius: 12px;
+.file-panel-container {
   display: flex;
   flex-direction: column;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-  border: 1px solid #334155;
+  height: 100%;
   overflow: hidden;
 }
 
-.viewer-header {
-  padding: 12px 20px;
-  background: #1e293b;
+.file-editor-view {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  height: 100%;
+  background: #1e1e1e;
+}
+
+.editor-header {
+  padding: 8px 12px;
+  background: #2d2d2d;
+  display: flex;
   align-items: center;
-  border-bottom: 1px solid #334155;
+  gap: 12px;
+  border-bottom: 1px solid #3d3d3d;
 }
 
-.file-path {
-  color: #38bdf8;
-  font-family: monospace;
-  font-size: 0.9rem;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  color: #94a3b8;
-  font-size: 1.2rem;
+.back-btn {
+  background: transparent;
+  border: 1px solid #4d4d4d;
+  color: #cccccc;
+  padding: 4px 12px;
+  border-radius: 4px;
   cursor: pointer;
-  padding: 4px;
-  line-height: 1;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
-.close-btn:hover {
-  color: #fff;
+.back-btn:hover {
+  background: #3d3d3d;
+  color: #ffffff;
 }
 
-.viewer-content {
+.file-name {
   flex: 1;
-  overflow: auto;
-  padding: 20px;
+  color: #e0e0e0;
+  font-size: 0.9rem;
+  font-family: 'Consolas', monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.viewer-content pre {
-  margin: 0;
-  color: #e2e8f0;
-  font-family: 'Fira Code', 'Cascadia Code', Consolas, monospace;
-  font-size: 0.95rem;
-  line-height: 1.6;
-  white-space: pre-wrap;
-  word-break: break-all;
+.save-btn {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 4px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
 }
+
+.save-btn:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.save-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.editor-body {
+  flex: 1;
+  overflow: hidden;
+}
+
+.file-editor {
+  width: 100%;
+  height: 100%;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  border: none;
+  padding: 16px;
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  resize: none;
+  outline: none;
+}
+
+/* File Viewer Modal Styles (Cleanup) */
 </style>
