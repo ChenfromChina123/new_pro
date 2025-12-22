@@ -477,6 +477,11 @@ onMounted(async () => {
 
 // Delegate session actions to store
 const createNewSession = () => terminalStore.createNewSession()
+watch(currentSessionId, async () => {
+  await nextTick()
+  scrollToBottom()
+})
+
 const deleteSession = (sessionId) => terminalStore.deleteSession(sessionId)
 const selectSession = (sessionId) => terminalStore.selectSession(sessionId)
 
@@ -1350,5 +1355,97 @@ textarea {
 .panel-tabs { display: flex; background: #f8fafc; border-bottom: 1px solid #e2e8f0; flex-shrink: 0; }
 .tab { padding: 12px 20px; font-size: 0.9rem; color: #64748b; border-right: 1px solid #e2e8f0; cursor: pointer; }
 .tab.active { background: #fff; color: #3b82f6; font-weight: 600; border-bottom: 2px solid #3b82f6; }
+
+.terminal-content-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #0f172a;
+}
+
+.terminal-actions {
+  padding: 8px 16px;
+  background: #1e293b;
+  display: flex;
+  justify-content: flex-end;
+  border-bottom: 1px solid #334155;
+}
+
+.clear-btn {
+  background: transparent;
+  border: 1px solid #475569;
+  color: #94a3b8;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.clear-btn:hover {
+  background: #334155;
+  color: #f8fafc;
+  border-color: #64748b;
+}
+
+.terminal-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  font-family: 'Fira Code', 'Cascadia Code', Consolas, monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.log-line {
+  margin-bottom: 16px;
+}
+
+.log-cmd-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.prompt {
+  color: #10b981;
+  font-weight: bold;
+}
+
+.cwd {
+  color: #3b82f6;
+}
+
+.cmd {
+  color: #f8fafc;
+  font-weight: 500;
+}
+
+.output {
+  margin: 0;
+  padding: 8px 12px;
+  background: rgba(30, 41, 59, 0.5);
+  border-radius: 6px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: #e2e8f0;
+}
+
+.output.stderr {
+  color: #f87171;
+  border-left: 3px solid #ef4444;
+}
+
+.output.stdout {
+  border-left: 3px solid #10b981;
+}
+
+.panel-content {
+  flex: 1;
+  overflow-y: auto;
+  height: 100%;
+}
 
 </style>

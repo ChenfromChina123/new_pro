@@ -124,19 +124,28 @@ export const useTerminalStore = defineStore('terminal', () => {
       const data = await request.get(`/api/terminal/history/${sessionId}`)
       if (data?.code === 200) {
         const records = data.data || []
-        messages.value = records.map(r => {
+        const newMessages = []
+        const newLogs = []
+        
+        // 用于临时存储上一个 AI 命令，以便关联结果
+        let lastCommandAction = null
+
+        records.forEach(r => {
           const senderType = r.senderType ?? r.sender_type
           const content = r.content
 
-          if (senderType === 1) return { role: 'user', content: content }
-          if (senderType === 2) {
+          if (senderType === 1) {
+            newMessages.push({ role: 'user', content: content })
+            lastCommandAction = null
+          } else if (senderType === 2) {
             try {
               if (content && content.trim().startsWith('{')) {
                 const action = JSON.parse(content)
                 if (action.type === 'task_list' || action.tasks) {
                   currentTasks.value = action.tasks || []
                 }
-                return { 
+                
+                const msg = { 
                   role: 'ai', 
                   thought: action.thought, 
                   message: action.message, 
@@ -145,14 +154,44 @@ export const useTerminalStore = defineStore('terminal', () => {
                   filePath: action.path,
                   status: action.exitCode === 0 ? 'success' : 'error'
                 }
+                newMessages.push(msg)
+                
+                // 如果是工具调用，记录下来以便关联结果
+                if (action.tool === 'execute_command' || action.tool === 'write_file') {
+                  lastCommandAction = action
+                }
+              } else {
+                newMessages.push({ role: 'ai', message: content })
+                lastCommandAction = null
               }
             } catch (e) {
-              return { role: 'ai', message: content }
+              newMessages.push({ role: 'ai', message: content })
+              lastCommandAction = null
+            }
+          } else if (senderType === 3) {
+            newMessages.push({ role: 'command_result', content: content })
+            
+            // 关联到 terminalLogs
+            if (lastCommandAction) {
+              newLogs.push({
+                command: lastCommandAction.command || (lastCommandAction.tool === 'write_file' ? `write_file: ${lastCommandAction.path}` : 'unknown'),
+                output: content,
+                type: 'stdout', // 历史记录中暂未区分 stdout/stderr
+                cwd: lastCommandAction.cwd || '/'
+              })
+            } else {
+              newLogs.push({
+                command: 'Command Result',
+                output: content,
+                type: 'stdout',
+                cwd: '/'
+              })
             }
           }
-          if (senderType === 3) return { role: 'command_result', content: content }
-          return { role: 'ai', message: content }
         })
+        
+        messages.value = newMessages
+        terminalLogs.value = newLogs
         return true
       }
     } catch (e) {
