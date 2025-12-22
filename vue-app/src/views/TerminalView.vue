@@ -664,12 +664,80 @@ const writeFile = async (path, content, overwrite) => {
 .toggle-sidebar:hover, .toggle-right-panel:hover { background: #e2e8f0; color: #3b82f6; }
 .toggle-sidebar.rotated, .toggle-right-panel.rotated { background: #eff6ff; color: #3b82f6; border-color: #bfdbfe; }
 
-.messages-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; background: #f8fafc; }
-.message { max-width: 90%; display: flex; }
-.message.user { align-self: flex-end; }
-.message.ai { align-self: flex-start; width: 100%; }
-.user-bubble { background: #3b82f6; color: white; padding: 10px 15px; border-radius: 12px 12px 2px 12px; }
-.ai-bubble { background: #fff; border: 1px solid #e2e8f0; padding: 15px; border-radius: 12px 12px 12px 2px; width: 100%; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.messages-container { 
+  flex: 1; 
+  overflow-y: auto; 
+  padding: 20px; 
+  display: flex; 
+  flex-direction: column; 
+  gap: 20px; 
+  background: #f8fafc; 
+}
+.message { 
+  width: 100%; 
+  display: flex; 
+  justify-content: center; 
+}
+.message-content { 
+  max-width: 980px; 
+  width: 100%; 
+  display: flex; 
+  flex-direction: column;
+}
+.message.user .message-content { align-items: flex-end; }
+.message.ai .message-content { align-items: flex-start; }
+.message.command_result .message-content { align-items: stretch; }
+
+.user-bubble { 
+  background: #3b82f6; 
+  color: white; 
+  padding: 10px 15px; 
+  border-radius: 12px 12px 2px 12px; 
+  max-width: 80%;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
+}
+.ai-bubble { 
+  background: #fff; 
+  border: 1px solid #e2e8f0; 
+  padding: 15px; 
+  border-radius: 12px 12px 12px 2px; 
+  width: 100%; 
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05); 
+}
+
+.system-bubble {
+  background: #1e293b;
+  border-radius: 8px;
+  padding: 15px;
+  width: 100%;
+  border: 1px solid #334155;
+}
+.result-header {
+  color: #94a3b8;
+  font-size: 0.8rem;
+  margin-bottom: 8px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.result-header::before {
+  content: '>';
+  color: #4ade80;
+  font-weight: bold;
+}
+.result-content {
+  color: #e2e8f0;
+  font-family: 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
+  background: #0f172a;
+  padding: 12px;
+  border-radius: 4px;
+  border: 1px solid #1e293b;
+}
 
 .thought-block { background: #f1f5f9; border-radius: 6px; margin-bottom: 10px; overflow: hidden; }
 .thought-title { padding: 8px 12px; font-size: 0.8rem; color: #64748b; cursor: pointer; display: flex; justify-content: space-between; background: #e2e8f0; }
