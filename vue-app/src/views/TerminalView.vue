@@ -732,10 +732,12 @@ const processAgentLoop = async (prompt) => {
         taskListCollapsed.value = false
         currentAiMsg.message = "已生成任务列表"
       } else if (action.type === 'task_update') {
-        const task = currentTasks.value.find(t => t.id === action.taskId)
-        if (task) {
-          task.status = action.status
-          currentAiMsg.message = `任务更新: ${task.desc} -> ${action.status}`
+        const taskIndex = currentTasks.value.findIndex(t => String(t.id) === String(action.taskId))
+        if (taskIndex !== -1) {
+          const updatedTasks = [...currentTasks.value]
+          updatedTasks[taskIndex] = { ...updatedTasks[taskIndex], status: action.status }
+          currentTasks.value = updatedTasks
+          currentAiMsg.message = `任务更新: ${updatedTasks[taskIndex].desc} -> ${action.status}`
         }
       } else if (action.tool === 'execute_command') {
          currentAiMsg.tool = 'execute_command'
