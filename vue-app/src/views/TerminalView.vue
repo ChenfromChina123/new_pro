@@ -301,14 +301,19 @@ const selectSession = async (sessionId) => {
     const data = await safeReadJson(res)
     if (data?.code === 200) {
       const records = data.data || []
+      console.log('History records loaded:', records)
       messages.value = records.map(r => {
-        if (r.senderType === 1) return { role: 'user', content: r.content }
-        if (r.senderType === 2) {
+        // Compatibility for senderType/sender_type
+        const senderType = r.senderType ?? r.sender_type
+        const content = r.content
+
+        if (senderType === 1) return { role: 'user', content: content }
+        if (senderType === 2) {
           // Parse historical AI message
           try {
              // Simple fallback parsing for history
-             if (r.content.trim().startsWith('{')) {
-               const action = JSON.parse(r.content)
+             if (content && content.trim().startsWith('{')) {
+               const action = JSON.parse(content)
                return { 
                  role: 'ai', 
                  thought: action.thought, 
@@ -322,9 +327,9 @@ const selectSession = async (sessionId) => {
                }
              }
           } catch(e) {}
-          return { role: 'ai', message: r.content, showThought: false }
+          return { role: 'ai', message: content, showThought: false }
         }
-        if (r.senderType === 3) return { role: 'command_result', content: r.content }
+        if (senderType === 3) return { role: 'command_result', content: content }
         return null
       }).filter(Boolean)
       scrollToBottom()
