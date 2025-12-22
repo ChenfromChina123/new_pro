@@ -37,77 +37,7 @@ public class TerminalController {
     private final StateMutator stateMutator;
     private final TaskCompiler taskCompiler;
     private final ObjectMapper objectMapper;
-
-    // --- Prompts ---
-    private static final String PLANNER_PROMPT = """
-            # 角色
-            你是资深项目规划师。你的目标是分析用户意图，并生成结构化的任务流水线（Task Pipeline）。
-
-            # 输入
-            用户意图：%s
-
-            # 输出格式
-            1. 首先，请用中文简要描述你的规划思路（一段话，用户可见）。
-            2. 然后，严格在 ```json 代码块中输出 JSON 任务数组。
-            
-            JSON 数组格式要求：
-            每个任务对象必须包含字段：name、goal（字段名必须使用英文 name/goal）。
-            字段值（name/goal）必须使用中文表述，简洁明确、可执行。
-            如需拆分步骤，可选字段 substeps（字段名保持英文），其中每个子步骤至少包含 goal（字段名英文，值中文）。
-
-            示例：
-            （你的规划思路...）
-            ```json
-            [
-              {"name":"初始化","goal":"确认项目结构与入口页面","substeps":[{"goal":"打开项目并确认目录结构"}]},
-              {"name":"实现功能","goal":"完成核心功能实现","substeps":[{"goal":"补齐接口联调与错误处理"}]},
-              {"name":"验证交付","goal":"运行校验并确保主要流程可用"}
-            ]
-            ```
-
-            # 约束
-            - 必须包含 ```json 代码块。
-            - 任务必须是工程可执行步骤，避免空泛表述。
-            """;
-
-    private static final String EXECUTOR_PROMPT = """
-            # 角色
-            你是自主工程执行 Agent。你的目标是完成“当前任务”。
-
-            # 上下文
-            %s
-
-            # 可用工具（工具名必须保持英文，且严格按此调用）
-            - execute_command(command)
-            - read_file(path)
-            - write_file(path, content)
-            - ensure_file(path, content)
-
-            # 协议
-            1. 分析当前任务与世界状态。
-            2. 决定下一步要做什么。
-            3. 输出一个“决策信封”（Decision Envelope）的 JSON。
-
-            # 输出格式（严格 JSON，仅输出一个对象，不要 Markdown）
-            字段名必须使用英文/下划线形式（例如 decision_id、tool_call、params 等），不要使用中文字段名。
-
-            工具调用示例：
-            {
-              "decision_id": "UUID",
-              "type": "TOOL_CALL",
-              "action": "ensure_file",
-              "params": { "path": "src/App.vue", "content": "..." },
-              "expectation": { "world_change": ["src/App.vue"] }
-            }
-
-            若任务已完成：
-            {
-              "decision_id": "UUID",
-              "type": "TASK_COMPLETE",
-              "action": "none",
-              "params": {}
-            }
-            """;
+    private final TerminalPromptManager promptManager;
 
     @Data
     public static class TerminalChatRequest {
@@ -144,7 +74,6 @@ public class TerminalController {
                 handleControlCommand(state, request.getPrompt());
                 return sendSystemMessage("Agent " + state.getStatus());
             } else if (request.getTool_result() == null) {
-                // If it's a normal chat message but agent is running, reject it
                 return sendSystemMessage("Agent 正在运行中，请等待或输入 pause 暂停。");
             }
         }
@@ -155,24 +84,36 @@ public class TerminalController {
              if (!result.isAccepted()) {
                  return sendSystemMessage("工具结果被拒绝：" + result.getReason());
              }
-             // If accepted, state is updated (e.g. back to RUNNING or ERROR)
              agentStateService.saveAgentState(state);
-             
-             // If ERROR, stop here? Or continue to let LLM handle error?
-             // Usually we want LLM to see the error.
         }
 
-        // 4. Construct System Prompt
+        // 4. Construct System Prompt & Determine Role
         String systemPrompt;
-        if (state.getStatus() == AgentStatus.IDLE || state.getTaskState().getPipelineId() == null) {
-            // Planner Mode
-            state.setStatus(AgentStatus.PLANNING);
-            systemPrompt = String.format(PLANNER_PROMPT, request.getPrompt());
-        } else {
-            // Executor Mode
+        if (state.getTaskState() != null && state.getTaskState().getPipelineId() != null) {
+            // Executor Mode - Already has a plan
             state.setStatus(AgentStatus.RUNNING);
             String context = agentPromptBuilder.buildPromptContext(state);
-            systemPrompt = String.format(EXECUTOR_PROMPT, context);
+            systemPrompt = promptManager.getExecutorPrompt(context);
+        } else {
+            // IDLE or No Plan - Classify Intent
+            String intent = aiChatService.ask(
+                promptManager.getIntentClassifierPrompt(request.getPrompt()),
+                null, request.getModel(), String.valueOf(userId)
+            ).trim().toUpperCase();
+            
+            if (intent.contains("PLAN")) {
+                state.setStatus(AgentStatus.PLANNING);
+                systemPrompt = promptManager.getPlannerPrompt(request.getPrompt());
+            } else if (intent.contains("EXECUTE")) {
+                state.setStatus(AgentStatus.RUNNING);
+                String context = agentPromptBuilder.buildPromptContext(state);
+                systemPrompt = promptManager.getExecutorPrompt(context);
+            } else {
+                // Default to CHAT
+                state.setStatus(AgentStatus.IDLE);
+                String context = agentPromptBuilder.buildPromptContext(state);
+                systemPrompt = promptManager.getChatPrompt(context);
+            }
         }
         agentStateService.saveAgentState(state);
 
