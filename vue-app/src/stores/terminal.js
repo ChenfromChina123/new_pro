@@ -182,8 +182,8 @@ export const useTerminalStore = defineStore('terminal', () => {
                 const msg = { 
                   role: 'ai', 
                   thought: action.thought, 
-                  message: action.message || action.content, // Support new 'content' field
-                  steps: action.steps, // Support new 'steps' field
+                  message: action.content || action.message, // Prioritize 'content'
+                  steps: action.steps || [], 
                   tool: action.tool, 
                   command: action.command,
                   filePath: action.path,
