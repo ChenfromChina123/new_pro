@@ -3,6 +3,7 @@ package com.aispring.controller;
 import com.aispring.dto.request.TerminalCommandRequest;
 import com.aispring.dto.response.ApiResponse;
 import com.aispring.dto.response.TerminalCommandResponse;
+import com.aispring.dto.response.TerminalFileDto;
 import com.aispring.security.CustomUserDetails;
 import com.aispring.service.AiChatService;
 import com.aispring.service.TerminalService;
@@ -21,7 +22,7 @@ import com.aispring.entity.ChatSession;
 import com.aispring.service.ChatRecordService;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/terminal")
@@ -34,18 +35,17 @@ public class TerminalController {
 
     private static final String SYSTEM_PROMPT_TEMPLATE = """
 # Role
-你是一个运行在安全沙箱环境中的智能终端助手 (AI Terminal Agent)。你的目标是根据用户的自然语言指令，通过执行终端命令来协助用户完成文件管理、代码构建、系统运维等任务。
+你是一个运行在专用文件夹系统中的智能终端助手 (AI Terminal Agent)。你的目标是根据用户的自然语言指令，通过执行终端命令来协助用户完成文件管理、代码构建、系统运维等任务。
 
 # Environment Context
 - **Operating System**: %s
+- **Dedicated Storage Root**: `%s`
 - **Current Working Directory (CWD)**: `%s`
-- **User Permission**: Restricted (Sandbox Mode)
+- **User Permission**: Restricted (Sandbox Mode, Quota: 1GB, Max Depth: 10)
 
 # Capabilities & Tools
 你可以使用以下工具（通过特定的输出格式调用）：
 1. **execute_command**: 执行 Shell 命令。
-   - Linux: bash/sh
-   - Windows: PowerShell/CMD
 2. **read_file**: 读取文件内容。
 3. **write_file**: 创建或覆盖文件。
 4. **list_files**: 列出目录内容。
@@ -53,35 +53,62 @@ public class TerminalController {
 # Constraints & Safety Rules (CRITICAL)
 1. **Directory Isolation**: 
    - 你只能在 `%s` 及其子目录下操作。
-   - 严禁访问父级目录 (`..`) 或系统敏感路径 (e.g., `/etc`, `C:\\Windows`)。
-2. **Destructive Actions**: 
-   - 对于删除 (rm/del)、覆盖 (overwrite) 等高风险操作，必须先向用户请求确认，除非用户明确表示“强制”或“自动确认”。
-3. **OS Adaptation**:
-   - 根据 OS 类型自动选择正确的命令语法。
-   - 例如：Linux 使用 `ls -la`, Windows PowerShell 使用 `ls` 或 `dir`。
-   - 路径分隔符：Linux 使用 `/`, Windows 使用 `\\` (但在 PowerShell 中 `/` 通常也可通用)。
-4. **Efficiency**:
-   - 优先使用单条组合命令完成任务（如 `mkdir -p path && touch file`）。
-   - 如果任务复杂，请分步骤执行并向用户汇报进度。
+   - 严禁访问父级目录 (`..`) 或系统敏感路径。
+2. **Path Display**:
+   - 在输出中显示的路径必须简化，仅显示相对于用户根目录的路径（例如 `/src/main` 或 `/`）。
+   - 禁止显示物理绝对路径。
+3. **Task Management**:
+   - 在执行复杂任务（涉及多个步骤）前，必须先生成详细的任务列表。
+   - 每完成一个步骤，需实时更新任务状态。
 
 # Interaction Protocol
-1. **Analyze**: 首先分析用户意图。
-2. **Plan**: 思考需要执行的命令序列。
+1. **Analyze**: 分析意图。
+2. **Plan**: 如果任务复杂，先生成任务列表。
 3. **Execute**: 生成工具调用代码。
-4. **Feedback**: 根据执行结果（Stdout/Stderr）决定下一步操作或向用户汇报。
+4. **Feedback**: 根据结果调整。
 
-# Output Format
-请使用以下 JSON 格式输出你的思考和行动（不要输出其他 Markdown 格式）：
+# Output Format (JSON Only)
+请使用以下 JSON 格式输出（不要输出 Markdown）：
+
+1. **普通思考/对话**:
 {
-  "thought": "用户想要创建一个新的 Vue 项目，我需要先检查当前目录下是否已存在同名文件夹。",
-  "command": "ls -F",
-  "tool": "execute_command"
+  "thought": "思考过程...",
+  "message": "回复给用户的内容"
 }
 
-如果无需执行命令（例如需要用户确认或回答问题），请输出：
+2. **生成任务列表**:
 {
-  "thought": "用户询问天气，我无法直接查询，但可以建议...",
-  "message": "抱歉，我只能执行终端命令，无法查询实时天气。"
+  "thought": "任务较多，先规划...",
+  "type": "task_list",
+  "tasks": [
+    {"id": 1, "desc": "创建项目结构", "status": "pending"},
+    {"id": 2, "desc": "写入配置文件", "status": "pending"}
+  ]
+}
+
+3. **更新任务状态**:
+{
+  "thought": "第一步完成...",
+  "type": "task_update",
+  "taskId": 1,
+  "status": "completed"
+}
+
+4. **调用工具**:
+{
+  "thought": "执行命令...",
+  "tool": "execute_command",
+  "command": "ls -F"
+}
+
+5. **写文件**:
+{
+  "thought": "需要创建 index.html 并写入内容。",
+  "tool": "write_file",
+  "path": "index.html",
+  "overwrite": false,
+  "content": "<<<<AI_FILE_CONTENT_BEGIN>>>>\\n...文件正文...\\n<<<<AI_FILE_CONTENT_END>>>>",
+  "message": "已生成并写入 index.html"
 }
 """;
 
@@ -93,23 +120,37 @@ public class TerminalController {
         private String model;
     }
 
+    @Data
+    public static class TerminalWriteFileRequest {
+        @NotBlank(message = "文件路径不能为空")
+        private String path;
+        private String content;
+        private String cwd;
+        private Boolean overwrite;
+    }
+
     @PostMapping(value = "/chat-stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @PreAuthorize("isAuthenticated()")
     public SseEmitter chatStream(@AuthenticationPrincipal CustomUserDetails currentUser,
                                  @Valid @RequestBody TerminalChatRequest request) {
-        System.out.println("=== Terminal chat-stream Called ===");
-        System.out.println("User: " + currentUser.getUsername());
-        System.out.println("Prompt: " + request.getPrompt());
-        System.out.println("Session ID: " + request.getSession_id());
-        
         Long userId = currentUser.getUser().getId();
         String rootPath = terminalService.getUserTerminalRoot(userId);
         String os = System.getProperty("os.name");
         
+        // Get CWD from session
+        String cwd = "/";
+        if (request.getSession_id() != null) {
+            Optional<ChatSession> session = chatRecordService.getChatSession(request.getSession_id());
+            if (session.isPresent() && session.get().getCurrentCwd() != null) {
+                cwd = session.get().getCurrentCwd();
+            }
+        }
+        
         // Escape backslashes for JSON/String format in prompt
         String escapedRootPath = rootPath.replace("\\", "\\\\");
+        String escapedCwd = cwd.replace("\\", "/"); // Frontend friendly
         
-        String systemPrompt = String.format(SYSTEM_PROMPT_TEMPLATE, os, escapedRootPath, escapedRootPath);
+        String systemPrompt = String.format(SYSTEM_PROMPT_TEMPLATE, os, escapedRootPath, escapedCwd, escapedRootPath);
 
         return aiChatService.askAgentStream(
                 request.getPrompt(),
@@ -125,7 +166,36 @@ public class TerminalController {
     public ApiResponse<TerminalCommandResponse> executeCommand(@AuthenticationPrincipal CustomUserDetails currentUser,
                                                                @RequestBody TerminalCommandRequest request) {
         TerminalCommandResponse response = terminalService.executeCommand(currentUser.getUser().getId(), request.getCommand(), request.getCwd());
+        
+        // Update session CWD
+        if (request.getSessionId() != null && response.getCwd() != null) {
+            chatRecordService.updateSessionCwd(request.getSessionId(), response.getCwd(), currentUser.getUser().getId().toString());
+        }
+        
         return ApiResponse.success(response);
+    }
+
+    @PostMapping("/write-file")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<TerminalCommandResponse> writeFile(@AuthenticationPrincipal CustomUserDetails currentUser,
+                                                          @Valid @RequestBody TerminalWriteFileRequest request) {
+        boolean overwrite = request.getOverwrite() != null && request.getOverwrite();
+        TerminalCommandResponse response = terminalService.writeFile(
+                currentUser.getUser().getId(),
+                request.getPath(),
+                request.getContent(),
+                request.getCwd(),
+                overwrite
+        );
+        return ApiResponse.success(response);
+    }
+    
+    @GetMapping("/files")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<List<TerminalFileDto>> listFiles(@AuthenticationPrincipal CustomUserDetails currentUser,
+                                                      @RequestParam(required = false, defaultValue = "") String path) {
+        List<TerminalFileDto> files = terminalService.listFiles(currentUser.getUser().getId(), path);
+        return ApiResponse.success(files);
     }
 
     @PostMapping("/new-session")
@@ -135,9 +205,6 @@ public class TerminalController {
         return ApiResponse.success(session);
     }
 
-    /**
-     * 获取所有终端会话
-     */
     @GetMapping("/sessions")
     @PreAuthorize("isAuthenticated()")
     public ApiResponse<List<ChatSession>> getSessions(@AuthenticationPrincipal CustomUserDetails currentUser) {
@@ -145,9 +212,6 @@ public class TerminalController {
         return ApiResponse.success(sessions);
     }
 
-    /**
-     * 获取终端会话历史消息
-     */
     @GetMapping("/history/{sessionId}")
     @PreAuthorize("isAuthenticated()")
     public ApiResponse<List<ChatRecord>> getHistory(@AuthenticationPrincipal CustomUserDetails currentUser,
@@ -156,16 +220,13 @@ public class TerminalController {
         return ApiResponse.success(history);
     }
 
-    /**
-     * 保存终端聊天记录
-     */
     @PostMapping("/save-record")
     @PreAuthorize("isAuthenticated()")
     public ApiResponse<Void> saveRecord(@AuthenticationPrincipal CustomUserDetails currentUser,
                                       @RequestBody Map<String, Object> request) {
         String sessionId = (String) request.get("session_id");
         String content = (String) request.get("content");
-        Integer senderType = (Integer) request.get("sender_type"); // 1: user, 2: AI, 3: Command Result
+        Integer senderType = (Integer) request.get("sender_type"); 
         String model = (String) request.get("model");
 
         chatRecordService.createChatRecord(
@@ -180,9 +241,6 @@ public class TerminalController {
         return ApiResponse.success(null);
     }
 
-    /**
-     * 删除终端会话
-     */
     @DeleteMapping("/sessions/{sessionId}")
     @PreAuthorize("isAuthenticated()")
     public ApiResponse<Void> deleteSession(@AuthenticationPrincipal CustomUserDetails currentUser,

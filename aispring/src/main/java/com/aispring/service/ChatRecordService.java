@@ -175,6 +175,16 @@ public class ChatRecordService {
         chatSessionRepository.save(session);
     }
     
+    @Transactional
+    public void updateSessionCwd(String sessionId, String cwd, String userId) {
+        chatSessionRepository.findBySessionId(sessionId).ifPresent(session -> {
+            if (Objects.equals(session.getUserId(), userId)) {
+                session.setCurrentCwd(cwd);
+                chatSessionRepository.save(session);
+            }
+        });
+    }
+
     /**
      * 获取用户的所有终端会话
      */
