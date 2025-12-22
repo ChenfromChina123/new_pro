@@ -34,7 +34,7 @@ export const useUIStore = defineStore('ui', () => {
   const sidebarWidth = ref(getStoredState('sidebarWidth', 260))
   const rightPanelWidth = ref(getStoredState('rightPanelWidth', window.innerWidth * 0.4))
   const activeTab = ref(getStoredState('activeTab', 'terminal'))
-  const tabOrder = ref(getStoredState('tabOrder', ['terminal', 'files', 'req']))
+  const tabOrder = ref(getStoredState('tabOrder', ['terminal', 'files']))
 
   /**
    * Save a state to localStorage

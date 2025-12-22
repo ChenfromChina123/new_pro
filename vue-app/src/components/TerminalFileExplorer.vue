@@ -20,6 +20,13 @@
       <div class="header-actions">
         <button
           class="action-btn"
+          title="新建需求文档"
+          @click="createNewRequirement"
+        >
+          📝+
+        </button>
+        <button
+          class="action-btn"
           title="新建笔记本"
           @click="createNewNotebook"
         >
@@ -149,6 +156,40 @@ const createNewNotebook = async () => {
     const data = await res.json()
     if (data.code === 200) {
       refresh()
+      uiStore.showToast('创建成功')
+    } else {
+      uiStore.showToast('创建失败: ' + data.message)
+    }
+  } catch (e) {
+    uiStore.showToast('创建失败，请检查网络')
+  }
+}
+
+const createNewRequirement = async () => {
+  const name = prompt('请输入需求文档名称 (无需后缀):', 'new_requirement')
+  if (!name) return
+  
+  const fileName = name.endsWith('.md') ? name : `${name}.md`
+  const path = `/requirements/${fileName}`
+  
+  try {
+    const res = await fetch(`${API_CONFIG.baseURL}/api/terminal/write-file`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authStore.token}`
+      },
+      body: JSON.stringify({
+        path: path,
+        content: '# ' + name + '\n\n请输入需求详情...',
+        overwrite: false
+      })
+    })
+    const data = await res.json()
+    if (data.code === 200) {
+      // Navigate to requirements folder to see the new file
+      fetchFiles('/requirements')
+      emit('navigate', '/requirements')
       uiStore.showToast('创建成功')
     } else {
       uiStore.showToast('创建失败: ' + data.message)
