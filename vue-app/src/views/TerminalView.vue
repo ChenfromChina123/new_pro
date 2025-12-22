@@ -288,12 +288,7 @@
           </div>
 
           <!-- Requirements -->
-          <div
-            v-if="activeTab === 'req'"
-            class="panel-content"
-          >
-            <RequirementManager />
-          </div>
+          <!-- 需求文档已集成到文件管理中 -->
         </div>
       </div>
     </div>
@@ -310,7 +305,6 @@ import { API_CONFIG } from '@/config/api'
 import TerminalFileExplorer from '@/components/TerminalFileExplorer.vue'
 import TerminalNotebook from '@/components/TerminalNotebook.vue'
 import TerminalFileEditor from '@/components/TerminalFileEditor.vue'
-import RequirementManager from '@/components/RequirementManager.vue'
 import TerminalChatInput from '@/components/terminal/TerminalChatInput.vue'
 import { marked } from 'marked'
 import hljs from 'highlight.js'
@@ -365,7 +359,7 @@ const isNotebook = ref(false)
 const rightPanelCollapsed = ref(uiStore.rightPanelCollapsed)
 const taskListCollapsed = ref(uiStore.taskListCollapsed)
 const rightPanelWidth = ref(uiStore.rightPanelWidth)
-const activeTab = ref(uiStore.activeTab)
+const activeTab = ref(uiStore.activeTab === 'req' ? 'terminal' : uiStore.activeTab)
 
 // Watchers for Persistence
 watch(rightPanelCollapsed, (val) => uiStore.saveState('rightPanelCollapsed', val))
@@ -385,8 +379,7 @@ const taskProgress = computed(() => {
 // Tab Logic with Persistence
 const tabMeta = {
   'terminal': { id: 'terminal', label: '终端输出' },
-  'files': { id: 'files', label: '文件管理' },
-  'req': { id: 'req', label: '需求文档' }
+  'files': { id: 'files', label: '文件管理' }
 }
 
 const tabs = ref(uiStore.tabOrder.map(id => tabMeta[id]))
@@ -1124,84 +1117,12 @@ const writeFile = async (path, content, overwrite) => {
   overflow: hidden;
 }
 .task-panel-header {
-  padding: 16px 20px;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  padding: 12px 20px;
+  background: #f8fafc;
   display: flex;
   justify-content: space-between;
   align-items: center;
   cursor: pointer;
-  transition: all 0.2s ease;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.task-panel-header:hover {
-  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-}
-
-.header-main {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.panel-icon {
-  font-size: 18px;
-  color: #3b82f6;
-  flex-shrink: 0;
-}
-
-.panel-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #1e293b;
-  white-space: nowrap;
-}
-
-.task-count {
-  font-size: 0.85rem;
-  color: #64748b;
-  font-weight: 500;
-  background: #e2e8f0;
-  padding: 4px 8px;
-  border-radius: 12px;
-  min-width: 60px;
-  text-align: center;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.progress-mini-bar {
-  flex: 1;
-  max-width: 120px;
-  height: 6px;
-  background: #e2e8f0;
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #3b82f6 0%, #10b981 100%);
-  border-radius: 3px;
-  transition: width 0.3s ease;
-}
-
-.progress-percent {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #3b82f6;
-  min-width: 40px;
-  text-align: right;
-}
-
-.toggle-icon {
-  font-size: 12px;
-  color: #64748b;
-  transition: transform 0.2s ease;
 }
 
 /* Task Panel Styles */

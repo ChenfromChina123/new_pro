@@ -33,7 +33,22 @@ public class TerminalServiceImpl implements TerminalService {
     @Override
     public String getUserTerminalRoot(Long userId) {
         String base = storageProperties.getAiTerminalAbsolute();
-        return Paths.get(base, String.valueOf(userId)).normalize().toString();
+        Path root = Paths.get(base, String.valueOf(userId)).normalize();
+        
+        // Ensure root and requirements directory exist
+        try {
+            if (!Files.exists(root)) {
+                Files.createDirectories(root);
+            }
+            Path reqDir = root.resolve("requirements");
+            if (!Files.exists(reqDir)) {
+                Files.createDirectories(reqDir);
+            }
+        } catch (IOException e) {
+            log.error("Failed to initialize user terminal root", e);
+        }
+        
+        return root.toString();
     }
 
     private void checkQuota(Path rootPath) throws IOException {

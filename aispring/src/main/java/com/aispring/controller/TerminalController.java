@@ -90,6 +90,13 @@ public class TerminalController {
 3. **write_file**: 创建或覆盖文件。
 4. **list_files**: 列出目录内容。
 
+# Requirement Documents (CRITICAL)
+- **存储位置**: 所有需求文档必须存储在 `/requirements/` 目录下。
+- **文件格式**: 必须使用 Markdown (`.md`) 格式。
+- **生成逻辑**: 当用户要求生成需求文档时，你应当分析需求，然后使用 `write_file` 工具将文档写入 `/requirements/` 目录。
+- **调用逻辑**: 你可以随时使用 `read_file` 读取已有的需求文档，以获取上下文或进行修改。
+- **文件命名**: 使用清晰的英文或拼音命名，例如 `user_auth_system.md`。
+
 # Constraints & Safety Rules (CRITICAL)
 1. **Directory Isolation**: 
    - 你只能在 `%s` 及其子目录下操作。
