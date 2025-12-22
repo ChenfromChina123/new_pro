@@ -1,22 +1,33 @@
 <template>
   <div class="file-explorer">
     <div class="explorer-header">
-      <span>当前目录: {{ currentPath || '/' }}</span>
-      <button @click="refresh" class="refresh-btn">🔄</button>
+      <div class="breadcrumbs">
+        <span class="breadcrumb-item" @click="fetchFiles('/')">root</span>
+        <template v-for="(part, index) in pathParts" :key="index">
+          <span class="separator">/</span>
+          <span class="breadcrumb-item" @click="navigateToPart(index)">{{ part }}</span>
+        </template>
+      </div>
+      <button @click="refresh" class="refresh-btn" title="刷新">🔄</button>
     </div>
     <div class="file-list">
       <div 
         v-if="currentPath && currentPath !== '/'" 
         class="file-item directory"
-        @dblclick="goUp"
+        @click="goUp"
       >
-        📁 ..
+        <span class="icon">📁</span>
+        <span class="name">.. (返回上级)</span>
       </div>
       <div 
         v-for="file in files" 
         :key="file.name"
         class="file-item"
-        :class="{ directory: file.isDirectory || file.is_directory }"
+        :class="{ 
+          directory: file.isDirectory || file.is_directory,
+          selected: selectedFile === file.name
+        }"
+        @click="handleItemClick(file)"
         @dblclick="handleDblClick(file)"
       >
         <span class="icon">{{ (file.isDirectory || file.is_directory) ? '📁' : '📄' }}</span>
@@ -28,7 +39,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { API_CONFIG } from '@/config/api'
 
@@ -41,6 +52,19 @@ const emit = defineEmits(['navigate', 'select'])
 const authStore = useAuthStore()
 const files = ref([])
 const currentPath = ref(props.initialPath)
+const selectedFile = ref(null)
+
+const pathParts = computed(() => {
+  if (!currentPath.value || currentPath.value === '/') return []
+  return currentPath.value.split('/').filter(p => p)
+})
+
+const navigateToPart = (index) => {
+  const parts = pathParts.value.slice(0, index + 1)
+  const newPath = '/' + parts.join('/')
+  fetchFiles(newPath)
+  emit('navigate', newPath)
+}
 
 const formatSize = (bytes) => {
   if (bytes === 0) return '0 B'
@@ -64,6 +88,7 @@ const fetchFiles = async (path) => {
         return aIsDir ? -1 : 1
       })
       currentPath.value = path
+      selectedFile.value = null
     }
   } catch (e) {
     console.error(e)
@@ -72,29 +97,36 @@ const fetchFiles = async (path) => {
 
 const refresh = () => fetchFiles(currentPath.value)
 
-const handleDblClick = (file) => {
+const handleItemClick = (file) => {
+  selectedFile.value = file.name
   if (file.isDirectory || file.is_directory) {
-    // Navigate relative
+    // Single click on directory enters it
     const newPath = currentPath.value === '/' 
       ? '/' + file.name 
-      : currentPath.value + '/' + file.name
+      : currentPath.value + (currentPath.value.endsWith('/') ? '' : '/') + file.name
     fetchFiles(newPath)
     emit('navigate', newPath)
   } else {
+    // Single click on file selects it (optionally emits)
+    emit('select', file)
+  }
+}
+
+const handleDblClick = (file) => {
+  if (!(file.isDirectory || file.is_directory)) {
     emit('select', file)
   }
 }
 
 const goUp = () => {
   if (currentPath.value === '/') return
-  const parts = currentPath.value.split('/')
+  const parts = currentPath.value.split('/').filter(p => p)
   parts.pop()
-  const newPath = parts.join('/') || '/'
+  const newPath = '/' + parts.join('/')
   fetchFiles(newPath)
   emit('navigate', newPath)
 }
 
-// Expose method to navigate from outside (e.g. terminal cd command)
 const navigateTo = (path) => {
   fetchFiles(path)
 }
@@ -118,43 +150,100 @@ onMounted(() => {
 }
 
 .explorer-header {
-  padding: 8px;
+  padding: 8px 12px;
   background: #334155;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  border-bottom: 1px solid #475569;
+}
+
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: 0.85rem;
+}
+
+.breadcrumb-item {
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  color: #94a3b8;
+  transition: all 0.2s;
+}
+
+.breadcrumb-item:hover {
+  background: #475569;
+  color: #fff;
+}
+
+.separator {
+  color: #64748b;
 }
 
 .refresh-btn {
   background: none;
   border: none;
   cursor: pointer;
+  color: #94a3b8;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.refresh-btn:hover {
+  background: #475569;
   color: #fff;
 }
 
 .file-list {
   flex: 1;
   overflow-y: auto;
-  padding: 8px;
+  padding: 4px;
 }
 
 .file-item {
   display: flex;
   align-items: center;
-  padding: 4px 8px;
+  padding: 6px 10px;
   cursor: pointer;
   border-radius: 4px;
+  margin-bottom: 2px;
+  transition: background 0.2s;
 }
 
 .file-item:hover {
-  background: #475569;
+  background: #334155;
+}
+
+.file-item.selected {
+  background: #1e3a8a;
 }
 
 .file-item.directory {
   color: #fbbf24;
 }
 
-.icon { margin-right: 8px; }
-.name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.size { color: #94a3b8; font-size: 0.8rem; }
+.icon { 
+  margin-right: 10px; 
+  font-size: 1.1rem;
+  width: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.name { 
+  flex: 1; 
+  overflow: hidden; 
+  text-overflow: ellipsis; 
+  white-space: nowrap; 
+}
+
+.size { 
+  color: #94a3b8; 
+  font-size: 0.75rem; 
+  margin-left: 8px;
+}
 </style>
