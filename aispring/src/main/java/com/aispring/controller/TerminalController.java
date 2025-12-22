@@ -269,8 +269,7 @@ public class TerminalController {
         
         return ApiResponse.success(analysis);
     }
-}
-    
+
     @GetMapping("/files")
     @PreAuthorize("isAuthenticated()")
     public ApiResponse<List<TerminalFileDto>> listFiles(@AuthenticationPrincipal CustomUserDetails currentUser,
