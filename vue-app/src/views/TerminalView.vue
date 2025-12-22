@@ -659,6 +659,45 @@ const sendMessage = async () => {
   isTyping.value = true
   scrollToBottom()
   await saveMessage(text, 1)
+
+  // 1. 意图识别分析
+  try {
+    const analysisRes = await fetch(`${API_CONFIG.baseURL}/api/terminal/analyze-intent`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authStore.token}`
+      },
+      body: JSON.stringify({
+        prompt: text,
+        session_id: currentSessionId.value,
+        model: currentModel.value
+      })
+    })
+    const analysisData = await safeReadJson(analysisRes)
+    if (analysisData?.code === 200) {
+       let analysis = analysisData.data
+       // 尝试解析 JSON
+       try {
+         const analysisJson = JSON.parse(analysis)
+         if (analysisJson.summary) {
+           messages.value.push({ 
+             role: 'ai', 
+             thought: analysisJson.reasoning || '正在分析意图...',
+             message: `意图识别: ${analysisJson.summary}\n规划步骤:\n${analysisJson.steps.map((s, i) => `${i+1}. ${s}`).join('\n')}`,
+             showThought: false
+           })
+           scrollToBottom()
+         }
+       } catch(e) {
+         console.warn('Failed to parse analysis JSON:', analysis)
+       }
+    }
+  } catch (e) {
+    console.error('Intent analysis failed:', e)
+  }
+
+  // 2. 执行 Agent 循环
   await processAgentLoop(text)
 }
 

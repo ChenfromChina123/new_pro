@@ -193,6 +193,51 @@ public class AiChatServiceImpl implements AiChatService {
 
     @Override
     public SseEmitter askAgentStream(String prompt, String sessionId, String model, String userId, String systemPrompt) {
+        return askAgentStreamInternal(prompt, sessionId, model, userId, systemPrompt);
+    }
+
+    @Override
+    public String analyzeIntent(String prompt, String systemPrompt, String model) {
+        try {
+            // 确定模型
+            String actualModel = (model == null || model.isEmpty()) ? "deepseek-chat" : model;
+            
+            // 配置AI模型选项
+            OpenAiChatOptions options = OpenAiChatOptions.builder()
+                    .withModel(actualModel)
+                    .withTemperature(0.1f) // 低随机性
+                    .build();
+            
+            // 构建消息
+            List<Message> messages = new ArrayList<>();
+            messages.add(new org.springframework.ai.chat.messages.SystemMessage(systemPrompt));
+            messages.add(new UserMessage(prompt));
+            
+            Prompt promptObj = new Prompt(messages, options);
+            
+            // 确定使用的客户端
+            ChatClient clientToUse = null;
+            if (actualModel.contains("doubao")) {
+                clientToUse = doubaoChatClient;
+            } else if (actualModel.contains("deepseek")) {
+                clientToUse = deepseekChatClient;
+            } else {
+                clientToUse = chatClientProvider.getIfAvailable();
+            }
+
+            if (clientToUse == null) {
+                return "{\"error\": \"No chat client available\"}";
+            }
+
+            ChatResponse response = clientToUse.call(promptObj);
+            return response.getResult().getOutput().getContent();
+        } catch (Exception e) {
+            System.err.println("Error analyzing intent: " + e.getMessage());
+            return "{\"error\": \"" + e.getMessage() + "\"}";
+        }
+    }
+
+    private SseEmitter askAgentStreamInternal(String prompt, String sessionId, String model, String userId, String systemPrompt) {
         // 创建SSE发射器，设置超时时间为3分钟
         SseEmitter emitter = new SseEmitter(180_000L);
         

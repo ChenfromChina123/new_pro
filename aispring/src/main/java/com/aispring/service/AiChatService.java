@@ -32,4 +32,9 @@ public interface AiChatService {
      * AI Agent流式问答 (支持自定义System Prompt)
      */
     SseEmitter askAgentStream(String prompt, String sessionId, String model, String userId, String systemPrompt);
+
+    /**
+     * 意图识别
+     */
+    String analyzeIntent(String prompt, String systemPrompt, String model);
 }
