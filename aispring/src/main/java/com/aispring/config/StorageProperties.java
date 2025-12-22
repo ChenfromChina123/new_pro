@@ -41,6 +41,12 @@ public class StorageProperties {
         return base.toString();
     }
 
+    public String getAiTerminalAbsolute() {
+        Path base = getRootAbsolute().resolve(aiTerminalDir).normalize();
+        try { Files.createDirectories(base); } catch (Exception ignore) {}
+        return base.toString();
+    }
+
     public String getAvatarsAbsolute() {
         Path base = getRootAbsolute().resolve(avatarsDir).normalize();
         try { Files.createDirectories(base); } catch (Exception ignore) {}

@@ -42,6 +42,9 @@ public class ChatSession {
     
     @Column(name = "session_type", length = 20)
     private String sessionType; // chat, terminal
+
+    @Column(name = "current_cwd", length = 500)
+    private String currentCwd;
     
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
