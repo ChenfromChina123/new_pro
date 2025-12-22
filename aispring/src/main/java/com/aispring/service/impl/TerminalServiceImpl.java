@@ -258,11 +258,42 @@ public class TerminalServiceImpl implements TerminalService {
             outThread.join();
             errThread.join();
 
-            return new TerminalCommandResponse(stdout.toString(), stderr.toString(), process.exitValue(), getRelativePath(rootPath, cwdPath));
+            String sanitizedStdout = sanitizeOutput(stdout.toString(), userRoot, rootPath);
+            String sanitizedStderr = sanitizeOutput(stderr.toString(), userRoot, rootPath);
+
+            return new TerminalCommandResponse(sanitizedStdout, sanitizedStderr, process.exitValue(), getRelativePath(rootPath, cwdPath));
 
         } catch (Exception e) {
             log.error("Command execution failed", e);
-            return new TerminalCommandResponse("", "Execution failed: " + e.getMessage(), -1, getRelativePath(rootPath, cwdPath));
+            return new TerminalCommandResponse("", "Execution failed: " + sanitizeOutput(e.getMessage(), userRoot, rootPath), -1, getRelativePath(rootPath, cwdPath));
         }
+    }
+
+    /**
+     * 脱敏输出内容，将物理路径替换为虚拟路径
+     */
+    private String sanitizeOutput(String output, String userRoot, Path rootPath) {
+        if (output == null || output.isEmpty()) return output;
+        
+        String sanitized = output;
+        
+        // 1. 替换物理根路径为 ~
+        sanitized = sanitized.replace(userRoot, "~");
+        
+        // 2. 尝试替换正斜杠版本的物理路径（Windows环境下常见）
+        String forwardRoot = userRoot.replace("\\", "/");
+        if (!forwardRoot.equals(userRoot)) {
+            sanitized = sanitized.replace(forwardRoot, "~");
+        }
+        
+        // 3. 尝试替换 Path 对象生成的字符串
+        String rootPathStr = rootPath.toString();
+        if (!rootPathStr.equals(userRoot)) {
+            sanitized = sanitized.replace(rootPathStr, "~");
+        }
+        
+        // 4. 额外防止 Windows 盘符泄露（可选，但为了严格，可以尝试匹配并替换）
+        // 这里主要针对 powershell 可能输出的路径信息进行进一步清理
+        return sanitized;
     }
 }
