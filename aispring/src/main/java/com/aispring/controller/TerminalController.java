@@ -217,7 +217,8 @@ public class TerminalController {
                 request.getSession_id(),
                 request.getModel(),
                 String.valueOf(userId),
-                systemPrompt
+                systemPrompt,
+                request.getTasks()
         );
     }
 
