@@ -488,11 +488,13 @@ const processAgentLoop = async (prompt) => {
             const json = JSON.parse(dataStr)
             if (json.content) {
               fullContent += json.content
-              // Basic streaming display logic could go here
-              // For now we wait for full JSON or update thought
+              // 流式解析当前的 message 内容
+              currentAiMsg.message = tryExtractMessage(fullContent)
+              scrollToBottom()
             }
             if (json.reasoning_content) {
               currentAiMsg.thought += json.reasoning_content
+              scrollToBottom()
             }
           } catch (e) {}
         }
@@ -587,6 +589,20 @@ const processAgentLoop = async (prompt) => {
     console.error(e)
     isTyping.value = false
   }
+}
+
+const tryExtractMessage = (content) => {
+  if (!content) return ''
+  // 尝试匹配 "message": "..." 其中的内容
+  const match = content.match(/"message"\s*:\s*"([^"]*)"?/)
+  if (match && match[1]) {
+    return match[1]
+  }
+  // 如果还没匹配到 message 字段，但内容看起来不是 JSON 开头，则显示原内容
+  if (!content.trim().startsWith('{')) {
+    return content
+  }
+  return ''
 }
 
 const extractContent = (raw) => {
