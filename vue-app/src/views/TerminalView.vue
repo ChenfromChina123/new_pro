@@ -115,19 +115,6 @@
                     </div>
                   </div>
                 </div>
-
-                <!-- Command Result -->
-                <div
-                  v-else-if="msg.role === 'command_result'"
-                  class="system-bubble"
-                >
-                  <div class="message-content">
-                    <div class="result-header">
-                      命令执行结果:
-                    </div>
-                    <pre class="result-content">{{ msg.content }}</pre>
-                  </div>
-                </div>
               </div>
             </div>
             <div
@@ -734,8 +721,8 @@ const processAgentLoop = async (prompt) => {
            cwd: res.cwd 
          })
          
-         // Save command result to history
-         messages.value.push({ role: 'command_result', content: output })
+         // Save command result to history (terminal log only, not chat messages)
+         // messages.value.push({ role: 'command_result', content: output })
          await saveMessage(output, 3)
          scrollToBottom()
          
@@ -763,8 +750,8 @@ const processAgentLoop = async (prompt) => {
            cwd: res.cwd 
          })
          
-         // Save write result to history
-         messages.value.push({ role: 'command_result', content: resultText })
+         // Save write result to history (terminal log only, not chat messages)
+         // messages.value.push({ role: 'command_result', content: resultText })
          await saveMessage(resultText, 3)
          scrollToBottom()
 
