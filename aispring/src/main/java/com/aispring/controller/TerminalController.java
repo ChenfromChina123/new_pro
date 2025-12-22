@@ -4,9 +4,12 @@ import com.aispring.dto.request.TerminalCommandRequest;
 import com.aispring.dto.response.ApiResponse;
 import com.aispring.dto.response.TerminalCommandResponse;
 import com.aispring.dto.response.TerminalFileDto;
+import com.aispring.entity.ChatRecord;
+import com.aispring.entity.ChatSession;
+import com.aispring.entity.agent.*;
 import com.aispring.security.CustomUserDetails;
-import com.aispring.service.AiChatService;
-import com.aispring.service.TerminalService;
+import com.aispring.service.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
@@ -17,9 +20,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import com.aispring.entity.ChatRecord;
-import com.aispring.entity.ChatSession;
-import com.aispring.service.ChatRecordService;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -32,139 +32,82 @@ public class TerminalController {
     private final TerminalService terminalService;
     private final AiChatService aiChatService;
     private final ChatRecordService chatRecordService;
+    private final AgentStateService agentStateService;
+    private final AgentPromptBuilder agentPromptBuilder;
+    private final StateMutator stateMutator;
+    private final TaskCompiler taskCompiler;
+    private final ObjectMapper objectMapper;
 
+    // --- Prompts ---
+    private static final String PLANNER_PROMPT = """
+            # Role
+            You are an expert Project Planner. Your goal is to analyze the user's intent and create a structured Task Pipeline.
+            
+            # Input
+            User Intent: %s
+            
+            # Output Format
+            Return a strictly valid JSON array of tasks. Each task must have a 'name' and 'goal'.
+            Example:
+            [
+              {"name": "Init", "goal": "Initialize project structure"},
+              {"name": "Dev", "goal": "Implement features", "substeps": [{"goal": "Setup Vue"}]}
+            ]
+            
+            # Constraints
+            - Do not include any markdown formatting (```json).
+            - Focus on engineering steps.
+            """;
 
-    private static final String SYSTEM_PROMPT_TEMPLATE = """
-# Role
-你是一个运行在专用文件夹系统中的智能终端助手 (AI Terminal Agent)。你的目标是根据用户的自然语言指令，通过执行终端命令来协助用户完成文件管理、代码构建、系统运维等任务。
-
-# Environment Context
-- **Operating System**: %s (CRITICAL: 必须使用适配此操作系统的命令)
-- **Dedicated Storage Root**: `%s`
-- **Current Working Directory (CWD)**: `%s`
-- **User Permission**: Restricted (Sandbox Mode, Quota: 1GB, Max Depth: 10)
-
-# Current Task Context
-%s
-
-# Command Style (PowerShell/Windows)
-由于运行环境是 Windows，你必须使用 PowerShell 兼容的命令：
-- **列出目录**: 使用 `dir` 或 `Get-ChildItem` (不要用 `ls -la`)。
-- **创建目录**: 使用 `mkdir` (PowerShell 别名) 或 `New-Item -ItemType Directory`。
-- **文件操作**: 使用 `cp`, `mv`, `rm` (PowerShell 别名) 或对应的 PowerShell 命令。
-- **内容查看**: 使用 `cat` (PowerShell 别名) 或 `Get-Content`。
-- **路径分隔符**: 必须使用反斜杠 `\\` 或正斜杠 `/` (PowerShell 支持两者)，但命令内部参数建议使用反斜杠。
-- **禁止交互**: 命令必须是非交互式的（如 `npm init -y`, `rm -Force`）。
-- **多命令执行**: **严禁使用 `&&` 分隔符**。在 PowerShell 中请使用分号 `;` 分隔命令（例如：`cd path; dir`）或分步执行。
-- **错误处理**: 忽略已存在的目录错误（如 `mkdir -Force` 或先检查是否存在）。
-- **执行外部程序**: 执行当前目录下的程序请使用 `.\\program.exe`。
-
-# Capabilities & Tools
-你可以使用以下工具（通过特定的输出格式调用）：
-1. **execute_command**: 执行 Shell 命令。
-2. **read_file**: 读取文件内容。
-3. **write_file**: 创建或覆盖文件。
-4. **list_files**: 列出目录内容。
-
-# Requirement Documents (CRITICAL)
-- **存储位置**: 所有需求文档必须存储在 `/requirements/` 目录下。
-- **文件格式**: 必须使用 Markdown (`.md`) 格式。
-- **生成逻辑**: 当用户要求生成需求文档时，你应当分析需求，然后使用 `write_file` 工具将文档写入 `/requirements/` 目录。
-- **调用逻辑**: 你可以随时使用 `read_file` 读取已有的需求文档，以获取上下文或进行修改。
-- **文件命名**: 使用清晰的英文或拼音命名，例如 `user_auth_system.md`。
-
-# Constraints & Safety Rules (CRITICAL)
-1. **Directory Isolation**: 
-   - 你只能在 `%s` 及其子目录下操作。
-   - 严禁访问父级目录 (`..`) 或系统敏感路径。
-2. **Path Display**:
-   - 在输出中显示的路径必须简化，仅显示相对于用户根目录的路径（例如 `/src/main` 或 `/`）。
-   - 禁止显示物理绝对路径。
-3. **Task Management**:
-   - 在执行复杂任务（涉及多个步骤）前，必须先生成详细的任务列表。
-   - 每完成一个步骤，需实时更新任务状态。
-4. **Output Constraint**:
-   - **必须且只能输出 JSON 格式**。
-   - 严禁在 JSON 之外包含任何 Markdown 标记（如 ```json ... ```）或解释性文字。
-
-# Interaction Protocol
-1. **Analyze**: 分析意图。
-2. **Plan**: 如果任务复杂，先生成任务列表。
-3. **Execute**: 生成工具调用代码。
-4. **Feedback**: 根据结果调整。如果命令执行失败，请分析错误信息并尝试修复（例如检查路径是否存在、参数是否正确），不要重复执行相同的错误命令。
-
-# Output Format (Strict JSON Only)
-请直接输出以下 JSON 对象，不要使用 Markdown 代码块包裹。每次响应必须包含 content（必填，至少 200 字符，支持 Markdown）、thought（可选）、steps（可选）以及 tool（如有）。
-
-**关于 `steps` 字段的重要说明**：
-- 仅当用户提出明确的**任务需求**（如“创建一个项目”、“修复这个bug”）时，才需要包含 `steps` 字段来展示执行步骤。
-- 如果用户只是进行**普通对话**（如“你是谁”、“你好”）、**询问信息**或**没有具体操作需求**时，**请勿包含** `steps` 字段。
-
-1. **普通思考/对话 (无 steps)**:
-{
-  "thought": "思考过程，包含推理细节...",
-  "content": "详细的解释、结果或回复（至少 200 字符）。\n\n支持 **Markdown** 格式。"
-}
-
-2. **执行任务 (包含 steps)**:
-{
-  "thought": "思考过程...",
-  "content": "任务执行结果...",
-  "steps": ["分析需求", "执行操作"]
-}
-
-3. **生成任务列表**:
-{
-  "thought": "任务较多，先规划...",
-  "type": "task_list",
-  "tasks": [
-    {"id": 1, "desc": "创建项目结构", "status": "pending"},
-    {"id": 2, "desc": "写入配置文件", "status": "pending"}
-  ],
-  "content": "根据您的需求，我制定了以下任务计划：\n\n1. 创建项目结构...\n2. 写入配置文件..."
-}
-
-4. **更新任务状态**:
-{
-  "thought": "第一步完成...",
-  "type": "task_update",
-  "taskId": 1,
-  "status": "completed", // or "in_progress"
-  "content": "任务 1 已完成。接下来我们将..."
-}
-
-5. **调用工具**:
-{
-  "thought": "执行命令...",
-  "tool": "execute_command",
-  "command": "ls -F",
-  "content": "正在执行命令以查看文件列表...",
-  "steps": ["检查当前目录", "执行 ls 命令"] // 仅在属于任务一部分时包含
-}
-
-6. **写文件**:
-{
-  "thought": "需要创建 index.html 并写入内容。",
-  "tool": "write_file",
-  "path": "index.html",
-  "overwrite": false,
-  "content": "<<<<AI_FILE_CONTENT_BEGIN>>>>\\n...文件正文...\\n<<<<AI_FILE_CONTENT_END>>>>",
-  "message": "已生成并写入 index.html"
-}
-""";
+    private static final String EXECUTOR_PROMPT = """
+            # Role
+            You are an Autonomous Engineering Agent. Your goal is to complete the Current Task.
+            
+            # Context
+            %s
+            
+            # Available Tools
+            - execute_command(command)
+            - read_file(path)
+            - write_file(path, content)
+            - ensure_file(path, content)
+            
+            # Protocol
+            1. Analyze the Current Task and World State.
+            2. Decide the next step.
+            3. Output a Decision Envelope in JSON.
+            
+            # Output Format (Strict JSON)
+            {
+              "decision_id": "UUID",
+              "type": "TOOL_CALL",
+              "action": "ensure_file",
+              "params": { "path": "src/App.vue", "content": "..." },
+              "expectation": { "world_change": ["src/App.vue"] }
+            }
+            
+            OR if task is done:
+            {
+              "decision_id": "UUID",
+              "type": "TASK_COMPLETE",
+              "action": "none",
+              "params": {}
+            }
+            """;
 
     @Data
     public static class TerminalChatRequest {
-        @NotBlank(message = "提示词不能为空")
+        @NotBlank(message = "Prompt cannot be empty")
         private String prompt;
         private String session_id;
         private String model;
-        private List<Map<String, Object>> tasks;
+        private List<Map<String, Object>> tasks; // Legacy support
+        private ToolResult tool_result; // For feedback loop
     }
 
     @Data
     public static class TerminalWriteFileRequest {
-        @NotBlank(message = "文件路径不能为空")
+        @NotBlank(message = "File path cannot be empty")
         private String path;
         private String content;
         private String cwd;
@@ -176,50 +119,156 @@ public class TerminalController {
     public SseEmitter chatStream(@AuthenticationPrincipal CustomUserDetails currentUser,
                                  @Valid @RequestBody TerminalChatRequest request) {
         Long userId = currentUser.getUser().getId();
-        String rootPath = terminalService.getUserTerminalRoot(userId);
-        String os = System.getProperty("os.name");
+        String sessionId = request.getSession_id();
         
-        // Get CWD from session
-        String cwd = "/";
-        if (request.getSession_id() != null) {
-            Optional<ChatSession> session = chatRecordService.getChatSession(request.getSession_id());
-            if (session.isPresent() && session.get().getCurrentCwd() != null) {
-                cwd = session.get().getCurrentCwd();
+        // 1. Load Agent State
+        AgentState state = agentStateService.getAgentState(sessionId, userId);
+        
+        // 2. Input Guard
+        if (state.getStatus() == AgentStatus.RUNNING || state.getStatus() == AgentStatus.WAITING_TOOL) {
+            if (isControlCommand(request.getPrompt())) {
+                handleControlCommand(state, request.getPrompt());
+                return sendSystemMessage("Agent " + state.getStatus());
+            } else if (request.getTool_result() == null) {
+                // If it's a normal chat message but agent is running, reject it
+                return sendSystemMessage("Agent is RUNNING. Please wait or type 'pause'.");
             }
         }
-        
-        // Escape backslashes for JSON/String format in prompt
-        String escapedCwd = cwd.replace("\\", "/"); // Frontend friendly
-        
-        // 构建当前任务链上下文
-        StringBuilder taskContext = new StringBuilder();
-        if (request.getTasks() != null && !request.getTasks().isEmpty()) {
-            taskContext.append("当前任务链状态：\n");
-            for (Map<String, Object> task : request.getTasks()) {
-                taskContext.append(String.format("- [%s] %s (ID: %s)\n", 
-                    task.get("status"), task.get("desc"), task.get("id")));
-            }
+
+        // 3. Handle Tool Result (Feedback Loop)
+        if (request.getTool_result() != null) {
+             MutatorResult result = stateMutator.applyToolResult(state, request.getTool_result());
+             if (!result.isAccepted()) {
+                 return sendSystemMessage("Tool Result Rejected: " + result.getReason());
+             }
+             // If accepted, state is updated (e.g. back to RUNNING or ERROR)
+             agentStateService.saveAgentState(state);
+             
+             // If ERROR, stop here? Or continue to let LLM handle error?
+             // Usually we want LLM to see the error.
+        }
+
+        // 4. Construct System Prompt
+        String systemPrompt;
+        if (state.getStatus() == AgentStatus.IDLE || state.getTaskState().getPipelineId() == null) {
+            // Planner Mode
+            state.setStatus(AgentStatus.PLANNING);
+            systemPrompt = String.format(PLANNER_PROMPT, request.getPrompt());
         } else {
-            taskContext.append("当前暂无进行中的任务链。");
+            // Executor Mode
+            state.setStatus(AgentStatus.RUNNING);
+            String context = agentPromptBuilder.buildPromptContext(state);
+            systemPrompt = String.format(EXECUTOR_PROMPT, context);
         }
+        agentStateService.saveAgentState(state);
 
-        // 使用虚拟根路径 "/" 代替物理路径，防止泄露
-        String virtualRoot = "/";
-        String systemPrompt = String.format(SYSTEM_PROMPT_TEMPLATE, os, virtualRoot, escapedCwd, taskContext.toString(), virtualRoot);
-
-        // 如果是 Windows 环境，追加具体的 PowerShell 提示
-        if (os.toLowerCase().contains("win")) {
-            systemPrompt = systemPrompt.replace("%s (CRITICAL: 必须使用适配此操作系统的命令)", os + " (PowerShell Environment)");
-        }
-
+        // 5. Stream Response with Hook
         return aiChatService.askAgentStream(
                 request.getPrompt(),
-                request.getSession_id(),
+                sessionId,
                 request.getModel(),
                 String.valueOf(userId),
                 systemPrompt,
-                request.getTasks()
+                null,
+                (fullResponse) -> {
+                    try {
+                        // Parse Decision Envelope
+                        String json = extractJson(fullResponse);
+                        if (json != null) {
+                            // Try to parse as DecisionEnvelope
+                            try {
+                                DecisionEnvelope decision = objectMapper.readValue(json, DecisionEnvelope.class);
+                                state.setLastDecision(decision);
+                                // Also handle TASK_COMPLETE here? 
+                                // No, TASK_COMPLETE is a decision type. The mutator handles it when frontend reports back?
+                                // Actually, for TASK_COMPLETE, frontend might not call tool?
+                                // Protocol says: 1 Agent Turn = 1 Decision.
+                                // If Decision is TASK_COMPLETE, frontend receives it.
+                                // Does Frontend send back a result for TASK_COMPLETE?
+                                // Usually yes, to confirm "I saw it".
+                                // Or backend can handle it immediately?
+                                // Better to let Frontend acknowledge it via next loop or stop.
+                                
+                                if ("TASK_COMPLETE".equals(decision.getType())) {
+                                    // Maybe mark as COMPLETED immediately?
+                                    // But we want to wait for frontend to display it.
+                                    // Let's keep it simple: just save decision.
+                                } else {
+                                    state.setStatus(AgentStatus.WAITING_TOOL);
+                                }
+                                agentStateService.saveAgentState(state);
+                            } catch (Exception e) {
+                                // Not a valid decision envelope, maybe just chat
+                                // Ignore or log
+                            }
+                        }
+                    } catch (Exception e) {
+                        System.err.println("Failed to capture decision: " + e.getMessage());
+                    }
+                }
         );
+    }
+    
+    private String extractJson(String text) {
+        int start = text.indexOf("{");
+        int end = text.lastIndexOf("}");
+        if (start >= 0 && end > start) {
+            return text.substring(start, end + 1);
+        }
+        return null;
+    }
+    
+    @PostMapping("/submit-plan")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<TaskState> submitPlan(@AuthenticationPrincipal CustomUserDetails currentUser,
+                                             @RequestBody Map<String, String> payload) {
+        String sessionId = payload.get("session_id");
+        String planJson = payload.get("plan_json");
+        
+        TaskState taskState = taskCompiler.compile(planJson, "pipeline-" + System.currentTimeMillis());
+        agentStateService.updateTaskState(sessionId, taskState);
+        agentStateService.updateAgentStatus(sessionId, AgentStatus.RUNNING);
+        
+        return ApiResponse.success(taskState);
+    }
+    
+    @PostMapping("/report-tool-result")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<MutatorResult> reportToolResult(@AuthenticationPrincipal CustomUserDetails currentUser,
+                                                       @RequestBody ToolResult result) {
+         // This endpoint is an alternative to sending tool_result via chat-stream
+         Long userId = currentUser.getUser().getId();
+         // We need session_id in ToolResult? 
+         // ToolResult doesn't have session_id.
+         // This endpoint is tricky if we don't know the session.
+         // Assuming single active session or passed in param.
+         // Let's stick to chat-stream for now as Frontend uses it.
+         // Or update ToolResult to include session_id.
+         return ApiResponse.success(MutatorResult.builder().accepted(true).build());
+    }
+
+    private boolean isControlCommand(String prompt) {
+        return "pause".equalsIgnoreCase(prompt) || "stop".equalsIgnoreCase(prompt);
+    }
+
+    private void handleControlCommand(AgentState state, String prompt) {
+        if ("pause".equalsIgnoreCase(prompt)) {
+            state.setStatus(AgentStatus.PAUSED);
+        } else if ("stop".equalsIgnoreCase(prompt)) {
+            state.setStatus(AgentStatus.IDLE);
+        }
+        agentStateService.saveAgentState(state);
+    }
+
+    private SseEmitter sendSystemMessage(String message) {
+        SseEmitter emitter = new SseEmitter();
+        try {
+            emitter.send(SseEmitter.event().data("{\"content\": \"[SYSTEM] " + message + "\"}"));
+            emitter.complete();
+        } catch (Exception e) {
+            emitter.completeWithError(e);
+        }
+        return emitter;
     }
 
     @PostMapping("/execute")
@@ -227,12 +276,9 @@ public class TerminalController {
     public ApiResponse<TerminalCommandResponse> executeCommand(@AuthenticationPrincipal CustomUserDetails currentUser,
                                                                @RequestBody TerminalCommandRequest request) {
         TerminalCommandResponse response = terminalService.executeCommand(currentUser.getUser().getId(), request.getCommand(), request.getCwd());
-        
-        // Update session CWD
         if (request.getSessionId() != null && response.getCwd() != null) {
             chatRecordService.updateSessionCwd(request.getSessionId(), response.getCwd(), currentUser.getUser().getId().toString());
         }
-        
         return ApiResponse.success(response);
     }
 
@@ -250,7 +296,6 @@ public class TerminalController {
         );
         return ApiResponse.success(response);
     }
-
 
     @GetMapping("/files")
     @PreAuthorize("isAuthenticated()")
@@ -272,6 +317,7 @@ public class TerminalController {
     @PreAuthorize("isAuthenticated()")
     public ApiResponse<ChatSession> createNewSession(@AuthenticationPrincipal CustomUserDetails currentUser) {
         ChatSession session = chatRecordService.createTerminalSession(currentUser.getUser().getId().toString());
+        agentStateService.initializeAgentState(session.getSessionId(), currentUser.getUser().getId());
         return ApiResponse.success(session);
     }
 

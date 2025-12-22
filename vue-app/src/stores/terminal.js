@@ -17,6 +17,10 @@ export const useTerminalStore = defineStore('terminal', () => {
   const currentCwd = ref('/')
   const isLoading = ref(false)
 
+  // Agent V2 State
+  const agentStatus = ref('IDLE') // IDLE, RUNNING, PAUSED, ERROR, etc.
+  const decisionHistory = ref(new Set()) // decision_id set for de-duplication
+
   // 计算属性：按任务分组的消息
   const groupedMessages = computed(() => {
     const groups = []
@@ -101,6 +105,9 @@ export const useTerminalStore = defineStore('terminal', () => {
       if (data?.code === 200) {
         const newSession = normalizeSession(data.data)
         sessions.value.unshift(newSession)
+        // Reset state
+        agentStatus.value = 'IDLE'
+        decisionHistory.value.clear()
         return newSession
       }
     } catch (e) {
@@ -120,6 +127,8 @@ export const useTerminalStore = defineStore('terminal', () => {
           messages.value = []
           terminalLogs.value = []
           currentTasks.value = []
+          agentStatus.value = 'IDLE'
+          decisionHistory.value.clear()
         }
         return true
       }
@@ -136,6 +145,8 @@ export const useTerminalStore = defineStore('terminal', () => {
     terminalLogs.value = []
     currentTasks.value = []
     activeTaskId.value = null
+    agentStatus.value = 'IDLE' 
+    decisionHistory.value.clear()
     
     const session = sessions.value.find(s => s.sessionId === sessionId)
     if (session && session.currentCwd) {
@@ -151,7 +162,6 @@ export const useTerminalStore = defineStore('terminal', () => {
         const newMessages = []
         const newLogs = []
         
-        // 用于临时存储上一个 AI 命令，以便关联结果
         let lastCommandAction = null
         let trackedTaskId = null
 
@@ -166,6 +176,7 @@ export const useTerminalStore = defineStore('terminal', () => {
             try {
               if (content && content.trim().startsWith('{')) {
                 const action = JSON.parse(content)
+                // Restore Task State
                 if (action.type === 'task_list' || action.tasks) {
                   currentTasks.value = action.tasks || []
                 } else if (action.type === 'task_update') {
@@ -177,24 +188,25 @@ export const useTerminalStore = defineStore('terminal', () => {
                       activeTaskId.value = action.taskId
                     }
                   }
+                } else if (action.decision_id) {
+                    decisionHistory.value.add(action.decision_id)
                 }
                 
                 const msg = { 
                   role: 'ai', 
                   thought: action.thought, 
-                  message: action.content || action.message, // Prioritize 'content'
+                  message: action.content || action.message, 
                   steps: action.steps || [], 
-                  tool: action.tool, 
-                  command: action.command,
-                  filePath: action.path,
+                  tool: action.tool || (action.type === 'TOOL_CALL' ? action.action : null), 
+                  command: action.command || (action.params ? action.params.command : null),
+                  filePath: action.path || (action.params ? action.params.path : null),
                   status: action.exitCode === 0 ? 'success' : 'error',
                   taskId: trackedTaskId
                 }
                 newMessages.push(msg)
                 
-                // 如果是工具调用，记录下来以便关联结果
-                if (action.tool === 'execute_command' || action.tool === 'write_file') {
-                  lastCommandAction = action
+                if (msg.tool) {
+                  lastCommandAction = msg
                 }
               } else {
                 newMessages.push({ role: 'ai', message: content, taskId: trackedTaskId })
@@ -205,15 +217,11 @@ export const useTerminalStore = defineStore('terminal', () => {
               lastCommandAction = null
             }
           } else if (senderType === 3) {
-            // terminal_output 记录不再存入 messages (聊天框)，仅用于 terminalLogs
-            // newMessages.push({ role: 'command_result', content: content })
-            
-            // 关联到 terminalLogs
             if (lastCommandAction) {
               newLogs.push({
-                command: lastCommandAction.command || (lastCommandAction.tool === 'write_file' ? `write_file: ${lastCommandAction.path}` : 'unknown'),
+                command: lastCommandAction.command || (lastCommandAction.tool === 'write_file' || lastCommandAction.tool === 'ensure_file' ? `write_file: ${lastCommandAction.filePath}` : 'unknown'),
                 output: content,
-                type: 'stdout', // 历史记录中暂未区分 stdout/stderr
+                type: 'stdout',
                 cwd: lastCommandAction.cwd || '/'
               })
             } else {
@@ -236,6 +244,18 @@ export const useTerminalStore = defineStore('terminal', () => {
     }
     return false
   }
+  
+  const setAgentStatus = (status) => {
+      agentStatus.value = status
+  }
+  
+  const addDecision = (id) => {
+      decisionHistory.value.add(id)
+  }
+  
+  const hasDecision = (id) => {
+      return decisionHistory.value.has(id)
+  }
 
   return {
     sessions,
@@ -247,10 +267,15 @@ export const useTerminalStore = defineStore('terminal', () => {
     groupedMessages,
     currentCwd,
     isLoading,
+    agentStatus, 
+    decisionHistory, 
     groupedSessions,
     fetchSessions,
     createNewSession,
     deleteSession,
-    selectSession
+    selectSession,
+    setAgentStatus,
+    addDecision,
+    hasDecision
   }
 })

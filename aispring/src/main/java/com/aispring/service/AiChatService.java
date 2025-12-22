@@ -31,6 +31,6 @@ public interface AiChatService {
     /**
      * AI Agent流式问答 (支持自定义System Prompt和任务链上下文)
      */
-    SseEmitter askAgentStream(String prompt, String sessionId, String model, String userId, String systemPromptTemplate, java.util.List<java.util.Map<String, Object>> tasks);
+    SseEmitter askAgentStream(String prompt, String sessionId, String model, String userId, String systemPromptTemplate, java.util.List<java.util.Map<String, Object>> tasks, java.util.function.Consumer<String> onResponse);
 
 }

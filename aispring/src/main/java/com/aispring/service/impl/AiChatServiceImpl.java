@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import javax.net.ssl.*;
 import java.security.cert.CertificateException;
@@ -163,8 +164,6 @@ public class AiChatServiceImpl implements AiChatService {
 
 
     
-
-    
     /**
      * 统一发送聊天响应（SSE）
      */
@@ -188,16 +187,16 @@ public class AiChatServiceImpl implements AiChatService {
 
     @Override
     public SseEmitter askStream(String prompt, String sessionId, String model, String userId) {
-        return askAgentStream(prompt, sessionId, model, userId, null);
+        return askAgentStream(prompt, sessionId, model, userId, null, null, null);
     }
 
     @Override
-    public SseEmitter askAgentStream(String prompt, String sessionId, String model, String userId, String systemPrompt, List<Map<String, Object>> tasks) {
-        return askAgentStreamInternal(prompt, sessionId, model, userId, systemPrompt, tasks);
+    public SseEmitter askAgentStream(String prompt, String sessionId, String model, String userId, String systemPrompt, List<Map<String, Object>> tasks, Consumer<String> onResponse) {
+        return askAgentStreamInternal(prompt, sessionId, model, userId, systemPrompt, tasks, onResponse);
     }
 
 
-    private SseEmitter askAgentStreamInternal(String initialPrompt, String sessionId, String model, String userId, String initialSystemPrompt, List<Map<String, Object>> initialTasks) {
+    private SseEmitter askAgentStreamInternal(String initialPrompt, String sessionId, String model, String userId, String initialSystemPrompt, List<Map<String, Object>> initialTasks, Consumer<String> onResponse) {
         // 创建SSE发射器，设置超时时间为3分钟
         SseEmitter emitter = new SseEmitter(180_000L);
         
@@ -219,6 +218,15 @@ public class AiChatServiceImpl implements AiChatService {
                     // 执行对话并获取完整回复
                     String fullResponse = performBlockingChat(currentPrompt, sessionId, model, userId, currentSystemPrompt, emitter);
                     
+                    // Hook for capturing response
+                    if (onResponse != null) {
+                        try {
+                            onResponse.accept(fullResponse);
+                        } catch (Exception e) {
+                            System.err.println("Error in onResponse hook: " + e.getMessage());
+                        }
+                    }
+
                     // 解析回复，检查是否需要继续循环
                     boolean shouldContinue = false;
                     try {
