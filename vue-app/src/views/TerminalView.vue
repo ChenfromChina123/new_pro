@@ -186,30 +186,21 @@
             <template v-if="!editingFile">
               <TerminalFileExplorer ref="fileExplorer" @select="handleFileSelect" />
             </template>
+            <template v-else-if="isNotebook">
+              <TerminalNotebook 
+                :file="editingFile" 
+                :initial-content="editedContent" 
+                @close="closeEditor"
+                @save="closeEditor"
+              />
+            </template>
             <template v-else>
-              <div class="file-editor-view">
-                <div class="editor-header">
-                  <button class="back-btn" @click="closeEditor">
-                    <span class="icon">←</span> 返回
-                  </button>
-                  <span class="file-name" :title="editingFile.path">{{ editingFile.name }}</span>
-                  <button 
-                    class="save-btn" 
-                    @click="saveEditedFile" 
-                    :disabled="isSaving"
-                  >
-                    {{ isSaving ? '保存中...' : '保存' }}
-                  </button>
-                </div>
-                <div class="editor-body">
-                  <textarea 
-                    v-model="editedContent" 
-                    class="file-editor"
-                    spellcheck="false"
-                    placeholder="文件内容为空"
-                  ></textarea>
-                </div>
-              </div>
+              <TerminalFileEditor 
+                :file="editingFile" 
+                :initial-content="editedContent" 
+                @close="closeEditor"
+                @save="saveEditedFile"
+              />
             </template>
           </div>
 
@@ -231,6 +222,8 @@ import { useTerminalStore } from '@/stores/terminal'
 import { storeToRefs } from 'pinia'
 import { API_CONFIG } from '@/config/api'
 import TerminalFileExplorer from '@/components/TerminalFileExplorer.vue'
+import TerminalNotebook from '@/components/TerminalNotebook.vue'
+import TerminalFileEditor from '@/components/TerminalFileEditor.vue'
 import RequirementManager from '@/components/RequirementManager.vue'
 import CustomSelect from '@/components/CustomSelect.vue'
 import { marked } from 'marked'
@@ -280,6 +273,7 @@ const fileExplorer = ref(null)
 const editingFile = ref(null)
 const editedContent = ref(null)
 const isSaving = ref(false)
+const isNotebook = ref(false)
 
 // --- UI State Persistence (Mapped to UI Store) ---
 const rightPanelCollapsed = ref(uiStore.rightPanelCollapsed)
@@ -403,6 +397,7 @@ const handleFileSelect = async (file) => {
     if (data?.code === 200) {
       editingFile.value = file
       editedContent.value = data.data
+      isNotebook.value = file.name.endsWith('.nb') || file.name.endsWith('.ipynb')
     }
   } catch (e) {
     console.error('Failed to read file:', e)
@@ -412,10 +407,14 @@ const handleFileSelect = async (file) => {
 const closeEditor = () => {
   editingFile.value = null
   editedContent.value = null
+  isNotebook.value = false
 }
 
-const saveEditedFile = async () => {
+const saveEditedFile = async (newContent) => {
   if (!editingFile.value) return
+  
+  // Use passed content if available, otherwise use local ref
+  const contentToSave = typeof newContent === 'string' ? newContent : editedContent.value
   
   isSaving.value = true
   try {
@@ -427,13 +426,18 @@ const saveEditedFile = async () => {
       },
       body: JSON.stringify({
         path: editingFile.value.path,
-        content: editedContent.value,
+        content: contentToSave,
         overwrite: true
       })
     })
     const data = await safeReadJson(res)
     if (data?.code === 200) {
       alert('保存成功')
+      if (fileExplorer.value) {
+        fileExplorer.value.refresh()
+      }
+      // Update local state
+      editedContent.value = contentToSave
     } else {
       alert('保存失败: ' + (data?.message || '未知错误'))
     }
@@ -1237,6 +1241,12 @@ textarea {
   flex: 1;
   overflow-y: auto;
   height: 100%;
+}
+
+/* File Editor Styles are now handled in TerminalFileEditor.vue component */
+.panel-content.file-panel-container {
+  padding: 0;
+  overflow: hidden;
 }
 
 </style>
