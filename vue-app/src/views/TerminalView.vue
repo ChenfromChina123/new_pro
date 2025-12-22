@@ -4,8 +4,9 @@
     <div
       class="sessions-sidebar"
       :class="{ collapsed: sidebarCollapsed }"
+      :style="{ width: sidebarCollapsed ? '0px' : sidebarWidth + 'px' }"
     >
-      <div class="sidebar-header">
+      <div class="sidebar-header" :style="{ minWidth: sidebarWidth + 'px' }">
         <h3>终端会话</h3>
         <button
           class="new-session-btn"
@@ -41,6 +42,13 @@
         </div>
       </div>
     </div>
+
+    <!-- Sidebar Resizer -->
+    <div 
+      v-if="!sidebarCollapsed"
+      class="resizer-v sidebar-resizer"
+      @mousedown="initResizeSidebar"
+    ></div>
 
     <div class="terminal-main">
       <div class="terminal-layout">
@@ -168,29 +176,32 @@
           </div>
         </div>
 
+        <!-- Main Resizer -->
+        <div 
+          v-if="!rightPanelCollapsed"
+          class="resizer-v main-resizer"
+          @mousedown="initResizeMain"
+        ></div>
+
         <!-- Right Panel -->
-        <div class="right-panel" :class="{ collapsed: rightPanelCollapsed }">
+        <div 
+          class="right-panel" 
+          :class="{ collapsed: rightPanelCollapsed }"
+          :style="{ width: rightPanelCollapsed ? '0px' : rightPanelWidth + 'px' }"
+        >
           <div class="panel-tabs">
             <div 
+              v-for="tab in tabs"
+              :key="tab.id"
               class="tab" 
-              :class="{ active: activeTab === 'terminal' }"
-              @click="activeTab = 'terminal'"
+              :class="{ active: activeTab === tab.id }"
+              draggable="true"
+              @dragstart="handleTabDragStart($event, tab)"
+              @dragover.prevent
+              @drop="handleTabDrop($event, tab)"
+              @click="activeTab = tab.id"
             >
-              终端输出
-            </div>
-            <div 
-              class="tab" 
-              :class="{ active: activeTab === 'files' }"
-              @click="activeTab = 'files'"
-            >
-              文件管理
-            </div>
-            <div 
-              class="tab" 
-              :class="{ active: activeTab === 'req' }"
-              @click="activeTab = 'req'"
-            >
-              需求文档
+              {{ tab.label }}
             </div>
           </div>
 
@@ -285,6 +296,95 @@ const sessions = ref([])
 const sidebarCollapsed = ref(false)
 const rightPanelCollapsed = ref(false)
 const activeTab = ref('terminal')
+
+const sidebarWidth = ref(260)
+const rightPanelWidth = ref(window.innerWidth * 0.4) // Default to 40%
+
+const tabs = ref([
+  { id: 'terminal', label: '终端输出' },
+  { id: 'files', label: '文件管理' },
+  { id: 'req', label: '需求文档' }
+])
+
+let draggedTab = null
+
+/**
+ * 处理标签拖拽开始
+ * @param {DragEvent} e 拖拽事件
+ * @param {Object} tab 被拖拽的标签对象
+ */
+const handleTabDragStart = (e, tab) => {
+  draggedTab = tab
+  e.dataTransfer.effectAllowed = 'move'
+}
+
+/**
+ * 处理标签拖拽放下
+ * @param {DragEvent} e 拖拽事件
+ * @param {Object} targetTab 目标标签对象
+ */
+const handleTabDrop = (e, targetTab) => {
+  if (!draggedTab || draggedTab.id === targetTab.id) return
+  
+  const fromIndex = tabs.value.findIndex(t => t.id === draggedTab.id)
+  const toIndex = tabs.value.findIndex(t => t.id === targetTab.id)
+  
+  const newTabs = [...tabs.value]
+  newTabs.splice(fromIndex, 1)
+  newTabs.splice(toIndex, 0, draggedTab)
+  tabs.value = newTabs
+  draggedTab = null
+}
+
+/**
+ * 初始化侧边栏宽度调节
+ * @param {MouseEvent} e 鼠标事件
+ */
+const initResizeSidebar = (e) => {
+  const startX = e.clientX
+  const startWidth = sidebarWidth.value
+  
+  const onMouseMove = (moveEvent) => {
+    const diff = moveEvent.clientX - startX
+    const newWidth = Math.max(150, Math.min(500, startWidth + diff))
+    sidebarWidth.value = newWidth
+  }
+  
+  const onMouseUp = () => {
+    document.removeEventListener('mousemove', onMouseMove)
+    document.removeEventListener('mouseup', onMouseUp)
+    document.body.style.cursor = 'default'
+  }
+  
+  document.addEventListener('mousemove', onMouseMove)
+  document.addEventListener('mouseup', onMouseUp)
+  document.body.style.cursor = 'col-resize'
+}
+
+/**
+ * 初始化主面板与右面板宽度调节
+ * @param {MouseEvent} e 鼠标事件
+ */
+const initResizeMain = (e) => {
+  const startX = e.clientX
+  const startWidth = rightPanelWidth.value
+  
+  const onMouseMove = (moveEvent) => {
+    const diff = startX - moveEvent.clientX
+    const newWidth = Math.max(300, Math.min(window.innerWidth * 0.7, startWidth + diff))
+    rightPanelWidth.value = newWidth
+  }
+  
+  const onMouseUp = () => {
+    document.removeEventListener('mousemove', onMouseMove)
+    document.removeEventListener('mouseup', onMouseUp)
+    document.body.style.cursor = 'default'
+  }
+  
+  document.addEventListener('mousemove', onMouseMove)
+  document.addEventListener('mouseup', onMouseUp)
+  document.body.style.cursor = 'col-resize'
+}
 
 const modelOptions = [
   { label: 'DeepSeek Chat', value: 'deepseek-chat', description: '适用于通用对话和指令遵循' },
@@ -742,10 +842,30 @@ const writeFile = async (path, content, overwrite) => {
 
 <style scoped>
 .terminal-container { display: flex; height: 100vh; background: #f8fafc; overflow: hidden; }
-.sessions-sidebar { width: 260px; background: #fff; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 10; }
-.sessions-sidebar.collapsed { width: 0; opacity: 0; pointer-events: none; border: none; }
-.sidebar-header { padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; min-width: 260px; }
+.sessions-sidebar { background: #fff; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; transition: opacity 0.3s ease, transform 0.3s ease; z-index: 10; overflow: hidden; }
+.sessions-sidebar.collapsed { width: 0 !important; opacity: 0; pointer-events: none; border: none; }
+.sidebar-header { padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; box-sizing: border-box; }
 .sessions-list { flex: 1; overflow-y: auto; padding: 10px; }
+
+/* Resizer Styles */
+.resizer-v {
+  width: 4px;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.2s;
+  z-index: 20;
+  position: relative;
+}
+.resizer-v:hover, .resizer-v:active {
+  background: #3b82f6;
+}
+.sidebar-resizer {
+  margin-right: -4px;
+}
+.main-resizer {
+  margin-left: -2px;
+  margin-right: -2px;
+}
 .session-item { padding: 10px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
 .session-item:hover { background: #f1f5f9; }
 .session-item.active { background: #eff6ff; border-left: 3px solid #3b82f6; }
@@ -754,10 +874,10 @@ const writeFile = async (path, content, overwrite) => {
 .delete-session-btn { background: none; border: none; opacity: 0; color: #94a3b8; cursor: pointer; }
 .session-item:hover .delete-session-btn { opacity: 1; }
 
-.terminal-main { flex: 1; display: flex; flex-direction: column; }
+.terminal-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .terminal-layout { display: flex; flex: 1; overflow: hidden; }
 
-.chat-panel { flex: 1; display: flex; flex-direction: column; background: #fff; border-right: 1px solid #e2e8f0; min-width: 400px; position: relative; }
+.chat-panel { flex: 1; display: flex; flex-direction: column; background: #fff; border-right: 1px solid #e2e8f0; min-width: 300px; position: relative; }
 .chat-header { padding: 12px 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #fff; z-index: 5; }
 .header-left { display: flex; gap: 15px; align-items: center; }
 .header-right { display: flex; gap: 15px; align-items: center; }
@@ -875,10 +995,11 @@ textarea { flex: 1; height: 50px; padding: 10px; border: 1px solid #e2e8f0; bord
 .send-btn { background: #3b82f6; color: white; border: none; padding: 0 20px; border-radius: 8px; cursor: pointer; }
 .send-btn:disabled { background: #94a3b8; cursor: not-allowed; }
 
-.right-panel { width: 50%; display: flex; flex-direction: column; border-left: 1px solid #e2e8f0; background: #fff; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-.right-panel.collapsed { width: 0; opacity: 0; pointer-events: none; border: none; }
-.panel-tabs { display: flex; border-bottom: 1px solid #e2e8f0; background: #f1f5f9; min-width: 400px; }
-.tab { padding: 10px 20px; cursor: pointer; font-size: 0.9rem; color: #64748b; border-right: 1px solid #e2e8f0; }
+.right-panel { display: flex; flex-direction: column; border-left: 1px solid #e2e8f0; background: #fff; transition: opacity 0.3s ease; overflow: hidden; }
+.right-panel.collapsed { width: 0 !important; opacity: 0; pointer-events: none; border: none; }
+.panel-tabs { display: flex; border-bottom: 1px solid #e2e8f0; background: #f1f5f9; overflow-x: auto; flex-shrink: 0; }
+.tab { padding: 10px 20px; cursor: pointer; font-size: 0.9rem; color: #64748b; border-right: 1px solid #e2e8f0; white-space: nowrap; user-select: none; }
+.tab:hover { background: #e2e8f0; }
 .tab.active { background: #fff; color: #3b82f6; font-weight: 500; border-bottom: 2px solid #3b82f6; }
 
 .terminal-content-wrapper { flex: 1; display: flex; flex-direction: column; background: #0f172a; color: #e2e8f0; }
