@@ -16,12 +16,12 @@
         v-for="file in files" 
         :key="file.name"
         class="file-item"
-        :class="{ directory: file.isDirectory }"
+        :class="{ directory: file.isDirectory || file.is_directory }"
         @dblclick="handleDblClick(file)"
       >
-        <span class="icon">{{ file.isDirectory ? '📁' : '📄' }}</span>
+        <span class="icon">{{ (file.isDirectory || file.is_directory) ? '📁' : '📄' }}</span>
         <span class="name">{{ file.name }}</span>
-        <span class="size" v-if="!file.isDirectory">{{ formatSize(file.size) }}</span>
+        <span class="size" v-if="!(file.isDirectory || file.is_directory)">{{ formatSize(file.size) }}</span>
       </div>
     </div>
   </div>
@@ -58,8 +58,10 @@ const fetchFiles = async (path) => {
     const data = await res.json()
     if (data.code === 200) {
       files.value = data.data.sort((a, b) => {
-        if (a.isDirectory === b.isDirectory) return a.name.localeCompare(b.name)
-        return a.isDirectory ? -1 : 1
+        const aIsDir = a.isDirectory || a.is_directory
+        const bIsDir = b.isDirectory || b.is_directory
+        if (aIsDir === bIsDir) return a.name.localeCompare(b.name)
+        return aIsDir ? -1 : 1
       })
       currentPath.value = path
     }
@@ -71,7 +73,7 @@ const fetchFiles = async (path) => {
 const refresh = () => fetchFiles(currentPath.value)
 
 const handleDblClick = (file) => {
-  if (file.isDirectory) {
+  if (file.isDirectory || file.is_directory) {
     // Navigate relative
     const newPath = currentPath.value === '/' 
       ? '/' + file.name 
