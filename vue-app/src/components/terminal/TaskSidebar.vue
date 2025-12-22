@@ -33,6 +33,10 @@
           @dragover="onDragOver($event)"
           @drop="onDrop($event, index)"
           @click="$emit('select-task', task.id)"
+          :style="{
+            backgroundColor: getTaskBg(task),
+            borderColor: getTaskBorder(task)
+          }"
         >
           <div class="task-status-icon">
             <i v-if="task.status === 'completed'" class="icon-success">✓</i>
@@ -40,7 +44,11 @@
             <i v-else class="icon-pending">○</i>
           </div>
           <div class="task-content">
-            <div class="task-title" :title="task.desc">{{ task.desc }}</div>
+            <div 
+              class="task-title" 
+              :title="task.desc"
+              :style="{ color: task.status === 'completed' ? '#15803d' : '#334155' }"
+            >{{ task.desc }}</div>
             <div class="task-meta">
               <span class="task-id">#{{ task.id }}</span>
               <span v-if="task.time" class="task-time">{{ formatTime(task.time) }}</span>
@@ -97,6 +105,26 @@ const progressColor = computed(() => {
 const formatTime = (time) => {
   if (!time) return ''
   return new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
+const getTaskColor = (task) => {
+  if (task.status === 'completed') return '#22c55e'
+  if (task.status === 'in_progress') return '#f59e0b'
+  return '#94a3b8'
+}
+
+const getTaskBg = (task) => {
+  if (props.activeTaskId === task.id) return '#eff6ff'
+  if (task.status === 'completed') return '#f0fdf4'
+  if (task.status === 'in_progress') return '#fffbeb'
+  return '#ffffff'
+}
+
+const getTaskBorder = (task) => {
+  if (props.activeTaskId === task.id) return '#3b82f6'
+  if (task.status === 'completed') return '#bbf7d0'
+  if (task.status === 'in_progress') return '#fde68a'
+  return '#e2e8f0'
 }
 
 // Drag and Drop Logic

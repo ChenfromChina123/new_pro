@@ -376,10 +376,10 @@ const flatViewItems = computed(() => {
         // Filter logic
         if (searchText.value) {
           const query = searchText.value.toLowerCase()
-          const contentMatch = msg.content && msg.content.toLowerCase().includes(query)
-          const aiMsgMatch = msg.message && msg.message.toLowerCase().includes(query)
-          const thoughtMatch = msg.thought && msg.thought.toLowerCase().includes(query)
-          if (!contentMatch && !aiMsgMatch && !thoughtMatch) return
+          const aiMsgMatch = msg.message && String(msg.message).toLowerCase().includes(query)
+          const thoughtMatch = msg.thought && String(msg.thought).toLowerCase().includes(query)
+          const userContentMatch = msg.role === 'user' && msg.content && String(msg.content).toLowerCase().includes(query)
+          if (!aiMsgMatch && !thoughtMatch && !userContentMatch) return
         }
 
         items.push({
@@ -732,7 +732,7 @@ const processAgentLoop = async (prompt) => {
               // 如果发现内容中包含 {，尝试进行字段提取
               if (fullContent.includes('{')) {
                 const extractedThought = tryExtractField(fullContent, 'thought')
-                const extractedMessage = tryExtractField(fullContent, 'message')
+                const extractedMessage = tryExtractField(fullContent, 'content') || tryExtractField(fullContent, 'message')
                 
                 if (extractedThought) currentAiMsg.thought = extractedThought
                 if (extractedMessage) currentAiMsg.message = extractedMessage
@@ -771,7 +771,8 @@ const processAgentLoop = async (prompt) => {
       const action = JSON.parse(jsonStr)
 
       currentAiMsg.thought = action.thought || currentAiMsg.thought
-      currentAiMsg.message = action.message || currentAiMsg.message
+      currentAiMsg.message = action.content || action.message || currentAiMsg.message
+      currentAiMsg.steps = action.steps || []
       
       if (action.type === 'task_list') {
         currentTasks.value = action.tasks || []
@@ -850,7 +851,7 @@ const processAgentLoop = async (prompt) => {
          await processAgentLoop(`文件写入结果(ExitCode: ${exitCode}):\n${resultText}`)
          return
       } else {
-         currentAiMsg.message = action.message || fullContent
+         currentAiMsg.message = action.content || action.message || fullContent
       }
       
       await saveMessage(JSON.stringify(action), 2)
@@ -1132,6 +1133,7 @@ const writeFile = async (path, content, overwrite) => {
   border-radius: 12px; 
   margin-bottom: 20px; 
   overflow: hidden; 
+  transition: all 0.3s ease;
 }
 .thought-title { 
   padding: 10px 16px; 
@@ -1154,6 +1156,12 @@ const writeFile = async (path, content, overwrite) => {
   white-space: pre-wrap; 
   line-height: 1.6;
   border-top: 1px solid #e2e8f0;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Tool and Command Result Styles */
@@ -1258,6 +1266,12 @@ const writeFile = async (path, content, overwrite) => {
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   padding: 10px;
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .steps-title {
