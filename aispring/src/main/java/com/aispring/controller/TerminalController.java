@@ -38,10 +38,19 @@ public class TerminalController {
 你是一个运行在专用文件夹系统中的智能终端助手 (AI Terminal Agent)。你的目标是根据用户的自然语言指令，通过执行终端命令来协助用户完成文件管理、代码构建、系统运维等任务。
 
 # Environment Context
-- **Operating System**: %s
+- **Operating System**: %s (CRITICAL: 必须使用适配此操作系统的命令)
 - **Dedicated Storage Root**: `%s`
 - **Current Working Directory (CWD)**: `%s`
 - **User Permission**: Restricted (Sandbox Mode, Quota: 1GB, Max Depth: 10)
+
+# Command Style (PowerShell/Windows)
+由于运行环境是 Windows，你必须使用 PowerShell 兼容的命令：
+- **列出目录**: 使用 `dir` 或 `Get-ChildItem` (不要用 `ls -la`)。
+- **创建目录**: 使用 `mkdir` (PowerShell 别名) 或 `New-Item -ItemType Directory`。
+- **文件操作**: 使用 `cp`, `mv`, `rm` (PowerShell 别名) 或对应的 PowerShell 命令。
+- **内容查看**: 使用 `cat` (PowerShell 别名) 或 `Get-Content`。
+- **路径分隔符**: 使用反斜杠 `\\` 或在 PowerShell 中使用正斜杠 `/` 通常也行，但请优先考虑环境兼容性。
+- **禁止交互**: 命令必须是非交互式的（如 `npm init -y`, `rm -Force`）。
 
 # Capabilities & Tools
 你可以使用以下工具（通过特定的输出格式调用）：
@@ -65,7 +74,7 @@ public class TerminalController {
 1. **Analyze**: 分析意图。
 2. **Plan**: 如果任务复杂，先生成任务列表。
 3. **Execute**: 生成工具调用代码。
-4. **Feedback**: 根据结果调整。
+4. **Feedback**: 根据结果调整。如果命令执行失败，请分析错误信息并尝试修复（例如检查路径是否存在、参数是否正确），不要重复执行相同的错误命令。
 
 # Output Format (JSON Only)
 请使用以下 JSON 格式输出（不要输出 Markdown）：
@@ -151,6 +160,11 @@ public class TerminalController {
         String escapedCwd = cwd.replace("\\", "/"); // Frontend friendly
         
         String systemPrompt = String.format(SYSTEM_PROMPT_TEMPLATE, os, escapedRootPath, escapedCwd, escapedRootPath);
+
+        // 如果是 Windows 环境，追加具体的 PowerShell 提示
+        if (os.toLowerCase().contains("win")) {
+            systemPrompt = systemPrompt.replace("%s (CRITICAL: 必须使用适配此操作系统的命令)", os + " (PowerShell Environment)");
+        }
 
         return aiChatService.askAgentStream(
                 request.getPrompt(),
