@@ -44,72 +44,74 @@
                   v-else-if="msg.role === 'ai'"
                   class="ai-bubble"
                 >
-                  <div
-                    v-if="msg.thought"
-                    class="thought-block"
-                  >
+                  <div class="message-content">
                     <div
-                      class="thought-title"
-                      @click="msg.showThought = !msg.showThought"
+                      v-if="msg.thought"
+                      class="thought-block"
                     >
-                      <span>思考过程</span>
-                      <i class="toggle-icon">{{ msg.showThought ? '▼' : '▶' }}</i>
+                      <div
+                        class="thought-title"
+                        @click="msg.showThought = !msg.showThought"
+                      >
+                        <span>思考过程</span>
+                        <i class="toggle-icon">{{ msg.showThought ? '▼' : '▶' }}</i>
+                      </div>
+                      <div
+                        v-if="msg.showThought"
+                        class="thought-content"
+                      >
+                        {{ msg.thought }}
+                      </div>
                     </div>
-                    <div
-                      v-if="msg.showThought"
-                      class="thought-content"
-                    >
-                      {{ msg.thought }}
-                    </div>
-                  </div>
 
-                  <div
-                    v-if="msg.message"
-                    class="ai-text"
-                  >
-                    {{ msg.message }}
-                  </div>
-                  
-                  <!-- Command Execution Info -->
-                  <div
-                    v-if="msg.tool"
-                    class="tool-call-card"
-                  >
-                    <div class="tool-header">
-                      <span class="tool-icon">🐚</span>
-                      <span
-                        v-if="msg.tool === 'execute_command'"
-                        class="tool-label"
-                      >执行命令</span>
-                      <span
-                        v-else-if="msg.tool === 'write_file'"
-                        class="tool-label"
-                      >写入文件</span>
-                      <span
-                        v-else
-                        class="tool-label"
-                      >工具调用</span>
-                    </div>
-                    <div class="tool-command">
-                      <code v-if="msg.tool === 'execute_command'">{{ msg.command }}</code>
-                      <code v-else-if="msg.tool === 'write_file'">{{ msg.filePath }}</code>
-                    </div>
                     <div
-                      class="tool-status"
-                      :class="msg.status"
+                      v-if="msg.message"
+                      class="ai-text"
                     >
-                      <span
-                        v-if="msg.status === 'pending'"
-                        class="spinner"
-                      >⌛ 执行中...</span>
-                      <span
-                        v-else-if="msg.status === 'success'"
-                        class="status-success"
-                      >✓ 执行成功</span>
-                      <span
-                        v-else
-                        class="status-error"
-                      >✗ 执行失败</span>
+                      {{ msg.message }}
+                    </div>
+                    
+                    <!-- Command Execution Info -->
+                    <div
+                      v-if="msg.tool"
+                      class="tool-call-card"
+                    >
+                      <div class="tool-header">
+                        <span class="tool-icon">🐚</span>
+                        <span
+                          v-if="msg.tool === 'execute_command'"
+                          class="tool-label"
+                        >执行命令</span>
+                        <span
+                          v-else-if="msg.tool === 'write_file'"
+                          class="tool-label"
+                        >写入文件</span>
+                        <span
+                          v-else
+                          class="tool-label"
+                        >工具调用</span>
+                      </div>
+                      <div class="tool-command">
+                        <code v-if="msg.tool === 'execute_command'">{{ msg.command }}</code>
+                        <code v-else-if="msg.tool === 'write_file'">{{ msg.filePath }}</code>
+                      </div>
+                      <div
+                        class="tool-status"
+                        :class="msg.status"
+                      >
+                        <span
+                          v-if="msg.status === 'pending'"
+                          class="spinner"
+                        >⌛ 执行中...</span>
+                        <span
+                          v-else-if="msg.status === 'success'"
+                          class="status-success"
+                        >✓ 执行成功</span>
+                        <span
+                          v-else
+                          class="status-error"
+                        >✗ 执行失败</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -119,10 +121,12 @@
                   v-else-if="msg.role === 'command_result'"
                   class="system-bubble"
                 >
-                  <div class="result-header">
-                    命令执行结果:
+                  <div class="message-content">
+                    <div class="result-header">
+                      命令执行结果:
+                    </div>
+                    <pre class="result-content">{{ msg.content }}</pre>
                   </div>
-                  <pre class="result-content">{{ msg.content }}</pre>
                 </div>
               </div>
             </div>
@@ -130,8 +134,10 @@
               v-if="isTyping"
               class="message ai"
             >
-              <div class="typing-indicator">
-                <span>.</span><span>.</span><span>.</span>
+              <div class="message-content">
+                <div class="typing-indicator">
+                  <span>.</span><span>.</span><span>.</span>
+                </div>
               </div>
             </div>
           </div>
@@ -1195,7 +1201,7 @@ const writeFile = async (path, content, overwrite) => {
   background: #f8fafc;
   border-radius: 18px;
   width: fit-content;
-  margin-left: 20px;
+  margin-left: 0;
 }
 .typing-indicator span {
   width: 6px;
