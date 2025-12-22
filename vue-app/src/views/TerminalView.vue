@@ -382,7 +382,7 @@ const tabMeta = {
   'files': { id: 'files', label: '文件管理' }
 }
 
-const tabs = ref(uiStore.tabOrder.map(id => tabMeta[id]))
+const tabs = ref(uiStore.tabOrder.filter(id => tabMeta[id]).map(id => tabMeta[id]))
 
 watch(tabs, (newTabs) => {
   const order = newTabs.map(t => t.id)
