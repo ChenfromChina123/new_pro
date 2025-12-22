@@ -546,10 +546,16 @@ const saveEditedFile = async (newContent) => {
 
 const formatDate = (d) => new Date(d).toLocaleString()
 
+let scrollScheduled = false
 const scrollToBottom = () => {
-  nextTick(() => {
-    if (messagesRef.value) messagesRef.value.scrollTop = messagesRef.value.scrollHeight
-    if (terminalRef.value) terminalRef.value.scrollTop = terminalRef.value.scrollHeight
+  if (scrollScheduled) return
+  scrollScheduled = true
+  requestAnimationFrame(() => {
+    scrollScheduled = false
+    nextTick(() => {
+      if (messagesRef.value) messagesRef.value.scrollTop = messagesRef.value.scrollHeight
+      if (terminalRef.value) terminalRef.value.scrollTop = terminalRef.value.scrollHeight
+    })
   })
 }
 
@@ -589,43 +595,6 @@ const sendMessage = async () => {
   isTyping.value = true
   scrollToBottom()
   await saveMessage(text, 1)
-
-  // 1. 意图识别分析
-  try {
-    const analysisRes = await fetch(`${API_CONFIG.baseURL}/api/terminal/analyze-intent`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authStore.token}`
-      },
-      body: JSON.stringify({
-        prompt: text,
-        session_id: currentSessionId.value,
-        model: currentModel.value
-      })
-    })
-    const analysisData = await safeReadJson(analysisRes)
-    if (analysisData?.code === 200) {
-       let analysis = analysisData.data
-       // 尝试解析 JSON
-       try {
-         const analysisJson = JSON.parse(analysis)
-         if (analysisJson.summary) {
-           messages.value.push({ 
-             role: 'ai', 
-             thought: analysisJson.reasoning || '正在分析意图...',
-             message: `意图识别: ${analysisJson.summary}\n规划步骤:\n${analysisJson.steps.map((s, i) => `${i+1}. ${s}`).join('\n')}`,
-             showThought: false
-           })
-           scrollToBottom()
-         }
-       } catch(e) {
-         console.warn('Failed to parse analysis JSON:', analysis)
-       }
-    }
-  } catch (e) {
-    console.error('Intent analysis failed:', e)
-  }
 
   // 2. 执行 Agent 循环
   await processAgentLoop(text)
@@ -822,23 +791,38 @@ const processAgentLoop = async (prompt) => {
 
 const tryExtractField = (content, fieldName) => {
   if (!content) return ''
-  
-  // 1. 尝试匹配完整的字段: "fieldName": "value"
-  const fullRegex = new RegExp(`"${fieldName}"\\s*:\\s*"((?:[^\\\\"]|\\\\.)*)"`)
-  const fullMatch = content.match(fullRegex)
-  if (fullMatch) {
-    return unescapeJsonString(fullMatch[1])
+
+  const key = `"${fieldName}"`
+  const keyIndex = content.indexOf(key)
+  if (keyIndex === -1) return ''
+
+  const colonIndex = content.indexOf(':', keyIndex + key.length)
+  if (colonIndex === -1) return ''
+
+  let i = colonIndex + 1
+  while (i < content.length && /\s/.test(content[i])) i++
+  if (content[i] !== '"') return ''
+  i++
+
+  let raw = ''
+  let escaped = false
+  for (; i < content.length; i++) {
+    const ch = content[i]
+    if (escaped) {
+      raw += ch
+      escaped = false
+      continue
+    }
+    if (ch === '\\') {
+      raw += '\\'
+      escaped = true
+      continue
+    }
+    if (ch === '"') return unescapeJsonString(raw)
+    raw += ch
   }
-  
-  // 2. 如果没有完整匹配，尝试匹配正在流式输出的字段: "fieldName": "部分内容...
-  // 匹配字段名及其开启的引号，然后捕获直到字符串末尾的所有内容
-  const partialRegex = new RegExp(`"${fieldName}"\\s*:\\s*"((?:[^\\\\"]|\\\\.)*)$`)
-  const partialMatch = content.match(partialRegex)
-  if (partialMatch) {
-    return unescapeJsonString(partialMatch[1])
-  }
-  
-  return ''
+
+  return unescapeJsonString(raw)
 }
 
 /**
