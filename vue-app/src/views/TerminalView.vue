@@ -17,8 +17,18 @@
             <div class="chat-header">
               <div class="header-left">
                 <h3>AI 终端助手</h3>
+                <span v-if="agentStatus !== 'IDLE'" :class="['status-badge', agentStatus.toLowerCase()]">
+                  {{ agentStatus }}
+                </span>
               </div>
               <div class="header-right">
+                <button 
+                  v-if="agentStatus === 'RUNNING'"
+                  class="control-btn stop-btn"
+                  @click="handleStop"
+                >
+                  ⏹ Stop
+                </button>
                 <button 
                   class="toggle-right-panel"
                   :class="{ rotated: rightPanelCollapsed }"
@@ -136,13 +146,17 @@
                                   class="tool-label"
                                 >写入文件</span>
                                 <span
+                                  v-else-if="item.data.tool === 'ensure_file'"
+                                  class="tool-label"
+                                >确保文件</span>
+                                <span
                                   v-else
                                   class="tool-label"
                                 >工具调用</span>
                               </div>
                               <div class="tool-command">
                                 <code v-if="item.data.tool === 'execute_command'">{{ item.data.command }}</code>
-                                <code v-else-if="item.data.tool === 'write_file'">{{ item.data.filePath }}</code>
+                                <code v-else-if="item.data.tool === 'write_file' || item.data.tool === 'ensure_file'">{{ item.data.filePath }}</code>
                               </div>
                               <div
                                 class="tool-status"
@@ -186,8 +200,9 @@
               v-model:message="inputMessage"
               v-model:model="currentModel"
               :model-options="modelOptions"
-              :disabled="isTyping || isExecuting"
-              :can-send="!!inputMessage.trim() && !isTyping && !isExecuting"
+              :disabled="isInputDisabled"
+              :placeholder="inputPlaceholder"
+              :can-send="!!inputMessage.trim() && !isInputDisabled"
               @enter="handleEnter"
               @send="sendMessage"
             />
@@ -207,7 +222,8 @@
           :class="{ collapsed: rightPanelCollapsed }"
           :style="{ width: rightPanelCollapsed ? '0px' : rightPanelWidth + 'px' }"
         >
-          <div class="panel-tabs">
+          <!-- ... (Existing Right Panel Content) ... -->
+           <div class="panel-tabs">
             <div 
               v-for="tab in tabs"
               :key="tab.id"
@@ -286,9 +302,6 @@
               />
             </template>
           </div>
-
-          <!-- Requirements -->
-          <!-- 需求文档已集成到文件管理中 -->
         </div>
       </div>
     </div>
@@ -343,7 +356,9 @@ const {
   currentTasks, 
   currentCwd,
   activeTaskId,
-  groupedMessages
+  groupedMessages,
+  agentStatus,
+  decisionHistory
 } = storeToRefs(terminalStore)
 
 const sidebarWidth = ref(250)
@@ -351,13 +366,13 @@ const scrollerRef = ref(null)
 const searchText = ref('')
 const expandedTaskIds = ref(new Set())
 
-// Flatten messages for virtual scrolling
+// ... (Existing flatViewItems logic) ...
 const flatViewItems = computed(() => {
   const items = []
   let idCounter = 0
   
   groupedMessages.value.forEach(group => {
-    const isExpanded = group.taskId ? expandedTaskIds.value.has(group.taskId) : true // General messages always shown or logic needed
+    const isExpanded = group.taskId ? expandedTaskIds.value.has(group.taskId) : true
     
     // Add Group Header
     if (group.taskId) {
@@ -370,10 +385,9 @@ const flatViewItems = computed(() => {
       })
     }
 
-    // Add Messages if expanded or no task ID (general messages)
+    // Add Messages
     if (isExpanded || !group.taskId) {
       group.messages.forEach(msg => {
-        // Filter logic
         if (searchText.value) {
           const query = searchText.value.toLowerCase()
           const aiMsgMatch = msg.message && String(msg.message).toLowerCase().includes(query)
@@ -409,13 +423,9 @@ watch(activeTaskId, (newId) => {
 
 const scrollToTask = (taskId) => {
   if (!scrollerRef.value) return
-  
-  // Expand the task first
   if (taskId) {
     expandedTaskIds.value.add(taskId)
   }
-  
-  // Wait for re-computation
   nextTick(() => {
     const index = flatViewItems.value.findIndex(item => item.taskId === taskId && item.type === 'header')
     if (index !== -1) {
@@ -438,63 +448,42 @@ const editedContent = ref(null)
 const isSaving = ref(false)
 const isNotebook = ref(false)
 
-// --- UI State Persistence (Mapped to UI Store) ---
+// UI Persistence
 const rightPanelCollapsed = ref(uiStore.rightPanelCollapsed)
 const taskListCollapsed = ref(uiStore.taskListCollapsed)
 const rightPanelWidth = ref(uiStore.rightPanelWidth)
 const activeTab = ref(uiStore.activeTab === 'req' ? 'terminal' : uiStore.activeTab)
 
-// Watchers for Persistence
 watch(rightPanelCollapsed, (val) => uiStore.saveState('rightPanelCollapsed', val))
 watch(taskListCollapsed, (val) => uiStore.saveState('taskListCollapsed', val))
 watch(rightPanelWidth, (val) => uiStore.saveState('rightPanelWidth', val))
 watch(activeTab, (val) => uiStore.saveState('activeTab', val))
 
-const completedCount = computed(() => {
-  return currentTasks.value.filter(t => t.status === 'completed').length
-})
-
+const completedCount = computed(() => currentTasks.value.filter(t => t.status === 'completed').length)
 const taskProgress = computed(() => {
   if (currentTasks.value.length === 0) return 0
   return Math.round((completedCount.value / currentTasks.value.length) * 100)
 })
 
-// Tab Logic with Persistence
 const tabMeta = {
   'terminal': { id: 'terminal', label: '终端输出' },
   'files': { id: 'files', label: '文件管理' }
 }
-
 const tabs = ref(uiStore.tabOrder.filter(id => tabMeta[id]).map(id => tabMeta[id]))
-
 watch(tabs, (newTabs) => {
   const order = newTabs.map(t => t.id)
   uiStore.saveState('tabOrder', order)
 }, { deep: true })
 
 let draggedTab = null
-
-/**
- * 处理标签拖拽开始
- * @param {DragEvent} e 拖拽事件
- * @param {Object} tab 被拖拽的标签对象
- */
 const handleTabDragStart = (e, tab) => {
   draggedTab = tab
   e.dataTransfer.effectAllowed = 'move'
 }
-
-/**
- * 处理标签拖拽放下
- * @param {DragEvent} e 拖拽事件
- * @param {Object} targetTab 目标标签对象
- */
 const handleTabDrop = (e, targetTab) => {
   if (!draggedTab || draggedTab.id === targetTab.id) return
-  
   const fromIndex = tabs.value.findIndex(t => t.id === draggedTab.id)
   const toIndex = tabs.value.findIndex(t => t.id === targetTab.id)
-  
   const newTabs = [...tabs.value]
   newTabs.splice(fromIndex, 1)
   newTabs.splice(toIndex, 0, draggedTab)
@@ -502,26 +491,19 @@ const handleTabDrop = (e, targetTab) => {
   draggedTab = null
 }
 
-/**
- * 初始化主面板与右面板宽度调节
- * @param {MouseEvent} e 鼠标事件
- */
 const initResizeMain = (e) => {
   const startX = e.clientX
   const startWidth = rightPanelWidth.value
-  
   const onMouseMove = (moveEvent) => {
     const diff = startX - moveEvent.clientX
     const newWidth = Math.max(300, Math.min(window.innerWidth * 0.7, startWidth + diff))
     rightPanelWidth.value = newWidth
   }
-  
   const onMouseUp = () => {
     document.removeEventListener('mousemove', onMouseMove)
     document.removeEventListener('mouseup', onMouseUp)
     document.body.style.cursor = 'default'
   }
-  
   document.addEventListener('mousemove', onMouseMove)
   document.addEventListener('mouseup', onMouseUp)
   document.body.style.cursor = 'col-resize'
@@ -543,7 +525,6 @@ onMounted(async () => {
   } else {
     await terminalStore.createNewSession()
   }
-  // 页面加载完成后滚动到底部
   scrollToBottom()
 })
 
@@ -552,12 +533,12 @@ watch(currentSessionId, async () => {
   scrollToBottom()
 })
 
-// 监听终端日志变化，自动滚动到底部
 watch(terminalLogs, () => {
   nextTick()
   scrollToBottom()
 }, { deep: true })
 
+// ... (Existing file handling methods: handleFileSelect, closeEditor, saveEditedFile) ...
 const handleFileSelect = async (file) => {
   try {
     const res = await fetch(`${API_CONFIG.baseURL}/api/terminal/read-file?path=${encodeURIComponent(file.path)}`, {
@@ -582,10 +563,7 @@ const closeEditor = () => {
 
 const saveEditedFile = async (newContent) => {
   if (!editingFile.value) return
-  
-  // Use passed content if available, otherwise use local ref
   const contentToSave = typeof newContent === 'string' ? newContent : editedContent.value
-  
   isSaving.value = true
   try {
     const res = await fetch(`${API_CONFIG.baseURL}/api/terminal/write-file`, {
@@ -603,10 +581,7 @@ const saveEditedFile = async (newContent) => {
     const data = await safeReadJson(res)
     if (data?.code === 200) {
       uiStore.showToast('保存成功')
-      if (fileExplorer.value) {
-        fileExplorer.value.refresh()
-      }
-      // Update local state
+      if (fileExplorer.value) fileExplorer.value.refresh()
       editedContent.value = contentToSave
     } else {
       uiStore.showToast('保存失败: ' + (data?.message || '未知错误'))
@@ -619,19 +594,15 @@ const saveEditedFile = async (newContent) => {
   }
 }
 
-const formatDate = (d) => new Date(d).toLocaleString()
-
+// ... (Existing utils) ...
 let scrollScheduled = false
 const scrollToBottom = (force = false) => {
   if (scrollScheduled) return
-  
-  // 如果不是强制滚动，检查是否在底部附近
   if (!force && scrollerRef.value) {
     const el = scrollerRef.value.$el
     const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100
     if (!isNearBottom) return
   }
-
   scrollScheduled = true
   requestAnimationFrame(() => {
     scrollScheduled = false
@@ -671,8 +642,23 @@ const saveMessage = async (content, senderType) => {
   } catch (e) { console.error(e) }
 }
 
-const sendMessage = async () => {
-  const text = inputMessage.value.trim()
+const isInputDisabled = computed(() => {
+    return isTyping.value || isExecuting.value || (agentStatus.value === 'RUNNING' || agentStatus.value === 'WAITING_TOOL')
+})
+
+const inputPlaceholder = computed(() => {
+    if (agentStatus.value === 'RUNNING') return 'Agent 运行中... (可输入 pause 或 stop)'
+    if (agentStatus.value === 'WAITING_TOOL') return '等待工具执行...'
+    if (agentStatus.value === 'ERROR') return '发生错误，请输入 retry 重试'
+    return '输入您的指令...'
+})
+
+const handleStop = async () => {
+    await sendMessage('stop')
+}
+
+const sendMessage = async (overrideText) => {
+  const text = overrideText || inputMessage.value.trim()
   if (!text) return
   
   messages.value.push({ role: 'user', content: text })
@@ -681,12 +667,19 @@ const sendMessage = async () => {
   scrollToBottom()
   await saveMessage(text, 1)
 
-  // 2. 执行 Agent 循环
-  await processAgentLoop(text)
+  // Start Loop with initial prompt
+  await processAgentLoop(text, null)
 }
 
-const processAgentLoop = async (prompt) => {
+const processAgentLoop = async (prompt, toolResult) => {
   try {
+    const body = {
+        prompt: prompt,
+        session_id: currentSessionId.value,
+        model: currentModel.value,
+        tool_result: toolResult
+    }
+    
     const response = await fetch(`${API_CONFIG.baseURL}/api/terminal/chat-stream`, {
       method: 'POST',
       headers: {
@@ -694,12 +687,7 @@ const processAgentLoop = async (prompt) => {
         'Authorization': `Bearer ${authStore.token}`,
         'Accept': 'text/event-stream'
       },
-      body: JSON.stringify({
-        prompt: prompt,
-        session_id: currentSessionId.value,
-        model: currentModel.value,
-        tasks: currentTasks.value // 传入当前任务链
-      })
+      body: JSON.stringify(body)
     })
 
     if (!response.ok) throw new Error('Request failed')
@@ -708,7 +696,6 @@ const processAgentLoop = async (prompt) => {
       role: 'ai', 
       thought: '', 
       message: '', 
-      tasks: null,
       tool: null, 
       status: 'pending', 
       showThought: true 
@@ -719,173 +706,139 @@ const processAgentLoop = async (prompt) => {
     const decoder = new TextDecoder()
     let buffer = ''
     let fullContent = ''
-    let animationFrameId = null
     
     const processBuffer = () => {
       const lines = buffer.split('\n')
-      buffer = lines.pop() // Keep incomplete line
+      buffer = lines.pop()
       let needsScroll = false
-
       for (const line of lines) {
         if (line.startsWith('data:')) {
           const dataStr = line.slice(5).trim()
           if (dataStr === '[DONE]') continue
           try {
             const json = JSON.parse(dataStr)
-            
             if (json.content) {
               fullContent += json.content
               needsScroll = true
               
-              // 实时解析 JSON 中的字段
               if (fullContent.includes('{')) {
-                const extractedThought = tryExtractField(fullContent, 'thought')
-                const extractedMessage = tryExtractField(fullContent, 'content') || tryExtractField(fullContent, 'message')
-                
-                if (extractedThought) currentAiMsg.thought = extractedThought
-                if (extractedMessage) currentAiMsg.message = extractedMessage
-                
-                if (!extractedMessage && !fullContent.trim().startsWith('{')) {
-                   const jsonStart = fullContent.indexOf('{')
-                   if (jsonStart > 0) {
-                     currentAiMsg.message = fullContent.substring(0, jsonStart).trim()
-                   } else {
-                     currentAiMsg.message = fullContent
-                   }
-                }
+                  // Simplified extraction logic for streaming JSON
+                  const jsonStart = fullContent.indexOf('{')
+                  if (jsonStart >= 0) {
+                      currentAiMsg.message = fullContent.substring(0, jsonStart).trim()
+                  }
               } else {
-                currentAiMsg.message = fullContent
+                  currentAiMsg.message = fullContent
               }
-            }
-            if (json.reasoning_content) {
-              currentAiMsg.thought += json.reasoning_content
-              needsScroll = true
             }
           } catch (e) {}
         }
       }
-      if (needsScroll) {
-        scrollToBottom()
-      }
+      if (needsScroll) scrollToBottom()
     }
 
     while (true) {
       const { done, value } = await reader.read()
       if (done) break
-      
-      const chunk = decoder.decode(value, { stream: true })
-      buffer += chunk
-      
-      // 使用 requestAnimationFrame 优化渲染频率
-      if (!animationFrameId) {
-        animationFrameId = requestAnimationFrame(() => {
-          processBuffer()
-          animationFrameId = null
-        })
-      }
+      buffer += decoder.decode(value, { stream: true })
+      processBuffer()
     }
-    
-    // Process remaining buffer
-    if (buffer) {
-       processBuffer()
-    }
+    if (buffer) processBuffer()
 
     isTyping.value = false
     
-    // Parse full content
+    // Parse Final JSON Content (Decision Envelope)
     try {
-      // Attempt to extract JSON
       const jsonMatch = fullContent.match(/\{[\s\S]*\}/)
       const jsonStr = jsonMatch ? jsonMatch[0] : fullContent
-      const action = JSON.parse(jsonStr)
+      const decision = JSON.parse(jsonStr)
 
-      currentAiMsg.thought = action.thought || currentAiMsg.thought
-      currentAiMsg.message = action.content || action.message || currentAiMsg.message
-      currentAiMsg.steps = action.steps || []
+      // 1. De-duplication check
+      if (decision.decision_id && terminalStore.hasDecision(decision.decision_id)) {
+          console.warn('Duplicate decision ignored:', decision.decision_id)
+          return
+      }
+      if (decision.decision_id) {
+          terminalStore.addDecision(decision.decision_id)
+      }
+
+      // Update UI with Decision info
+      currentAiMsg.tool = decision.type === 'TOOL_CALL' ? decision.action : decision.type
+      currentAiMsg.command = decision.params?.command
+      currentAiMsg.filePath = decision.params?.path
       
-      if (action.type === 'task_list') {
-        currentTasks.value = action.tasks || []
-        taskListCollapsed.value = false
-        currentAiMsg.message = "已生成任务列表"
-      } else if (action.type === 'task_update') {
-        const taskIndex = currentTasks.value.findIndex(t => String(t.id) === String(action.taskId))
-        if (taskIndex !== -1) {
-          const updatedTasks = [...currentTasks.value]
-          updatedTasks[taskIndex] = { ...updatedTasks[taskIndex], status: action.status }
-          currentTasks.value = updatedTasks
-          currentAiMsg.message = `任务更新: ${updatedTasks[taskIndex].desc} -> ${action.status}`
-        }
-      } else if (action.tool === 'execute_command') {
-         currentAiMsg.tool = 'execute_command'
-         currentAiMsg.command = action.command
-         
-         isExecuting.value = true
-         const res = await executeCommand(action.command)
-         isExecuting.value = false
-         
-         // Check both camelCase and snake_case for exit code
-         const exitCode = res.exitCode !== undefined ? res.exitCode : res.exit_code
-         currentAiMsg.status = exitCode === 0 ? 'success' : 'error'
-         
-         // Update CWD from response
-         if (res.cwd) {
-            currentCwd.value = res.cwd
-            if (fileExplorer.value) fileExplorer.value.refresh()
-         }
-
-         const output = res.stdout || res.stderr
-         terminalLogs.value.push({ 
-           command: action.command, 
-           output: output, 
-           type: exitCode === 0 ? 'stdout' : 'stderr',
-           cwd: res.cwd 
-         })
-         
-         // Save command result to history (terminal log only, not chat messages)
-         // messages.value.push({ role: 'command_result', content: output })
-         await saveMessage(output, 3)
-         scrollToBottom()
-         
-         // Loop back with result
-         await processAgentLoop(`命令执行结果(ExitCode: ${exitCode}):\n${output}`)
-         return // Stop this loop, next loop handles next step
-      } else if (action.tool === 'write_file') {
-         currentAiMsg.tool = 'write_file'
-         currentAiMsg.filePath = action.path
-         
-         isExecuting.value = true
-         const content = extractContent(action.content)
-         const res = await writeFile(action.path, content, action.overwrite)
-         isExecuting.value = false
-         
-         const exitCode = res.exitCode !== undefined ? res.exitCode : res.exit_code
-         currentAiMsg.status = exitCode === 0 ? 'success' : 'error'
-         
-         const output = res.stdout || res.stderr
-         const resultText = output || `文件 ${action.path} 写入成功`
-         terminalLogs.value.push({ 
-           command: `write_file: ${action.path}`, 
-           output: resultText, 
-           type: exitCode === 0 ? 'stdout' : 'stderr',
-           cwd: res.cwd 
-         })
-         
-         // Save write result to history (terminal log only, not chat messages)
-         // messages.value.push({ role: 'command_result', content: resultText })
-         await saveMessage(resultText, 3)
-         scrollToBottom()
-
-         if (fileExplorer.value) fileExplorer.value.refresh()
-         
-         await processAgentLoop(`文件写入结果(ExitCode: ${exitCode}):\n${resultText}`)
-         return
-      } else {
-         currentAiMsg.message = action.content || action.message || fullContent
+      // 2. Handle Action
+      if (decision.type === 'TOOL_CALL') {
+          terminalStore.setAgentStatus('WAITING_TOOL')
+          isExecuting.value = true
+          
+          let result = {
+              decision_id: decision.decision_id,
+              exit_code: 0,
+              stdout: '',
+              stderr: '',
+              artifacts: []
+          }
+          
+          try {
+              if (decision.action === 'execute_command') {
+                  const res = await executeCommand(decision.params.command)
+                  result.exit_code = res.exitCode ?? res.exit_code
+                  result.stdout = res.stdout || ''
+                  result.stderr = res.stderr || ''
+                  
+                  terminalLogs.value.push({ 
+                    command: decision.params.command, 
+                    output: result.stdout || result.stderr, 
+                    type: result.exit_code === 0 ? 'stdout' : 'stderr',
+                    cwd: res.cwd 
+                  })
+                  
+              } else if (decision.action === 'write_file' || decision.action === 'ensure_file') {
+                  const res = await writeFile(decision.params.path, decision.params.content, true)
+                  result.exit_code = res.exitCode ?? res.exit_code
+                  result.stdout = res.stdout || ''
+                  result.stderr = res.stderr || ''
+                  if (result.exit_code === 0) {
+                      result.artifacts.push(decision.params.path)
+                  }
+                  
+                  terminalLogs.value.push({ 
+                    command: `write_file: ${decision.params.path}`, 
+                    output: result.stdout || result.stderr, 
+                    type: result.exit_code === 0 ? 'stdout' : 'stderr',
+                    cwd: res.cwd 
+                  })
+              }
+              
+              currentAiMsg.status = result.exit_code === 0 ? 'success' : 'error'
+              
+          } catch (e) {
+              result.exit_code = -1
+              result.stderr = e.message
+              currentAiMsg.status = 'error'
+          } finally {
+              isExecuting.value = false
+          }
+          
+          // 3. Feedback Loop (Send Result back)
+          // We send a system message with the result to trigger next step
+          await processAgentLoop("tool_result_feedback", result)
+          
+      } else if (decision.type === 'TASK_COMPLETE') {
+          terminalStore.setAgentStatus('IDLE') // Or COMPLETED
+          currentAiMsg.message = "Task Completed"
+          currentAiMsg.status = 'success'
+          // Refresh tasks
+          // await terminalStore.fetchTasks() // If we had a fetch task endpoint
+      } else if (decision.type === 'PAUSE') {
+          terminalStore.setAgentStatus('PAUSED')
       }
       
-      await saveMessage(JSON.stringify(action), 2)
+      await saveMessage(JSON.stringify(decision), 2)
 
     } catch (e) {
+      // Fallback for non-JSON or partial content
       currentAiMsg.message = fullContent
       await saveMessage(fullContent, 2)
     }
@@ -893,59 +846,11 @@ const processAgentLoop = async (prompt) => {
   } catch (e) {
     console.error(e)
     isTyping.value = false
+    terminalStore.setAgentStatus('ERROR')
   }
 }
 
-const tryExtractField = (content, fieldName) => {
-  if (!content) return ''
-
-  const key = `"${fieldName}"`
-  const keyIndex = content.indexOf(key)
-  if (keyIndex === -1) return ''
-
-  const colonIndex = content.indexOf(':', keyIndex + key.length)
-  if (colonIndex === -1) return ''
-
-  let i = colonIndex + 1
-  while (i < content.length && /\s/.test(content[i])) i++
-  if (content[i] !== '"') return ''
-  i++
-
-  let raw = ''
-  let escaped = false
-  for (; i < content.length; i++) {
-    const ch = content[i]
-    if (escaped) {
-      raw += ch
-      escaped = false
-      continue
-    }
-    if (ch === '\\') {
-      raw += '\\'
-      escaped = true
-      continue
-    }
-    if (ch === '"') return unescapeJsonString(raw)
-    raw += ch
-  }
-
-  return unescapeJsonString(raw)
-}
-
-/**
- * 处理 JSON 字符串中的转义字符
- * @param {string} str 原始字符串
- * @returns {string} 处理后的字符串
- */
-const unescapeJsonString = (str) => {
-  return str
-    .replace(/\\n/g, '\n')
-    .replace(/\\"/g, '"')
-    .replace(/\\\\/g, '\\')
-    .replace(/\\t/g, '\t')
-    .replace(/\\r/g, '\r')
-}
-
+// ... (Existing helper functions: extractContent, executeCommand, writeFile) ...
 const extractContent = (raw) => {
   const start = raw.indexOf('<<<<AI_FILE_CONTENT_BEGIN>>>>')
   const end = raw.indexOf('<<<<AI_FILE_CONTENT_END>>>>')
@@ -983,6 +888,37 @@ const writeFile = async (path, content, overwrite) => {
 </script>
 
 <style scoped>
+/* ... (Existing Styles) ... */
+/* Add Status Badge Styles */
+.status-badge {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-left: 10px;
+}
+.status-badge.running { background: #dcfce7; color: #166534; }
+.status-badge.paused { background: #fef9c3; color: #854d0e; }
+.status-badge.error { background: #fee2e2; color: #991b1b; }
+.status-badge.idle { background: #f1f5f9; color: #64748b; }
+
+.control-btn {
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+}
+.stop-btn {
+    background: #fee2e2;
+    color: #991b1b;
+}
+.stop-btn:hover {
+    background: #fecaca;
+}
+
+/* ... Include previous styles ... */
 .terminal-container { 
   display: flex; 
   height: 100vh; 
