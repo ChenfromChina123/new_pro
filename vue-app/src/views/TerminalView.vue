@@ -50,17 +50,29 @@
             <div class="header-left">
               <button
                 class="toggle-sidebar"
+                :class="{ rotated: sidebarCollapsed }"
                 @click="sidebarCollapsed = !sidebarCollapsed"
+                title="切换侧边栏"
               >
-                <span class="btn-icon">☰</span>
+                <span class="btn-icon">📁</span>
               </button>
               <h3>AI 终端助手</h3>
             </div>
-            <div class="model-selector">
-              <select v-model="currentModel">
-                <option value="deepseek-chat">DeepSeek Chat</option>
-                <option value="deepseek-reasoner">DeepSeek Reasoner</option>
-              </select>
+            <div class="header-right">
+              <div class="model-selector">
+                <CustomSelect 
+                  v-model="currentModel" 
+                  :options="modelOptions"
+                />
+              </div>
+              <button 
+                class="toggle-right-panel"
+                :class="{ rotated: rightPanelCollapsed }"
+                @click="rightPanelCollapsed = !rightPanelCollapsed"
+                title="切换工具面板"
+              >
+                <span class="btn-icon">🛠️</span>
+              </button>
             </div>
           </div>
           
@@ -157,7 +169,7 @@
         </div>
 
         <!-- Right Panel -->
-        <div class="right-panel">
+        <div class="right-panel" :class="{ collapsed: rightPanelCollapsed }">
           <div class="panel-tabs">
             <div 
               class="tab" 
@@ -215,12 +227,13 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted } from 'vue'
+import { ref, nextTick, onMounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useUIStore } from '@/stores/ui'
 import { API_CONFIG } from '@/config/api'
 import TerminalFileExplorer from '@/components/TerminalFileExplorer.vue'
 import RequirementManager from '@/components/RequirementManager.vue'
+import CustomSelect from '@/components/CustomSelect.vue'
 
 const authStore = useAuthStore()
 const uiStore = useUIStore()
@@ -238,7 +251,13 @@ const fileExplorer = ref(null)
 const currentSessionId = ref(null)
 const sessions = ref([])
 const sidebarCollapsed = ref(false)
+const rightPanelCollapsed = ref(false)
 const activeTab = ref('terminal')
+
+const modelOptions = [
+  { label: 'DeepSeek Chat', value: 'deepseek-chat', description: '适用于通用对话和指令遵循' },
+  { label: 'DeepSeek Reasoner', value: 'deepseek-reasoner', description: '深度思考模型，擅长复杂逻辑推理' }
+]
 
 const currentCwd = ref('/')
 
@@ -608,9 +627,9 @@ const writeFile = async (path, content, overwrite) => {
 
 <style scoped>
 .terminal-container { display: flex; height: 100vh; background: #f8fafc; overflow: hidden; }
-.sessions-sidebar { width: 260px; background: #fff; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; transition: width 0.3s; }
-.sessions-sidebar.collapsed { width: 0; overflow: hidden; border: none; }
-.sidebar-header { padding: 15px; display: flex; justify-content: space-between; border-bottom: 1px solid #f1f5f9; }
+.sessions-sidebar { width: 260px; background: #fff; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 10; }
+.sessions-sidebar.collapsed { width: 0; opacity: 0; pointer-events: none; border: none; }
+.sidebar-header { padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; min-width: 260px; }
 .sessions-list { flex: 1; overflow-y: auto; padding: 10px; }
 .session-item { padding: 10px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
 .session-item:hover { background: #f1f5f9; }
@@ -623,10 +642,27 @@ const writeFile = async (path, content, overwrite) => {
 .terminal-main { flex: 1; display: flex; flex-direction: column; }
 .terminal-layout { display: flex; flex: 1; overflow: hidden; }
 
-.chat-panel { flex: 1; display: flex; flex-direction: column; background: #fff; border-right: 1px solid #e2e8f0; min-width: 400px; }
-.chat-header { padding: 12px 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
-.header-left { display: flex; gap: 10px; align-items: center; }
-.toggle-sidebar { background: none; border: none; cursor: pointer; font-size: 1.2rem; color: #64748b; }
+.chat-panel { flex: 1; display: flex; flex-direction: column; background: #fff; border-right: 1px solid #e2e8f0; min-width: 400px; position: relative; }
+.chat-header { padding: 12px 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #fff; z-index: 5; }
+.header-left { display: flex; gap: 15px; align-items: center; }
+.header-right { display: flex; gap: 15px; align-items: center; }
+
+.toggle-sidebar, .toggle-right-panel { 
+  background: #f1f5f9; 
+  border: 1px solid #e2e8f0; 
+  cursor: pointer; 
+  font-size: 1rem; 
+  color: #64748b; 
+  width: 36px; 
+  height: 36px; 
+  border-radius: 8px; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  transition: all 0.2s;
+}
+.toggle-sidebar:hover, .toggle-right-panel:hover { background: #e2e8f0; color: #3b82f6; }
+.toggle-sidebar.rotated, .toggle-right-panel.rotated { background: #eff6ff; color: #3b82f6; border-color: #bfdbfe; }
 
 .messages-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; background: #f8fafc; }
 .message { max-width: 90%; display: flex; }
@@ -656,8 +692,9 @@ textarea { flex: 1; height: 50px; padding: 10px; border: 1px solid #e2e8f0; bord
 .send-btn { background: #3b82f6; color: white; border: none; padding: 0 20px; border-radius: 8px; cursor: pointer; }
 .send-btn:disabled { background: #94a3b8; cursor: not-allowed; }
 
-.right-panel { width: 50%; display: flex; flex-direction: column; border-left: 1px solid #e2e8f0; background: #fff; }
-.panel-tabs { display: flex; border-bottom: 1px solid #e2e8f0; background: #f1f5f9; }
+.right-panel { width: 50%; display: flex; flex-direction: column; border-left: 1px solid #e2e8f0; background: #fff; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.right-panel.collapsed { width: 0; opacity: 0; pointer-events: none; border: none; }
+.panel-tabs { display: flex; border-bottom: 1px solid #e2e8f0; background: #f1f5f9; min-width: 400px; }
 .tab { padding: 10px 20px; cursor: pointer; font-size: 0.9rem; color: #64748b; border-right: 1px solid #e2e8f0; }
 .tab.active { background: #fff; color: #3b82f6; font-weight: 500; border-bottom: 2px solid #3b82f6; }
 
