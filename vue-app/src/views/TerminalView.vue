@@ -714,14 +714,25 @@ const processAgentLoop = async (prompt) => {
               fullContent += json.content
               
               // 实时解析 JSON 中的字段
-              if (fullContent.trim().startsWith('{')) {
+              // 如果发现内容中包含 {，尝试进行字段提取
+              if (fullContent.includes('{')) {
                 const extractedThought = tryExtractField(fullContent, 'thought')
                 const extractedMessage = tryExtractField(fullContent, 'message')
                 
                 if (extractedThought) currentAiMsg.thought = extractedThought
                 if (extractedMessage) currentAiMsg.message = extractedMessage
+                
+                // 如果还没有提取到 message，但 fullContent 中有非 JSON 的开头，先显示出来
+                if (!extractedMessage && !fullContent.trim().startsWith('{')) {
+                   const jsonStart = fullContent.indexOf('{')
+                   if (jsonStart > 0) {
+                     currentAiMsg.message = fullContent.substring(0, jsonStart).trim()
+                   } else {
+                     currentAiMsg.message = fullContent
+                   }
+                }
               } else {
-                // 如果不是 JSON 格式，直接显示
+                // 如果完全不包含 {，直接显示为消息
                 currentAiMsg.message = fullContent
               }
               scrollToBottom()
@@ -765,7 +776,9 @@ const processAgentLoop = async (prompt) => {
          const res = await executeCommand(action.command)
          isExecuting.value = false
          
-         currentAiMsg.status = res.exitCode === 0 ? 'success' : 'error'
+         // Check both camelCase and snake_case for exit code
+         const exitCode = res.exitCode !== undefined ? res.exitCode : res.exit_code
+         currentAiMsg.status = exitCode === 0 ? 'success' : 'error'
          
          // Update CWD from response
          if (res.cwd) {
@@ -777,14 +790,14 @@ const processAgentLoop = async (prompt) => {
          terminalLogs.value.push({ 
            command: action.command, 
            output: output, 
-           type: res.exitCode === 0 ? 'stdout' : 'stderr',
+           type: exitCode === 0 ? 'stdout' : 'stderr',
            cwd: res.cwd 
          })
          
          await saveMessage(output, 3)
          
          // Loop back with result
-         await processAgentLoop(`命令执行结果(ExitCode: ${res.exitCode}):\n${output}`)
+         await processAgentLoop(`命令执行结果(ExitCode: ${exitCode}):\n${output}`)
          return // Stop this loop, next loop handles next step
       } else if (action.tool === 'write_file') {
          currentAiMsg.tool = 'write_file'
@@ -795,13 +808,21 @@ const processAgentLoop = async (prompt) => {
          const res = await writeFile(action.path, content, action.overwrite)
          isExecuting.value = false
          
-         currentAiMsg.status = res.exitCode === 0 ? 'success' : 'error'
+         const exitCode = res.exitCode !== undefined ? res.exitCode : res.exit_code
+         currentAiMsg.status = exitCode === 0 ? 'success' : 'error'
          
          const output = res.stdout || res.stderr
-         await saveMessage(output, 3)
+         terminalLogs.value.push({ 
+           command: `write_file: ${action.path}`, 
+           output: output || '文件写入成功', 
+           type: exitCode === 0 ? 'stdout' : 'stderr',
+           cwd: res.cwd 
+         })
+         
+         await saveMessage(output || `文件 ${action.path} 写入成功`, 3)
          if (fileExplorer.value) fileExplorer.value.refresh()
          
-         await processAgentLoop(`写文件结果:\n${output}`)
+         await processAgentLoop(`文件写入结果(ExitCode: ${exitCode}):\n${output || 'Success'}`)
          return
       } else {
          currentAiMsg.message = action.message || fullContent
@@ -871,10 +892,10 @@ const executeCommand = async (cmd) => {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${authStore.token}`
     },
-    body: JSON.stringify({ command: cmd, cwd: currentCwd.value, sessionId: currentSessionId.value })
+    body: JSON.stringify({ command: cmd, cwd: currentCwd.value, session_id: currentSessionId.value })
   })
   const data = await safeReadJson(res)
-  return data?.data || { exitCode: -1, stderr: 'Execution failed' }
+  return data?.data || { exit_code: -1, stderr: 'Execution failed' }
 }
 
 const writeFile = async (path, content, overwrite) => {
@@ -887,7 +908,7 @@ const writeFile = async (path, content, overwrite) => {
     body: JSON.stringify({ path, content, cwd: currentCwd.value, overwrite })
   })
   const data = await safeReadJson(res)
-  return data?.data || { exitCode: -1, stderr: 'Write failed' }
+  return data?.data || { exit_code: -1, stderr: 'Write failed' }
 }
 </script>
 

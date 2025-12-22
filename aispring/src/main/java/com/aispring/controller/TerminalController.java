@@ -49,8 +49,11 @@ public class TerminalController {
 - **创建目录**: 使用 `mkdir` (PowerShell 别名) 或 `New-Item -ItemType Directory`。
 - **文件操作**: 使用 `cp`, `mv`, `rm` (PowerShell 别名) 或对应的 PowerShell 命令。
 - **内容查看**: 使用 `cat` (PowerShell 别名) 或 `Get-Content`。
-- **路径分隔符**: 使用反斜杠 `\\` 或在 PowerShell 中使用正斜杠 `/` 通常也行，但请优先考虑环境兼容性。
+- **路径分隔符**: 必须使用反斜杠 `\\` 或正斜杠 `/` (PowerShell 支持两者)，但命令内部参数建议使用反斜杠。
 - **禁止交互**: 命令必须是非交互式的（如 `npm init -y`, `rm -Force`）。
+- **多命令执行**: **严禁使用 `&&` 分隔符**。在 PowerShell 中请使用分号 `;` 分隔命令（例如：`cd path; dir`）或分步执行。
+- **错误处理**: 忽略已存在的目录错误（如 `mkdir -Force` 或先检查是否存在）。
+- **执行外部程序**: 执行当前目录下的程序请使用 `.\\program.exe`。
 
 # Capabilities & Tools
 你可以使用以下工具（通过特定的输出格式调用）：
@@ -69,6 +72,9 @@ public class TerminalController {
 3. **Task Management**:
    - 在执行复杂任务（涉及多个步骤）前，必须先生成详细的任务列表。
    - 每完成一个步骤，需实时更新任务状态。
+4. **Output Constraint**:
+   - **必须且只能输出 JSON 格式**。
+   - 严禁在 JSON 之外包含任何 Markdown 标记（如 ```json ... ```）或解释性文字。
 
 # Interaction Protocol
 1. **Analyze**: 分析意图。
@@ -76,8 +82,8 @@ public class TerminalController {
 3. **Execute**: 生成工具调用代码。
 4. **Feedback**: 根据结果调整。如果命令执行失败，请分析错误信息并尝试修复（例如检查路径是否存在、参数是否正确），不要重复执行相同的错误命令。
 
-# Output Format (JSON Only)
-请使用以下 JSON 格式输出（不要输出 Markdown）：
+# Output Format (Strict JSON Only)
+请直接输出以下 JSON 对象，不要使用 Markdown 代码块包裹：
 
 1. **普通思考/对话**:
 {
