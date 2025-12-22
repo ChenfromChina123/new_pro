@@ -202,6 +202,20 @@ public class TerminalServiceImpl implements TerminalService {
         String os = System.getProperty("os.name").toLowerCase();
         boolean isWindows = os.contains("win");
 
+        // 严格指令检测：禁止目录穿越和访问其他盘符
+        if (command.contains("..")) {
+            return new TerminalCommandResponse("", "Security Error: Directory traversal (..) is prohibited.", 1, getRelativePath(rootPath, cwdPath));
+        }
+        if (isWindows && command.matches("(?i).*[a-z]:[\\\\/].*")) {
+            // 允许访问用户根目录，但为了脱敏，建议用户/AI始终使用相对路径
+            // 如果指令中包含非用户根目录的盘符路径，直接拦截
+            String normalizedCommand = command.replace("/", "\\");
+            String normalizedRoot = userRoot.replace("/", "\\");
+            if (!normalizedCommand.contains(normalizedRoot)) {
+                return new TerminalCommandResponse("", "Security Error: Access to absolute paths outside sandbox is prohibited.", 1, getRelativePath(rootPath, cwdPath));
+            }
+        }
+
         List<String> cmdList = new ArrayList<>();
         if (isWindows) {
             cmdList.add("powershell.exe");
@@ -292,8 +306,15 @@ public class TerminalServiceImpl implements TerminalService {
             sanitized = sanitized.replace(rootPathStr, "~");
         }
         
-        // 4. 额外防止 Windows 盘符泄露（可选，但为了严格，可以尝试匹配并替换）
-        // 这里主要针对 powershell 可能输出的路径信息进行进一步清理
+        // 4. 屏蔽任何其他 Windows 盘符路径，防止探测系统目录
+        // 匹配如 C:\Windows, D:\Data 等，但不匹配已经替换过的 ~
+        sanitized = sanitized.replaceAll("(?i)[a-z]:\\\\[^\\s\\n\\r]*", "[RESTRICTED PATH]");
+        sanitized = sanitized.replaceAll("(?i)[a-z]:/[^\\s\\n\\r]*", "[RESTRICTED PATH]");
+        
+        // 5. 屏蔽 Linux 风格的绝对路径 (以 / 开头且不是我们的虚拟路径开头)
+        // 注意：这可能会误伤，但为了严格性，可以尝试屏蔽常见的敏感路径
+        sanitized = sanitized.replaceAll("/(etc|var|usr|bin|sbin|lib|root|home)(/[^\\s\\n\\r]*)?", "[RESTRICTED PATH]");
+        
         return sanitized;
     }
 }
