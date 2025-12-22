@@ -1,5 +1,6 @@
 <template>
   <div class="input-area-wrapper">
+    <slot name="top" />
     <div
       class="input-area"
       :class="{ disabled }"

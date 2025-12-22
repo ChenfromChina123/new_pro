@@ -136,53 +136,6 @@
             </div>
           </div>
 
-          <!-- Floating Task List Panel -->
-          <div
-            v-if="currentTasks && currentTasks.length > 0"
-            class="global-task-panel"
-            :class="{ collapsed: taskListCollapsed }"
-          >
-            <div
-              class="task-panel-header"
-              @click="taskListCollapsed = !taskListCollapsed"
-            >
-              <div class="header-main">
-                <span class="panel-icon">📋</span>
-                <span class="panel-title">任务进度</span>
-                <span class="task-count">({{ completedCount }}/{{ currentTasks.length }})</span>
-              </div>
-              <div class="header-right">
-                <div class="progress-mini-bar">
-                  <div
-                    class="progress-fill"
-                    :style="{ width: taskProgress + '%' }"
-                  />
-                </div>
-                <span class="progress-percent">{{ taskProgress }}%</span>
-                <i class="toggle-icon">{{ taskListCollapsed ? '▲' : '▼' }}</i>
-              </div>
-            </div>
-            <div
-              v-if="!taskListCollapsed"
-              class="task-panel-body"
-            >
-              <div
-                v-for="task in currentTasks"
-                :key="task.id"
-                class="task-item"
-                :class="task.status"
-              >
-                <span class="task-icon">
-                  {{ task.status === 'completed' ? '✅' : (task.status === 'in_progress' ? '🔄' : '⭕') }}
-                </span>
-                <span
-                  class="task-desc"
-                  :title="task.desc"
-                >{{ task.desc }}</span>
-              </div>
-            </div>
-          </div>
-
           <TerminalChatInput
             v-model:message="inputMessage"
             v-model:model="currentModel"
@@ -191,7 +144,56 @@
             :can-send="!!inputMessage.trim() && !isTyping && !isExecuting"
             @enter="handleEnter"
             @send="sendMessage"
-          />
+          >
+            <template #top>
+              <!-- Floating Task List Panel -->
+              <div
+                v-if="currentTasks && currentTasks.length > 0"
+                class="global-task-panel"
+                :class="{ collapsed: taskListCollapsed }"
+              >
+                <div
+                  class="task-panel-header"
+                  @click="taskListCollapsed = !taskListCollapsed"
+                >
+                  <div class="header-main">
+                    <span class="panel-icon">📋</span>
+                    <span class="panel-title">任务进度</span>
+                    <span class="task-count">({{ completedCount }}/{{ currentTasks.length }})</span>
+                  </div>
+                  <div class="header-right">
+                    <div class="progress-mini-bar">
+                      <div
+                        class="progress-fill"
+                        :style="{ width: taskProgress + '%' }"
+                      />
+                    </div>
+                    <span class="progress-percent">{{ taskProgress }}%</span>
+                    <i class="toggle-icon">{{ taskListCollapsed ? '▲' : '▼' }}</i>
+                  </div>
+                </div>
+                <div
+                  v-if="!taskListCollapsed"
+                  class="task-panel-body"
+                >
+                  <div
+                    v-for="task in currentTasks"
+                    :key="task.id"
+                    class="task-item"
+                    :class="task.status"
+                  >
+                    <span class="task-icon">
+                      {{ task.status === 'completed' ? '✅' : (task.status === 'in_progress' ? '🔄' : '⭕') }}
+                    </span>
+                    <span
+                      class="task-desc"
+                      :title="task.desc"
+                    >{{ task.desc }}</span>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </TerminalChatInput>
         </div>
 
         <!-- Main Resizer -->
@@ -1103,17 +1105,15 @@ const writeFile = async (path, content, overwrite) => {
 
 /* Global Task Panel */
 .global-task-panel {
-  position: absolute;
-  bottom: 80px;
-  left: 50%;
-  transform: translateX(-50%);
+  position: relative;
+  margin: 0 auto 12px;
   width: 100%;
   max-width: 850px;
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 16px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-  z-index: 100;
+  z-index: 10;
   overflow: hidden;
 }
 .task-panel-header {
