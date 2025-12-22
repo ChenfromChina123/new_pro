@@ -1114,15 +1114,16 @@ const writeFile = async (path, content, overwrite) => {
 /* Global Task Panel */
 .global-task-panel {
   position: relative;
-  margin: 0 auto 12px;
+  margin: 0 auto 8px;
   width: 100%;
   max-width: 850px;
-  background: #ffffff;
+  background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
   z-index: 10;
   overflow: hidden;
+  transition: all 0.2s ease;
 }
 .task-panel-header {
   padding: 12px 20px;
@@ -1146,33 +1147,50 @@ const writeFile = async (path, content, overwrite) => {
   gap: 12px;
   padding: 12px;
   margin-bottom: 8px;
-  background: #f8fafc;
+  background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  border-radius: 10px;
   transition: all 0.2s ease;
   cursor: pointer;
+  position: relative;
+  overflow: hidden;
 }
 
 .task-item:hover {
-  background: #f1f5f9;
+  background: #f8fafc;
   border-color: #cbd5e1;
   transform: translateY(-1px);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .task-item.completed {
-  background: #f0fdf4;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
   border-color: #bbf7d0;
+  border-left: 4px solid #22c55e;
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.1);
 }
 
 .task-item.in_progress {
-  background: #fef3c7;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
   border-color: #fde68a;
+  border-left: 4px solid #f59e0b;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.1);
+}
+
+.task-item.pending {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  border-left: 4px solid #94a3b8;
 }
 
 .task-icon {
   font-size: 18px;
   flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .task-desc {
@@ -1184,7 +1202,16 @@ const writeFile = async (path, content, overwrite) => {
 
 .task-item.completed .task-desc {
   color: #166534;
-  text-decoration: line-through;
+  font-weight: 500;
+}
+
+.task-item.in_progress .task-desc {
+  color: #92400e;
+  font-weight: 600;
+}
+
+.task-item.pending .task-desc {
+  color: #64748b;
 }
 
 .task-item.in_progress .task-desc {
