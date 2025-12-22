@@ -488,8 +488,18 @@ const processAgentLoop = async (prompt) => {
             const json = JSON.parse(dataStr)
             if (json.content) {
               fullContent += json.content
-              // 流式解析当前的 message 内容
-              currentAiMsg.message = tryExtractMessage(fullContent)
+              
+              // 实时解析 JSON 中的字段
+              if (fullContent.trim().startsWith('{')) {
+                const extractedThought = tryExtractField(fullContent, 'thought')
+                const extractedMessage = tryExtractField(fullContent, 'message')
+                
+                if (extractedThought) currentAiMsg.thought = extractedThought
+                if (extractedMessage) currentAiMsg.message = extractedMessage
+              } else {
+                // 如果不是 JSON 格式，直接显示
+                currentAiMsg.message = fullContent
+              }
               scrollToBottom()
             }
             if (json.reasoning_content) {
@@ -511,7 +521,7 @@ const processAgentLoop = async (prompt) => {
       const action = JSON.parse(jsonStr)
 
       currentAiMsg.thought = action.thought || currentAiMsg.thought
-      
+      currentAiMsg.message = action.message || currentAiMsg.message
       if (action.type === 'task_list') {
         currentAiMsg.tasks = action.tasks
         currentAiMsg.message = "已生成任务列表"
@@ -591,16 +601,22 @@ const processAgentLoop = async (prompt) => {
   }
 }
 
-const tryExtractMessage = (content) => {
+const tryExtractField = (content, fieldName) => {
   if (!content) return ''
-  // 尝试匹配 "message": "..." 其中的内容
-  const match = content.match(/"message"\s*:\s*"([^"]*)"?/)
-  if (match && match[1]) {
-    return match[1]
-  }
-  // 如果还没匹配到 message 字段，但内容看起来不是 JSON 开头，则显示原内容
-  if (!content.trim().startsWith('{')) {
-    return content
+  
+  // 匹配 "fieldName": "内容..."
+  // (?:[^\\"]|\\.)* 匹配转义字符或非引号字符
+  const regex = new RegExp(`"${fieldName}"\\s*:\\s*"((?:[^\\\\"]|\\\\.)*)"?`)
+  const match = content.match(regex)
+  
+  if (match) {
+    let value = match[1]
+    // 基础转义处理
+    return value
+      .replace(/\\n/g, '\n')
+      .replace(/\\"/g, '"')
+      .replace(/\\\\/g, '\\')
+      .replace(/\\t/g, '\t')
   }
   return ''
 }
