@@ -1009,13 +1009,16 @@ const writeFile = async (path, content, overwrite) => {
 }
 
 /* Chat Layout */
-.terminal-main { flex: 1; display: flex; flex-direction: column; min-width: 0; background: #fff; }
+.terminal-main { flex: 1; display: flex; flex-direction: column; min-width: 0; background: #fff; height: 100%; }
+.terminal-layout { flex: 1; display: flex; overflow: hidden; height: 100%; }
 .chat-panel { 
   flex: 1; 
   display: flex; 
   flex-direction: column; 
   background: #ffffff; 
   position: relative; 
+  min-width: 0;
+  height: 100%;
 }
 .chat-header { 
   padding: 12px 20px; 
@@ -1024,7 +1027,30 @@ const writeFile = async (path, content, overwrite) => {
   justify-content: space-between; 
   align-items: center; 
   background: #fff; 
-  z-index: 5; 
+  z-index: 50; 
+}
+.header-left { display: flex; align-items: center; gap: 12px; }
+.header-right { display: flex; align-items: center; gap: 12px; }
+
+.toggle-sidebar, .toggle-right-panel {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  color: #64748b;
+}
+.toggle-sidebar:hover, .toggle-right-panel:hover {
+  background: #e2e8f0;
+  color: #3b82f6;
+}
+.toggle-sidebar.rotated, .toggle-right-panel.rotated {
+  transform: rotate(180deg);
 }
 
 .messages-container { 
@@ -1193,66 +1219,43 @@ const writeFile = async (path, content, overwrite) => {
   padding: 20px;
   background: #fff;
   border-top: 1px solid #f1f5f9;
+  flex-shrink: 0;
 }
-.input-container {
+.input-area {
   max-width: 850px;
   margin: 0 auto;
-  background: #fff;
+  background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 16px;
-  padding: 8px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+  padding: 8px 12px;
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
   transition: all 0.2s;
 }
-.input-container:focus-within {
+.input-area:focus-within {
   border-color: #3b82f6;
-  box-shadow: 0 4px 24px rgba(59, 130, 246, 0.08);
-}
-.input-main {
-  display: flex;
-  flex-direction: column;
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.08);
 }
 textarea { 
-  width: 100%;
+  flex: 1;
   border: none;
-  padding: 12px;
+  background: transparent;
+  padding: 8px 0;
   font-size: 1rem;
   line-height: 1.5;
   color: #1e293b;
   resize: none;
   outline: none;
-  min-height: 60px;
+  min-height: 24px;
   max-height: 200px;
-}
-.input-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px;
-  border-top: 1px solid #f8fafc;
-}
-.footer-left {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-.model-selector-btn {
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
-  padding: 6px 12px;
-  border-radius: 8px;
-  font-size: 0.85rem;
-  color: #64748b;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
 }
 .send-btn { 
   background: #3b82f6; 
   color: white; 
   border: none; 
-  width: 36px;
+  padding: 8px 16px;
   height: 36px;
   border-radius: 10px; 
   display: flex;
@@ -1260,15 +1263,20 @@ textarea {
   justify-content: center;
   cursor: pointer; 
   transition: all 0.2s;
+  font-weight: 500;
+  margin-bottom: 2px;
 }
 .send-btn:hover:not(:disabled) { 
   background: #2563eb; 
-  transform: scale(1.05);
 }
 .send-btn:disabled { 
   background: #e2e8f0; 
   color: #94a3b8;
   cursor: not-allowed; 
+}
+
+.model-selector {
+  min-width: 160px;
 }
 
 /* Global Task Panel */
@@ -1324,8 +1332,22 @@ textarea {
 }
 
 /* Right Panel Tabs */
-.right-panel { border-left: 1px solid #e2e8f0; background: #fff; }
-.panel-tabs { display: flex; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+.right-panel { 
+  border-left: 1px solid #e2e8f0; 
+  background: #fff; 
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  height: 100%;
+}
+.right-panel.collapsed {
+  width: 0 !important;
+  border-left: none;
+  opacity: 0;
+  pointer-events: none;
+}
+.panel-tabs { display: flex; background: #f8fafc; border-bottom: 1px solid #e2e8f0; flex-shrink: 0; }
 .tab { padding: 12px 20px; font-size: 0.9rem; color: #64748b; border-right: 1px solid #e2e8f0; cursor: pointer; }
 .tab.active { background: #fff; color: #3b82f6; font-weight: 600; border-bottom: 2px solid #3b82f6; }
 
