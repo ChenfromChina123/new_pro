@@ -192,107 +192,80 @@ public class AiChatServiceImpl implements AiChatService {
     }
 
     @Override
-    public SseEmitter askAgentStream(String prompt, String sessionId, String model, String userId, String systemPrompt) {
-        return askAgentStreamInternal(prompt, sessionId, model, userId, systemPrompt);
+    public SseEmitter askAgentStream(String prompt, String sessionId, String model, String userId, String systemPrompt, List<Map<String, Object>> tasks) {
+        return askAgentStreamInternal(prompt, sessionId, model, userId, systemPrompt, tasks);
     }
 
 
-    private SseEmitter askAgentStreamInternal(String prompt, String sessionId, String model, String userId, String systemPrompt) {
+    private SseEmitter askAgentStreamInternal(String initialPrompt, String sessionId, String model, String userId, String initialSystemPrompt, List<Map<String, Object>> initialTasks) {
         // 创建SSE发射器，设置超时时间为3分钟
         SseEmitter emitter = new SseEmitter(180_000L);
         
         System.out.println("=== askAgentStream Called ===");
         System.out.println("Model: " + model);
-        System.out.println("Prompt: " + (prompt != null ? prompt.substring(0, Math.min(50, prompt.length())) + "..." : "null"));
-        System.out.println("Session ID: " + sessionId);
-        System.out.println("User ID: " + userId);
         
-        // 检查是否为推理模型，如果是则使用OkHttp自定义流式调用
-        if ("deepseek-reasoner".equals(model) || "doubao-reasoner".equals(model)) {
-            return askStreamWithOkHttp(prompt, sessionId, model, userId, emitter, systemPrompt);
-        }
-
-        // 确定使用的客户端和模型名称
-        StreamingChatClient clientToUse = null;
-        String actualModel = model;
-        
-        if ("doubao".equals(model)) {
-            System.out.println("[Doubao] Selected model: doubao");
-            if (doubaoStreamingChatClient != null) {
-                clientToUse = doubaoStreamingChatClient;
-            } else {
-                clientToUse = streamingChatClientProvider.getIfAvailable();
-            }
-        } else if ("deepseek".equals(model) || "deepseek-chat".equals(model)) {
-            System.out.println("Selected model: deepseek");
-            if (deepseekStreamingChatClient != null) {
-                clientToUse = deepseekStreamingChatClient;
-            } else {
-                clientToUse = streamingChatClientProvider.getIfAvailable();
-            }
-            actualModel = "deepseek-chat";
-        } else {
-            System.out.println("Selected model: " + model + " (using default client)");
-            clientToUse = streamingChatClientProvider.getIfAvailable();
-            if (model == null || model.isEmpty()) {
-                actualModel = "deepseek-chat";
-            }
-        }
-        
-        if (actualModel == null || actualModel.isEmpty()) {
-            actualModel = "deepseek-chat";
-        }
-        
-        // 配置AI模型选项
-        OpenAiChatOptions options = OpenAiChatOptions.builder()
-                .withModel(actualModel)
-                .withTemperature(0.7f)
-                .withMaxTokens(maxTokens)
-                .build();
-        
-        // 构建包含上下文的Prompt
-        Prompt promptObj = buildPrompt(prompt, sessionId, userId, options, systemPrompt);
-        
-        final StreamingChatClient finalClient = clientToUse;
-        
-        // 异步处理流式响应
         new Thread(() -> {
             try {
-                if (finalClient == null) {
-                    String content = fallbackAnswer(prompt);
-                    sendChatResponse(emitter, content, null);
-                    emitter.send(SseEmitter.event().data("[DONE]"));
-                    emitter.complete();
-                    return;
-                }
+                String currentPrompt = initialPrompt;
+                String currentSystemPrompt = initialSystemPrompt;
+                List<Map<String, Object>> currentTasks = initialTasks != null ? new ArrayList<>(initialTasks) : new ArrayList<>();
+                int loopCount = 0;
+                int maxLoops = 10;
 
-                // 异步生成标题（仅限第一条消息）和建议问题（每条消息）
-                generateTitleAndSuggestionsAsync(prompt, sessionId, userId, emitter);
-
-                finalClient.stream(promptObj)
-                    .doOnNext(chatResponse -> {
-                        try {
-                            // 获取AI响应内容
-                            String content = chatResponse.getResult().getOutput().getContent();
-                            if (content != null && !content.isEmpty()) {
-                                // 发送SSE事件
-                                sendChatResponse(emitter, content, null);
+                while (loopCount < maxLoops) {
+                    loopCount++;
+                    System.out.println("Agent Loop: " + loopCount);
+                    
+                    // 执行对话并获取完整回复
+                    String fullResponse = performBlockingChat(currentPrompt, sessionId, model, userId, currentSystemPrompt, emitter);
+                    
+                    // 解析回复，检查是否需要继续循环
+                    boolean shouldContinue = false;
+                    try {
+                        // 简单提取 JSON
+                        int jsonStart = fullResponse.indexOf("{");
+                        int jsonEnd = fullResponse.lastIndexOf("}");
+                        if (jsonStart >= 0 && jsonEnd > jsonStart) {
+                            String jsonStr = fullResponse.substring(jsonStart, jsonEnd + 1);
+                            JsonNode root = objectMapper.readTree(jsonStr);
+                            
+                            if (root.has("type") && "task_update".equals(root.get("type").asText())) {
+                                // 更新任务状态
+                                String taskId = root.path("taskId").asText();
+                                String status = root.path("status").asText();
+                                String desc = root.path("desc").asText(""); // AI might return desc
+                                
+                                boolean taskFound = false;
+                                for (Map<String, Object> task : currentTasks) {
+                                    if (String.valueOf(task.get("id")).equals(taskId)) {
+                                        task.put("status", status);
+                                        desc = (String) task.get("desc"); // Use original desc
+                                        taskFound = true;
+                                        break;
+                                    }
+                                }
+                                
+                                if (taskFound) {
+                                    shouldContinue = true;
+                                    currentPrompt = String.format("任务 %s (ID: %s) 状态已更新为 %s。请继续执行该任务的具体操作，或进行下一步。", desc, taskId, status);
+                                    
+                                    // 更新 System Prompt 中的任务上下文
+                                    currentSystemPrompt = updateSystemPromptWithTasks(currentSystemPrompt, currentTasks);
+                                }
                             }
-                        } catch (Exception e) {
-                            handleError(emitter, e);
                         }
-                    })
-                    .doOnComplete(() -> {
-                        try {
-                            // 发送结束信号
-                            emitter.send(SseEmitter.event().data("[DONE]"));
-                            emitter.complete();
-                        } catch (Exception e) {
-                            handleError(emitter, e);
-                        }
-                    })
-                    .doOnError(e -> handleError(emitter, e))
-                    .subscribe();
+                    } catch (Exception e) {
+                        System.err.println("Error parsing agent response for loop: " + e.getMessage());
+                    }
+                    
+                    if (!shouldContinue) {
+                        break;
+                    }
+                }
+                
+                emitter.send(SseEmitter.event().data("[DONE]"));
+                emitter.complete();
+                
             } catch (Exception e) {
                 handleError(emitter, e);
             }
@@ -300,6 +273,187 @@ public class AiChatServiceImpl implements AiChatService {
         
         return emitter;
     }
+    
+    private String updateSystemPromptWithTasks(String systemPrompt, List<Map<String, Object>> tasks) {
+        if (tasks == null || tasks.isEmpty()) return systemPrompt;
+        
+        StringBuilder taskContext = new StringBuilder();
+        taskContext.append("当前任务链状态：\n");
+        for (Map<String, Object> task : tasks) {
+            taskContext.append(String.format("- [%s] %s (ID: %s)\n", 
+                task.get("status"), task.get("desc"), task.get("id")));
+        }
+        
+        String startMarker = "当前任务链状态：";
+        int startIndex = systemPrompt.indexOf(startMarker);
+        if (startIndex == -1) {
+            startMarker = "当前暂无进行中的任务链。";
+            startIndex = systemPrompt.indexOf(startMarker);
+        }
+        
+        if (startIndex != -1) {
+            // 查找 # Current Task Context 标题
+            String sectionHeader = "# Current Task Context";
+            int sectionIndex = systemPrompt.indexOf(sectionHeader);
+            if (sectionIndex != -1) {
+                 int nextSectionIndex = systemPrompt.indexOf("#", sectionIndex + sectionHeader.length());
+                 if (nextSectionIndex == -1) nextSectionIndex = systemPrompt.length();
+                 
+                 String pre = systemPrompt.substring(0, sectionIndex + sectionHeader.length());
+                 String post = systemPrompt.substring(nextSectionIndex);
+                 return pre + "\n" + taskContext.toString() + "\n" + post;
+            }
+        }
+        return systemPrompt;
+    }
+
+    private String performBlockingChat(String prompt, String sessionId, String model, String userId, String systemPrompt, SseEmitter emitter) throws IOException {
+        StringBuilder fullContent = new StringBuilder();
+        
+        // 检查是否为推理模型
+        boolean isReasoner = "deepseek-reasoner".equals(model) || "doubao-reasoner".equals(model);
+        
+        if (isReasoner) {
+             performBlockingOkHttpChat(prompt, sessionId, model, userId, systemPrompt, emitter, fullContent);
+        } else {
+             performBlockingSpringAiChat(prompt, sessionId, model, userId, systemPrompt, emitter, fullContent);
+        }
+        
+        return fullContent.toString();
+    }
+    
+    private void performBlockingSpringAiChat(String prompt, String sessionId, String model, String userId, String systemPrompt, SseEmitter emitter, StringBuilder fullContent) {
+        // Determine client
+        StreamingChatClient clientToUse = streamingChatClientProvider.getIfAvailable();
+        if ("doubao".equals(model) && doubaoStreamingChatClient != null) clientToUse = doubaoStreamingChatClient;
+        if (("deepseek".equals(model) || "deepseek-chat".equals(model)) && deepseekStreamingChatClient != null) clientToUse = deepseekStreamingChatClient;
+        
+        String actualModel = (model == null || model.isEmpty()) ? "deepseek-chat" : model;
+        if ("deepseek".equals(actualModel)) actualModel = "deepseek-chat";
+        
+        OpenAiChatOptions options = OpenAiChatOptions.builder()
+                .withModel(actualModel)
+                .withTemperature(0.7f)
+                .withMaxTokens(maxTokens)
+                .build();
+        
+        Prompt promptObj = buildPrompt(prompt, sessionId, userId, options, systemPrompt);
+        
+        if (clientToUse == null) {
+             String content = fallbackAnswer(prompt);
+             sendChatResponse(emitter, content, null);
+             fullContent.append(content);
+             return;
+        }
+
+        generateTitleAndSuggestionsAsync(prompt, sessionId, userId, emitter);
+
+        clientToUse.stream(promptObj)
+            .doOnNext(chatResponse -> {
+                String content = chatResponse.getResult().getOutput().getContent();
+                if (content != null && !content.isEmpty()) {
+                    sendChatResponse(emitter, content, null);
+                    fullContent.append(content);
+                }
+            })
+            .doOnError(e -> {
+                throw new RuntimeException(e);
+            })
+            .blockLast();
+    }
+
+    private void performBlockingOkHttpChat(String prompt, String sessionId, String model, String userId, String systemPrompt, SseEmitter emitter, StringBuilder fullContent) throws IOException {
+         generateTitleAndSuggestionsAsync(prompt, sessionId, userId, emitter);
+         
+         String apiKey = "";
+         String apiUrl = "";
+         String requestModel = "";
+         boolean isDoubao = false;
+
+         if ("deepseek-reasoner".equals(model)) {
+             apiKey = deepseekApiKey;
+             apiUrl = deepseekApiUrl + "/v1/chat/completions";
+             requestModel = "deepseek-reasoner";
+         } else if ("doubao-reasoner".equals(model)) {
+             apiKey = doubaoApiKey;
+             apiUrl = doubaoApiUrl + "/api/v3/chat/completions";
+             if (doubaoApiUrl.endsWith("/chat/completions")) apiUrl = doubaoApiUrl;
+             else if (doubaoApiUrl.endsWith("/")) apiUrl = doubaoApiUrl + "api/v3/chat/completions";
+             requestModel = "doubao-seed-1-6-251015";
+             isDoubao = true;
+         }
+
+         List<Map<String, String>> messages = new ArrayList<>();
+         if (systemPrompt != null && !systemPrompt.isEmpty()) {
+             Map<String, String> sysMsg = new HashMap<>();
+             sysMsg.put("role", "system");
+             sysMsg.put("content", systemPrompt);
+             messages.add(sysMsg);
+         }
+         
+         if (sessionId != null && !sessionId.isEmpty()) {
+             List<ChatRecord> history = chatRecordRepository.findByUserIdAndSessionIdOrderByMessageOrderAsc(userId, sessionId);
+             int start = Math.max(0, history.size() - MAX_CONTEXT_MESSAGES);
+             for (int i = start; i < history.size(); i++) {
+                 ChatRecord record = history.get(i);
+                 Map<String, String> msg = new HashMap<>();
+                 msg.put("role", record.getSenderType() == 1 ? "user" : "assistant");
+                 msg.put("content", record.getContent());
+                 messages.add(msg);
+             }
+         }
+         
+         Map<String, String> currentMsg = new HashMap<>();
+         currentMsg.put("role", "user");
+         currentMsg.put("content", prompt);
+         messages.add(currentMsg);
+
+         Map<String, Object> payload = new HashMap<>();
+         payload.put("model", requestModel);
+         payload.put("messages", messages);
+         payload.put("stream", true);
+         payload.put("temperature", 0.6);
+         payload.put("max_tokens", maxTokens);
+         if (isDoubao) payload.put("thinking", Map.of("type", "enabled"));
+
+         String jsonPayload = objectMapper.writeValueAsString(payload);
+         RequestBody body = RequestBody.create(jsonPayload, MediaType.get("application/json; charset=utf-8"));
+         Request request = new Request.Builder()
+                 .url(apiUrl)
+                 .addHeader("Authorization", "Bearer " + apiKey)
+                 .post(body)
+                 .build();
+
+         try (Response response = okHttpClient.newCall(request).execute()) {
+             if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
+             
+             InputStream is = response.body().byteStream();
+             BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+             String line;
+             while ((line = reader.readLine()) != null) {
+                 if (line.isEmpty()) continue;
+                 if (line.startsWith("data: ")) {
+                     String data = line.substring(6).trim();
+                     if ("[DONE]".equals(data)) break;
+                     try {
+                         JsonNode root = objectMapper.readTree(data);
+                         JsonNode choices = root.path("choices");
+                         if (choices.isArray() && choices.size() > 0) {
+                             JsonNode delta = choices.get(0).path("delta");
+                             String reasoningContent = delta.path("reasoning_content").asText("");
+                             String content = delta.path("content").asText("");
+                             
+                             if (!reasoningContent.isEmpty() || !content.isEmpty()) {
+                                 sendChatResponse(emitter, content, reasoningContent);
+                                 fullContent.append(content);
+                             }
+                         }
+                     } catch (Exception e) { }
+                 }
+             }
+         }
+    }
+
 
     private SseEmitter askStreamWithOkHttp(String prompt, String sessionId, String model, String userId, SseEmitter emitter, String systemPrompt) {
         new Thread(() -> {
