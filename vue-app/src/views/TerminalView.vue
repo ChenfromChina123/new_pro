@@ -739,7 +739,12 @@ const processAgentLoop = async (prompt, toolResult) => {
               fullContent += json.content
               needsScroll = true
               
-              if (fullContent.includes('{')) {
+              if (fullContent.includes('```json')) {
+                  const codeBlockStart = fullContent.indexOf('```json')
+                  if (codeBlockStart >= 0) {
+                      currentAiMsg.message = fullContent.substring(0, codeBlockStart).trim()
+                  }
+              } else if (fullContent.includes('{')) {
                   // Simplified extraction logic for streaming JSON
                   const jsonStart = fullContent.indexOf('{')
                   if (jsonStart >= 0) {
