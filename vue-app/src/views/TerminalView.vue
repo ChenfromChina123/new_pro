@@ -283,6 +283,8 @@
 import { ref, nextTick, onMounted, computed, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useUIStore } from '@/stores/ui'
+import { useTerminalStore } from '@/stores/terminal'
+import { storeToRefs } from 'pinia'
 import { API_CONFIG } from '@/config/api'
 import TerminalFileExplorer from '@/components/TerminalFileExplorer.vue'
 import RequirementManager from '@/components/RequirementManager.vue'
@@ -310,9 +312,19 @@ const formatMarkdown = (text) => {
 
 const authStore = useAuthStore()
 const uiStore = useUIStore()
+const terminalStore = useTerminalStore()
 
-const messages = ref([])
-const terminalLogs = ref([])
+// Use storeToRefs for reactive state
+const { 
+  sessions, 
+  currentSessionId, 
+  messages, 
+  terminalLogs, 
+  currentTasks, 
+  currentCwd,
+  groupedSessions
+} = storeToRefs(terminalStore)
+
 const inputMessage = ref('')
 const currentModel = ref('deepseek-chat')
 const isTyping = ref(false)
@@ -325,36 +337,6 @@ const fileExplorer = ref(null)
 const editingFile = ref(null)
 const editedContent = ref(null)
 const isSaving = ref(false)
-
-const currentSessionId = ref(null)
-const sessions = ref([])
-
-// Group sessions by date
-const groupedSessions = computed(() => {
-  const groups = {
-    '今天': [],
-    '昨天': [],
-    '最近 7 天': [],
-    '更早': []
-  }
-  
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const yesterday = new Date(today)
-  yesterday.setDate(yesterday.getDate() - 1)
-  const lastWeek = new Date(today)
-  lastWeek.setDate(lastWeek.getDate() - 7)
-  
-  sessions.value.forEach(s => {
-    const date = new Date(s.createdAt)
-    if (date >= today) groups['今天'].push(s)
-    else if (date >= yesterday) groups['昨天'].push(s)
-    else if (date >= lastWeek) groups['最近 7 天'].push(s)
-    else groups['更早'].push(s)
-  })
-  
-  return Object.entries(groups).filter(([_, items]) => items.length > 0)
-})
 
 // --- UI State Persistence (Mapped to UI Store) ---
 const sidebarCollapsed = ref(uiStore.sidebarCollapsed)
@@ -371,8 +353,6 @@ watch(taskListCollapsed, (val) => uiStore.saveState('taskListCollapsed', val))
 watch(sidebarWidth, (val) => uiStore.saveState('sidebarWidth', val))
 watch(rightPanelWidth, (val) => uiStore.saveState('rightPanelWidth', val))
 watch(activeTab, (val) => uiStore.saveState('activeTab', val))
-
-const currentTasks = ref([])
 
 const completedCount = computed(() => {
   return currentTasks.value.filter(t => t.status === 'completed').length
@@ -482,148 +462,23 @@ const modelOptions = [
   { label: 'DeepSeek Reasoner', value: 'deepseek-reasoner', description: '深度思考模型，擅长复杂逻辑推理' }
 ]
 
-const currentCwd = ref('/')
-
-const normalizeSession = (raw) => {
-  if (!raw) return null
-  return {
-    sessionId: raw.sessionId ?? raw.session_id,
-    title: raw.title,
-    createdAt: raw.createdAt ?? raw.created_at,
-    sessionType: raw.sessionType ?? raw.session_type,
-    localOnly: raw.localOnly === true,
-    currentCwd: raw.currentCwd
-  }
-}
-
 const safeReadJson = async (res) => {
   try { return await res.json() } catch { return null }
 }
 
 onMounted(async () => {
-  await fetchSessions()
+  await terminalStore.fetchSessions()
   if (sessions.value.length > 0) {
-    await selectSession(sessions.value[0].sessionId)
+    await terminalStore.selectSession(sessions.value[0].sessionId)
   } else {
-    await createNewSession()
+    await terminalStore.createNewSession()
   }
 })
 
-const fetchSessions = async () => {
-  if (!authStore.token) return
-  try {
-    const res = await fetch(`${API_CONFIG.baseURL}/api/terminal/sessions`, {
-      headers: { 'Authorization': `Bearer ${authStore.token}` }
-    })
-    const data = await safeReadJson(res)
-    if (data?.code === 200) {
-      sessions.value = (data.data || []).map(normalizeSession)
-    }
-  } catch (e) {
-    console.error(e)
-  }
-}
-
-const selectSession = async (sessionId) => {
-  currentSessionId.value = sessionId
-  messages.value = []
-  terminalLogs.value = []
-  currentTasks.value = []
-  taskListCollapsed.value = true
-  
-  const session = sessions.value.find(s => s.sessionId === sessionId)
-  if (session && session.currentCwd) {
-    currentCwd.value = session.currentCwd
-  } else {
-    currentCwd.value = '/'
-  }
-
-  try {
-    const res = await fetch(`${API_CONFIG.baseURL}/api/terminal/history/${sessionId}`, {
-      headers: { 'Authorization': `Bearer ${authStore.token}` }
-    })
-    const data = await safeReadJson(res)
-    if (data?.code === 200) {
-      const records = data.data || []
-      console.log('History records loaded:', records)
-      messages.value = records.map(r => {
-        // Compatibility for senderType/sender_type
-        const senderType = r.senderType ?? r.sender_type
-        const content = r.content
-
-        if (senderType === 1) return { role: 'user', content: content }
-        if (senderType === 2) {
-          // Parse historical AI message
-          try {
-             // Simple fallback parsing for history
-             if (content && content.trim().startsWith('{')) {
-               const action = JSON.parse(content)
-               
-               // Restore tasks to global state if this is the latest task list
-               if (action.type === 'task_list' || action.tasks) {
-                 currentTasks.value = action.tasks || []
-                 taskListCollapsed.value = false
-               }
-               if (action.type === 'task_update' && currentTasks.value.length > 0) {
-                 const task = currentTasks.value.find(t => t.id === action.taskId)
-                 if (task) task.status = action.status
-               }
-
-               return { 
-                 role: 'ai', 
-                 thought: action.thought, 
-                 message: action.message, 
-                 tool: action.tool, 
-                 command: action.command,
-                 filePath: action.path,
-                 status: 'success',
-                 showThought: false
-               }
-             }
-          } catch(e) {}
-          return { role: 'ai', message: content, showThought: false }
-        }
-        if (senderType === 3) return { role: 'command_result', content: content }
-        return null
-      }).filter(Boolean)
-      scrollToBottom()
-    }
-  } catch (e) {
-    console.error(e)
-  }
-}
-
-const createNewSession = async () => {
-  try {
-    const res = await fetch(`${API_CONFIG.baseURL}/api/terminal/new-session`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${authStore.token}` }
-    })
-    const data = await safeReadJson(res)
-    if (data?.code === 200) {
-      const newS = normalizeSession(data.data)
-      sessions.value.unshift(newS)
-      selectSession(newS.sessionId)
-    }
-  } catch (e) {
-    console.error(e)
-  }
-}
-
-const deleteSession = async (sessionId) => {
-  if (!confirm('确定删除?')) return
-  try {
-    await fetch(`${API_CONFIG.baseURL}/api/terminal/sessions/${sessionId}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${authStore.token}` }
-    })
-    sessions.value = sessions.value.filter(s => s.sessionId !== sessionId)
-    if (currentSessionId.value === sessionId) {
-      if (sessions.value.length > 0) selectSession(sessions.value[0].sessionId)
-      else createNewSession()
-    }
-  } catch (e) { console.error(e) }
-}
+// Delegate session actions to store
+const createNewSession = () => terminalStore.createNewSession()
+const deleteSession = (sessionId) => terminalStore.deleteSession(sessionId)
+const selectSession = (sessionId) => terminalStore.selectSession(sessionId)
 
 const handleFileSelect = async (file) => {
   try {

@@ -195,6 +195,55 @@
         </div>
       </template>
 
+      <!-- 终端相关的侧边栏内容 -->
+      <template v-else-if="isTerminalRoute">
+        <div class="sidebar-header">
+          <button
+            class="btn btn-primary new-chat-btn"
+            @click="handleNewTerminalSession"
+          >
+            <span class="btn-icon">
+              <i class="fas fa-plus" />
+            </span>
+            <span class="btn-text">新建终端</span>
+          </button>
+        </div>
+        
+        <div class="session-list-wrapper">
+          <div v-for="[groupName, sessions] in terminalGroupedSessions" :key="groupName">
+            <div class="history-section-title">
+              {{ groupName }}
+            </div>
+            <div class="session-list">
+              <div
+                v-for="session in sessions"
+                :key="session.sessionId"
+                class="session-item"
+                :class="{ active: session.sessionId === terminalStore.currentSessionId }"
+                @click="terminalStore.selectSession(session.sessionId)"
+              >
+                <div class="session-info">
+                  <div class="session-title">
+                    {{ session.title || '新终端' }}
+                  </div>
+                  <div class="session-meta">
+                    <span class="session-date">{{ formatSessionDate(session.createdAt) }}</span>
+                    <span v-if="session.localOnly" class="session-badge">本地</span>
+                  </div>
+                </div>
+                <button
+                  class="delete-btn"
+                  title="删除会话"
+                  @click.stop="terminalStore.deleteSession(session.sessionId)"
+                >
+                  <i class="fas fa-trash" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+
       <!-- 其他路由可以根据需要添加内容 -->
       <template v-else>
         <div class="sidebar-empty-tip">
@@ -294,9 +343,11 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
+import { useTerminalStore } from '@/stores/terminal'
 import { useThemeStore } from '@/stores/theme'
 import { useUIStore } from '@/stores/ui'
 import { useCloudDiskStore } from '@/stores/cloudDisk'
+import { storeToRefs } from 'pinia'
 import { API_CONFIG } from '@/config/api'
 import FolderTreeItem from '@/components/FolderTreeItem.vue'
 import ConflictResolutionDialog from '@/components/ConflictResolutionDialog.vue'
@@ -305,9 +356,12 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const chatStore = useChatStore()
+const terminalStore = useTerminalStore()
 const themeStore = useThemeStore()
 const uiStore = useUIStore()
 const cloudDiskStore = useCloudDiskStore()
+
+const { groupedSessions: terminalGroupedSessions } = storeToRefs(terminalStore)
 
 // 状态
 const newFolderName = ref('')
@@ -317,6 +371,7 @@ const currentConflictFiles = ref([])
 // 路由判断
 const isChatRoute = computed(() => route.path.startsWith('/chat'))
 const isCloudDiskRoute = computed(() => route.path.startsWith('/cloud-disk'))
+const isTerminalRoute = computed(() => route.path.startsWith('/terminal'))
 
 // 头像逻辑
 const avatarUrl = ref(null)
@@ -371,6 +426,11 @@ const handleDeleteSession = async (sessionId) => {
       router.push('/chat')
     }
   }
+}
+
+// 终端逻辑
+const handleNewTerminalSession = async () => {
+  await terminalStore.createNewSession()
 }
 
 const formatSessionDate = (dateStr) => {
@@ -560,6 +620,8 @@ watch(
     } else if (newPath.startsWith('/cloud-disk')) {
       await cloudDiskStore.fetchFolders()
       await cloudDiskStore.fetchQuota()
+    } else if (newPath.startsWith('/terminal')) {
+      await terminalStore.fetchSessions()
     }
   },
   { immediate: true }
@@ -777,10 +839,23 @@ onMounted(() => {
   letter-spacing: 0.5px;
 }
 
-.session-list {
+.session-list-wrapper {
   flex: 1;
   overflow-y: auto;
-  padding: 12px;
+}
+
+.session-list {
+  padding: 0 12px 12px;
+}
+
+.session-badge {
+  font-size: 10px;
+  background-color: var(--bg-tertiary);
+  color: var(--text-tertiary);
+  padding: 1px 4px;
+  border-radius: 4px;
+  margin-left: 6px;
+  border: 1px solid var(--border-color);
 }
 
 .session-item {
