@@ -1111,6 +1111,65 @@ textarea {
   cursor: pointer;
 }
 
+/* Task Panel Styles */
+.task-panel-body {
+  padding: 16px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.task-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  margin-bottom: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.task-item:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.task-item.completed {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.task-item.in_progress {
+  background: #fef3c7;
+  border-color: #fde68a;
+}
+
+.task-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.task-desc {
+  flex: 1;
+  font-size: 0.95rem;
+  color: #334155;
+  line-height: 1.5;
+}
+
+.task-item.completed .task-desc {
+  color: #166534;
+  text-decoration: line-through;
+}
+
+.task-item.in_progress .task-desc {
+  color: #92400e;
+  font-weight: 500;
+}
+
 /* Resizer and Utilities */
 .resizer-v { width: 4px; cursor: col-resize; transition: background 0.2s; z-index: 20; }
 .resizer-v:hover { background: #3b82f6; }
