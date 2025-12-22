@@ -296,10 +296,6 @@ public class AiChatServiceImpl implements AiChatService {
         return emitter;
     }
 
-    private SseEmitter askStreamWithOkHttp(String prompt, String sessionId, String model, String userId, SseEmitter emitter) {
-        return askStreamWithOkHttp(prompt, sessionId, model, userId, emitter, null);
-    }
-
     private SseEmitter askStreamWithOkHttp(String prompt, String sessionId, String model, String userId, SseEmitter emitter, String systemPrompt) {
         new Thread(() -> {
             try {

@@ -108,6 +108,8 @@
 - **PDF 生成稳定性**: PDF 渲染组件按需加载，避免缺失依赖导致服务启动失败。
 - **CSS 兼容性修复**: 完善了 `line-clamp` 等 CSS 属性的浏览器兼容性写法，确保多行文本截断在各端显示一致。
 - **代码清理**: 移除了后端多个 Service 和 Controller 中未使用的导入和变量，修复了重复定义的局部变量，提升了系统性能与可维护性。
+- **配置项修复**: 修复了 `StorageProperties` 中 `aiTerminalDir` 变量未定义导致的项目启动错误，并补充了相应的 Getter/Setter 方法。
+- **编译错误修复**: 修复了 `TerminalServiceImpl` 中缺少 `java.io.File` 导入导致的编译错误。
 - **消息字段兼容**: 前端拉取历史消息时兼容后端 `send_time/ai_model` 字段回填，确保时间与模型展示一致。
 
 ## 📦 安装

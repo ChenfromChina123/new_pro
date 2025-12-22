@@ -13,12 +13,15 @@ public class StorageProperties {
 
     private String rootDir = "./";
     private String cloudDiskDir = "cloud_disk";
+    private String aiTerminalDir = "ai_terminal_storage";
     private String avatarsDir = "avatars";
 
     public String getRootDir() { return rootDir; }
     public void setRootDir(String rootDir) { this.rootDir = rootDir; }
     public String getCloudDiskDir() { return cloudDiskDir; }
     public void setCloudDiskDir(String cloudDiskDir) { this.cloudDiskDir = cloudDiskDir; }
+    public String getAiTerminalDir() { return aiTerminalDir; }
+    public void setAiTerminalDir(String aiTerminalDir) { this.aiTerminalDir = aiTerminalDir; }
     public String getAvatarsDir() { return avatarsDir; }
     public void setAvatarsDir(String avatarsDir) { this.avatarsDir = avatarsDir; }
 
