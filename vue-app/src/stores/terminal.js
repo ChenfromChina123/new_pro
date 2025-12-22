@@ -143,6 +143,11 @@ export const useTerminalStore = defineStore('terminal', () => {
                 const action = JSON.parse(content)
                 if (action.type === 'task_list' || action.tasks) {
                   currentTasks.value = action.tasks || []
+                } else if (action.type === 'task_update') {
+                  const taskIndex = currentTasks.value.findIndex(t => String(t.id) === String(action.taskId))
+                  if (taskIndex !== -1) {
+                    currentTasks.value[taskIndex].status = action.status
+                  }
                 }
                 
                 const msg = { 
