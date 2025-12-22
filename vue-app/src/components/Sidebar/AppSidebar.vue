@@ -210,7 +210,10 @@
         </div>
         
         <div class="session-list-wrapper">
-          <div v-for="[groupName, sessions] in terminalGroupedSessions" :key="groupName">
+          <div
+            v-for="[groupName, sessions] in terminalGroupedSessions"
+            :key="groupName"
+          >
             <div class="history-section-title">
               {{ groupName }}
             </div>
@@ -228,7 +231,10 @@
                   </div>
                   <div class="session-meta">
                     <span class="session-date">{{ formatSessionDate(session.createdAt) }}</span>
-                    <span v-if="session.localOnly" class="session-badge">本地</span>
+                    <span
+                      v-if="session.localOnly"
+                      class="session-badge"
+                    >本地</span>
                   </div>
                 </div>
                 <button

@@ -6,59 +6,121 @@
         <span class="notebook-name">{{ fileName }}</span>
       </div>
       <div class="notebook-actions">
-        <button @click="addCell('code')" class="action-btn" title="添加代码块">
-          <i class="fas fa-code"></i> +代码
+        <button
+          class="action-btn"
+          title="添加代码块"
+          @click="addCell('code')"
+        >
+          <i class="fas fa-code" /> +代码
         </button>
-        <button @click="addCell('markdown')" class="action-btn" title="添加文本块">
-          <i class="fas fa-font"></i> +文本
+        <button
+          class="action-btn"
+          title="添加文本块"
+          @click="addCell('markdown')"
+        >
+          <i class="fas fa-font" /> +文本
         </button>
-        <div class="separator"></div>
-        <button @click="saveNotebook" class="save-btn" :disabled="isSaving">
+        <div class="separator" />
+        <button
+          class="save-btn"
+          :disabled="isSaving"
+          @click="saveNotebook"
+        >
           {{ isSaving ? '保存中...' : '保存' }}
         </button>
-        <button @click="$emit('close')" class="close-btn">退出</button>
+        <button
+          class="close-btn"
+          @click="$emit('close')"
+        >
+          退出
+        </button>
       </div>
     </div>
 
-    <div class="notebook-body" ref="notebookBody">
-      <div v-for="(cell, index) in cells" :key="cell.id" class="notebook-cell" :class="cell.type">
+    <div
+      ref="notebookBody"
+      class="notebook-body"
+    >
+      <div
+        v-for="(cell, index) in cells"
+        :key="cell.id"
+        class="notebook-cell"
+        :class="cell.type"
+      >
         <div class="cell-controls">
           <span class="cell-type-label">{{ cell.type === 'code' ? 'Code' : 'Markdown' }} [{{ index }}]</span>
           <div class="cell-actions">
-            <button v-if="cell.type === 'code'" @click="runCell(index)" :disabled="cell.isRunning" class="run-btn">
+            <button
+              v-if="cell.type === 'code'"
+              :disabled="cell.isRunning"
+              class="run-btn"
+              @click="runCell(index)"
+            >
               <span v-if="cell.isRunning">...</span>
               <span v-else>▶</span>
             </button>
-            <button @click="moveCell(index, -1)" :disabled="index === 0" class="ctrl-btn">↑</button>
-            <button @click="moveCell(index, 1)" :disabled="index === cells.length - 1" class="ctrl-btn">↓</button>
-            <button @click="deleteCell(index)" class="ctrl-btn delete">×</button>
+            <button
+              :disabled="index === 0"
+              class="ctrl-btn"
+              @click="moveCell(index, -1)"
+            >
+              ↑
+            </button>
+            <button
+              :disabled="index === cells.length - 1"
+              class="ctrl-btn"
+              @click="moveCell(index, 1)"
+            >
+              ↓
+            </button>
+            <button
+              class="ctrl-btn delete"
+              @click="deleteCell(index)"
+            >
+              ×
+            </button>
           </div>
         </div>
 
         <div class="cell-input">
           <textarea
+            ref="cellEditors"
             v-model="cell.content"
             class="cell-editor"
             :placeholder="cell.type === 'code' ? '输入代码...' : '输入 Markdown...'"
             @input="adjustHeight($event)"
-            ref="cellEditors"
-          ></textarea>
+          />
         </div>
 
-        <div v-if="cell.type === 'code' && (cell.output || cell.error)" class="cell-output-container">
-          <div v-if="cell.output" class="cell-output stdout">
+        <div
+          v-if="cell.type === 'code' && (cell.output || cell.error)"
+          class="cell-output-container"
+        >
+          <div
+            v-if="cell.output"
+            class="cell-output stdout"
+          >
             <pre>{{ cell.output }}</pre>
           </div>
-          <div v-if="cell.error" class="cell-output stderr">
+          <div
+            v-if="cell.error"
+            class="cell-output stderr"
+          >
             <pre>{{ cell.error }}</pre>
           </div>
         </div>
         
-        <div v-if="cell.type === 'markdown' && cell.content" class="cell-preview markdown-body" v-html="renderMarkdown(cell.content)">
-        </div>
+        <div
+          v-if="cell.type === 'markdown' && cell.content"
+          class="cell-preview markdown-body"
+          v-html="renderMarkdown(cell.content)"
+        />
       </div>
       
-      <div v-if="cells.length === 0" class="empty-notebook">
+      <div
+        v-if="cells.length === 0"
+        class="empty-notebook"
+      >
         <p>点击上方按钮添加第一个单元格</p>
       </div>
     </div>

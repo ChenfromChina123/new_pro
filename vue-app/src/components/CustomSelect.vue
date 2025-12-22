@@ -1,11 +1,24 @@
 <template>
-  <div class="custom-select" ref="selectRef">
-    <div class="select-trigger" @click="isOpen = !isOpen" :class="{ active: isOpen }">
+  <div
+    ref="selectRef"
+    class="custom-select"
+  >
+    <div
+      class="select-trigger"
+      :class="{ active: isOpen }"
+      @click="isOpen = !isOpen"
+    >
       <span class="selected-text">{{ selectedLabel }}</span>
-      <span class="chevron" :class="{ open: isOpen }">▼</span>
+      <span
+        class="chevron"
+        :class="{ open: isOpen }"
+      >▼</span>
     </div>
     <transition name="dropdown">
-      <div v-if="isOpen" class="options-menu">
+      <div
+        v-if="isOpen"
+        class="options-menu"
+      >
         <div 
           v-for="option in options" 
           :key="option.value" 
@@ -15,9 +28,15 @@
         >
           <div class="option-content">
             <span class="option-label">{{ option.label }}</span>
-            <span v-if="option.description" class="option-desc">{{ option.description }}</span>
+            <span
+              v-if="option.description"
+              class="option-desc"
+            >{{ option.description }}</span>
           </div>
-          <span v-if="modelValue === option.value" class="check-icon">✓</span>
+          <span
+            v-if="modelValue === option.value"
+            class="check-icon"
+          >✓</span>
         </div>
       </div>
     </transition>

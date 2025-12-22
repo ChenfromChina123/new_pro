@@ -2,31 +2,47 @@
   <div class="editor-container">
     <div class="editor-header">
       <div class="header-left">
-        <button class="nav-btn" @click="$emit('close')" title="返回文件列表">
-          <i class="fas fa-arrow-left"></i> 返回
+        <button
+          class="nav-btn"
+          title="返回文件列表"
+          @click="$emit('close')"
+        >
+          <i class="fas fa-arrow-left" /> 返回
         </button>
         <span class="file-icon">📄</span>
         <span class="file-name">{{ file.name }}</span>
         <span class="file-path">{{ file.path }}</span>
       </div>
       <div class="header-right">
-        <div class="editor-status" v-if="isDirty">
+        <div
+          v-if="isDirty"
+          class="editor-status"
+        >
           <span class="dirty-dot">●</span> 未保存
         </div>
         <button 
           class="save-btn" 
-          @click="handleSave" 
-          :disabled="isSaving || !isDirty"
+          :disabled="isSaving || !isDirty" 
+          @click="handleSave"
         >
-          <i class="fas fa-save"></i>
+          <i class="fas fa-save" />
           {{ isSaving ? '保存中...' : '保存' }}
         </button>
       </div>
     </div>
 
     <div class="editor-body">
-      <div class="line-numbers" ref="lineNumbersRef">
-        <div v-for="n in lineCount" :key="n" class="line-num">{{ n }}</div>
+      <div
+        ref="lineNumbersRef"
+        class="line-numbers"
+      >
+        <div
+          v-for="n in lineCount"
+          :key="n"
+          class="line-num"
+        >
+          {{ n }}
+        </div>
       </div>
       <textarea
         ref="textareaRef"
@@ -36,7 +52,7 @@
         @input="handleInput"
         @scroll="syncScroll"
         @keydown.tab.prevent="insertTab"
-      ></textarea>
+      />
     </div>
   </div>
 </template>
