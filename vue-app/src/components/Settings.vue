@@ -149,6 +149,18 @@
             </button>
           </div>
         </div>
+        
+        <div class="setting-item">
+          <label class="setting-label">退出登录</label>
+          <div class="setting-control">
+            <button
+              class="btn btn-danger"
+              @click="handleLogout"
+            >
+              退出登录
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -162,11 +174,15 @@ export default {
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useSettingsStore } from '@/stores/settings'
 import { useUIStore } from '@/stores/ui'
+import { useAuthStore } from '@/stores/auth'
 
 const settingsStore = useSettingsStore()
 const uiStore = useUIStore()
+const authStore = useAuthStore()
+const router = useRouter()
 const localSettings = ref({})
 
 // Initialize local settings from store
@@ -199,6 +215,16 @@ const handleReset = async () => {
     } else {
       uiStore.showToast(result.message || '重置失败')
     }
+  }
+}
+
+/**
+ * 处理退出登录
+ */
+const handleLogout = () => {
+  if (confirm('确定要退出登录吗？')) {
+    authStore.logout()
+    router.push('/login')
   }
 }
 </script>

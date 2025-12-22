@@ -258,16 +258,7 @@
       </template>
     </div>
 
-    <!-- 底部：退出登录 -->
-    <div class="sidebar-footer">
-      <button 
-        class="logout-btn" 
-        @click="handleLogout"
-      >
-        <i class="fas fa-sign-out-alt" />
-        <span>退出登录</span>
-      </button>
-    </div>
+
 
     <!-- 创建文件夹对话框 -->
     <div
@@ -612,13 +603,7 @@ const onConflictCancelled = () => {
   }
 }
 
-// 通用逻辑
-const handleLogout = () => {
-  if (confirm('确定要退出登录吗？')) {
-    authStore.logout()
-    router.push('/login')
-  }
-}
+
 
 // 监听路由变化加载数据
 watch(
