@@ -452,7 +452,7 @@ const expandedFolders = ref(new Set())
 const handleNewFolder = () => {
   // 检查层级限制
   if (!cloudDiskStore.canCreateSubFolder()) {
-    alert('目录层级超出限制，最多支持两层目录（不计根目录）')
+    uiStore.showToast('目录层级超出限制，最多支持两层目录（不计根目录）')
     return
   }
   
@@ -518,7 +518,7 @@ const renameFolderAction = (folder) => {
  */
 const createFolder = async () => {
   if (!newFolderName.value.trim()) {
-    alert('请输入文件夹名称')
+    uiStore.showToast('请输入文件夹名称')
     return
   }
   const result = await cloudDiskStore.createFolder(
@@ -528,8 +528,9 @@ const createFolder = async () => {
   if (result.success) {
     cloudDiskStore.showCreateFolderDialog = false
     newFolderName.value = ''
+    uiStore.showToast('创建成功')
   } else {
-    alert(`创建失败: ${result.message}`)
+    uiStore.showToast(`创建失败: ${result.message}`)
   }
 }
 
@@ -547,7 +548,7 @@ const closeRenameFolderDialog = () => {
  */
 const confirmRenameFolder = async () => {
   if (!cloudDiskStore.renameFolderName.trim()) {
-    alert('请输入文件夹名称')
+    uiStore.showToast('请输入文件夹名称')
     return
   }
   if (cloudDiskStore.renamingFolder.name === cloudDiskStore.renameFolderName) {
@@ -568,8 +569,9 @@ const confirmRenameFolder = async () => {
     conflictDialogVisible.value = true
   } else if (result.success) {
     closeRenameFolderDialog()
+    uiStore.showToast('重命名成功')
   } else {
-    alert(`重命名失败: ${result.message}`)
+    uiStore.showToast(`重命名失败: ${result.message}`)
   }
 }
 
@@ -587,8 +589,9 @@ const onConflictResolved = async ({ strategy }) => {
     )
     if (result.success) {
       closeRenameFolderDialog()
+      uiStore.showToast('重命名成功')
     } else {
-      alert(result.message)
+      uiStore.showToast(result.message)
     }
   }
 }

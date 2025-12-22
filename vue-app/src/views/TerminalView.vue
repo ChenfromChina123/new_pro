@@ -432,18 +432,18 @@ const saveEditedFile = async (newContent) => {
     })
     const data = await safeReadJson(res)
     if (data?.code === 200) {
-      alert('保存成功')
+      uiStore.showToast('保存成功')
       if (fileExplorer.value) {
         fileExplorer.value.refresh()
       }
       // Update local state
       editedContent.value = contentToSave
     } else {
-      alert('保存失败: ' + (data?.message || '未知错误'))
+      uiStore.showToast('保存失败: ' + (data?.message || '未知错误'))
     }
   } catch (e) {
     console.error('Failed to save file:', e)
-    alert('保存失败，请检查网络或权限')
+    uiStore.showToast('保存失败，请检查网络或权限')
   } finally {
     isSaving.value = false
   }

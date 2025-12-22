@@ -43,6 +43,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useUIStore } from '@/stores/ui'
 
 const props = defineProps({
   file: { type: Object, required: true },
@@ -51,6 +52,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'save'])
 
+const uiStore = useUIStore()
 const content = ref(props.initialContent)
 const isSaving = ref(false)
 const isDirty = ref(false)

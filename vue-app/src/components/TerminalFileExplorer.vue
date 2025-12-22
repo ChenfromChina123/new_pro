@@ -44,6 +44,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useUIStore } from '@/stores/ui'
 import { API_CONFIG } from '@/config/api'
 
 const props = defineProps({
@@ -53,6 +54,7 @@ const props = defineProps({
 const emit = defineEmits(['navigate', 'select'])
 
 const authStore = useAuthStore()
+const uiStore = useUIStore()
 const files = ref([])
 const currentPath = ref(props.initialPath)
 const selectedFile = ref(null)
@@ -123,11 +125,12 @@ const createNewNotebook = async () => {
     const data = await res.json()
     if (data.code === 200) {
       refresh()
+      uiStore.showToast('创建成功')
     } else {
-      alert('创建失败: ' + data.message)
+      uiStore.showToast('创建失败: ' + data.message)
     }
   } catch (e) {
-    alert('创建失败，请检查网络')
+    uiStore.showToast('创建失败，请检查网络')
   }
 }
 
