@@ -697,7 +697,8 @@ const processAgentLoop = async (prompt) => {
       body: JSON.stringify({
         prompt: prompt,
         session_id: currentSessionId.value,
-        model: currentModel.value
+        model: currentModel.value,
+        tasks: tasks.value // 传入当前任务链
       })
     })
 
