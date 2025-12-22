@@ -40,44 +40,58 @@ public class TerminalController {
 
     // --- Prompts ---
     private static final String PLANNER_PROMPT = """
-            # Role
-            You are an expert Project Planner. Your goal is to analyze the user's intent and create a structured Task Pipeline.
+            # 角色
+            你是资深项目规划师。你的目标是分析用户意图，并生成结构化的任务流水线（Task Pipeline）。
+
+            # 输入
+            用户意图：%s
+
+            # 输出格式
+            1. 首先，请用中文简要描述你的规划思路（一段话，用户可见）。
+            2. 然后，严格在 ```json 代码块中输出 JSON 任务数组。
             
-            # Input
-            User Intent: %s
-            
-            # Output Format
-            Return a strictly valid JSON array of tasks. Each task must have a 'name' and 'goal'.
-            Example:
+            JSON 数组格式要求：
+            每个任务对象必须包含字段：name、goal（字段名必须使用英文 name/goal）。
+            字段值（name/goal）必须使用中文表述，简洁明确、可执行。
+            如需拆分步骤，可选字段 substeps（字段名保持英文），其中每个子步骤至少包含 goal（字段名英文，值中文）。
+
+            示例：
+            （你的规划思路...）
+            ```json
             [
-              {"name": "Init", "goal": "Initialize project structure"},
-              {"name": "Dev", "goal": "Implement features", "substeps": [{"goal": "Setup Vue"}]}
+              {"name":"初始化","goal":"确认项目结构与入口页面","substeps":[{"goal":"打开项目并确认目录结构"}]},
+              {"name":"实现功能","goal":"完成核心功能实现","substeps":[{"goal":"补齐接口联调与错误处理"}]},
+              {"name":"验证交付","goal":"运行校验并确保主要流程可用"}
             ]
-            
-            # Constraints
-            - Do not include any markdown formatting (```json).
-            - Focus on engineering steps.
+            ```
+
+            # 约束
+            - 必须包含 ```json 代码块。
+            - 任务必须是工程可执行步骤，避免空泛表述。
             """;
 
     private static final String EXECUTOR_PROMPT = """
-            # Role
-            You are an Autonomous Engineering Agent. Your goal is to complete the Current Task.
-            
-            # Context
+            # 角色
+            你是自主工程执行 Agent。你的目标是完成“当前任务”。
+
+            # 上下文
             %s
-            
-            # Available Tools
+
+            # 可用工具（工具名必须保持英文，且严格按此调用）
             - execute_command(command)
             - read_file(path)
             - write_file(path, content)
             - ensure_file(path, content)
-            
-            # Protocol
-            1. Analyze the Current Task and World State.
-            2. Decide the next step.
-            3. Output a Decision Envelope in JSON.
-            
-            # Output Format (Strict JSON)
+
+            # 协议
+            1. 分析当前任务与世界状态。
+            2. 决定下一步要做什么。
+            3. 输出一个“决策信封”（Decision Envelope）的 JSON。
+
+            # 输出格式（严格 JSON，仅输出一个对象，不要 Markdown）
+            字段名必须使用英文/下划线形式（例如 decision_id、tool_call、params 等），不要使用中文字段名。
+
+            工具调用示例：
             {
               "decision_id": "UUID",
               "type": "TOOL_CALL",
@@ -85,8 +99,8 @@ public class TerminalController {
               "params": { "path": "src/App.vue", "content": "..." },
               "expectation": { "world_change": ["src/App.vue"] }
             }
-            
-            OR if task is done:
+
+            若任务已完成：
             {
               "decision_id": "UUID",
               "type": "TASK_COMPLETE",
@@ -97,7 +111,7 @@ public class TerminalController {
 
     @Data
     public static class TerminalChatRequest {
-        @NotBlank(message = "Prompt cannot be empty")
+        @NotBlank(message = "提示词不能为空")
         private String prompt;
         private String session_id;
         private String model;
@@ -107,7 +121,7 @@ public class TerminalController {
 
     @Data
     public static class TerminalWriteFileRequest {
-        @NotBlank(message = "File path cannot be empty")
+        @NotBlank(message = "文件路径不能为空")
         private String path;
         private String content;
         private String cwd;
@@ -131,7 +145,7 @@ public class TerminalController {
                 return sendSystemMessage("Agent " + state.getStatus());
             } else if (request.getTool_result() == null) {
                 // If it's a normal chat message but agent is running, reject it
-                return sendSystemMessage("Agent is RUNNING. Please wait or type 'pause'.");
+                return sendSystemMessage("Agent 正在运行中，请等待或输入 pause 暂停。");
             }
         }
 
@@ -139,7 +153,7 @@ public class TerminalController {
         if (request.getTool_result() != null) {
              MutatorResult result = stateMutator.applyToolResult(state, request.getTool_result());
              if (!result.isAccepted()) {
-                 return sendSystemMessage("Tool Result Rejected: " + result.getReason());
+                 return sendSystemMessage("工具结果被拒绝：" + result.getReason());
              }
              // If accepted, state is updated (e.g. back to RUNNING or ERROR)
              agentStateService.saveAgentState(state);
@@ -172,34 +186,42 @@ public class TerminalController {
                 null,
                 (fullResponse) -> {
                     try {
-                        // Parse Decision Envelope
+                        // Parse Decision Envelope or Plan
                         String json = extractJson(fullResponse);
                         if (json != null) {
-                            // Try to parse as DecisionEnvelope
-                            try {
-                                DecisionEnvelope decision = objectMapper.readValue(json, DecisionEnvelope.class);
-                                state.setLastDecision(decision);
-                                // Also handle TASK_COMPLETE here? 
-                                // No, TASK_COMPLETE is a decision type. The mutator handles it when frontend reports back?
-                                // Actually, for TASK_COMPLETE, frontend might not call tool?
-                                // Protocol says: 1 Agent Turn = 1 Decision.
-                                // If Decision is TASK_COMPLETE, frontend receives it.
-                                // Does Frontend send back a result for TASK_COMPLETE?
-                                // Usually yes, to confirm "I saw it".
-                                // Or backend can handle it immediately?
-                                // Better to let Frontend acknowledge it via next loop or stop.
-                                
-                                if ("TASK_COMPLETE".equals(decision.getType())) {
-                                    // Maybe mark as COMPLETED immediately?
-                                    // But we want to wait for frontend to display it.
-                                    // Let's keep it simple: just save decision.
-                                } else {
-                                    state.setStatus(AgentStatus.WAITING_TOOL);
+                            json = json.trim();
+                            if (json.startsWith("[")) {
+                                // It is a Plan!
+                                try {
+                                    TaskState taskState = taskCompiler.compile(json, "pipeline-" + System.currentTimeMillis());
+                                    // Update state with new plan
+                                    // Note: we need to ensure we don't overwrite existing state incorrectly
+                                    // But here we are just setting the task state
+                                    AgentState currentState = agentStateService.getAgentState(sessionId, userId);
+                                    currentState.setTaskState(taskState);
+                                    currentState.setStatus(AgentStatus.RUNNING);
+                                    agentStateService.saveAgentState(currentState);
+                                } catch (Exception e) {
+                                    System.err.println("Failed to compile plan: " + e.getMessage());
                                 }
-                                agentStateService.saveAgentState(state);
-                            } catch (Exception e) {
-                                // Not a valid decision envelope, maybe just chat
-                                // Ignore or log
+                            } else {
+                                // Try to parse as DecisionEnvelope
+                                try {
+                                    DecisionEnvelope decision = objectMapper.readValue(json, DecisionEnvelope.class);
+                                    state.setLastDecision(decision);
+                                    
+                                    if ("TASK_COMPLETE".equals(decision.getType())) {
+                                        // Maybe mark as COMPLETED immediately?
+                                        // But we want to wait for frontend to display it.
+                                        // Let's keep it simple: just save decision.
+                                    } else {
+                                        state.setStatus(AgentStatus.WAITING_TOOL);
+                                    }
+                                    agentStateService.saveAgentState(state);
+                                } catch (Exception e) {
+                                    // Not a valid decision envelope, maybe just chat
+                                    // Ignore or log
+                                }
                             }
                         }
                     } catch (Exception e) {
@@ -210,10 +232,37 @@ public class TerminalController {
     }
     
     private String extractJson(String text) {
-        int start = text.indexOf("{");
-        int end = text.lastIndexOf("}");
-        if (start >= 0 && end > start) {
-            return text.substring(start, end + 1);
+        // Try to find markdown code block first
+        int codeBlockStart = text.indexOf("```json");
+        if (codeBlockStart >= 0) {
+            int jsonStart = codeBlockStart + 7; // Length of "```json"
+            int codeBlockEnd = text.indexOf("```", jsonStart);
+            if (codeBlockEnd > jsonStart) {
+                return text.substring(jsonStart, codeBlockEnd).trim();
+            }
+        }
+        
+        // Fallback to finding { ... } or [ ... ]
+        int startObj = text.indexOf("{");
+        int startArr = text.indexOf("[");
+        int start = -1;
+        
+        if (startObj >= 0 && startArr >= 0) {
+            start = Math.min(startObj, startArr);
+        } else if (startObj >= 0) {
+            start = startObj;
+        } else if (startArr >= 0) {
+            start = startArr;
+        }
+        
+        if (start >= 0) {
+            int endObj = text.lastIndexOf("}");
+            int endArr = text.lastIndexOf("]");
+            int end = Math.max(endObj, endArr);
+            
+            if (end > start) {
+                return text.substring(start, end + 1);
+            }
         }
         return null;
     }
@@ -263,7 +312,7 @@ public class TerminalController {
     private SseEmitter sendSystemMessage(String message) {
         SseEmitter emitter = new SseEmitter();
         try {
-            emitter.send(SseEmitter.event().data("{\"content\": \"[SYSTEM] " + message + "\"}"));
+            emitter.send(SseEmitter.event().data("{\"content\": \"[系统] " + message + "\"}"));
             emitter.complete();
         } catch (Exception e) {
             emitter.completeWithError(e);

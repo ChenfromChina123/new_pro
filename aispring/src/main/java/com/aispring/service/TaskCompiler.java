@@ -29,7 +29,7 @@ public class TaskCompiler {
             }
             
             if (json == null || json.isEmpty()) {
-                throw new RuntimeException("No JSON found in output");
+                throw new RuntimeException("输出中未找到可解析的 JSON");
             }
             
             tasks = objectMapper.readValue(json, new TypeReference<List<Task>>() {});
@@ -53,8 +53,8 @@ public class TaskCompiler {
                     .build();
 
         } catch (Exception e) {
-            log.error("Failed to compile tasks", e);
-            throw new RuntimeException("Task Compilation Failed: " + e.getMessage());
+            log.error("任务编译失败", e);
+            throw new RuntimeException("任务编译失败：" + e.getMessage());
         }
     }
 

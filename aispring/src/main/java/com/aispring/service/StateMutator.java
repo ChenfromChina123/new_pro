@@ -20,7 +20,7 @@ public class StateMutator {
         if (state.getStatus() != AgentStatus.WAITING_TOOL) {
              return MutatorResult.builder()
                     .accepted(false)
-                    .reason("Agent is not waiting for tool result. Current status: " + state.getStatus())
+                    .reason("当前 Agent 不在等待工具结果状态，当前状态：" + state.getStatus())
                     .newAgentStatus(state.getStatus())
                     .build();
         }
@@ -29,7 +29,7 @@ public class StateMutator {
         if (lastDecision == null) {
              return MutatorResult.builder()
                     .accepted(false)
-                    .reason("No pending decision found in state")
+                    .reason("状态中没有待处理的决策")
                     .newAgentStatus(AgentStatus.ERROR)
                     .build();
         }
@@ -38,7 +38,7 @@ public class StateMutator {
         if (!lastDecision.getDecisionId().equals(result.getDecisionId())) {
             return MutatorResult.builder()
                     .accepted(false)
-                    .reason("Decision ID mismatch. Expected: " + lastDecision.getDecisionId() + ", Got: " + result.getDecisionId())
+                    .reason("决策ID不匹配，期望：" + lastDecision.getDecisionId() + "，实际：" + result.getDecisionId())
                     .newAgentStatus(state.getStatus())
                     .build();
         }
@@ -51,7 +51,7 @@ public class StateMutator {
             // For now, we transition to ERROR.
             return MutatorResult.builder()
                     .accepted(true) // Accepted the failure report
-                    .reason("Tool execution failed with exit code " + result.getExitCode())
+                    .reason("工具执行失败，退出码：" + result.getExitCode())
                     .newAgentStatus(AgentStatus.ERROR)
                     .build();
         }
@@ -87,7 +87,7 @@ public class StateMutator {
 
         return MutatorResult.builder()
                 .accepted(true)
-                .reason("Execution successful")
+                .reason("执行成功")
                 .newAgentStatus(AgentStatus.RUNNING)
                 .build();
     }
