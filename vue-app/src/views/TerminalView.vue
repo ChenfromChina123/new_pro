@@ -823,21 +823,36 @@ const processAgentLoop = async (prompt) => {
 const tryExtractField = (content, fieldName) => {
   if (!content) return ''
   
-  // 匹配 "fieldName": "内容..."
-  // (?:[^\\"]|\\.)* 匹配转义字符或非引号字符
-  const regex = new RegExp(`"${fieldName}"\\s*:\\s*"((?:[^\\\\"]|\\\\.)*)"?`)
-  const match = content.match(regex)
-  
-  if (match) {
-    let value = match[1]
-    // 基础转义处理
-    return value
-      .replace(/\\n/g, '\n')
-      .replace(/\\"/g, '"')
-      .replace(/\\\\/g, '\\')
-      .replace(/\\t/g, '\t')
+  // 1. 尝试匹配完整的字段: "fieldName": "value"
+  const fullRegex = new RegExp(`"${fieldName}"\\s*:\\s*"((?:[^\\\\"]|\\\\.)*)"`)
+  const fullMatch = content.match(fullRegex)
+  if (fullMatch) {
+    return unescapeJsonString(fullMatch[1])
   }
+  
+  // 2. 如果没有完整匹配，尝试匹配正在流式输出的字段: "fieldName": "部分内容...
+  // 匹配字段名及其开启的引号，然后捕获直到字符串末尾的所有内容
+  const partialRegex = new RegExp(`"${fieldName}"\\s*:\\s*"((?:[^\\\\"]|\\\\.)*)$`)
+  const partialMatch = content.match(partialRegex)
+  if (partialMatch) {
+    return unescapeJsonString(partialMatch[1])
+  }
+  
   return ''
+}
+
+/**
+ * 处理 JSON 字符串中的转义字符
+ * @param {string} str 原始字符串
+ * @returns {string} 处理后的字符串
+ */
+const unescapeJsonString = (str) => {
+  return str
+    .replace(/\\n/g, '\n')
+    .replace(/\\"/g, '"')
+    .replace(/\\\\/g, '\\')
+    .replace(/\\t/g, '\t')
+    .replace(/\\r/g, '\r')
 }
 
 const extractContent = (raw) => {
