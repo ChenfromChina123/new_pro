@@ -4,189 +4,194 @@
       <div class="terminal-layout">
         <!-- Left Panel: Chat -->
         <div class="chat-panel">
-          <div class="chat-header">
-            <div class="header-left">
-              <h3>AI 终端助手</h3>
+          <TaskSidebar 
+            v-if="currentTasks && currentTasks.length > 0"
+            :tasks="currentTasks"
+            :active-task-id="activeTaskId"
+            :initial-width="sidebarWidth"
+            @update:width="sidebarWidth = $event"
+            @select-task="scrollToTask"
+          />
+
+          <div class="chat-main-column">
+            <div class="chat-header">
+              <div class="header-left">
+                <h3>AI 终端助手</h3>
+              </div>
+              <div class="header-right">
+                <button 
+                  class="toggle-right-panel"
+                  :class="{ rotated: rightPanelCollapsed }"
+                  title="切换工具面板"
+                  @click="rightPanelCollapsed = !rightPanelCollapsed"
+                >
+                  <span class="btn-icon">🛠️</span>
+                </button>
+              </div>
             </div>
-            <div class="header-right">
-              <button 
-                class="toggle-right-panel"
-                :class="{ rotated: rightPanelCollapsed }"
-                title="切换工具面板"
-                @click="rightPanelCollapsed = !rightPanelCollapsed"
-              >
-                <span class="btn-icon">🛠️</span>
-              </button>
-            </div>
-          </div>
           
-          <div
-            ref="messagesRef"
-            class="messages-container"
-          >
             <div
-              v-for="(msg, index) in messages"
-              :key="index"
-              class="message"
-              :class="msg.role"
+              class="messages-container"
             >
-              <div class="message-content">
-                <!-- User Message -->
-                <div
-                  v-if="msg.role === 'user'"
-                  class="user-bubble"
-                >
-                  {{ msg.content }}
-                </div>
-
-                <!-- AI Message -->
-                <div
-                  v-else-if="msg.role === 'ai'"
-                  class="ai-bubble"
-                >
-                  <div class="message-content">
-                    <div
-                      v-if="msg.thought"
-                      class="thought-block"
-                    >
-                      <div
-                        class="thought-title"
-                        @click="msg.showThought = !msg.showThought"
-                      >
-                        <span>思考过程</span>
-                        <i class="toggle-icon">{{ msg.showThought ? '▼' : '▶' }}</i>
-                      </div>
-                      <div
-                        v-if="msg.showThought"
-                        class="thought-content"
-                      >
-                        {{ msg.thought }}
-                      </div>
-                    </div>
-
-                    <div
-                      v-if="msg.message"
-                      class="ai-text"
-                    >
-                      {{ msg.message }}
-                    </div>
-                    
-                    <!-- Command Execution Info -->
-                    <div
-                      v-if="msg.tool"
-                      class="tool-call-card"
-                    >
-                      <div class="tool-header">
-                        <span class="tool-icon">🐚</span>
-                        <span
-                          v-if="msg.tool === 'execute_command'"
-                          class="tool-label"
-                        >执行命令</span>
-                        <span
-                          v-else-if="msg.tool === 'write_file'"
-                          class="tool-label"
-                        >写入文件</span>
-                        <span
-                          v-else
-                          class="tool-label"
-                        >工具调用</span>
-                      </div>
-                      <div class="tool-command">
-                        <code v-if="msg.tool === 'execute_command'">{{ msg.command }}</code>
-                        <code v-else-if="msg.tool === 'write_file'">{{ msg.filePath }}</code>
-                      </div>
-                      <div
-                        class="tool-status"
-                        :class="msg.status"
-                      >
-                        <span
-                          v-if="msg.status === 'pending'"
-                          class="spinner"
-                        >⌛ 执行中...</span>
-                        <span
-                          v-else-if="msg.status === 'success'"
-                          class="status-success"
-                        >✓ 执行成功</span>
-                        <span
-                          v-else
-                          class="status-error"
-                        >✗ 执行失败</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div
-              v-if="isTyping"
-              class="message ai"
-            >
-              <div class="message-content">
-                <div class="typing-indicator">
-                  <span>.</span><span>.</span><span>.</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <TerminalChatInput
-            v-model:message="inputMessage"
-            v-model:model="currentModel"
-            :model-options="modelOptions"
-            :disabled="isTyping || isExecuting"
-            :can-send="!!inputMessage.trim() && !isTyping && !isExecuting"
-            @enter="handleEnter"
-            @send="sendMessage"
-          >
-            <template #top>
-              <!-- Floating Task List Panel -->
-              <div
-                v-if="currentTasks && currentTasks.length > 0"
-                class="global-task-panel"
-                :class="{ collapsed: taskListCollapsed }"
+              <DynamicScroller
+                ref="scrollerRef"
+                :items="flatViewItems"
+                :min-item-size="60"
+                class="scroller"
+                key-field="id"
               >
-                <div
-                  class="task-panel-header"
-                  @click="taskListCollapsed = !taskListCollapsed"
-                >
-                  <div class="header-main">
-                    <span class="panel-icon">📋</span>
-                    <span class="panel-title">任务进度</span>
-                    <span class="task-count">({{ completedCount }}/{{ currentTasks.length }})</span>
-                  </div>
-                  <div class="header-right">
-                    <div class="progress-mini-bar">
-                      <div
-                        class="progress-fill"
-                        :style="{ width: taskProgress + '%' }"
-                      />
-                    </div>
-                    <span class="progress-percent">{{ taskProgress }}%</span>
-                    <i class="toggle-icon">{{ taskListCollapsed ? '▲' : '▼' }}</i>
-                  </div>
-                </div>
-                <div
-                  v-if="!taskListCollapsed"
-                  class="task-panel-body"
-                >
-                  <div
-                    v-for="task in currentTasks"
-                    :key="task.id"
-                    class="task-item"
-                    :class="task.status"
+                <template #default="{ item, index, active }">
+                  <DynamicScrollerItem
+                    :item="item"
+                    :active="active"
+                    :size-dependencies="[
+                      item.type === 'message' ? item.data.showThought : null,
+                      item.type === 'message' ? item.data.message : null,
+                      item.type === 'message' ? item.data.content : null
+                    ]"
+                    :data-index="index"
                   >
-                    <span class="task-icon">
-                      {{ task.status === 'completed' ? '✅' : (task.status === 'in_progress' ? '🔄' : '⭕') }}
-                    </span>
-                    <span
-                      class="task-desc"
-                      :title="task.desc"
-                    >{{ task.desc }}</span>
+                    <!-- Header Item -->
+                    <div v-if="item.type === 'header'" class="group-separator">
+                      <span class="separator-line"></span>
+                      <span 
+                        class="separator-text" 
+                        @click="toggleTaskExpand(item.taskId)"
+                        style="cursor: pointer; display: flex; align-items: center; gap: 8px;"
+                      >
+                        <span class="toggle-icon" style="font-size: 0.8em;">{{ item.expanded ? '▼' : '▶' }}</span>
+                        <span>Task {{ item.taskId }}: {{ item.desc }}</span>
+                      </span>
+                      <span class="separator-line"></span>
+                    </div>
+
+                    <!-- Message Item -->
+                    <div
+                      v-else-if="item.type === 'message'"
+                      class="message"
+                      :class="item.data.role"
+                    >
+                      <div class="message-content">
+                        <!-- User Message -->
+                        <div
+                          v-if="item.data.role === 'user'"
+                          class="user-bubble"
+                        >
+                          {{ item.data.content }}
+                        </div>
+
+                        <!-- AI Message -->
+                        <div
+                          v-else-if="item.data.role === 'ai'"
+                          class="ai-bubble"
+                        >
+                          <div class="message-content">
+                            <div
+                              v-if="item.data.thought"
+                              class="thought-block"
+                            >
+                              <div
+                                class="thought-title"
+                                @click="item.data.showThought = !item.data.showThought"
+                              >
+                                <span>思考过程</span>
+                                <i class="toggle-icon">{{ item.data.showThought ? '▼' : '▶' }}</i>
+                              </div>
+                              <div
+                                v-if="item.data.showThought"
+                                class="thought-content"
+                              >
+                                {{ item.data.thought }}
+                              </div>
+                            </div>
+
+                            <!-- Execution Steps -->
+                            <div v-if="item.data.steps && item.data.steps.length > 0" class="steps-block">
+                              <div class="steps-title">执行步骤</div>
+                              <ul class="steps-list">
+                                <li v-for="(step, sIdx) in item.data.steps" :key="sIdx">{{ step }}</li>
+                              </ul>
+                            </div>
+
+                            <div
+                              v-if="item.data.message"
+                              class="ai-text"
+                              v-html="formatMarkdown(item.data.message)"
+                            >
+                            </div>
+                            
+                            <!-- Command Execution Info -->
+                            <div
+                              v-if="item.data.tool"
+                              class="tool-call-card"
+                            >
+                              <div class="tool-header">
+                                <span class="tool-icon">🐚</span>
+                                <span
+                                  v-if="item.data.tool === 'execute_command'"
+                                  class="tool-label"
+                                >执行命令</span>
+                                <span
+                                  v-else-if="item.data.tool === 'write_file'"
+                                  class="tool-label"
+                                >写入文件</span>
+                                <span
+                                  v-else
+                                  class="tool-label"
+                                >工具调用</span>
+                              </div>
+                              <div class="tool-command">
+                                <code v-if="item.data.tool === 'execute_command'">{{ item.data.command }}</code>
+                                <code v-else-if="item.data.tool === 'write_file'">{{ item.data.filePath }}</code>
+                              </div>
+                              <div
+                                class="tool-status"
+                                :class="item.data.status"
+                              >
+                                <span
+                                  v-if="item.data.status === 'pending'"
+                                  class="spinner"
+                                >⌛ 执行中...</span>
+                                <span
+                                  v-else-if="item.data.status === 'success'"
+                                  class="status-success"
+                                >✓ 执行成功</span>
+                                <span
+                                  v-else
+                                  class="status-error"
+                                >✗ 执行失败</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </DynamicScrollerItem>
+                </template>
+              </DynamicScroller>
+
+              <div
+                v-if="isTyping"
+                class="message ai typing-message"
+              >
+                <div class="message-content">
+                  <div class="typing-indicator">
+                    <span>.</span><span>.</span><span>.</span>
                   </div>
                 </div>
               </div>
-            </template>
-          </TerminalChatInput>
+            </div>
+
+            <TerminalChatInput
+              v-model:message="inputMessage"
+              v-model:model="currentModel"
+              :model-options="modelOptions"
+              :disabled="isTyping || isExecuting"
+              :can-send="!!inputMessage.trim() && !isTyping && !isExecuting"
+              @enter="handleEnter"
+              @send="sendMessage"
+            />
+          </div>
         </div>
 
         <!-- Main Resizer -->
@@ -301,6 +306,7 @@ import TerminalFileExplorer from '@/components/TerminalFileExplorer.vue'
 import TerminalNotebook from '@/components/TerminalNotebook.vue'
 import TerminalFileEditor from '@/components/TerminalFileEditor.vue'
 import TerminalChatInput from '@/components/terminal/TerminalChatInput.vue'
+import TaskSidebar from '@/components/terminal/TaskSidebar.vue'
 import { marked } from 'marked'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
@@ -333,8 +339,88 @@ const {
   messages, 
   terminalLogs, 
   currentTasks, 
-  currentCwd
+  currentCwd,
+  activeTaskId,
+  groupedMessages
 } = storeToRefs(terminalStore)
+
+const sidebarWidth = ref(250)
+const scrollerRef = ref(null)
+const searchText = ref('')
+const expandedTaskIds = ref(new Set())
+
+// Flatten messages for virtual scrolling
+const flatViewItems = computed(() => {
+  const items = []
+  let idCounter = 0
+  
+  groupedMessages.value.forEach(group => {
+    const isExpanded = group.taskId ? expandedTaskIds.value.has(group.taskId) : true // General messages always shown or logic needed
+    
+    // Add Group Header
+    if (group.taskId) {
+      items.push({
+        id: `group-header-${group.taskId}`,
+        type: 'header',
+        taskId: group.taskId,
+        desc: currentTasks.value.find(t => t.id === group.taskId)?.desc || 'Loading...',
+        expanded: isExpanded
+      })
+    }
+
+    // Add Messages if expanded or no task ID (general messages)
+    if (isExpanded || !group.taskId) {
+      group.messages.forEach(msg => {
+        // Filter logic
+        if (searchText.value) {
+          const query = searchText.value.toLowerCase()
+          const contentMatch = msg.content && msg.content.toLowerCase().includes(query)
+          const aiMsgMatch = msg.message && msg.message.toLowerCase().includes(query)
+          const thoughtMatch = msg.thought && msg.thought.toLowerCase().includes(query)
+          if (!contentMatch && !aiMsgMatch && !thoughtMatch) return
+        }
+
+        items.push({
+          id: `msg-${idCounter++}`,
+          type: 'message',
+          data: msg
+        })
+      })
+    }
+  })
+  return items
+})
+
+const toggleTaskExpand = (taskId) => {
+  if (expandedTaskIds.value.has(taskId)) {
+    expandedTaskIds.value.delete(taskId)
+  } else {
+    expandedTaskIds.value.add(taskId)
+  }
+}
+
+watch(activeTaskId, (newId) => {
+  if (newId) {
+    expandedTaskIds.value.add(newId)
+  }
+})
+
+const scrollToTask = (taskId) => {
+  if (!scrollerRef.value) return
+  
+  // Expand the task first
+  if (taskId) {
+    expandedTaskIds.value.add(taskId)
+  }
+  
+  // Wait for re-computation
+  nextTick(() => {
+    const index = flatViewItems.value.findIndex(item => item.taskId === taskId && item.type === 'header')
+    if (index !== -1) {
+      scrollerRef.value.scrollToItem(index)
+    }
+  })
+}
 
 const inputMessage = ref('')
 const currentModel = ref('deepseek-chat')
@@ -540,7 +626,9 @@ const scrollToBottom = () => {
   requestAnimationFrame(() => {
     scrollScheduled = false
     nextTick(() => {
-      if (messagesRef.value) messagesRef.value.scrollTop = messagesRef.value.scrollHeight
+      if (scrollerRef.value && flatViewItems.value.length > 0) {
+        scrollerRef.value.scrollToItem(flatViewItems.value.length - 1)
+      }
       if (terminalRef.value) terminalRef.value.scrollTop = terminalRef.value.scrollHeight
     })
   })
@@ -923,17 +1011,63 @@ const writeFile = async (path, content, overwrite) => {
 
 .messages-container { 
   flex: 1; 
-  overflow-y: auto; 
-  padding: 30px 20px; 
+  overflow: hidden; /* Delegated to scroller */
+  padding: 0; /* Padding moved to items or scroller content */
   display: flex; 
   flex-direction: column; 
-  gap: 32px; 
   background: #ffffff; 
 }
+
+.scroller {
+  height: 100%;
+  overflow-y: auto;
+  padding: 30px 20px; /* Restore padding here if needed, but better on items if scrolling content needs padding */
+}
+
+/* Ensure padding doesn't mess up scroll width */
+.scroller {
+  box-sizing: border-box;
+}
+
 .message { 
   width: 100%; 
   display: flex; 
   flex-direction: column;
+  margin-bottom: 32px; /* Replace gap */
+}
+
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-input {
+  padding: 6px 12px;
+  padding-right: 25px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  outline: none;
+  width: 200px;
+  transition: all 0.2s;
+}
+
+.search-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.clear-search {
+  position: absolute;
+  right: 8px;
+  cursor: pointer;
+  color: #94a3b8;
+  font-size: 1.1rem;
+}
+
+.clear-search:hover {
+  color: #64748b;
 }
 .message-content { 
   max-width: 850px; 
@@ -1083,6 +1217,65 @@ const writeFile = async (path, content, overwrite) => {
 }
 
 /* Global Task Panel */
+.chat-panel {
+  display: flex;
+  flex-direction: row;
+}
+
+.chat-main-column {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+}
+
+.group-separator {
+  display: flex;
+  align-items: center;
+  margin: 20px 0;
+  padding: 0 20px;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.separator-line {
+  flex: 1;
+  height: 1px;
+  background: #e2e8f0;
+}
+
+.separator-text {
+  padding: 0 10px;
+  font-weight: 500;
+}
+
+.steps-block {
+  margin: 10px 0;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.steps-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 5px;
+}
+
+.steps-list {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 0.9rem;
+  color: #475569;
+}
+
+.steps-list li {
+  margin-bottom: 4px;
+}
+
 .global-task-panel {
   position: relative;
   margin: 0 auto 8px;
