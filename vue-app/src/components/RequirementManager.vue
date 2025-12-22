@@ -52,9 +52,11 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useUIStore } from '@/stores/ui'
 import { API_CONFIG } from '@/config/api'
 
 const authStore = useAuthStore()
+const uiStore = useUIStore()
 const docs = ref([])
 const currentDoc = ref(null)
 const history = ref([])
@@ -98,7 +100,7 @@ const saveDoc = async () => {
   if (data.code === 200) {
     currentDoc.value = data.data
     fetchDocs()
-    alert('保存成功')
+    uiStore.showToast('保存成功')
   }
 }
 

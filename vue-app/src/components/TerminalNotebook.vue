@@ -70,6 +70,7 @@ import { ref, onMounted, nextTick } from 'vue'
 import { marked } from 'marked'
 import { API_CONFIG } from '@/config/api'
 import { useAuthStore } from '@/stores/auth'
+import { useUIStore } from '@/stores/ui'
 
 /**
  * 笔记本组件
@@ -84,6 +85,7 @@ const props = defineProps({
 const emit = defineEmits(['close', 'save'])
 
 const authStore = useAuthStore()
+const uiStore = useUIStore()
 const cells = ref([])
 const isSaving = ref(false)
 const fileName = ref(props.file.name)
@@ -212,13 +214,13 @@ const saveNotebook = async () => {
     
     const data = await res.json()
     if (data.code === 200) {
-      alert('保存成功')
+      uiStore.showToast('保存成功')
       emit('save')
     } else {
-      alert('保存失败: ' + data.message)
+      uiStore.showToast('保存失败: ' + data.message)
     }
   } catch (e) {
-    alert('保存失败，请检查网络')
+    uiStore.showToast('保存失败，请检查网络')
   } finally {
     isSaving.value = false
   }

@@ -1118,6 +1118,7 @@ import { ref, computed, onMounted, onUnmounted, onActivated, onDeactivated, reac
 import request from '@/utils/request'
 import { API_ENDPOINTS } from '@/config/api'
 import { useVocabularyStore } from '@/stores/vocabulary'
+import { useUIStore } from '@/stores/ui'
 
 const currentView = ref('dashboard') // dashboard, my-words, public-library, ai-articles
 const showMobileSidebar = ref(false)
@@ -1178,6 +1179,7 @@ const myArticles = ref([])
 const isLoadingArticles = ref(false)
 
 const vocabularyStore = useVocabularyStore()
+const uiStore = useUIStore()
 const vocabularyLists = computed(() => vocabularyStore.lists)
 const currentList = computed(() => vocabularyStore.lists.find(l => l.id === currentListId.value) || null)
 const currentWords = computed(() => vocabularyStore.wordsByListId[currentListId.value] || [])
@@ -1780,7 +1782,7 @@ const generateTopics = async () => {
   if (result.success) {
     generatedTopics.value = result.data
   } else {
-    alert(result.message)
+    uiStore.showToast(result.message)
   }
   isGeneratingTopics.value = false
 }
@@ -1811,17 +1813,18 @@ const generateArticleNow = async () => {
         // 更新文章列表，用户可以在“我的文章”中查看新生成的文章
         await loadMyArticles(true)
         articleGenerationComplete.value = true
+        uiStore.showToast('文章生成成功')
         
         // 3秒后自动隐藏完成提示
         setTimeout(() => {
           articleGenerationComplete.value = false
         }, 3000)
       } else {
-        alert(result.message)
+        uiStore.showToast(result.message)
       }
     } catch (error) {
       console.error('生成文章失败:', error)
-      alert('生成文章失败，请稍后重试')
+      uiStore.showToast('生成文章失败，请稍后重试')
     } finally {
       articleGenerationInProgress.value = false
     }
@@ -1842,7 +1845,7 @@ const loadMyArticles = async (force = false) => {
   if (result.success) {
     myArticles.value = result.data || []
   } else {
-    alert(result.message)
+    uiStore.showToast(result.message)
   }
   isLoadingArticles.value = false
 }
@@ -1860,7 +1863,7 @@ const openMyArticle = async (articleId) => {
     showArticleModal.value = true
     showDownloadMenu.value = false
   } else {
-    alert(result.message)
+    uiStore.showToast(result.message)
   }
   isGeneratingArticle.value = false
 }
@@ -1893,7 +1896,7 @@ const downloadArticle = async (type) => {
     const html = buildHtmlForStudyDownload(activeArticle.value)
     const articleId = activeArticle.value.id
     if (!articleId) {
-      alert('文章ID不存在，无法下载PDF')
+      uiStore.showToast('文章ID不存在，无法下载PDF')
       return
     }
     try {
@@ -1922,7 +1925,7 @@ const downloadArticle = async (type) => {
         } catch (_) {
         }
       }
-      alert(message)
+      uiStore.showToast(message)
     }
     return
   }
@@ -1941,7 +1944,7 @@ const downloadArticle = async (type) => {
 const createList = async () => {
   markActive()
   if (!newList.value.name.trim()) {
-    alert('请输入单词表名称')
+    uiStore.showToast('请输入单词表名称')
     return
   }
   
@@ -1951,7 +1954,7 @@ const createList = async () => {
     language: newList.value.language || 'en'
   })
   if (!result.success) {
-    alert('创建失败: ' + (result.message || '未知错误'))
+    uiStore.showToast('创建失败: ' + (result.message || '未知错误'))
     return
   }
   showCreateList.value = false
@@ -1959,6 +1962,7 @@ const createList = async () => {
   if (result.data?.id) {
     await selectList(result.data.id)
     currentView.value = 'my-words' // Switch to list view
+    uiStore.showToast('创建成功')
   }
 }
 
@@ -1966,7 +1970,7 @@ const addWord = async () => {
   markActive()
   if (!currentListId.value) return
   if (!newWord.value.word.trim() || !newWord.value.definition.trim()) {
-    alert('请填写单词和释义')
+    uiStore.showToast('请填写单词和释义')
     return
   }
 
@@ -1978,11 +1982,12 @@ const addWord = async () => {
     language: currentList.value?.language || 'en'
   })
   if (!result.success) {
-    alert('添加失败: ' + (result.message || '未知错误'))
+    uiStore.showToast('添加失败: ' + (result.message || '未知错误'))
     return
   }
   showAddWord.value = false
   newWord.value = { word: '', definition: '', partOfSpeech: '', example: '' }
+  uiStore.showToast('添加成功')
   await vocabularyStore.recordActivity({
     activityType: 'vocabulary_add_word',
     activityDetails: JSON.stringify({ listId: currentListId.value, wordId: result.data?.id }),
@@ -2049,9 +2054,10 @@ const changeMastery = async (wordId, value) => {
     isDifficult: current.isDifficult
   })
   if (!result.success) {
-    alert('更新失败: ' + (result.message || '未知错误'))
+    uiStore.showToast('更新失败: ' + (result.message || '未知错误'))
     return
   }
+  uiStore.showToast('更新成功')
   await Promise.all([vocabularyStore.fetchStats(), vocabularyStore.fetchReviewWords()])
 }
 
@@ -2061,7 +2067,9 @@ const removeWord = async (wordId) => {
   if (!confirm('确定要删除这个单词吗？')) return
   const result = await vocabularyStore.deleteWord(currentListId.value, wordId)
   if (!result.success) {
-    alert('删除失败: ' + (result.message || '未知错误'))
+    uiStore.showToast('删除失败: ' + (result.message || '未知错误'))
+  } else {
+    uiStore.showToast('删除成功')
   }
 }
 
@@ -2070,9 +2078,10 @@ const removeList = async (listId) => {
   if (!confirm('确定要删除这个单词表吗？')) return
   const result = await vocabularyStore.deleteList(listId)
   if (!result.success) {
-    alert('删除失败: ' + (result.message || '未知错误'))
+    uiStore.showToast('删除失败: ' + (result.message || '未知错误'))
     return
   }
+  uiStore.showToast('删除成功')
   if (currentListId.value === listId) {
     currentListId.value = null
     activeArticle.value = null
@@ -2084,7 +2093,7 @@ const removeList = async (listId) => {
 const quickReview = async (wordId, masteryLevel) => {
   markActive()
   if (wordId == null) {
-    alert('单词ID不能为空')
+    uiStore.showToast('单词ID不能为空')
     return
   }
   const current = getWordProgress(wordId)
@@ -2094,9 +2103,10 @@ const quickReview = async (wordId, masteryLevel) => {
     isDifficult: current.isDifficult
   })
   if (!result.success) {
-    alert('更新失败: ' + (result.message || '未知错误'))
+    uiStore.showToast('更新失败: ' + (result.message || '未知错误'))
     return
   }
+  uiStore.showToast('更新成功')
   await vocabularyStore.recordActivity({
     activityType: 'vocabulary_review',
     activityDetails: JSON.stringify({ wordId, masteryLevel }),
@@ -2111,7 +2121,7 @@ const searchPublic = async () => {
   const language = currentList.value?.language || 'en'
   const result = await vocabularyStore.searchPublic(kw, language)
   if (!result.success) {
-    alert('搜索失败: ' + (result.message || '未知错误'))
+    uiStore.showToast('搜索失败: ' + (result.message || '未知错误'))
   }
   currentPage.value = 1 // 搜索后回到第一页
 }
@@ -2119,7 +2129,7 @@ const searchPublic = async () => {
 const addPublicWord = async (w) => {
   markActive()
   if (!currentListId.value) {
-    alert('请先选择一个单词表')
+    uiStore.showToast('请先选择一个单词表')
     return
   }
   const result = await vocabularyStore.addWord(currentListId.value, {
@@ -2130,9 +2140,10 @@ const addPublicWord = async (w) => {
     language: w.language || currentList.value?.language || 'en'
   })
   if (!result.success) {
-    alert('添加失败: ' + (result.message || '未知错误'))
+    uiStore.showToast('添加失败: ' + (result.message || '未知错误'))
     return
   }
+  uiStore.showToast('添加成功')
   await vocabularyStore.recordActivity({
     activityType: 'vocabulary_add_public_word',
     activityDetails: JSON.stringify({ listId: currentListId.value, publicWordId: w.id, wordId: result.data?.id }),

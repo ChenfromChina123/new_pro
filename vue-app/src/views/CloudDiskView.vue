@@ -288,9 +288,11 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, computed, onActivated } from 'vue'
 import { useCloudDiskStore } from '@/stores/cloudDisk'
+import { useUIStore } from '@/stores/ui'
 import ConflictResolutionDialog from '@/components/ConflictResolutionDialog.vue'
 
 const cloudDiskStore = useCloudDiskStore()
+const uiStore = useUIStore()
 
 const fileInput = ref(null)
 const folderInput = ref(null)
@@ -387,11 +389,11 @@ const goToRoot = async () => {
 const handleNewFolder = () => {
   // 检查层级限制
   if (!cloudDiskStore.canCreateSubFolder()) {
-    alert('目录层级超出限制，最多支持两层目录（不计根目录）')
+    uiStore.showToast('目录层级超出限制，最多支持两层目录（不计根目录）')
     return
   }
   
-  const folderName = prompt('请输入文件夹名称')
+  const folderName = prompt('请输入文件夹名称', '新建文件夹')
   if (folderName && folderName.trim()) {
     createFolder(folderName)
   }
@@ -399,8 +401,11 @@ const handleNewFolder = () => {
 
 const createFolder = async (folderName) => {
   const result = await cloudDiskStore.createFolder(folderName)
-  if (!result.success) {
-    alert(`创建文件夹失败: ${result.message}`)
+  if (result.success) {
+    uiStore.showToast('创建成功')
+    await refreshData()
+  } else {
+    uiStore.showToast(`创建文件夹失败: ${result.message}`)
   }
 }
 
@@ -412,7 +417,7 @@ const handleFileSelect = async (event) => {
   if (cloudDiskStore.quota.limitSize !== -1) {
     const totalSize = files.reduce((acc, f) => acc + f.size, 0)
     if (cloudDiskStore.quota.usedSize + totalSize > cloudDiskStore.quota.limitSize) {
-      alert(`存储空间不足！当前可用空间约 ${formatFileSize(cloudDiskStore.quota.limitSize - cloudDiskStore.quota.usedSize)}`)
+      uiStore.showToast(`存储空间不足！当前可用空间约 ${formatFileSize(cloudDiskStore.quota.limitSize - cloudDiskStore.quota.usedSize)}`)
       event.target.value = ''
       return
     }
@@ -482,7 +487,7 @@ const performUpload = async (file, strategy) => {
   if (result.success) {
     console.log('文件上传成功:', file.name)
   } else {
-    alert(`上传失败: ${result.message}`)
+    uiStore.showToast(`上传失败: ${result.message}`)
   }
 }
 
@@ -527,7 +532,7 @@ const handleFolderSelect = async (event) => {
   if (result.success) {
     console.log('文件夹上传成功')
   } else {
-    alert(`上传失败: ${result.message}`)
+    uiStore.showToast(`上传失败: ${result.message}`)
   }
   
   uploadProgress.value = 0
@@ -559,7 +564,7 @@ const deleteFile = async (fileId) => {
   if (confirm('确定要删除这个文件吗？')) {
     const result = await cloudDiskStore.deleteFile(fileId)
     if (!result.success) {
-      alert(`删除失败: ${result.message}`)
+      uiStore.showToast(`删除失败: ${result.message}`)
     }
   }
 }
@@ -569,8 +574,9 @@ const deleteSelected = async () => {
     const result = await cloudDiskStore.deleteFiles([...cloudDiskStore.selectedFiles])
     if (result.success) {
       cloudDiskStore.clearSelection()
+      uiStore.showToast('删除成功')
     } else {
-      alert(`删除失败: ${result.successCount}/${result.totalCount} 个文件已删除`)
+      uiStore.showToast(`删除失败: ${result.successCount}/${result.totalCount} 个文件已删除`)
     }
   }
 }
@@ -583,7 +589,7 @@ const downloadCurrentFolder = async () => {
   if (confirm(`确定要下载文件夹 "${folderName}" 吗？`)) {
     const result = await cloudDiskStore.downloadFolder(folderPath)
     if (!result.success) {
-      alert(`下载失败: ${result.message}`)
+      uiStore.showToast(`下载失败: ${result.message}`)
     }
   }
 }
