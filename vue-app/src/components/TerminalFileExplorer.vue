@@ -8,7 +8,10 @@
           <span class="breadcrumb-item" @click="navigateToPart(index)">{{ part }}</span>
         </template>
       </div>
-      <button @click="refresh" class="refresh-btn" title="刷新">🔄</button>
+      <div class="header-actions">
+        <button @click="createNewNotebook" class="action-btn" title="新建笔记本">📓+</button>
+        <button @click="refresh" class="refresh-btn" title="刷新">🔄</button>
+      </div>
     </div>
     <div class="file-list">
       <div 
@@ -24,15 +27,15 @@
         :key="file.name"
         class="file-item"
         :class="{ 
-          directory: file.isDirectory || file.is_directory,
+          directory: file.isDirectory || file.is_directory || file.directory,
           selected: selectedFile === file.name
         }"
         @click="handleItemClick(file)"
         @dblclick="handleDblClick(file)"
       >
-        <span class="icon">{{ (file.isDirectory || file.is_directory) ? '📁' : '📄' }}</span>
+        <span class="icon">{{ (file.isDirectory || file.is_directory || file.directory) ? '📁' : '📄' }}</span>
         <span class="name">{{ file.name }}</span>
-        <span class="size" v-if="!(file.isDirectory || file.is_directory)">{{ formatSize(file.size) }}</span>
+        <span class="size" v-if="!(file.isDirectory || file.is_directory || file.directory)">{{ formatSize(file.size) }}</span>
       </div>
     </div>
   </div>
@@ -82,8 +85,8 @@ const fetchFiles = async (path) => {
     const data = await res.json()
     if (data.code === 200) {
       files.value = data.data.sort((a, b) => {
-        const aIsDir = a.isDirectory || a.is_directory
-        const bIsDir = b.isDirectory || b.is_directory
+        const aIsDir = a.isDirectory || a.is_directory || a.directory
+        const bIsDir = b.isDirectory || b.is_directory || b.directory
         if (aIsDir === bIsDir) return a.name.localeCompare(b.name)
         return aIsDir ? -1 : 1
       })
@@ -97,9 +100,40 @@ const fetchFiles = async (path) => {
 
 const refresh = () => fetchFiles(currentPath.value)
 
+const createNewNotebook = async () => {
+  const name = prompt('请输入笔记本名称 (无需后缀):', 'new_notebook')
+  if (!name) return
+  
+  const fileName = name.endsWith('.nb') ? name : `${name}.nb`
+  const path = currentPath.value === '/' ? `/${fileName}` : `${currentPath.value}/${fileName}`
+  
+  try {
+    const res = await fetch(`${API_CONFIG.baseURL}/api/terminal/write-file`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authStore.token}`
+      },
+      body: JSON.stringify({
+        path: path,
+        content: JSON.stringify([{ type: 'code', content: '', output: '', error: '' }]),
+        overwrite: false
+      })
+    })
+    const data = await res.json()
+    if (data.code === 200) {
+      refresh()
+    } else {
+      alert('创建失败: ' + data.message)
+    }
+  } catch (e) {
+    alert('创建失败，请检查网络')
+  }
+}
+
 const handleItemClick = (file) => {
   selectedFile.value = file.name
-  if (file.isDirectory || file.is_directory) {
+  if (file.isDirectory || file.is_directory || file.directory) {
     // Single click on directory enters it
     const newPath = currentPath.value === '/' 
       ? '/' + file.name 
@@ -113,7 +147,7 @@ const handleItemClick = (file) => {
 }
 
 const handleDblClick = (file) => {
-  if (!(file.isDirectory || file.is_directory)) {
+  if (!(file.isDirectory || file.is_directory || file.directory)) {
     emit('select', file)
   }
 }
@@ -181,6 +215,28 @@ onMounted(() => {
 
 .separator {
   color: #64748b;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.action-btn {
+  background: #475569;
+  border: none;
+  cursor: pointer;
+  color: #e2e8f0;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  transition: all 0.2s;
+}
+
+.action-btn:hover {
+  background: #0ea5e9;
+  color: #fff;
 }
 
 .refresh-btn {
