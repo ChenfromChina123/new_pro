@@ -33,33 +33,6 @@ public class TerminalController {
     private final AiChatService aiChatService;
     private final ChatRecordService chatRecordService;
 
-    private static final String INTENT_ANALYSIS_PROMPT = """
-# Role
-你是一个资深的终端指令分析专家。你的任务是分析用户的自然语言请求，识别其真实意图，并规划出在终端中执行该任务所需的具体步骤。
-
-# Context
-- 操作系统: %s
-- 当前目录: %s
-- 存储根目录: %s
-
-# Task
-分析用户输入，并输出以下 JSON 格式（严禁输出 Markdown 代码块，只输出 JSON 内容）：
-{
-  "intent": "任务类型(如: create_file, build_project, query_system, debug_error, manage_files)",
-  "summary": "一句话总结用户意图",
-  "reasoning": "分析为什么识别为该意图",
-  "steps": ["步骤1", "步骤2", "..."],
-  "needs_task_list": true/false (如果是复杂任务或包含多步骤则为 true),
-  "is_executable": true/false (用户请求是否可以在当前终端环境中通过指令完成),
-  "missing_info": "如果无法执行，缺少什么信息；如果可以执行，留空"
-}
-
-# Constraints
-1. 保持专业、客观。
-2. 步骤必须是逻辑上可执行的。
-3. 如果用户请求包含非法操作（如访问系统根目录），必须识别为不可执行。
-4. 严禁输出任何解释性文字，只输出 JSON 对象。
-""";
 
     private static final String SYSTEM_PROMPT_TEMPLATE = """
 # Role
@@ -251,38 +224,6 @@ public class TerminalController {
         return ApiResponse.success(response);
     }
 
-    @PostMapping("/analyze-intent")
-    @PreAuthorize("isAuthenticated()")
-    public ApiResponse<String> analyzeIntent(@AuthenticationPrincipal CustomUserDetails currentUser,
-                                             @Valid @RequestBody TerminalChatRequest request) {
-        Long userId = currentUser.getUser().getId();
-        String rootPath = terminalService.getUserTerminalRoot(userId);
-        String os = System.getProperty("os.name");
-        
-        // Get CWD from session
-        String cwd = "/";
-        if (request.getSession_id() != null) {
-            Optional<ChatSession> session = chatRecordService.getChatSession(request.getSession_id());
-            if (session.isPresent() && session.get().getCurrentCwd() != null) {
-                cwd = session.get().getCurrentCwd();
-            }
-        }
-        
-        // Escape backslashes for JSON/String format in prompt
-        String escapedCwd = cwd.replace("\\", "/");
-        
-        // 使用虚拟根路径 "/" 代替物理路径，防止泄露
-        String virtualRoot = "/";
-        String systemPrompt = String.format(INTENT_ANALYSIS_PROMPT, os, escapedCwd, virtualRoot);
-
-        String analysis = aiChatService.analyzeIntent(
-                request.getPrompt(),
-                systemPrompt,
-                request.getModel()
-        );
-        
-        return ApiResponse.success(analysis);
-    }
 
     @GetMapping("/files")
     @PreAuthorize("isAuthenticated()")

@@ -33,8 +33,4 @@ public interface AiChatService {
      */
     SseEmitter askAgentStream(String prompt, String sessionId, String model, String userId, String systemPrompt);
 
-    /**
-     * 意图识别
-     */
-    String analyzeIntent(String prompt, String systemPrompt, String model);
 }
