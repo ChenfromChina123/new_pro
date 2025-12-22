@@ -198,6 +198,14 @@ public class TerminalController {
         return ApiResponse.success(files);
     }
 
+    @GetMapping("/read-file")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<String> readFile(@AuthenticationPrincipal CustomUserDetails currentUser,
+                                      @RequestParam String path) {
+        String content = terminalService.readFile(currentUser.getUser().getId(), path);
+        return ApiResponse.success(content);
+    }
+
     @PostMapping("/new-session")
     @PreAuthorize("isAuthenticated()")
     public ApiResponse<ChatSession> createNewSession(@AuthenticationPrincipal CustomUserDetails currentUser) {

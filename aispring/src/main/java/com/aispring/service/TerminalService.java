@@ -9,4 +9,5 @@ public interface TerminalService {
     String getUserTerminalRoot(Long userId);
     TerminalCommandResponse writeFile(Long userId, String relativePath, String content, String relativeCwd, boolean overwrite);
     List<TerminalFileDto> listFiles(Long userId, String relativePath);
+    String readFile(Long userId, String relativePath);
 }

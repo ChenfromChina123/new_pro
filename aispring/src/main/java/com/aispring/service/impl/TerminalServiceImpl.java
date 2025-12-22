@@ -114,6 +114,26 @@ public class TerminalServiceImpl implements TerminalService {
     }
 
     @Override
+    public String readFile(Long userId, String relativePath) {
+        String userRoot = getUserTerminalRoot(userId);
+        Path rootPath = Paths.get(userRoot);
+        
+        // Use resolvePath logic to handle the path safely
+        Path targetPath = resolvePath(rootPath, relativePath);
+
+        if (!Files.exists(targetPath) || Files.isDirectory(targetPath)) {
+            throw new RuntimeException("File not found: " + relativePath);
+        }
+
+        try {
+            return Files.readString(targetPath, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            log.error("Error reading file: " + relativePath, e);
+            throw new RuntimeException("Could not read file: " + e.getMessage());
+        }
+    }
+
+    @Override
     public TerminalCommandResponse writeFile(Long userId, String relativePath, String content, String relativeCwd, boolean overwrite) {
         String userRoot = getUserTerminalRoot(userId);
         Path rootPath = Paths.get(userRoot);

@@ -213,13 +213,26 @@
 
           <!-- File Explorer -->
           <div v-if="activeTab === 'files'" class="panel-content">
-             <TerminalFileExplorer ref="fileExplorer" />
+             <TerminalFileExplorer ref="fileExplorer" @select="handleFileSelect" />
           </div>
 
           <!-- Requirements -->
           <div v-if="activeTab === 'req'" class="panel-content">
              <RequirementManager />
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- File Viewer Modal -->
+    <div v-if="isViewingFile" class="file-viewer-overlay" @click.self="closeFileViewer">
+      <div class="file-viewer-modal">
+        <div class="viewer-header">
+          <span class="file-path">{{ viewingFile?.path }}</span>
+          <button class="close-btn" @click="closeFileViewer">✕</button>
+        </div>
+        <div class="viewer-content">
+          <pre><code>{{ fileContent }}</code></pre>
         </div>
       </div>
     </div>
@@ -247,6 +260,11 @@ const isExecuting = ref(false)
 const messagesRef = ref(null)
 const terminalRef = ref(null)
 const fileExplorer = ref(null)
+
+// File Viewer State
+const viewingFile = ref(null)
+const fileContent = ref('')
+const isViewingFile = ref(false)
 
 const currentSessionId = ref(null)
 const sessions = ref([])
@@ -388,6 +406,28 @@ const deleteSession = async (sessionId) => {
       else createNewSession()
     }
   } catch (e) { console.error(e) }
+}
+
+const handleFileSelect = async (file) => {
+  try {
+    const res = await fetch(`${API_CONFIG.baseURL}/api/terminal/read-file?path=${encodeURIComponent(file.path)}`, {
+      headers: { 'Authorization': `Bearer ${authStore.token}` }
+    })
+    const data = await safeReadJson(res)
+    if (data?.code === 200) {
+      viewingFile.value = file
+      fileContent.value = data.data
+      isViewingFile.value = true
+    }
+  } catch (e) {
+    console.error('Failed to read file:', e)
+  }
+}
+
+const closeFileViewer = () => {
+  isViewingFile.value = false
+  viewingFile.value = null
+  fileContent.value = ''
 }
 
 const formatDate = (d) => new Date(d).toLocaleString()
@@ -810,4 +850,76 @@ textarea { flex: 1; height: 50px; padding: 10px; border: 1px solid #e2e8f0; bord
 .output.stderr { color: #f87171; }
 
 .panel-content { flex: 1; overflow: hidden; }
+
+/* File Viewer Styles */
+.file-viewer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.file-viewer-modal {
+  width: 80%;
+  height: 80%;
+  background: #0f172a;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  border: 1px solid #334155;
+  overflow: hidden;
+}
+
+.viewer-header {
+  padding: 12px 20px;
+  background: #1e293b;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #334155;
+}
+
+.file-path {
+  color: #38bdf8;
+  font-family: monospace;
+  font-size: 0.9rem;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+}
+
+.close-btn:hover {
+  color: #fff;
+}
+
+.viewer-content {
+  flex: 1;
+  overflow: auto;
+  padding: 20px;
+}
+
+.viewer-content pre {
+  margin: 0;
+  color: #e2e8f0;
+  font-family: 'Fira Code', 'Cascadia Code', Consolas, monospace;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
 </style>
