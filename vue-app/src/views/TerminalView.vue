@@ -112,17 +112,6 @@
                     </div>
                   </div>
 
-                  <!-- Task List Display -->
-                  <div v-if="msg.tasks" class="task-list-card">
-                    <div class="task-header">📋 任务清单</div>
-                    <div v-for="task in msg.tasks" :key="task.id" class="task-item" :class="task.status">
-                      <span class="task-icon">
-                        {{ task.status === 'completed' ? '✅' : (task.status === 'in_progress' ? '🔄' : '⭕') }}
-                      </span>
-                      <span class="task-desc">{{ task.desc }}</span>
-                    </div>
-                  </div>
-
                   <div v-if="msg.message" class="ai-text">
                     {{ msg.message }}
                   </div>
@@ -156,6 +145,32 @@
             </div>
             <div v-if="isTyping" class="message ai">
               <div class="typing-indicator"><span>.</span><span>.</span><span>.</span></div>
+            </div>
+          </div>
+
+          <!-- Floating Task List Panel -->
+          <div v-if="currentTasks && currentTasks.length > 0" class="global-task-panel" :class="{ collapsed: taskListCollapsed }">
+            <div class="task-panel-header" @click="taskListCollapsed = !taskListCollapsed">
+              <div class="header-main">
+                <span class="panel-icon">📋</span>
+                <span class="panel-title">任务进度</span>
+                <span class="task-count">({{ completedCount }}/{{ currentTasks.length }})</span>
+              </div>
+              <div class="header-right">
+                <div class="progress-mini-bar">
+                  <div class="progress-fill" :style="{ width: taskProgress + '%' }"></div>
+                </div>
+                <span class="progress-percent">{{ taskProgress }}%</span>
+                <i class="toggle-icon">{{ taskListCollapsed ? '▲' : '▼' }}</i>
+              </div>
+            </div>
+            <div v-if="!taskListCollapsed" class="task-panel-body">
+              <div v-for="task in currentTasks" :key="task.id" class="task-item" :class="task.status">
+                <span class="task-icon">
+                  {{ task.status === 'completed' ? '✅' : (task.status === 'in_progress' ? '🔄' : '⭕') }}
+                </span>
+                <span class="task-desc">{{ task.desc }}</span>
+              </div>
             </div>
           </div>
 
@@ -297,6 +312,18 @@ const sidebarCollapsed = ref(false)
 const rightPanelCollapsed = ref(false)
 const activeTab = ref('terminal')
 
+const currentTasks = ref([])
+const taskListCollapsed = ref(true)
+
+const completedCount = computed(() => {
+  return currentTasks.value.filter(t => t.status === 'completed').length
+})
+
+const taskProgress = computed(() => {
+  if (currentTasks.value.length === 0) return 0
+  return Math.round((completedCount.value / currentTasks.value.length) * 100)
+})
+
 const sidebarWidth = ref(260)
 const rightPanelWidth = ref(window.innerWidth * 0.4) // Default to 40%
 
@@ -437,6 +464,8 @@ const selectSession = async (sessionId) => {
   currentSessionId.value = sessionId
   messages.value = []
   terminalLogs.value = []
+  currentTasks.value = []
+  taskListCollapsed.value = true
   
   const session = sessions.value.find(s => s.sessionId === sessionId)
   if (session && session.currentCwd) {
@@ -465,6 +494,17 @@ const selectSession = async (sessionId) => {
              // Simple fallback parsing for history
              if (content && content.trim().startsWith('{')) {
                const action = JSON.parse(content)
+               
+               // Restore tasks to global state if this is the latest task list
+               if (action.type === 'task_list' || action.tasks) {
+                 currentTasks.value = action.tasks || []
+                 taskListCollapsed.value = false
+               }
+               if (action.type === 'task_update' && currentTasks.value.length > 0) {
+                 const task = currentTasks.value.find(t => t.id === action.taskId)
+                 if (task) task.status = action.status
+               }
+
                return { 
                  role: 'ai', 
                  thought: action.thought, 
@@ -472,7 +512,6 @@ const selectSession = async (sessionId) => {
                  tool: action.tool, 
                  command: action.command,
                  filePath: action.path,
-                 tasks: action.tasks, // Restore tasks if saved
                  status: 'success',
                  showThought: false
                }
@@ -705,21 +744,16 @@ const processAgentLoop = async (prompt) => {
 
       currentAiMsg.thought = action.thought || currentAiMsg.thought
       currentAiMsg.message = action.message || currentAiMsg.message
+      
       if (action.type === 'task_list') {
-        currentAiMsg.tasks = action.tasks
+        currentTasks.value = action.tasks || []
+        taskListCollapsed.value = false
         currentAiMsg.message = "已生成任务列表"
       } else if (action.type === 'task_update') {
-        // Find previous task list and update
-        // We look backwards
-        for (let i = messages.value.length - 1; i >= 0; i--) {
-          if (messages.value[i].tasks) {
-             const task = messages.value[i].tasks.find(t => t.id === action.taskId)
-             if (task) {
-               task.status = action.status
-               currentAiMsg.message = `任务更新: ${task.desc} -> ${action.status}`
-             }
-             break
-          }
+        const task = currentTasks.value.find(t => t.id === action.taskId)
+        if (task) {
+          task.status = action.status
+          currentAiMsg.message = `任务更新: ${task.desc} -> ${action.status}`
         }
       } else if (action.tool === 'execute_command') {
          currentAiMsg.tool = 'execute_command'
@@ -991,6 +1025,114 @@ const writeFile = async (path, content, overwrite) => {
 .status-error { color: #f87171; }
 
 .input-area { padding: 20px; border-top: 1px solid #e2e8f0; display: flex; gap: 10px; }
+
+/* Global Task Panel */
+.global-task-panel {
+  margin: 0 20px 10px 20px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  z-index: 10;
+}
+.global-task-panel.collapsed {
+  margin-bottom: 0;
+}
+.task-panel-header {
+  padding: 10px 15px;
+  background: #f8fafc;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+}
+.task-panel-header:hover {
+  background: #f1f5f9;
+}
+.header-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.panel-icon {
+  font-size: 1.1rem;
+}
+.panel-title {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 0.9rem;
+}
+.task-count {
+  color: #64748b;
+  font-size: 0.8rem;
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.progress-mini-bar {
+  width: 100px;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: #3b82f6;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.progress-percent {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #3b82f6;
+  min-width: 35px;
+}
+.task-panel-body {
+  padding: 12px 15px;
+  border-top: 1px solid #f1f5f9;
+  max-height: 250px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #fff;
+}
+.task-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+.task-item:hover {
+  background: #f8fafc;
+}
+.task-item.completed {
+  opacity: 0.6;
+}
+.task-item.completed .task-desc {
+  text-decoration: line-through;
+}
+.task-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+.task-desc {
+  font-size: 0.9rem;
+  color: #334155;
+}
+.task-item.in_progress .task-desc {
+  font-weight: 500;
+  color: #2563eb;
+}
+
 textarea { flex: 1; height: 50px; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; resize: none; }
 .send-btn { background: #3b82f6; color: white; border: none; padding: 0 20px; border-radius: 8px; cursor: pointer; }
 .send-btn:disabled { background: #94a3b8; cursor: not-allowed; }
