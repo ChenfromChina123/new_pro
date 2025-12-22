@@ -740,17 +740,16 @@ const processAgentLoop = async (prompt) => {
             
             // Loop back with feedback
             await processAgentLoop(feedback)
+          } else {
+            currentAiMsg.message = action.message || ''
           }
-        } else {
+        } catch (e) {
+          console.error("JSON Parse Error at end of stream", e)
           currentAiMsg.message = fullContent
         }
-      } catch (e) {
-        console.error("JSON Parse Error at end of stream", e)
+      } else if (fullContent) {
         currentAiMsg.message = fullContent
       }
-    } else if (fullContent) {
-      currentAiMsg.message = fullContent
-    }
 
     // Save final AI response to history
     await saveMessage(fullContent, 2)
