@@ -190,10 +190,11 @@ public class TerminalController {
         }
         
         // Escape backslashes for JSON/String format in prompt
-        String escapedRootPath = rootPath.replace("\\", "\\\\");
         String escapedCwd = cwd.replace("\\", "/"); // Frontend friendly
         
-        String systemPrompt = String.format(SYSTEM_PROMPT_TEMPLATE, os, escapedRootPath, escapedCwd, escapedRootPath);
+        // 使用虚拟根路径 "/" 代替物理路径，防止泄露
+        String virtualRoot = "/";
+        String systemPrompt = String.format(SYSTEM_PROMPT_TEMPLATE, os, virtualRoot, escapedCwd, virtualRoot);
 
         // 如果是 Windows 环境，追加具体的 PowerShell 提示
         if (os.toLowerCase().contains("win")) {
@@ -256,10 +257,11 @@ public class TerminalController {
         }
         
         // Escape backslashes for JSON/String format in prompt
-        String escapedRootPath = rootPath.replace("\\", "\\\\");
         String escapedCwd = cwd.replace("\\", "/");
         
-        String systemPrompt = String.format(INTENT_ANALYSIS_PROMPT, os, escapedCwd, escapedRootPath);
+        // 使用虚拟根路径 "/" 代替物理路径，防止泄露
+        String virtualRoot = "/";
+        String systemPrompt = String.format(INTENT_ANALYSIS_PROMPT, os, escapedCwd, virtualRoot);
 
         String analysis = aiChatService.analyzeIntent(
                 request.getPrompt(),

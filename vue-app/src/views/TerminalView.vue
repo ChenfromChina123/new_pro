@@ -381,12 +381,20 @@ onMounted(async () => {
   } else {
     await terminalStore.createNewSession()
   }
+  // 页面加载完成后滚动到底部
+  scrollToBottom()
 })
 
 watch(currentSessionId, async () => {
   await nextTick()
   scrollToBottom()
 })
+
+// 监听终端日志变化，自动滚动到底部
+watch(terminalLogs, () => {
+  nextTick()
+  scrollToBottom()
+}, { deep: true })
 
 const handleFileSelect = async (file) => {
   try {
