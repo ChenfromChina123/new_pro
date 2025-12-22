@@ -174,7 +174,8 @@ export const useTerminalStore = defineStore('terminal', () => {
               lastCommandAction = null
             }
           } else if (senderType === 3) {
-            newMessages.push({ role: 'command_result', content: content })
+            // terminal_output 记录不再存入 messages (聊天框)，仅用于 terminalLogs
+            // newMessages.push({ role: 'command_result', content: content })
             
             // 关联到 terminalLogs
             if (lastCommandAction) {
