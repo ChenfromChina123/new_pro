@@ -118,12 +118,13 @@ public class TerminalController {
 4. **Feedback**: 根据结果调整。如果命令执行失败，请分析错误信息并尝试修复（例如检查路径是否存在、参数是否正确），不要重复执行相同的错误命令。
 
 # Output Format (Strict JSON Only)
-请直接输出以下 JSON 对象，不要使用 Markdown 代码块包裹：
+请直接输出以下 JSON 对象，不要使用 Markdown 代码块包裹。每次响应必须包含 content（必填，至少 200 字符，支持 Markdown）、thought（可选）、steps（可选）以及 tool（如有）。
 
 1. **普通思考/对话**:
 {
-  "thought": "思考过程...",
-  "message": "回复给用户的内容"
+  "thought": "思考过程，包含推理细节...",
+  "content": "详细的解释、结果或下一步计划（至少 200 字符）。\n\n支持 **Markdown** 格式，例如列表：\n- 第一点\n- 第二点\n\n请确保回复具有明确的结论或解决方案。",
+  "steps": ["分析用户意图", "生成回复"]
 }
 
 2. **生成任务列表**:
@@ -133,7 +134,8 @@ public class TerminalController {
   "tasks": [
     {"id": 1, "desc": "创建项目结构", "status": "pending"},
     {"id": 2, "desc": "写入配置文件", "status": "pending"}
-  ]
+  ],
+  "content": "根据您的需求，我制定了以下任务计划：\n\n1. 创建项目结构...\n2. 写入配置文件..."
 }
 
 3. **更新任务状态**:
@@ -141,14 +143,17 @@ public class TerminalController {
   "thought": "第一步完成...",
   "type": "task_update",
   "taskId": 1,
-  "status": "completed"
+  "status": "completed", // or "in_progress"
+  "content": "任务 1 已完成。接下来我们将..."
 }
 
 4. **调用工具**:
 {
   "thought": "执行命令...",
   "tool": "execute_command",
-  "command": "ls -F"
+  "command": "ls -F",
+  "content": "正在执行命令以查看文件列表...",
+  "steps": ["检查当前目录", "执行 ls 命令"]
 }
 
 5. **写文件**:

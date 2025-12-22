@@ -13,8 +13,31 @@ export const useTerminalStore = defineStore('terminal', () => {
   const messages = ref([])
   const terminalLogs = ref([])
   const currentTasks = ref([])
+  const activeTaskId = ref(null) // 当前正在进行的任务 ID
   const currentCwd = ref('/')
   const isLoading = ref(false)
+
+  // 计算属性：按任务分组的消息
+  const groupedMessages = computed(() => {
+    const groups = []
+    let currentGroup = { taskId: null, messages: [] }
+    
+    messages.value.forEach(msg => {
+      if (msg.taskId !== currentGroup.taskId) {
+        if (currentGroup.messages.length > 0) {
+          groups.push(currentGroup)
+        }
+        currentGroup = { taskId: msg.taskId, messages: [] }
+      }
+      currentGroup.messages.push(msg)
+    })
+    
+    if (currentGroup.messages.length > 0) {
+      groups.push(currentGroup)
+    }
+    
+    return groups
+  })
 
   // 计算属性：按日期分组的会话
   const groupedSessions = computed(() => {
@@ -112,6 +135,7 @@ export const useTerminalStore = defineStore('terminal', () => {
     messages.value = []
     terminalLogs.value = []
     currentTasks.value = []
+    activeTaskId.value = null
     
     const session = sessions.value.find(s => s.sessionId === sessionId)
     if (session && session.currentCwd) {
@@ -129,13 +153,14 @@ export const useTerminalStore = defineStore('terminal', () => {
         
         // 用于临时存储上一个 AI 命令，以便关联结果
         let lastCommandAction = null
+        let trackedTaskId = null
 
         records.forEach(r => {
           const senderType = r.senderType ?? r.sender_type
           const content = r.content
 
           if (senderType === 1) {
-            newMessages.push({ role: 'user', content: content })
+            newMessages.push({ role: 'user', content: content, taskId: trackedTaskId })
             lastCommandAction = null
           } else if (senderType === 2) {
             try {
@@ -147,17 +172,23 @@ export const useTerminalStore = defineStore('terminal', () => {
                   const taskIndex = currentTasks.value.findIndex(t => String(t.id) === String(action.taskId))
                   if (taskIndex !== -1) {
                     currentTasks.value[taskIndex].status = action.status
+                    if (action.status === 'in_progress') {
+                      trackedTaskId = action.taskId
+                      activeTaskId.value = action.taskId
+                    }
                   }
                 }
                 
                 const msg = { 
                   role: 'ai', 
                   thought: action.thought, 
-                  message: action.message, 
+                  message: action.message || action.content, // Support new 'content' field
+                  steps: action.steps, // Support new 'steps' field
                   tool: action.tool, 
                   command: action.command,
                   filePath: action.path,
-                  status: action.exitCode === 0 ? 'success' : 'error'
+                  status: action.exitCode === 0 ? 'success' : 'error',
+                  taskId: trackedTaskId
                 }
                 newMessages.push(msg)
                 
@@ -166,11 +197,11 @@ export const useTerminalStore = defineStore('terminal', () => {
                   lastCommandAction = action
                 }
               } else {
-                newMessages.push({ role: 'ai', message: content })
+                newMessages.push({ role: 'ai', message: content, taskId: trackedTaskId })
                 lastCommandAction = null
               }
             } catch (e) {
-              newMessages.push({ role: 'ai', message: content })
+              newMessages.push({ role: 'ai', message: content, taskId: trackedTaskId })
               lastCommandAction = null
             }
           } else if (senderType === 3) {
@@ -212,6 +243,8 @@ export const useTerminalStore = defineStore('terminal', () => {
     messages,
     terminalLogs,
     currentTasks,
+    activeTaskId,
+    groupedMessages,
     currentCwd,
     isLoading,
     groupedSessions,
