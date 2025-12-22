@@ -25,10 +25,13 @@ public class AgentStateServiceImpl implements AgentStateService {
 
     @Override
     public AgentState getAgentState(String sessionId, Long userId) {
-        return stateStore.computeIfAbsent(sessionId, k -> {
-            initializeAgentState(k, userId);
-            return stateStore.get(k);
-        });
+        String key = (sessionId == null || sessionId.isBlank()) ? ("user-" + userId) : sessionId;
+        AgentState existing = stateStore.get(key);
+        if (existing != null) return existing;
+
+        AgentState created = buildInitialAgentState(key, userId);
+        AgentState raced = stateStore.putIfAbsent(key, created);
+        return raced != null ? raced : created;
     }
 
     @Override
@@ -50,9 +53,14 @@ public class AgentStateServiceImpl implements AgentStateService {
 
     @Override
     public void initializeAgentState(String sessionId, Long userId) {
+        String key = (sessionId == null || sessionId.isBlank()) ? ("user-" + userId) : sessionId;
+        stateStore.put(key, buildInitialAgentState(key, userId));
+    }
+
+    private AgentState buildInitialAgentState(String sessionId, Long userId) {
         String userRoot = terminalService.getUserTerminalRoot(userId);
-        
-        AgentState state = AgentState.builder()
+
+        return AgentState.builder()
                 .sessionId(sessionId)
                 .meta(AgentMeta.builder()
                         .agentId("ai_terminal_assistant")
@@ -72,8 +80,6 @@ public class AgentStateServiceImpl implements AgentStateService {
                 .version(0)
                 .updatedAt(Instant.now())
                 .build();
-        
-        stateStore.put(sessionId, state);
     }
 
     @Override

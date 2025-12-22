@@ -12,7 +12,7 @@
         <div 
           class="progress-fill" 
           :style="{ width: progress + '%', backgroundColor: progressColor }"
-        ></div>
+        />
       </div>
     </div>
 
@@ -29,32 +29,48 @@
             'pending': task.status === 'pending'
           }"
           draggable="true"
-          @dragstart="onDragStart($event, index)"
-          @dragover="onDragOver($event)"
-          @drop="onDrop($event, index)"
-          @click="$emit('select-task', task.id)"
           :style="{
             backgroundColor: getTaskBg(task),
             borderColor: getTaskBorder(task)
           }"
+          @dragstart="onDragStart($event, index)"
+          @dragover="onDragOver($event)"
+          @drop="onDrop($event, index)"
+          @click="$emit('select-task', task.id)"
         >
           <div class="task-status-icon">
-            <i v-if="task.status === 'completed'" class="icon-success">✓</i>
-            <i v-else-if="task.status === 'in_progress'" class="icon-spin">⟳</i>
-            <i v-else class="icon-pending">○</i>
+            <i
+              v-if="task.status === 'completed'"
+              class="icon-success"
+            >✓</i>
+            <i
+              v-else-if="task.status === 'in_progress'"
+              class="icon-spin"
+            >⟳</i>
+            <i
+              v-else
+              class="icon-pending"
+            >○</i>
           </div>
           <div class="task-content">
             <div 
               class="task-title" 
               :title="task.desc"
               :style="{ color: task.status === 'completed' ? '#15803d' : '#334155' }"
-            >{{ task.desc }}</div>
+            >
+              {{ task.desc }}
+            </div>
             <div class="task-meta">
               <span class="task-id">#{{ task.id }}</span>
-              <span v-if="task.time" class="task-time">{{ formatTime(task.time) }}</span>
+              <span
+                v-if="task.time"
+                class="task-time"
+              >{{ formatTime(task.time) }}</span>
             </div>
           </div>
-          <div class="drag-handle">⋮⋮</div>
+          <div class="drag-handle">
+            ⋮⋮
+          </div>
         </div>
       </TransitionGroup>
     </div>

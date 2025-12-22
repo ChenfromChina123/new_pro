@@ -17,7 +17,10 @@
             <div class="chat-header">
               <div class="header-left">
                 <h3>AI 终端助手</h3>
-                <span v-if="agentStatus !== 'IDLE'" :class="['status-badge', agentStatus.toLowerCase()]">
+                <span
+                  v-if="agentStatus !== 'IDLE'"
+                  :class="['status-badge', agentStatus.toLowerCase()]"
+                >
                   {{ agentStatus }}
                 </span>
               </div>
@@ -62,17 +65,23 @@
                     :data-index="index"
                   >
                     <!-- Header Item -->
-                    <div v-if="item.type === 'header'" class="group-separator">
-                      <span class="separator-line"></span>
+                    <div
+                      v-if="item.type === 'header'"
+                      class="group-separator"
+                    >
+                      <span class="separator-line" />
                       <span 
                         class="separator-text" 
-                        @click="toggleTaskExpand(item.taskId)"
                         style="cursor: pointer; display: flex; align-items: center; gap: 8px;"
+                        @click="toggleTaskExpand(item.taskId)"
                       >
-                        <span class="toggle-icon" style="font-size: 0.8em;">{{ item.expanded ? '▼' : '▶' }}</span>
+                        <span
+                          class="toggle-icon"
+                          style="font-size: 0.8em;"
+                        >{{ item.expanded ? '▼' : '▶' }}</span>
                         <span>Task {{ item.taskId }}: {{ item.desc }}</span>
                       </span>
-                      <span class="separator-line"></span>
+                      <span class="separator-line" />
                     </div>
 
                     <!-- Message Item -->
@@ -116,10 +125,20 @@
                             </div>
 
                             <!-- Execution Steps -->
-                            <div v-if="item.data.steps && item.data.steps.length > 0" class="steps-block">
-                              <div class="steps-title">执行步骤</div>
+                            <div
+                              v-if="item.data.steps && item.data.steps.length > 0"
+                              class="steps-block"
+                            >
+                              <div class="steps-title">
+                                执行步骤
+                              </div>
                               <ul class="steps-list">
-                                <li v-for="(step, sIdx) in item.data.steps" :key="sIdx">{{ step }}</li>
+                                <li
+                                  v-for="(step, sIdx) in item.data.steps"
+                                  :key="sIdx"
+                                >
+                                  {{ step }}
+                                </li>
                               </ul>
                             </div>
 
@@ -127,8 +146,7 @@
                               v-if="item.data.message"
                               class="ai-text"
                               v-html="formatMarkdown(item.data.message)"
-                            >
-                            </div>
+                            />
                             
                             <!-- Command Execution Info -->
                             <div
@@ -223,7 +241,7 @@
           :style="{ width: rightPanelCollapsed ? '0px' : rightPanelWidth + 'px' }"
         >
           <!-- ... (Existing Right Panel Content) ... -->
-           <div class="panel-tabs">
+          <div class="panel-tabs">
             <div 
               v-for="tab in tabs"
               :key="tab.id"
@@ -685,7 +703,7 @@ const processAgentLoop = async (prompt, toolResult) => {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${authStore.token}`,
-        'Accept': 'text/event-stream'
+        'Accept': 'text/event-stream, application/json'
       },
       body: JSON.stringify(body)
     })
