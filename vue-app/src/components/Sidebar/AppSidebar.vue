@@ -135,29 +135,31 @@
         <div class="history-section-title">
           历史对话
         </div>
-        <div class="session-list">
-          <div
-            v-for="session in chatStore.sessions"
-            :key="session.id"
-            class="session-item"
-            :class="{ active: session.id === chatStore.currentSessionId }"
-            @click="loadSession(session.id)"
-          >
-            <div class="session-info">
-              <div class="session-title">
-                {{ session.title || '新对话' }}
-              </div>
-              <div class="session-meta">
-                <span class="session-date">{{ formatSessionDate(session.createdAt) }}</span>
-              </div>
-            </div>
-            <button
-              class="delete-btn"
-              title="删除会话"
-              @click.stop="handleDeleteSession(session.id)"
+        <div class="session-list-wrapper">
+          <div class="session-list">
+            <div
+              v-for="session in chatStore.sessions"
+              :key="session.id"
+              class="session-item"
+              :class="{ active: session.id === chatStore.currentSessionId }"
+              @click="loadSession(session.id)"
             >
-              <i class="fas fa-trash" />
-            </button>
+              <div class="session-info">
+                <div class="session-title">
+                  {{ session.title || '新对话' }}
+                </div>
+                <div class="session-meta">
+                  <span class="session-date">{{ formatSessionDate(session.createdAt) }}</span>
+                </div>
+              </div>
+              <button
+                class="delete-btn"
+                title="删除会话"
+                @click.stop="handleDeleteSession(session.id)"
+              >
+                <i class="fas fa-trash" />
+              </button>
+            </div>
           </div>
         </div>
       </template>
