@@ -1104,7 +1104,7 @@ const writeFile = async (path, content, overwrite) => {
 /* Global Task Panel */
 .global-task-panel {
   position: absolute;
-  bottom: 120px;
+  bottom: 80px;
   left: 50%;
   transform: translateX(-50%);
   width: 100%;
@@ -1112,7 +1112,7 @@ const writeFile = async (path, content, overwrite) => {
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 16px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
   z-index: 100;
   overflow: hidden;
 }
