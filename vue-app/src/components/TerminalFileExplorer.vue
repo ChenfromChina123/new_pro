@@ -2,15 +2,36 @@
   <div class="file-explorer">
     <div class="explorer-header">
       <div class="breadcrumbs">
-        <span class="breadcrumb-item" @click="fetchFiles('/')">root</span>
-        <template v-for="(part, index) in pathParts" :key="index">
+        <span
+          class="breadcrumb-item"
+          @click="fetchFiles('/')"
+        >root</span>
+        <template
+          v-for="(part, index) in pathParts"
+          :key="index"
+        >
           <span class="separator">/</span>
-          <span class="breadcrumb-item" @click="navigateToPart(index)">{{ part }}</span>
+          <span
+            class="breadcrumb-item"
+            @click="navigateToPart(index)"
+          >{{ part }}</span>
         </template>
       </div>
       <div class="header-actions">
-        <button @click="createNewNotebook" class="action-btn" title="新建笔记本">📓+</button>
-        <button @click="refresh" class="refresh-btn" title="刷新">🔄</button>
+        <button
+          class="action-btn"
+          title="新建笔记本"
+          @click="createNewNotebook"
+        >
+          📓+
+        </button>
+        <button
+          class="refresh-btn"
+          title="刷新"
+          @click="refresh"
+        >
+          🔄
+        </button>
       </div>
     </div>
     <div class="file-list">
@@ -35,7 +56,10 @@
       >
         <span class="icon">{{ (file.isDirectory || file.is_directory || file.directory) ? '📁' : '📄' }}</span>
         <span class="name">{{ file.name }}</span>
-        <span class="size" v-if="!(file.isDirectory || file.is_directory || file.directory)">{{ formatSize(file.size) }}</span>
+        <span
+          v-if="!(file.isDirectory || file.is_directory || file.directory)"
+          class="size"
+        >{{ formatSize(file.size) }}</span>
       </div>
     </div>
   </div>

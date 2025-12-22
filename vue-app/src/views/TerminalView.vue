@@ -9,17 +9,11 @@
               <h3>AI 终端助手</h3>
             </div>
             <div class="header-right">
-              <div class="model-selector">
-                <CustomSelect 
-                  v-model="currentModel" 
-                  :options="modelOptions"
-                />
-              </div>
               <button 
                 class="toggle-right-panel"
                 :class="{ rotated: rightPanelCollapsed }"
-                @click="rightPanelCollapsed = !rightPanelCollapsed"
                 title="切换工具面板"
+                @click="rightPanelCollapsed = !rightPanelCollapsed"
               >
                 <span class="btn-icon">🛠️</span>
               </button>
@@ -38,61 +32,120 @@
             >
               <div class="message-content">
                 <!-- User Message -->
-                <div v-if="msg.role === 'user'" class="user-bubble">
+                <div
+                  v-if="msg.role === 'user'"
+                  class="user-bubble"
+                >
                   {{ msg.content }}
                 </div>
 
                 <!-- AI Message -->
-                <div v-else-if="msg.role === 'ai'" class="ai-bubble">
-                  <div v-if="msg.thought" class="thought-block">
-                    <div class="thought-title" @click="msg.showThought = !msg.showThought">
+                <div
+                  v-else-if="msg.role === 'ai'"
+                  class="ai-bubble"
+                >
+                  <div
+                    v-if="msg.thought"
+                    class="thought-block"
+                  >
+                    <div
+                      class="thought-title"
+                      @click="msg.showThought = !msg.showThought"
+                    >
                       <span>思考过程</span>
                       <i class="toggle-icon">{{ msg.showThought ? '▼' : '▶' }}</i>
                     </div>
-                    <div v-if="msg.showThought" class="thought-content">
+                    <div
+                      v-if="msg.showThought"
+                      class="thought-content"
+                    >
                       {{ msg.thought }}
                     </div>
                   </div>
 
-                  <div v-if="msg.message" class="ai-text">
+                  <div
+                    v-if="msg.message"
+                    class="ai-text"
+                  >
                     {{ msg.message }}
                   </div>
                   
                   <!-- Command Execution Info -->
-                  <div v-if="msg.tool" class="tool-call-card">
+                  <div
+                    v-if="msg.tool"
+                    class="tool-call-card"
+                  >
                     <div class="tool-header">
                       <span class="tool-icon">🐚</span>
-                      <span v-if="msg.tool === 'execute_command'" class="tool-label">执行命令</span>
-                      <span v-else-if="msg.tool === 'write_file'" class="tool-label">写入文件</span>
-                      <span v-else class="tool-label">工具调用</span>
+                      <span
+                        v-if="msg.tool === 'execute_command'"
+                        class="tool-label"
+                      >执行命令</span>
+                      <span
+                        v-else-if="msg.tool === 'write_file'"
+                        class="tool-label"
+                      >写入文件</span>
+                      <span
+                        v-else
+                        class="tool-label"
+                      >工具调用</span>
                     </div>
                     <div class="tool-command">
                       <code v-if="msg.tool === 'execute_command'">{{ msg.command }}</code>
                       <code v-else-if="msg.tool === 'write_file'">{{ msg.filePath }}</code>
                     </div>
-                    <div class="tool-status" :class="msg.status">
-                      <span v-if="msg.status === 'pending'" class="spinner">⌛ 执行中...</span>
-                      <span v-else-if="msg.status === 'success'" class="status-success">✓ 执行成功</span>
-                      <span v-else class="status-error">✗ 执行失败</span>
+                    <div
+                      class="tool-status"
+                      :class="msg.status"
+                    >
+                      <span
+                        v-if="msg.status === 'pending'"
+                        class="spinner"
+                      >⌛ 执行中...</span>
+                      <span
+                        v-else-if="msg.status === 'success'"
+                        class="status-success"
+                      >✓ 执行成功</span>
+                      <span
+                        v-else
+                        class="status-error"
+                      >✗ 执行失败</span>
                     </div>
                   </div>
                 </div>
 
                 <!-- Command Result -->
-                <div v-else-if="msg.role === 'command_result'" class="system-bubble">
-                  <div class="result-header">命令执行结果:</div>
+                <div
+                  v-else-if="msg.role === 'command_result'"
+                  class="system-bubble"
+                >
+                  <div class="result-header">
+                    命令执行结果:
+                  </div>
                   <pre class="result-content">{{ msg.content }}</pre>
                 </div>
               </div>
             </div>
-            <div v-if="isTyping" class="message ai">
-              <div class="typing-indicator"><span>.</span><span>.</span><span>.</span></div>
+            <div
+              v-if="isTyping"
+              class="message ai"
+            >
+              <div class="typing-indicator">
+                <span>.</span><span>.</span><span>.</span>
+              </div>
             </div>
           </div>
 
           <!-- Floating Task List Panel -->
-          <div v-if="currentTasks && currentTasks.length > 0" class="global-task-panel" :class="{ collapsed: taskListCollapsed }">
-            <div class="task-panel-header" @click="taskListCollapsed = !taskListCollapsed">
+          <div
+            v-if="currentTasks && currentTasks.length > 0"
+            class="global-task-panel"
+            :class="{ collapsed: taskListCollapsed }"
+          >
+            <div
+              class="task-panel-header"
+              @click="taskListCollapsed = !taskListCollapsed"
+            >
               <div class="header-main">
                 <span class="panel-icon">📋</span>
                 <span class="panel-title">任务进度</span>
@@ -100,39 +153,45 @@
               </div>
               <div class="header-right">
                 <div class="progress-mini-bar">
-                  <div class="progress-fill" :style="{ width: taskProgress + '%' }"></div>
+                  <div
+                    class="progress-fill"
+                    :style="{ width: taskProgress + '%' }"
+                  />
                 </div>
                 <span class="progress-percent">{{ taskProgress }}%</span>
                 <i class="toggle-icon">{{ taskListCollapsed ? '▲' : '▼' }}</i>
               </div>
             </div>
-            <div v-if="!taskListCollapsed" class="task-panel-body">
-              <div v-for="task in currentTasks" :key="task.id" class="task-item" :class="task.status">
+            <div
+              v-if="!taskListCollapsed"
+              class="task-panel-body"
+            >
+              <div
+                v-for="task in currentTasks"
+                :key="task.id"
+                class="task-item"
+                :class="task.status"
+              >
                 <span class="task-icon">
                   {{ task.status === 'completed' ? '✅' : (task.status === 'in_progress' ? '🔄' : '⭕') }}
                 </span>
-                <span class="task-desc" :title="task.desc">{{ task.desc }}</span>
+                <span
+                  class="task-desc"
+                  :title="task.desc"
+                >{{ task.desc }}</span>
               </div>
             </div>
           </div>
 
-          <div class="input-area-wrapper">
-            <div class="input-area">
-              <textarea 
-                v-model="inputMessage" 
-                placeholder="输入指令，例如：创建一个Vue项目..."
-                :disabled="isTyping || isExecuting"
-                @keydown.enter.prevent="handleEnter"
-              />
-              <button
-                class="send-btn"
-                :disabled="!inputMessage.trim() || isTyping || isExecuting"
-                @click="sendMessage"
-              >
-                发送
-              </button>
-            </div>
-          </div>
+          <TerminalChatInput
+            v-model:message="inputMessage"
+            v-model:model="currentModel"
+            :model-options="modelOptions"
+            :disabled="isTyping || isExecuting"
+            :can-send="!!inputMessage.trim() && !isTyping && !isExecuting"
+            @enter="handleEnter"
+            @send="sendMessage"
+          />
         </div>
 
         <!-- Main Resizer -->
@@ -140,7 +199,7 @@
           v-if="!rightPanelCollapsed"
           class="resizer-v main-resizer"
           @mousedown="initResizeMain"
-        ></div>
+        />
 
         <!-- Right Panel -->
         <div 
@@ -165,26 +224,50 @@
           </div>
 
           <!-- Terminal Output -->
-          <div v-show="activeTab === 'terminal'" class="terminal-content-wrapper">
+          <div
+            v-show="activeTab === 'terminal'"
+            class="terminal-content-wrapper"
+          >
             <div class="terminal-actions">
-               <button class="clear-btn" @click="clearTerminal">Clear</button>
+              <button
+                class="clear-btn"
+                @click="clearTerminal"
+              >
+                Clear
+              </button>
             </div>
-            <div ref="terminalRef" class="terminal-content">
-              <div v-for="(log, index) in terminalLogs" :key="index" class="log-line">
+            <div
+              ref="terminalRef"
+              class="terminal-content"
+            >
+              <div
+                v-for="(log, index) in terminalLogs"
+                :key="index"
+                class="log-line"
+              >
                 <div class="log-cmd-line">
                   <span class="prompt">➜</span>
                   <span class="cwd">{{ log.cwd || '~' }}</span>
                   <span class="cmd">{{ log.command }}</span>
                 </div>
-                <pre class="output" :class="log.type">{{ log.output }}</pre>
+                <pre
+                  class="output"
+                  :class="log.type"
+                >{{ log.output }}</pre>
               </div>
             </div>
           </div>
 
           <!-- File Explorer -->
-          <div v-if="activeTab === 'files'" class="panel-content file-panel-container">
+          <div
+            v-if="activeTab === 'files'"
+            class="panel-content file-panel-container"
+          >
             <template v-if="!editingFile">
-              <TerminalFileExplorer ref="fileExplorer" @select="handleFileSelect" />
+              <TerminalFileExplorer
+                ref="fileExplorer"
+                @select="handleFileSelect"
+              />
             </template>
             <template v-else-if="isNotebook">
               <TerminalNotebook 
@@ -205,8 +288,11 @@
           </div>
 
           <!-- Requirements -->
-          <div v-if="activeTab === 'req'" class="panel-content">
-             <RequirementManager />
+          <div
+            v-if="activeTab === 'req'"
+            class="panel-content"
+          >
+            <RequirementManager />
           </div>
         </div>
       </div>
@@ -225,7 +311,7 @@ import TerminalFileExplorer from '@/components/TerminalFileExplorer.vue'
 import TerminalNotebook from '@/components/TerminalNotebook.vue'
 import TerminalFileEditor from '@/components/TerminalFileEditor.vue'
 import RequirementManager from '@/components/RequirementManager.vue'
-import CustomSelect from '@/components/CustomSelect.vue'
+import TerminalChatInput from '@/components/terminal/TerminalChatInput.vue'
 import { marked } from 'marked'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
@@ -1020,71 +1106,6 @@ const writeFile = async (path, content, overwrite) => {
   white-space: pre-wrap;
   max-height: 400px;
   overflow-y: auto;
-}
-
-/* Input Area Styles */
-.input-area-wrapper {
-  padding: 20px;
-  background: #fff;
-  border-top: 1px solid #f1f5f9;
-  flex-shrink: 0;
-}
-.input-area {
-  max-width: 850px;
-  margin: 0 auto;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  padding: 8px 12px;
-  display: flex;
-  align-items: flex-end;
-  gap: 12px;
-  transition: all 0.2s;
-}
-.input-area:focus-within {
-  border-color: #3b82f6;
-  background: #fff;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.08);
-}
-textarea { 
-  flex: 1;
-  border: none;
-  background: transparent;
-  padding: 8px 0;
-  font-size: 1rem;
-  line-height: 1.5;
-  color: #1e293b;
-  resize: none;
-  outline: none;
-  min-height: 24px;
-  max-height: 200px;
-}
-.send-btn { 
-  background: #3b82f6; 
-  color: white; 
-  border: none; 
-  padding: 8px 16px;
-  height: 36px;
-  border-radius: 10px; 
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer; 
-  transition: all 0.2s;
-  font-weight: 500;
-  margin-bottom: 2px;
-}
-.send-btn:hover:not(:disabled) { 
-  background: #2563eb; 
-}
-.send-btn:disabled { 
-  background: #e2e8f0; 
-  color: #94a3b8;
-  cursor: not-allowed; 
-}
-
-.model-selector {
-  min-width: 160px;
 }
 
 /* Global Task Panel */

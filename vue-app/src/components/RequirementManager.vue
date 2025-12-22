@@ -3,7 +3,12 @@
     <div class="req-sidebar">
       <div class="sidebar-header">
         <span>需求文档</span>
-        <button @click="createNew" class="add-btn">+</button>
+        <button
+          class="add-btn"
+          @click="createNew"
+        >
+          +
+        </button>
       </div>
       <div class="doc-list">
         <div 
@@ -13,37 +18,80 @@
           :class="{ active: currentDoc?.id === doc.id }"
           @click="selectDoc(doc)"
         >
-          <div class="doc-title">{{ doc.title || '未命名文档' }}</div>
-          <div class="doc-date">{{ formatDate(doc.updatedAt) }}</div>
+          <div class="doc-title">
+            {{ doc.title || '未命名文档' }}
+          </div>
+          <div class="doc-date">
+            {{ formatDate(doc.updatedAt) }}
+          </div>
         </div>
       </div>
     </div>
-    <div class="req-editor" v-if="currentDoc">
+    <div
+      v-if="currentDoc"
+      class="req-editor"
+    >
       <div class="editor-header">
-        <input v-model="currentDoc.title" placeholder="文档标题" class="title-input" />
+        <input
+          v-model="currentDoc.title"
+          placeholder="文档标题"
+          class="title-input"
+        >
         <div class="actions">
-          <button @click="saveDoc" class="btn primary">保存</button>
-          <button @click="showHistory" class="btn">历史版本</button>
+          <button
+            class="btn primary"
+            @click="saveDoc"
+          >
+            保存
+          </button>
+          <button
+            class="btn"
+            @click="showHistory"
+          >
+            历史版本
+          </button>
         </div>
       </div>
-      <textarea v-model="currentDoc.content" class="content-editor" placeholder="在此输入需求文档内容..."></textarea>
+      <textarea
+        v-model="currentDoc.content"
+        class="content-editor"
+        placeholder="在此输入需求文档内容..."
+      />
     </div>
-    <div v-else class="empty-state">
+    <div
+      v-else
+      class="empty-state"
+    >
       请选择或新建需求文档
     </div>
 
     <!-- History Dialog (Simplified) -->
-    <div v-if="showHistoryDialog" class="modal-overlay" @click="showHistoryDialog = false">
-      <div class="modal-content" @click.stop>
+    <div
+      v-if="showHistoryDialog"
+      class="modal-overlay"
+      @click="showHistoryDialog = false"
+    >
+      <div
+        class="modal-content"
+        @click.stop
+      >
         <h3>版本历史</h3>
         <div class="history-list">
-          <div v-for="h in history" :key="h.id" class="history-item">
+          <div
+            v-for="h in history"
+            :key="h.id"
+            class="history-item"
+          >
             <span>v{{ h.version }}</span>
             <span>{{ formatDate(h.createdAt) }}</span>
-            <button @click="restoreVersion(h)">查看</button>
+            <button @click="restoreVersion(h)">
+              查看
+            </button>
           </div>
         </div>
-        <button @click="showHistoryDialog = false">关闭</button>
+        <button @click="showHistoryDialog = false">
+          关闭
+        </button>
       </div>
     </div>
   </div>
