@@ -85,15 +85,8 @@
                       />
                     </div>
                   </div>
-                  <!-- 折叠状态下的内容预览 -->
-                  <div 
-                    v-if="message.isReasoningCollapsed && message.reasoning_content"
-                    class="reasoning-preview"
-                  >
-                    <span class="preview-text">{{ getReasoningPreview(message.reasoning_content) }}</span>
-                  </div>
-                  
-                  <transition name="reasoning-slide">
+                
+                <transition name="reasoning-slide">
                     <div 
                       v-show="!message.isReasoningCollapsed" 
                       class="reasoning-content"
@@ -3138,12 +3131,12 @@ body.dark-mode .nav-arrows {
 /* 深度思考组件样式优化 */
 .reasoning-block {
   margin-bottom: 16px;
-  border-radius: 8px;
+  border-radius: 12px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-left: 3px solid #6366f1;
   overflow: hidden;
-  transition: all 0.3s ease;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .reasoning-block:hover {
@@ -3159,7 +3152,43 @@ body.dark-mode .nav-arrows {
 
 .reasoning-block.collapsed {
   cursor: pointer;
-  border-left-width: 3px;
+  border-left: 2px solid #e2e8f0;
+  width: fit-content;
+  max-width: 100%;
+  border-radius: 18px;
+  margin-bottom: 8px;
+  background: #f1f5f9;
+}
+
+.reasoning-block.collapsed:hover {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+}
+
+.reasoning-block.collapsed .reasoning-header {
+  padding: 4px 12px;
+  gap: 6px;
+}
+
+.reasoning-block.collapsed .reasoning-icon-wrapper {
+  width: 18px;
+  height: 18px;
+}
+
+.reasoning-block.collapsed .reasoning-icon {
+  font-size: 11px;
+}
+
+.reasoning-block.collapsed .reasoning-title {
+  font-size: 12px;
+}
+
+.reasoning-block.collapsed .reasoning-count {
+  font-size: 10px;
+}
+
+.reasoning-block.collapsed .toggle-icon {
+  font-size: 9px;
 }
 
 @keyframes reasoning-border-pulse {
@@ -3295,7 +3324,7 @@ body.dark-mode .nav-arrows {
 /* 内容区域动画 */
 .reasoning-slide-enter-active,
 .reasoning-slide-leave-active {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
 }
 
