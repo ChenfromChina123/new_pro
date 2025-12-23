@@ -1328,8 +1328,8 @@ const renderMathFormula = (content, placeholders = []) => {
       return match;
   });
   
-  // 9. 清理HTML标签 (在占位符替换后做)
-  processedContent = processedContent.replace(/<br\s*\/?>/g, ' ');
+  // 9. 清理HTML标签 (移除：不要在公式处理阶段盲目替换 br)
+  // processedContent = processedContent.replace(/<br\s*\/?>/g, ' ');
   
   return processedContent;
 };
@@ -1444,12 +1444,6 @@ const formatMessage = (content) => {
     // 匹配 `\int ... `，确保内部不包含反引号
     cleanContent = cleanContent.replace(/`(\\int(?:\\[\s\S]|[^`])+?)`/g, '$1');
     
-    // 1. 处理孤立的反引号（不在代码块内的单个反引号）
-    // 匹配不在代码块内的单个反引号
-    cleanContent = cleanContent.replace(/(?<!`)(`)(?!`)/g, '');
-    // 匹配不在代码块内的两个反引号
-    cleanContent = cleanContent.replace(/(?<!`)(``)(?!`)/g, '');
-    
     // 2. 处理多余的代码块标记（连续的三个或更多反引号）
     // 匹配四个或更多反引号，替换为三个（标准代码块标记）
     cleanContent = cleanContent.replace(/`{4,}/g, '```');
@@ -1460,31 +1454,30 @@ const formatMessage = (content) => {
     // 注意：这里只清理行首的编号，不清理公式内部的编号
     cleanContent = cleanContent.replace(/^(\s*)(\d+\.\s*)([\u4e00-\u9fa5：:，,。.；;！!？?\s]*?)(\\int|\\left|\\right|\\frac|\\sqrt|\\sum|\\lim|\\sin|\\cos|\\tan|\\sec|\\ln|\\log|\\exp)/gm, '$1$4');
     
-    // 处理列表符号和多余括号
-    cleanContent = cleanContent.replace(/^\s*\s*\(/g, '');
-    cleanContent = cleanContent.replace(/\)\s*$/g, '');
-    
     // 处理HTML标签问题 - 更强的正则，包含转义字符
     cleanContent = cleanContent.replace(/&lt;\s*\/?\s*(li|ul|ol|p|br|div|span|strong|em)\s*&gt;/gi, '');
     cleanContent = cleanContent.replace(/<\s*\/?\s*(li|ul|ol|p|div|span)\s*>/gi, '');
-    // 处理带有空格的标签，如 < br >
-    cleanContent = cleanContent.replace(/<\s*br\s*\/?\s*>/gi, ' ');
+    // 移除：处理带有空格的标签，如 < br > (不要替换为空格，以免破坏换行)
+    // cleanContent = cleanContent.replace(/<\s*br\s*\/?\s*>/gi, ' ');
     // 强力清除 strong 和 em 标签及其空格变体 (如 < strong >)
     cleanContent = cleanContent.replace(/<\s*\/?\s*(strong|em)\s*>/gi, '');
     
     // // 处理数学符号问题：将错误显示的符号替换为正确的
     // cleanContent = cleanContent.replace(/目/g, '≠');
     
+    /* 移除过于暴力的括号修复，这些会破坏正常的文本内容
     // 移除公式周围的双重括号 ((...)) -> ...
     // 使用 [\s\S]*? 非贪婪匹配任意字符(包括换行)，直到遇到 ))
     cleanContent = cleanContent.replace(/\(\(([\s\S]*?)\)\)/g, '$1');
     // 暴力修复：直接将 (( 替换为 (，将 )) 替换为 )
     cleanContent = cleanContent.replace(/\(\(/g, '(');
     cleanContent = cleanContent.replace(/\)\)/g, ')');
+    */
 
     // 处理导数公式 ((...)' = ...)
     cleanContent = cleanContent.replace(/\(\(([\s\S]*?)\)\)'\s*=/g, "($1)' =");
     
+    /* 移除这些可能误删文本的正则
     // 去除公式周围的多余括号 ( \int ... ) -> \int ...
     cleanContent = cleanContent.replace(/\(\s*\\int/g, '\\int');
     // 去除结尾的多余双括号 (针对 ...)) 的情况)
@@ -1499,6 +1492,7 @@ const formatMessage = (content) => {
     cleanContent = cleanContent.replace(/([^\\])\]\s*$/gm, '$1');
     // 处理行首的多余方括号 [
     cleanContent = cleanContent.replace(/^\s*\[/gm, '');
+    */
 
     // 处理区间表示中的错误：(la, b]) → [a, b]
     cleanContent = cleanContent.replace(/\(la,\s*b\]\)/g, '[a, b]');
@@ -1526,16 +1520,17 @@ const formatMessage = (content) => {
     let contentWithPlaceholders = renderMathFormula(cleanContent, placeholders);
 
     // 3. 使用marked解析Markdown (此时公式已被占位符保护，不会被marked破坏)
-    let html = marked.parse(contentWithPlaceholders);
+    // 增加：在解析前先进行必要的 trim，防止某些解析器将首行视为代码块
+    let html = marked.parse(contentWithPlaceholders.trim());
     
     // 4. 还原数学公式 (将占位符替换回KaTeX生成的HTML)
     html = restoreMathFormula(html, placeholders);
     
-    // 5. 清理多余的HTML标签和格式问题
+    // 5. 清理多余的HTML标签和格式问题 (改进：不要盲目替换所有 br，仅处理公式周围的异常)
     html = html.replace(/\[\s*<p>\s*/g, '<p>');
     html = html.replace(/\s*<\/p>\s*\]/g, '</p>');
     html = html.replace(/<br\s*\/?>\]\s*<\/p>/g, '</p>');
-    html = html.replace(/<br\s*\/?>/g, ' ');
+    // 移除：html = html.replace(/<br\s*\/?>/g, ' '); // 这会破坏正常的换行
     
     // 6. 处理公式周围的多余字符 (仅处理行首行尾的方括号，避免误删数学符号)
     html = html.replace(/^\s*\[/g, '');
