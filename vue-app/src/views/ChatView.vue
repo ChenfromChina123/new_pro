@@ -51,30 +51,42 @@
                 <div 
                   v-if="message.reasoning_content" 
                   class="reasoning-block"
-                  :class="{ 'streaming': message.isStreaming && !message.content }"
+                  :class="{ 
+                    'streaming': message.isStreaming && !message.content,
+                    'collapsed': message.isReasoningCollapsed 
+                  }"
                 >
                   <div
                     class="reasoning-header"
                     @click="toggleReasoning(message)"
                   >
                     <div class="header-left">
-                      <i class="fas fa-brain" />
-                      <span>深度思考</span>
+                      <div class="reasoning-icon-wrapper">
+                        <i class="fas fa-brain reasoning-icon" />
+                      </div>
+                      <div class="header-text">
+                        <span class="reasoning-title">深度思考</span>
+                        <span v-if="!message.isReasoningCollapsed" class="reasoning-subtitle">AI 推理过程</span>
+                      </div>
                     </div>
-                    <i 
-                      class="fas toggle-icon"
-                      :class="message.isReasoningCollapsed ? 'fa-chevron-right' : 'fa-chevron-down'" 
-                    />
+                    <div class="header-right">
+                      <i 
+                        class="fas toggle-icon"
+                        :class="message.isReasoningCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'" 
+                      />
+                    </div>
                   </div>
-                  <div 
-                    v-show="!message.isReasoningCollapsed" 
-                    class="reasoning-content"
-                  >
+                  <transition name="reasoning-slide">
                     <div 
-                      class="markdown-body"
-                      v-html="formatMessage(message.reasoning_content)" 
-                    />
-                  </div>
+                      v-show="!message.isReasoningCollapsed" 
+                      class="reasoning-content"
+                    >
+                      <div 
+                        class="markdown-body"
+                        v-html="formatMessage(message.reasoning_content)" 
+                      />
+                    </div>
+                  </transition>
                 </div>
 
                 <!-- eslint-disable-next-line vue/no-v-html -->
@@ -2905,62 +2917,182 @@ body.dark-mode .message-copy-button:hover {
   50% { opacity: 0; }
 }
 
+/* 深度思考组件样式优化 */
 .reasoning-block {
-  margin-bottom: 12px;
-  border-radius: 8px;
-  background-color: var(--bg-tertiary);
-  border-left: 3px solid var(--border-color);
+  margin-bottom: 16px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.reasoning-block:hover {
+  border-color: rgba(99, 102, 241, 0.25);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
 }
 
 .reasoning-block.streaming {
-  border-left-color: var(--primary-color);
+  border-color: rgba(99, 102, 241, 0.3);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%);
+  animation: reasoning-pulse 2s ease-in-out infinite;
+}
+
+.reasoning-block.collapsed {
+  border-color: rgba(99, 102, 241, 0.1);
+}
+
+@keyframes reasoning-pulse {
+  0%, 100% {
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.1);
+  }
+  50% {
+    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.2);
+  }
 }
 
 .reasoning-block .reasoning-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: 14px 16px;
   cursor: pointer;
-  background-color: var(--bg-secondary);
-  font-size: 13px;
-  color: var(--text-secondary);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(248, 250, 252, 0.9) 100%);
   user-select: none;
-  border-radius: 0;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid rgba(99, 102, 241, 0.1);
 }
 
 .reasoning-block .reasoning-header:hover {
-  background-color: var(--bg-hover);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 1) 100%);
+  transform: translateY(-1px);
 }
 
 .reasoning-block .header-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  flex: 1;
 }
 
-.reasoning-block .reasoning-header i {
+.reasoning-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+  transition: all 0.3s ease;
+}
+
+.reasoning-block .reasoning-header:hover .reasoning-icon-wrapper {
+  transform: scale(1.1) rotate(5deg);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+
+.reasoning-icon {
+  font-size: 14px;
+  color: white;
+}
+
+.header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reasoning-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #4f46e5;
+  letter-spacing: 0.3px;
+}
+
+.reasoning-subtitle {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.reasoning-block .header-right {
+  display: flex;
+  align-items: center;
+  margin-left: 12px;
+}
+
+.reasoning-block .toggle-icon {
   font-size: 12px;
+  color: #94a3b8;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.reasoning-block .reasoning-header:hover .toggle-icon {
+  color: #6366f1;
+  background-color: rgba(99, 102, 241, 0.1);
+}
+
+.reasoning-block.collapsed .toggle-icon {
+  transform: rotate(0deg);
+}
+
+.reasoning-block:not(.collapsed) .toggle-icon {
+  transform: rotate(180deg);
+}
+
+/* 内容区域动画 */
+.reasoning-slide-enter-active,
+.reasoning-slide-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.reasoning-slide-enter-from {
+  opacity: 0;
+  max-height: 0;
+  transform: translateY(-10px);
+}
+
+.reasoning-slide-enter-to {
+  opacity: 1;
+  max-height: 2000px;
+  transform: translateY(0);
+}
+
+.reasoning-slide-leave-from {
+  opacity: 1;
+  max-height: 2000px;
+  transform: translateY(0);
+}
+
+.reasoning-slide-leave-to {
+  opacity: 0;
+  max-height: 0;
+  transform: translateY(-10px);
 }
 
 .reasoning-block .reasoning-content {
-  padding: 12px;
-  background-color: var(--bg-primary);
-  font-size: 13px;
-  color: var(--text-secondary);
-  border-top: 1px solid var(--border-color);
-  line-height: 1.6;
+  padding: 16px 20px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(248, 250, 252, 0.8) 100%);
+  font-size: 13.5px;
+  color: #475569;
+  line-height: 1.7;
   width: 100%;
   box-sizing: border-box;
   min-width: 0;
-  overflow-x: hidden; /* 防止溢出 reasoning-block */
+  overflow-x: hidden;
+  border-top: 1px solid rgba(99, 102, 241, 0.08);
 }
 
 .reasoning-block .reasoning-content .markdown-body {
   background-color: transparent;
-  font-size: 13px;
-  color: var(--text-secondary);
+  font-size: 13.5px;
+  color: #475569;
   width: 100%;
 }
 
@@ -2969,10 +3101,18 @@ body.dark-mode .message-copy-button:hover {
   overflow-x: auto;
   white-space: pre;
   word-wrap: normal;
-  background-color: var(--bg-tertiary);
-  padding: 12px;
-  border-radius: 6px;
-  margin: 8px 0;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  padding: 14px 16px;
+  border-radius: 8px;
+  margin: 12px 0;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.reasoning-block .reasoning-content :deep(pre code) {
+  color: #e2e8f0;
+  font-family: 'Fira Code', 'Cascadia Code', Consolas, monospace;
+  font-size: 12.5px;
 }
 
 .reasoning-block .reasoning-content :deep(table) {
@@ -2982,14 +3122,50 @@ body.dark-mode .message-copy-button:hover {
   overflow-x: auto;
   white-space: nowrap;
   border-collapse: collapse;
-  margin: 8px 0;
+  margin: 12px 0;
+  border-radius: 8px;
+  border: 1px solid rgba(99, 102, 241, 0.15);
+}
+
+.reasoning-block .reasoning-content :deep(table th),
+.reasoning-block .reasoning-content :deep(table td) {
+  padding: 10px 12px;
+  border: 1px solid rgba(99, 102, 241, 0.1);
+}
+
+.reasoning-block .reasoning-content :deep(table th) {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+  font-weight: 600;
+  color: #4f46e5;
 }
 
 .reasoning-block .reasoning-content .markdown-body p {
-  margin-bottom: 8px;
+  margin-bottom: 10px;
+  color: #475569;
 }
 
 .reasoning-block .reasoning-content .markdown-body p:last-child {
   margin-bottom: 0;
+}
+
+.reasoning-block .reasoning-content :deep(strong) {
+  color: #334155;
+  font-weight: 600;
+}
+
+.reasoning-block .reasoning-content :deep(em) {
+  color: #64748b;
+  font-style: italic;
+}
+
+.reasoning-block .reasoning-content :deep(ul),
+.reasoning-block .reasoning-content :deep(ol) {
+  margin: 10px 0;
+  padding-left: 24px;
+}
+
+.reasoning-block .reasoning-content :deep(li) {
+  margin-bottom: 6px;
+  color: #475569;
 }
 </style>
