@@ -66,38 +66,61 @@ public class TerminalController {
         Long userId = currentUser.getUser().getId();
         String sessionId = request.getSession_id();
         
+        log.info("=== Terminal Chat Stream Request ===");
+        log.info("Session: {}, User: {}", sessionId, userId);
+        log.info("Prompt: {}", request.getPrompt());
+        log.info("Tool Result: {}", request.getTool_result() != null ? 
+            "ExitCode=" + request.getTool_result().getExitCode() : "null");
+        
         // 1. Load Agent State
         AgentState state = agentStateService.getAgentState(sessionId, userId);
+        log.info("Current Agent Status: {}", state.getStatus());
+        log.info("Has Task Pipeline: {}", state.getTaskState() != null);
         
-        // 2. Input Guard
+        // 2. Input Guard - 修复：只在没有tool_result且不是控制命令时才拦截
         if (state.getStatus() == AgentStatus.RUNNING || state.getStatus() == AgentStatus.WAITING_TOOL) {
             if (isControlCommand(request.getPrompt())) {
+                log.info("Control command received: {}", request.getPrompt());
                 handleControlCommand(state, request.getPrompt());
                 return sendSystemMessage("Agent " + state.getStatus());
-            } else if (request.getTool_result() == null) {
+            } else if (request.getTool_result() == null && (request.getPrompt() == null || request.getPrompt().trim().isEmpty())) {
+                // 只有在既没有tool_result也没有有效prompt时才拦截
+                log.warn("Agent busy, no tool result or valid prompt");
                 return sendSystemMessage("Agent 正在运行中，请等待或输入 pause 暂停。");
             }
         }
 
         // 3. Handle Tool Result (Feedback Loop)
         if (request.getTool_result() != null) {
+             log.info("Processing tool result...");
+             log.info("Tool Result - ExitCode: {}, Stdout: {}, Stderr: {}", 
+                 request.getTool_result().getExitCode(),
+                 request.getTool_result().getStdout() != null ? request.getTool_result().getStdout().substring(0, Math.min(100, request.getTool_result().getStdout().length())) : "null",
+                 request.getTool_result().getStderr() != null ? request.getTool_result().getStderr().substring(0, Math.min(100, request.getTool_result().getStderr().length())) : "null");
+             
              MutatorResult result = stateMutator.applyToolResult(state, request.getTool_result());
+             log.info("MutatorResult - Accepted: {}, NewStatus: {}", result.isAccepted(), result.getNewAgentStatus());
+             
              if (!result.isAccepted()) {
+                 log.warn("Tool result rejected: {}", result.getReason());
                  return sendSystemMessage("工具结果被拒绝：" + result.getReason());
              }
              agentStateService.saveAgentState(state);
              
              // Cursor 工作流程：工具执行后自动触发下一轮循环（无论成功或失败）
+             // 修复：无论有无任务流水线，都要自动继续
+             
              // 1. 如果有任务流水线，继续执行任务
-             if (result.getNewAgentStatus() == AgentStatus.RUNNING && 
-                 state.getTaskState() != null && 
-                 state.getTaskState().getCurrentTaskId() != null) {
-                 // 自动触发下一轮：使用工具结果作为上下文，继续执行任务
+             if (state.getTaskState() != null && state.getTaskState().getCurrentTaskId() != null) {
+                 log.info("Task pipeline mode - continuing with task: {}", state.getTaskState().getCurrentTaskId());
                  String continuationPrompt = buildContinuationPrompt(state, request.getTool_result());
                  String context = agentPromptBuilder.buildPromptContext(state);
                  String systemPrompt = promptManager.getExecutorPrompt(context);
                  
-                 // 继续执行，不等待用户输入
+                 state.setStatus(AgentStatus.RUNNING);
+                 agentStateService.saveAgentState(state);
+                 
+                 log.info("Triggering next round for task pipeline");
                  return aiChatService.askAgentStream(
                      continuationPrompt,
                      sessionId,
@@ -108,14 +131,17 @@ public class TerminalController {
                      (fullResponse) -> handleAgentResponse(fullResponse, sessionId, userId)
                  );
              }
-             // 2. 如果是即时执行模式（EXECUTE），也要自动处理结果
-             else if (result.getNewAgentStatus() == AgentStatus.RUNNING || 
-                      result.getNewAgentStatus() == AgentStatus.WAITING_TOOL) {
-                 // 即时执行模式：让AI根据工具结果决定下一步
+             // 2. 即时执行模式（EXECUTE），也要自动处理结果
+             else {
+                 log.info("Immediate execution mode - continuing after tool result");
                  String continuationPrompt = buildContinuationPromptForExecute(request.getTool_result());
                  String context = agentPromptBuilder.buildPromptContext(state);
                  String systemPrompt = promptManager.getExecutorPrompt(context);
                  
+                 state.setStatus(AgentStatus.RUNNING);
+                 agentStateService.saveAgentState(state);
+                 
+                 log.info("Triggering next round for immediate execution");
                  return aiChatService.askAgentStream(
                      continuationPrompt,
                      sessionId,
@@ -175,64 +201,83 @@ public class TerminalController {
      */
     private void handleAgentResponse(String fullResponse, String sessionId, @SuppressWarnings("unused") Long userId) {
         try {
+            log.info("=== Handling Agent Response ===");
+            log.info("Response length: {}", fullResponse != null ? fullResponse.length() : 0);
+            
             // Parse Decision Envelope or Plan
             String json = extractJson(fullResponse);
             if (json != null) {
                 json = json.trim();
-                            if (json.startsWith("[")) {
-                                // It is a Plan!
-                                try {
-                                    TaskState taskState = taskCompiler.compile(json, "pipeline-" + System.currentTimeMillis());
-                                    AgentState currentState = agentStateService.getAgentState(sessionId, userId);
-                                    currentState.setTaskState(taskState);
-                                    if (taskState.getTasks() != null && !taskState.getTasks().isEmpty()) {
-                                        currentState.getTaskState().setCurrentTaskId(taskState.getTasks().get(0).getId());
-                                        // 设置第一个任务为 in_progress
-                                        taskState.getTasks().get(0).setStatus(TaskStatus.IN_PROGRESS);
-                                    }
-                                    currentState.setStatus(AgentStatus.RUNNING);
-                                    agentStateService.saveAgentState(currentState);
-                                    
-                                    log.info("Plan compiled successfully. Tasks: {}, Current: {}", 
-                                        taskState.getTasks() != null ? taskState.getTasks().size() : 0,
-                                        currentState.getTaskState().getCurrentTaskId());
-                                    
-                                    // Cursor 工作流程：规划完成后，自动触发第一轮执行
-                                    // 注意：这里不能直接触发，因为当前还在流式响应中
-                                    // 需要前端在收到规划后，自动发送一个继续请求
-                                    // 或者在这里标记需要自动执行
-                                } catch (Exception e) {
-                                    log.error("Failed to compile plan: {}", e.getMessage(), e);
-                                }
-                            } else {
+                log.info("Extracted JSON: {}", json.substring(0, Math.min(200, json.length())));
+                
+                if (json.startsWith("[")) {
+                    // It is a Plan!
+                    log.info("Detected task plan");
+                    try {
+                        TaskState taskState = taskCompiler.compile(json, "pipeline-" + System.currentTimeMillis());
+                        AgentState currentState = agentStateService.getAgentState(sessionId, userId);
+                        currentState.setTaskState(taskState);
+                        if (taskState.getTasks() != null && !taskState.getTasks().isEmpty()) {
+                            currentState.getTaskState().setCurrentTaskId(taskState.getTasks().get(0).getId());
+                            taskState.getTasks().get(0).setStatus(TaskStatus.IN_PROGRESS);
+                        }
+                        currentState.setStatus(AgentStatus.RUNNING);
+                        agentStateService.saveAgentState(currentState);
+                        
+                        log.info("Plan compiled successfully. Tasks: {}, Current: {}", 
+                            taskState.getTasks() != null ? taskState.getTasks().size() : 0,
+                            currentState.getTaskState().getCurrentTaskId());
+                    } catch (Exception e) {
+                        log.error("Failed to compile plan: {}", e.getMessage(), e);
+                    }
+                } else {
                     // Try to parse as DecisionEnvelope
+                    log.info("Attempting to parse as decision envelope");
                     try {
                         DecisionEnvelope decision = objectMapper.readValue(json, DecisionEnvelope.class);
+                        
+                        // 自动生成 decision_id（如果AI没有提供）
+                        if (decision.getDecisionId() == null || decision.getDecisionId().trim().isEmpty()) {
+                            decision.setDecisionId(java.util.UUID.randomUUID().toString());
+                            log.info("Auto-generated decision_id: {}", decision.getDecisionId());
+                        } else {
+                            log.info("Using AI-provided decision_id: {}", decision.getDecisionId());
+                        }
+                        
                         AgentState currentState = agentStateService.getAgentState(sessionId, userId);
                         currentState.setLastDecision(decision);
                         
+                        log.info("Decision - Type: {}, Action: {}", decision.getType(), decision.getAction());
+                        
                         if ("TASK_COMPLETE".equals(decision.getType())) {
-                            // 任务完成，更新任务状态
+                            log.info("Task completion detected");
                             stateMutator.markTaskComplete(currentState);
                             if (currentState.getStatus() == AgentStatus.COMPLETED) {
-                                // 所有任务完成
                                 log.info("All tasks completed for session: {}", sessionId);
                             } else {
-                                // 还有下一个任务，继续执行
                                 currentState.setStatus(AgentStatus.RUNNING);
+                                log.info("Moving to next task");
                             }
                         } else if ("TOOL_CALL".equals(decision.getType())) {
                             currentState.setStatus(AgentStatus.WAITING_TOOL);
+                            log.info("Tool call detected, status set to WAITING_TOOL");
                         }
                         agentStateService.saveAgentState(currentState);
+                        log.info("Agent state saved successfully");
                     } catch (Exception e) {
-                        // Not a valid decision envelope, maybe just chat
-                        log.debug("Response is not a decision envelope: {}", e.getMessage());
+                        log.warn("Response is not a decision envelope: {}", e.getMessage());
+                        log.debug("Full response: {}", fullResponse);
                     }
                 }
+            } else {
+                log.warn("No JSON found in response");
             }
         } catch (Exception e) {
-            log.error("Failed to capture decision: {}", e.getMessage(), e);
+            log.error("Error in handleAgentResponse: {}", e.getMessage(), e);
+        }
+    }
+    
+    private void logError("Failed to capture decision: {}", e.getMessage(), e);
         }
     }
     
