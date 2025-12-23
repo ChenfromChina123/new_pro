@@ -163,25 +163,6 @@
           </div>
         </div>
         
-        <!-- 返回底部按钮（引导问题上方） -->
-        <transition name="fade">
-          <div 
-            v-if="showScrollToBottomBtn" 
-            class="scroll-to-bottom-container"
-            @mouseenter="handleMouseEnterScrollBottom"
-            @mouseleave="handleMouseLeaveScrollBottom"
-          >
-            <button 
-              class="scroll-to-bottom-btn"
-              title="返回底部"
-              @click="scrollToBottom('smooth')"
-            >
-              <i class="fas fa-arrow-down" />
-              <span>最新消息</span>
-            </button>
-          </div>
-        </transition>
-        
         <div class="chat-input-area">
           <div class="input-container">
             <textarea
@@ -371,6 +352,25 @@
         </transition>
       </div>
     </div>
+    
+    <!-- 返回底部悬浮按钮（不占用容器空间） -->
+    <transition name="fade">
+      <div 
+        v-if="showScrollToBottomBtn" 
+        class="scroll-to-bottom-floating"
+        @mouseenter="handleMouseEnterScrollBottom"
+        @mouseleave="handleMouseLeaveScrollBottom"
+      >
+        <button 
+          class="scroll-to-bottom-btn"
+          title="返回底部"
+          @click="scrollToBottom('smooth')"
+        >
+          <i class="fas fa-arrow-down" />
+          <span>最新消息</span>
+        </button>
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -2883,38 +2883,57 @@ body.dark-mode .message-copy-button:hover {
   opacity: 1;
 }
 
-.scroll-to-bottom-container {
-  display: flex;
-  justify-content: center;
-  width: 100%;
-  padding: 4px 0;
-  z-index: 100;
-  background-color: transparent;
+/* 悬浮的返回底部按钮（不占用容器空间） */
+.scroll-to-bottom-floating {
+  position: fixed;
+  bottom: 140px; /* 距离底部140px，避免与输入框重叠 */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
   pointer-events: none;
+  animation: slideUpFade 0.3s ease-out;
+}
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 }
 
 .scroll-to-bottom-btn {
-  background-color: transparent;
+  background-color: rgba(255, 255, 255, 0.95);
   color: var(--primary-color);
   border: 1px solid var(--primary-color);
-  border-radius: 20px;
-  padding: 8px 16px;
+  border-radius: 24px;
+  padding: 10px 20px;
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 14px;
   font-weight: 500;
-  box-shadow: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   cursor: pointer;
-  transition: all 0.3s ease;
-  backdrop-filter: blur(4px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(8px);
   pointer-events: auto;
+  white-space: nowrap;
 }
 
 .scroll-to-bottom-btn:hover {
-  background-color: rgba(37, 99, 235, 0.05);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-sm);
+  background-color: rgba(37, 99, 235, 0.1);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  border-color: var(--primary-color);
+}
+
+.scroll-to-bottom-btn:active {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .history-nav-container {
