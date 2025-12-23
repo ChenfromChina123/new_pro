@@ -7,6 +7,9 @@ import com.aispring.dto.response.TerminalFileDto;
 import com.aispring.entity.ChatRecord;
 import com.aispring.entity.ChatSession;
 import com.aispring.entity.agent.*;
+import com.aispring.entity.terminal.FileSearchRequest;
+import com.aispring.entity.terminal.FileContextRequest;
+import com.aispring.entity.terminal.FileModifyRequest;
 import com.aispring.security.CustomUserDetails;
 import com.aispring.service.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -277,10 +280,6 @@ public class TerminalController {
         }
     }
     
-    private void logError("Failed to capture decision: {}", e.getMessage(), e);
-        }
-    }
-    
     /**
      * 构建继续执行的 Prompt - 基于工具结果（任务模式）
      */
@@ -507,6 +506,50 @@ public class TerminalController {
                                       @RequestParam String path) {
         String content = terminalService.readFile(currentUser.getUser().getId(), path);
         return ApiResponse.success(content);
+    }
+    
+    @PostMapping("/search-files")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<TerminalCommandResponse> searchFiles(@AuthenticationPrincipal CustomUserDetails currentUser,
+                                                           @Valid @RequestBody FileSearchRequest request,
+                                                           @RequestParam(required = false, defaultValue = "/") String cwd) {
+        log.info("Search files request - User: {}, Pattern: {}", currentUser.getUser().getId(), request.getPattern());
+        TerminalCommandResponse response = terminalService.searchFiles(
+                currentUser.getUser().getId(), 
+                request, 
+                cwd
+        );
+        return ApiResponse.success(response);
+    }
+    
+    @PostMapping("/read-file-context")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<TerminalCommandResponse> readFileContext(@AuthenticationPrincipal CustomUserDetails currentUser,
+                                                               @Valid @RequestBody FileContextRequest request,
+                                                               @RequestParam(required = false, defaultValue = "/") String cwd) {
+        log.info("Read file context request - User: {}, Files: {}", 
+            currentUser.getUser().getId(), request.getFiles().size());
+        TerminalCommandResponse response = terminalService.readFileContext(
+                currentUser.getUser().getId(),
+                request,
+                cwd
+        );
+        return ApiResponse.success(response);
+    }
+    
+    @PostMapping("/modify-file")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<TerminalCommandResponse> modifyFile(@AuthenticationPrincipal CustomUserDetails currentUser,
+                                                          @Valid @RequestBody FileModifyRequest request,
+                                                          @RequestParam(required = false, defaultValue = "/") String cwd) {
+        log.info("Modify file request - User: {}, Path: {}, Operations: {}", 
+            currentUser.getUser().getId(), request.getPath(), request.getOperations().size());
+        TerminalCommandResponse response = terminalService.modifyFile(
+                currentUser.getUser().getId(),
+                request,
+                cwd
+        );
+        return ApiResponse.success(response);
     }
 
     @PostMapping("/new-session")
