@@ -1024,6 +1024,16 @@ const processAgentLoop = async (prompt, toolResult) => {
         }
       }
 
+      // 检查是否是任务列表消息
+      if (decision.type === 'task_list' || decision.tasks) {
+        console.log('[TerminalView] Task list received:', decision.tasks)
+        terminalStore.currentTasks = decision.tasks || []
+        currentAiMsg.message = '任务计划已生成'
+        currentAiMsg.status = 'success'
+        await saveMessage(JSON.stringify(decision), 2)
+        return
+      }
+      
       // 1. De-duplication check
       if (decision.decision_id && terminalStore.hasDecision(decision.decision_id)) {
           console.warn('Duplicate decision ignored:', decision.decision_id)
