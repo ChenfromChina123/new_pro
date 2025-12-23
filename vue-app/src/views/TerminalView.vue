@@ -173,6 +173,18 @@
                                   class="tool-label"
                                 >确保文件</span>
                                 <span
+                                  v-else-if="item.data.tool === 'search_files'"
+                                  class="tool-label"
+                                >搜索文件</span>
+                                <span
+                                  v-else-if="item.data.tool === 'read_file_context'"
+                                  class="tool-label"
+                                >读取上下文</span>
+                                <span
+                                  v-else-if="item.data.tool === 'modify_file'"
+                                  class="tool-label"
+                                >修改文件</span>
+                                <span
                                   v-else
                                   class="tool-label"
                                 >工具调用</span>
@@ -180,6 +192,9 @@
                               <div class="tool-command">
                                 <code v-if="item.data.tool === 'execute_command'">{{ item.data.command }}</code>
                                 <code v-else-if="item.data.tool === 'write_file' || item.data.tool === 'ensure_file'">{{ item.data.filePath }}</code>
+                                <code v-else-if="item.data.tool === 'search_files'">{{ item.data.searchPattern || '搜索中...' }}</code>
+                                <code v-else-if="item.data.tool === 'read_file_context'">{{ item.data.filePath || '读取中...' }}</code>
+                                <code v-else-if="item.data.tool === 'modify_file'">{{ item.data.filePath }}</code>
                               </div>
                               <div
                                 class="tool-status"
@@ -1007,6 +1022,7 @@ const processAgentLoop = async (prompt, toolResult) => {
       currentAiMsg.tool = decision.type === 'TOOL_CALL' ? decision.action : decision.type
       currentAiMsg.command = decision.params?.command
       currentAiMsg.filePath = decision.params?.path
+      currentAiMsg.searchPattern = decision.params?.pattern
       
       // 解耦架构：保存身份信息（如果后端返回）
       if (decision.identity) {
@@ -1089,6 +1105,62 @@ const processAgentLoop = async (prompt, toolResult) => {
                   // read_file 通常不需要执行，只是标记可见
                   result.exit_code = 0
                   result.stdout = 'File marked as visible'
+              } else if (decision.action === 'search_files') {
+                  // 搜索文件内容
+                  const res = await searchFiles(decision.params)
+                  result.exit_code = res.exitCode ?? res.exit_code
+                  result.stdout = res.stdout || ''
+                  result.stderr = res.stderr || ''
+                  
+                  terminalLogs.value.push({ 
+                    command: `search_files: ${decision.params.pattern}`, 
+                    output: result.stdout || result.stderr, 
+                    type: result.exit_code === 0 ? 'stdout' : 'stderr',
+                    cwd: res.cwd 
+                  })
+              } else if (decision.action === 'read_file_context') {
+                  // 批量读取文件上下文
+                  const res = await readFileContext(decision.params.files)
+                  result.exit_code = res.exitCode ?? res.exit_code
+                  result.stdout = res.stdout || ''
+                  result.stderr = res.stderr || ''
+                  
+                  // 更新可见文件列表
+                  if (decision.params?.files) {
+                      decision.params.files.forEach(file => {
+                          if (file.path && !visibleFiles.value.includes(file.path)) {
+                              visibleFiles.value.push(file.path)
+                          }
+                      })
+                  }
+                  
+                  terminalLogs.value.push({ 
+                    command: `read_file_context: ${decision.params.files?.length || 0} files`, 
+                    output: result.stdout || result.stderr, 
+                    type: result.exit_code === 0 ? 'stdout' : 'stderr',
+                    cwd: res.cwd 
+                  })
+              } else if (decision.action === 'modify_file') {
+                  // 精确修改文件
+                  const res = await modifyFile(decision.params)
+                  result.exit_code = res.exitCode ?? res.exit_code
+                  result.stdout = res.stdout || ''
+                  result.stderr = res.stderr || ''
+                  
+                  if (result.exit_code === 0 && decision.params?.path) {
+                      result.artifacts.push(decision.params.path)
+                      // 更新可见文件列表
+                      if (!visibleFiles.value.includes(decision.params.path)) {
+                          visibleFiles.value.push(decision.params.path)
+                      }
+                  }
+                  
+                  terminalLogs.value.push({ 
+                    command: `modify_file: ${decision.params.path}`, 
+                    output: result.stdout || result.stderr, 
+                    type: result.exit_code === 0 ? 'stdout' : 'stderr',
+                    cwd: res.cwd 
+                  })
               }
               
               currentAiMsg.status = result.exit_code === 0 ? 'success' : 'error'
@@ -1165,6 +1237,62 @@ const writeFile = async (path, content, overwrite) => {
   })
   const data = await safeReadJson(res)
   return data?.data || { exit_code: -1, stderr: 'Write failed' }
+}
+
+/**
+ * 搜索文件内容
+ */
+const searchFiles = async (params) => {
+  const res = await fetch(`${API_CONFIG.baseURL}/api/terminal/search-files?cwd=${encodeURIComponent(currentCwd.value)}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${authStore.token}`
+    },
+    body: JSON.stringify({
+      pattern: params.pattern,
+      file_pattern: params.file_pattern || '*',
+      case_sensitive: params.case_sensitive || false,
+      context_lines: params.context_lines || 20
+    })
+  })
+  const data = await safeReadJson(res)
+  return data?.data || { exit_code: -1, stderr: 'Search failed' }
+}
+
+/**
+ * 批量读取文件上下文
+ */
+const readFileContext = async (files) => {
+  const res = await fetch(`${API_CONFIG.baseURL}/api/terminal/read-file-context?cwd=${encodeURIComponent(currentCwd.value)}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${authStore.token}`
+    },
+    body: JSON.stringify({ files })
+  })
+  const data = await safeReadJson(res)
+  return data?.data || { exit_code: -1, stderr: 'Read context failed' }
+}
+
+/**
+ * 精确修改文件
+ */
+const modifyFile = async (params) => {
+  const res = await fetch(`${API_CONFIG.baseURL}/api/terminal/modify-file?cwd=${encodeURIComponent(currentCwd.value)}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${authStore.token}`
+    },
+    body: JSON.stringify({
+      path: params.path,
+      operations: params.operations
+    })
+  })
+  const data = await safeReadJson(res)
+  return data?.data || { exit_code: -1, stderr: 'Modify failed' }
 }
 
 // 解耦架构：格式化时间
