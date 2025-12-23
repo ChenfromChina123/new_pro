@@ -225,7 +225,7 @@ export const useChatStore = defineStore('chat', () => {
       content: '',
       reasoning_content: '', // 新增推理内容字段
       isStreaming: true,
-      isReasoningCollapsed: false,
+      isReasoningCollapsed: true, // 默认折叠，显示预览
       timestamp: new Date().toISOString(),
       model: selectedModel.value
     }
