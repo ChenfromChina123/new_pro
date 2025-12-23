@@ -23,6 +23,11 @@
                 >
                   {{ agentStatus }}
                 </span>
+                <!-- 解耦架构：身份信息快捷显示 -->
+                <div v-if="identityInfo?.task?.goal" class="identity-quick-view">
+                  <span class="quick-label">任务:</span>
+                  <span class="quick-value">{{ identityInfo.task.goal }}</span>
+                </div>
               </div>
               <div class="header-right">
                 <button 
@@ -320,6 +325,131 @@
               />
             </template>
           </div>
+
+          <!-- Identity Info Panel -->
+          <div
+            v-if="activeTab === 'identity'"
+            class="panel-content identity-panel"
+          >
+            <div class="identity-panel-header">
+              <h4>Agent 身份信息</h4>
+              <button
+                v-if="identityInfo"
+                class="clear-btn"
+                @click="terminalStore.clearIdentity()"
+              >
+                清除
+              </button>
+            </div>
+            <div v-if="identityInfo" class="identity-content">
+              <!-- Core Identity -->
+              <div class="identity-section">
+                <div class="section-title">核心身份</div>
+                <div class="identity-item">
+                  <span class="label">类型:</span>
+                  <span class="value">{{ identityInfo.core?.type || 'N/A' }}</span>
+                </div>
+                <div class="identity-item">
+                  <span class="label">权限:</span>
+                  <span class="badge" :class="identityInfo.core?.authority">
+                    {{ identityInfo.core?.authority || 'N/A' }}
+                  </span>
+                </div>
+                <div class="identity-item">
+                  <span class="label">领域:</span>
+                  <span class="value">{{ identityInfo.core?.domain || 'N/A' }}</span>
+                </div>
+              </div>
+
+              <!-- Task Identity -->
+              <div v-if="identityInfo.task?.id" class="identity-section">
+                <div class="section-title">任务身份</div>
+                <div class="identity-item">
+                  <span class="label">任务ID:</span>
+                  <span class="value">{{ identityInfo.task.id }}</span>
+                </div>
+                <div class="identity-item">
+                  <span class="label">角色:</span>
+                  <span class="value">{{ identityInfo.task.role || 'N/A' }}</span>
+                </div>
+                <div class="identity-item">
+                  <span class="label">目标:</span>
+                  <span class="value">{{ identityInfo.task.goal || 'N/A' }}</span>
+                </div>
+              </div>
+
+              <!-- Viewpoint Identity -->
+              <div v-if="identityInfo.viewpoint?.file" class="identity-section">
+                <div class="section-title">视角身份</div>
+                <div class="identity-item">
+                  <span class="label">文件:</span>
+                  <span class="value">{{ identityInfo.viewpoint.file }}</span>
+                </div>
+                <div v-if="identityInfo.viewpoint.symbol" class="identity-item">
+                  <span class="label">符号:</span>
+                  <span class="value">{{ identityInfo.viewpoint.symbol }}</span>
+                </div>
+                <div v-if="identityInfo.viewpoint.line" class="identity-item">
+                  <span class="label">行号:</span>
+                  <span class="value">{{ identityInfo.viewpoint.line }}</span>
+                </div>
+              </div>
+            </div>
+            <div v-else class="empty-state">
+              <p>暂无身份信息</p>
+              <p class="hint">身份信息将在 Agent 执行任务时自动更新</p>
+            </div>
+          </div>
+
+          <!-- State Slices Panel -->
+          <div
+            v-if="activeTab === 'state'"
+            class="panel-content state-panel"
+          >
+            <div class="state-panel-header">
+              <h4>状态切片 ({{ stateSlices.length }})</h4>
+              <div class="header-actions">
+                <button
+                  class="clear-btn"
+                  @click="terminalStore.clearStateSlices()"
+                  :disabled="stateSlices.length === 0"
+                >
+                  清除
+                </button>
+              </div>
+            </div>
+            <div class="state-content">
+              <div v-if="stateSlices.length > 0" class="slices-list">
+                <div
+                  v-for="(slice, index) in stateSlices.slice().reverse()"
+                  :key="index"
+                  class="slice-item"
+                >
+                  <div class="slice-header">
+                    <span class="slice-source">{{ slice.source }}</span>
+                    <span class="slice-timestamp">{{ formatTime(slice.timestamp) }}</span>
+                  </div>
+                  <div class="slice-scope" v-if="slice.scope && slice.scope.length > 0">
+                    <span class="scope-label">作用域:</span>
+                    <span class="scope-value">{{ slice.scope.join(', ') }}</span>
+                  </div>
+                  <div class="slice-data">
+                    <span class="data-label">数据项数:</span>
+                    <span class="data-value">{{ Object.keys(slice.data || {}).length }}</span>
+                  </div>
+                  <div class="slice-authority">
+                    <span class="authority-badge" :class="slice.authority">
+                      {{ slice.authority === 'fact' ? '事实' : '模型输出' }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="empty-state">
+                <p>暂无状态切片</p>
+                <p class="hint">状态切片将在 Agent 执行时自动生成</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -376,7 +506,11 @@ const {
   activeTaskId,
   groupedMessages,
   agentStatus,
-  decisionHistory
+  decisionHistory,
+  identityInfo,
+  stateSlices,
+  visibleFiles,
+  visibleFunctions
 } = storeToRefs(terminalStore)
 
 const sidebarWidth = ref(250)
@@ -485,7 +619,9 @@ const taskProgress = computed(() => {
 
 const tabMeta = {
   'terminal': { id: 'terminal', label: '终端输出' },
-  'files': { id: 'files', label: '文件管理' }
+  'files': { id: 'files', label: '文件管理' },
+  'identity': { id: 'identity', label: '身份信息' },
+  'state': { id: 'state', label: '状态切片' }
 }
 const tabs = ref(uiStore.tabOrder.filter(id => tabMeta[id]).map(id => tabMeta[id]))
 watch(tabs, (newTabs) => {
@@ -542,6 +678,10 @@ onMounted(async () => {
     await terminalStore.selectSession(sessions.value[0].sessionId)
   } else {
     await terminalStore.createNewSession()
+    // 解耦架构：创建新会话时清除状态
+    terminalStore.clearIdentity()
+    terminalStore.clearStateSlices()
+    terminalStore.clearScope()
   }
   scrollToBottom()
 })
@@ -695,7 +835,12 @@ const processAgentLoop = async (prompt, toolResult) => {
         prompt: prompt,
         session_id: currentSessionId.value,
         model: currentModel.value,
-        tool_result: toolResult
+        tool_result: toolResult,
+        // 解耦架构：包含作用域信息
+        scope: {
+            visible_files: visibleFiles.value,
+            visible_functions: visibleFunctions.value
+        }
     }
     
     const response = await fetch(`${API_CONFIG.baseURL}/api/terminal/chat-stream`, {
@@ -727,37 +872,64 @@ const processAgentLoop = async (prompt, toolResult) => {
     
     const processBuffer = () => {
       const lines = buffer.split('\n')
-      buffer = lines.pop()
+      buffer = lines.pop() || ''
       let needsScroll = false
+      
       for (const line of lines) {
+        if (!line.trim()) continue // 跳过空行
+        
         if (line.startsWith('data:')) {
           const dataStr = line.slice(5).trim()
           if (dataStr === '[DONE]') continue
+          
           try {
             const json = JSON.parse(dataStr)
+            
+            // 处理推理内容
+            if (json.reasoning_content) {
+              currentAiMsg.thought = (currentAiMsg.thought || '') + json.reasoning_content
+            }
+            
+            // 处理回复内容 - 实时更新，不等待累积
             if (json.content) {
               fullContent += json.content
               needsScroll = true
               
+              // 实时更新显示内容，提供更好的流式体验
+              // 如果包含代码块标记，尝试提取前面的文本
               if (fullContent.includes('```json')) {
-                  const codeBlockStart = fullContent.indexOf('```json')
-                  if (codeBlockStart >= 0) {
-                      currentAiMsg.message = fullContent.substring(0, codeBlockStart).trim()
-                  }
-              } else if (fullContent.includes('{')) {
-                  // Simplified extraction logic for streaming JSON
-                  const jsonStart = fullContent.indexOf('{')
-                  if (jsonStart >= 0) {
-                      currentAiMsg.message = fullContent.substring(0, jsonStart).trim()
-                  }
-              } else {
+                const codeBlockStart = fullContent.indexOf('```json')
+                if (codeBlockStart >= 0) {
+                  currentAiMsg.message = fullContent.substring(0, codeBlockStart).trim()
+                } else {
                   currentAiMsg.message = fullContent
+                }
+              } else if (fullContent.includes('{') && !fullContent.trim().startsWith('{')) {
+                // 如果有 JSON 但不是以 { 开头，提取前面的文本
+                const jsonStart = fullContent.indexOf('{')
+                if (jsonStart >= 0) {
+                  currentAiMsg.message = fullContent.substring(0, jsonStart).trim()
+                } else {
+                  currentAiMsg.message = fullContent
+                }
+              } else {
+                // 直接显示全部内容
+                currentAiMsg.message = fullContent
               }
             }
-          } catch (e) {}
+          } catch (e) {
+            // JSON 解析失败，可能是部分数据，继续累积
+            console.debug('Partial JSON data:', dataStr.substring(0, 50))
+          }
         }
       }
-      if (needsScroll) scrollToBottom()
+      
+      // 优化滚动：使用 requestAnimationFrame 减少滚动频率
+      if (needsScroll) {
+        requestAnimationFrame(() => {
+          scrollToBottom()
+        })
+      }
     }
 
     while (true) {
@@ -772,9 +944,55 @@ const processAgentLoop = async (prompt, toolResult) => {
     
     // Parse Final JSON Content (Decision Envelope)
     try {
-      const jsonMatch = fullContent.match(/\{[\s\S]*\}/)
-      const jsonStr = jsonMatch ? jsonMatch[0] : fullContent
-      const decision = JSON.parse(jsonStr)
+      // 尝试多种方式提取 JSON
+      let jsonStr = null
+      
+      // 方式1: 查找 ```json 代码块
+      const codeBlockMatch = fullContent.match(/```json\s*([\s\S]*?)```/)
+      if (codeBlockMatch) {
+        jsonStr = codeBlockMatch[1].trim()
+      }
+      
+      // 方式2: 查找第一个 { 到最后一个 }
+      if (!jsonStr) {
+        const jsonMatch = fullContent.match(/\{[\s\S]*\}/)
+        if (jsonMatch) {
+          jsonStr = jsonMatch[0]
+        }
+      }
+      
+      // 方式3: 如果整个内容看起来像 JSON
+      if (!jsonStr && fullContent.trim().startsWith('{')) {
+        jsonStr = fullContent.trim()
+      }
+      
+      if (!jsonStr) {
+        console.warn('No JSON found in response:', fullContent.substring(0, 200))
+        currentAiMsg.message = fullContent
+        await saveMessage(fullContent, 2)
+        return
+      }
+      
+      // 清理 JSON 字符串（移除可能的换行和多余空格）
+      jsonStr = jsonStr.trim()
+      
+      // 尝试解析 JSON
+      let decision
+      try {
+        decision = JSON.parse(jsonStr)
+      } catch (parseError) {
+        console.error('JSON parse error:', parseError, 'Content:', jsonStr.substring(0, 200))
+        // 如果解析失败，尝试修复常见的 JSON 问题
+        jsonStr = jsonStr.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']')
+        try {
+          decision = JSON.parse(jsonStr)
+        } catch (e) {
+          console.error('JSON parse failed after cleanup:', e)
+          currentAiMsg.message = fullContent
+          await saveMessage(fullContent, 2)
+          return
+        }
+      }
 
       // 1. De-duplication check
       if (decision.decision_id && terminalStore.hasDecision(decision.decision_id)) {
@@ -790,8 +1008,35 @@ const processAgentLoop = async (prompt, toolResult) => {
       currentAiMsg.command = decision.params?.command
       currentAiMsg.filePath = decision.params?.path
       
+      // 解耦架构：保存身份信息（如果后端返回）
+      if (decision.identity) {
+          terminalStore.setIdentity(decision.identity)
+      }
+
+      // 解耦架构：保存状态切片（如果后端返回）
+      if (decision.state_slices) {
+          decision.state_slices.forEach(slice => {
+              terminalStore.addStateSlice(slice)
+          })
+      }
+
       // 2. Handle Action
       if (decision.type === 'TOOL_CALL') {
+          // 解耦架构：工具执行策略检查
+          if (!terminalStore.canExecuteTool(decision.action)) {
+              console.warn('Tool action not in whitelist:', decision.action)
+              const result = {
+                  decision_id: decision.decision_id,
+                  exit_code: -1,
+                  stderr: `Action ${decision.action} is not allowed (not in whitelist)`,
+                  artifacts: []
+              }
+              currentAiMsg.status = 'error'
+              currentAiMsg.message = `工具执行被拒绝：${result.stderr}`
+              await processAgentLoop("tool_result_feedback", result)
+              return
+          }
+
           terminalStore.setAgentStatus('WAITING_TOOL')
           isExecuting.value = true
           
@@ -824,6 +1069,10 @@ const processAgentLoop = async (prompt, toolResult) => {
                   result.stderr = res.stderr || ''
                   if (result.exit_code === 0) {
                       result.artifacts.push(decision.params.path)
+                      // 解耦架构：更新可见文件列表
+                      if (!visibleFiles.value.includes(decision.params.path)) {
+                          visibleFiles.value.push(decision.params.path)
+                      }
                   }
                   
                   terminalLogs.value.push({ 
@@ -832,6 +1081,14 @@ const processAgentLoop = async (prompt, toolResult) => {
                     type: result.exit_code === 0 ? 'stdout' : 'stderr',
                     cwd: res.cwd 
                   })
+              } else if (decision.action === 'read_file') {
+                  // 解耦架构：read_file 也更新可见文件列表
+                  if (decision.params?.path && !visibleFiles.value.includes(decision.params.path)) {
+                      visibleFiles.value.push(decision.params.path)
+                  }
+                  // read_file 通常不需要执行，只是标记可见
+                  result.exit_code = 0
+                  result.stdout = 'File marked as visible'
               }
               
               currentAiMsg.status = result.exit_code === 0 ? 'success' : 'error'
@@ -845,8 +1102,9 @@ const processAgentLoop = async (prompt, toolResult) => {
           }
           
           // 3. Feedback Loop (Send Result back)
-          // We send a system message with the result to trigger next step
-          await processAgentLoop("tool_result_feedback", result)
+          // Cursor 工作流程：工具执行完成后，自动触发下一轮循环
+          // 后端会自动处理工具结果并继续执行，这里只需要发送结果
+          await processAgentLoop("", result)  // 空 prompt，后端会自动构建继续执行的 prompt
           
       } else if (decision.type === 'TASK_COMPLETE') {
           terminalStore.setAgentStatus('IDLE') // Or COMPLETED
@@ -908,6 +1166,17 @@ const writeFile = async (path, content, overwrite) => {
   const data = await safeReadJson(res)
   return data?.data || { exit_code: -1, stderr: 'Write failed' }
 }
+
+// 解耦架构：格式化时间
+const formatTime = (timestamp) => {
+  if (!timestamp) return 'N/A'
+  const date = new Date(timestamp)
+  return date.toLocaleTimeString('zh-CN', { 
+    hour: '2-digit', 
+    minute: '2-digit', 
+    second: '2-digit' 
+  })
+}
 </script>
 
 <style scoped>
@@ -924,6 +1193,31 @@ const writeFile = async (path, content, overwrite) => {
 .status-badge.paused { background: #fef9c3; color: #854d0e; }
 .status-badge.error { background: #fee2e2; color: #991b1b; }
 .status-badge.idle { background: #f1f5f9; color: #64748b; }
+
+/* 解耦架构：身份信息快捷显示 */
+.identity-quick-view {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: #f1f5f9;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  margin-left: 10px;
+}
+
+.quick-label {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.quick-value {
+  color: #1e293b;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .control-btn {
     padding: 4px 12px;
@@ -1531,6 +1825,217 @@ const writeFile = async (path, content, overwrite) => {
 .panel-content.file-panel-container {
   padding: 0;
   overflow: hidden;
+}
+
+/* Identity Panel Styles */
+.identity-panel {
+  padding: 16px;
+  overflow-y: auto;
+  background: #fff;
+}
+
+.identity-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.identity-panel-header h4 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.identity-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.identity-section {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.section-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.identity-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+}
+
+.identity-item:last-child {
+  margin-bottom: 0;
+}
+
+.identity-item .label {
+  color: #64748b;
+  font-weight: 500;
+  min-width: 60px;
+}
+
+.identity-item .value {
+  color: #1e293b;
+  flex: 1;
+}
+
+.badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge.suggest_only {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.badge.execute {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #94a3b8;
+}
+
+.empty-state p {
+  margin: 8px 0;
+}
+
+.empty-state .hint {
+  font-size: 0.85rem;
+  color: #cbd5e1;
+}
+
+/* State Slices Panel Styles */
+.state-panel {
+  padding: 16px;
+  overflow-y: auto;
+  background: #fff;
+}
+
+.state-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.state-panel-header h4 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.slices-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.slice-item {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px;
+  transition: all 0.2s;
+}
+
+.slice-item:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.slice-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.slice-source {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #3b82f6;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.slice-timestamp {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.slice-scope,
+.slice-data {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+}
+
+.scope-label,
+.data-label {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.scope-value,
+.data-value {
+  color: #1e293b;
+}
+
+.slice-authority {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.authority-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.authority-badge.fact {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.authority-badge.model_output {
+  background: #fef3c7;
+  color: #92400e;
 }
 
 </style>

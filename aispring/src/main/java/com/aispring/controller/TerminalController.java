@@ -14,6 +14,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -22,11 +23,11 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/terminal")
 @RequiredArgsConstructor
+@Slf4j
 public class TerminalController {
 
     private final TerminalService terminalService;
@@ -85,6 +86,28 @@ public class TerminalController {
                  return sendSystemMessage("工具结果被拒绝：" + result.getReason());
              }
              agentStateService.saveAgentState(state);
+             
+             // Cursor 工作流程：工具执行成功后，自动触发下一轮循环
+             // 如果状态是 RUNNING 且有任务，自动继续执行
+             if (result.getNewAgentStatus() == AgentStatus.RUNNING && 
+                 state.getTaskState() != null && 
+                 state.getTaskState().getCurrentTaskId() != null) {
+                 // 自动触发下一轮：使用工具结果作为上下文，继续执行任务
+                 String continuationPrompt = buildContinuationPrompt(state, request.getTool_result());
+                 String context = agentPromptBuilder.buildPromptContext(state);
+                 String systemPrompt = promptManager.getExecutorPrompt(context);
+                 
+                 // 继续执行，不等待用户输入
+                 return aiChatService.askAgentStream(
+                     continuationPrompt,
+                     sessionId,
+                     request.getModel(),
+                     String.valueOf(userId),
+                     systemPrompt,
+                     null,
+                     (fullResponse) -> handleAgentResponse(fullResponse, sessionId, userId)
+                 );
+             }
         }
 
         // 4. Construct System Prompt & Determine Role
@@ -125,86 +148,180 @@ public class TerminalController {
                 String.valueOf(userId),
                 systemPrompt,
                 null,
-                (fullResponse) -> {
-                    try {
-                        // Parse Decision Envelope or Plan
-                        String json = extractJson(fullResponse);
-                        if (json != null) {
-                            json = json.trim();
+                (fullResponse) -> handleAgentResponse(fullResponse, sessionId, userId)
+        );
+    }
+    
+    /**
+     * 处理 Agent 响应 - 提取决策信封或任务计划
+     */
+    private void handleAgentResponse(String fullResponse, String sessionId, @SuppressWarnings("unused") Long userId) {
+        try {
+            // Parse Decision Envelope or Plan
+            String json = extractJson(fullResponse);
+            if (json != null) {
+                json = json.trim();
                             if (json.startsWith("[")) {
                                 // It is a Plan!
                                 try {
                                     TaskState taskState = taskCompiler.compile(json, "pipeline-" + System.currentTimeMillis());
-                                    // Update state with new plan
-                                    // Note: we need to ensure we don't overwrite existing state incorrectly
-                                    // But here we are just setting the task state
                                     AgentState currentState = agentStateService.getAgentState(sessionId, userId);
                                     currentState.setTaskState(taskState);
+                                    if (taskState.getTasks() != null && !taskState.getTasks().isEmpty()) {
+                                        currentState.getTaskState().setCurrentTaskId(taskState.getTasks().get(0).getId());
+                                        // 设置第一个任务为 in_progress
+                                        taskState.getTasks().get(0).setStatus(TaskStatus.IN_PROGRESS);
+                                    }
                                     currentState.setStatus(AgentStatus.RUNNING);
                                     agentStateService.saveAgentState(currentState);
+                                    
+                                    log.info("Plan compiled successfully. Tasks: {}, Current: {}", 
+                                        taskState.getTasks() != null ? taskState.getTasks().size() : 0,
+                                        currentState.getTaskState().getCurrentTaskId());
+                                    
+                                    // Cursor 工作流程：规划完成后，自动触发第一轮执行
+                                    // 注意：这里不能直接触发，因为当前还在流式响应中
+                                    // 需要前端在收到规划后，自动发送一个继续请求
+                                    // 或者在这里标记需要自动执行
                                 } catch (Exception e) {
-                                    System.err.println("Failed to compile plan: " + e.getMessage());
+                                    log.error("Failed to compile plan: {}", e.getMessage(), e);
                                 }
                             } else {
-                                // Try to parse as DecisionEnvelope
-                                try {
-                                    DecisionEnvelope decision = objectMapper.readValue(json, DecisionEnvelope.class);
-                                    state.setLastDecision(decision);
-                                    
-                                    if ("TASK_COMPLETE".equals(decision.getType())) {
-                                        // Maybe mark as COMPLETED immediately?
-                                        // But we want to wait for frontend to display it.
-                                        // Let's keep it simple: just save decision.
-                                    } else {
-                                        state.setStatus(AgentStatus.WAITING_TOOL);
-                                    }
-                                    agentStateService.saveAgentState(state);
-                                } catch (Exception e) {
-                                    // Not a valid decision envelope, maybe just chat
-                                    // Ignore or log
-                                }
+                    // Try to parse as DecisionEnvelope
+                    try {
+                        DecisionEnvelope decision = objectMapper.readValue(json, DecisionEnvelope.class);
+                        AgentState currentState = agentStateService.getAgentState(sessionId, userId);
+                        currentState.setLastDecision(decision);
+                        
+                        if ("TASK_COMPLETE".equals(decision.getType())) {
+                            // 任务完成，更新任务状态
+                            stateMutator.markTaskComplete(currentState);
+                            if (currentState.getStatus() == AgentStatus.COMPLETED) {
+                                // 所有任务完成
+                                log.info("All tasks completed for session: {}", sessionId);
+                            } else {
+                                // 还有下一个任务，继续执行
+                                currentState.setStatus(AgentStatus.RUNNING);
                             }
+                        } else if ("TOOL_CALL".equals(decision.getType())) {
+                            currentState.setStatus(AgentStatus.WAITING_TOOL);
                         }
+                        agentStateService.saveAgentState(currentState);
                     } catch (Exception e) {
-                        System.err.println("Failed to capture decision: " + e.getMessage());
+                        // Not a valid decision envelope, maybe just chat
+                        log.debug("Response is not a decision envelope: {}", e.getMessage());
                     }
                 }
-        );
+            }
+        } catch (Exception e) {
+            log.error("Failed to capture decision: {}", e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 构建继续执行的 Prompt - 基于工具结果
+     */
+    private String buildContinuationPrompt(AgentState state, ToolResult toolResult) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("工具执行完成。");
+        
+        if (toolResult.getExitCode() == 0) {
+            sb.append("执行成功。");
+            if (toolResult.getStdout() != null && !toolResult.getStdout().isEmpty()) {
+                sb.append("\n输出：").append(toolResult.getStdout());
+            }
+            if (toolResult.getArtifacts() != null && !toolResult.getArtifacts().isEmpty()) {
+                sb.append("\n创建的文件：").append(String.join(", ", toolResult.getArtifacts()));
+            }
+        } else {
+            sb.append("执行失败。");
+            if (toolResult.getStderr() != null && !toolResult.getStderr().isEmpty()) {
+                sb.append("\n错误：").append(toolResult.getStderr());
+            }
+        }
+        
+        // 添加当前任务信息
+        if (state.getTaskState() != null && state.getTaskState().getCurrentTaskId() != null) {
+            Task currentTask = state.getTaskState().getTasks().stream()
+                    .filter(t -> t.getId().equals(state.getTaskState().getCurrentTaskId()))
+                    .findFirst()
+                    .orElse(null);
+            if (currentTask != null) {
+                sb.append("\n\n当前任务：").append(currentTask.getGoal());
+                sb.append("\n请继续执行当前任务的下一个步骤，或如果任务已完成，请输出 TASK_COMPLETE 决策。");
+            }
+        }
+        
+        return sb.toString();
     }
     
     private String extractJson(String text) {
-        // Try to find markdown code block first
+        if (text == null || text.isEmpty()) {
+            return null;
+        }
+        
+        // 方式1: 查找 ```json 代码块
         int codeBlockStart = text.indexOf("```json");
         if (codeBlockStart >= 0) {
             int jsonStart = codeBlockStart + 7; // Length of "```json"
             int codeBlockEnd = text.indexOf("```", jsonStart);
             if (codeBlockEnd > jsonStart) {
-                return text.substring(jsonStart, codeBlockEnd).trim();
+                String json = text.substring(jsonStart, codeBlockEnd).trim();
+                if (!json.isEmpty()) {
+                    return json;
+                }
             }
         }
         
-        // Fallback to finding { ... } or [ ... ]
+        // 方式2: 查找 ``` 代码块（可能是其他语言标记）
+        codeBlockStart = text.indexOf("```");
+        if (codeBlockStart >= 0) {
+            int jsonStart = text.indexOf("\n", codeBlockStart);
+            if (jsonStart < 0) jsonStart = codeBlockStart + 3;
+            int codeBlockEnd = text.indexOf("```", jsonStart);
+            if (codeBlockEnd > jsonStart) {
+                String json = text.substring(jsonStart, codeBlockEnd).trim();
+                // 检查是否是 JSON
+                if (json.startsWith("{") || json.startsWith("[")) {
+                    return json;
+                }
+            }
+        }
+        
+        // 方式3: 查找第一个 { 到最后一个 }（用于对象）
         int startObj = text.indexOf("{");
-        int startArr = text.indexOf("[");
-        int start = -1;
-        
-        if (startObj >= 0 && startArr >= 0) {
-            start = Math.min(startObj, startArr);
-        } else if (startObj >= 0) {
-            start = startObj;
-        } else if (startArr >= 0) {
-            start = startArr;
-        }
-        
-        if (start >= 0) {
+        if (startObj >= 0) {
             int endObj = text.lastIndexOf("}");
-            int endArr = text.lastIndexOf("]");
-            int end = Math.max(endObj, endArr);
-            
-            if (end > start) {
-                return text.substring(start, end + 1);
+            if (endObj > startObj) {
+                String json = text.substring(startObj, endObj + 1).trim();
+                // 验证是否是有效的 JSON（简单检查）
+                if (json.startsWith("{") && json.endsWith("}")) {
+                    return json;
+                }
             }
         }
+        
+        // 方式4: 查找第一个 [ 到最后一个 ]（用于数组）
+        int startArr = text.indexOf("[");
+        if (startArr >= 0) {
+            int endArr = text.lastIndexOf("]");
+            if (endArr > startArr) {
+                String json = text.substring(startArr, endArr + 1).trim();
+                // 验证是否是有效的 JSON（简单检查）
+                if (json.startsWith("[") && json.endsWith("]")) {
+                    return json;
+                }
+            }
+        }
+        
+        // 方式5: 如果整个文本看起来像 JSON
+        String trimmed = text.trim();
+        if ((trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+            (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
+            return trimmed;
+        }
+        
+        log.warn("Failed to extract JSON from text: {}", text.length() > 200 ? text.substring(0, 200) + "..." : text);
         return null;
     }
     

@@ -21,6 +21,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -43,6 +44,7 @@ import java.security.cert.CertificateException;
  * 对应Python: app.py中的AI聊天相关功能
  */
 @Service
+@Slf4j
 public class AiChatServiceImpl implements AiChatService {
     
     private static final ObjectMapper objectMapper = new ObjectMapper();
@@ -165,7 +167,7 @@ public class AiChatServiceImpl implements AiChatService {
 
     
     /**
-     * 统一发送聊天响应（SSE）
+     * 统一发送聊天响应（SSE）- 优化流畅度
      */
     private void sendChatResponse(SseEmitter emitter, String content, String reasoningContent) {
         try {
@@ -178,7 +180,12 @@ public class AiChatServiceImpl implements AiChatService {
             }
             if (!resultMap.isEmpty()) {
                 String json = objectMapper.writeValueAsString(resultMap);
-                emitter.send(SseEmitter.event().data(json));
+                // 立即发送，不缓冲
+                SseEmitter.SseEventBuilder event = SseEmitter.event()
+                    .data(json)
+                    .id(String.valueOf(System.currentTimeMillis()))
+                    .name("message");
+                emitter.send(event);
             }
         } catch (Exception e) {
             handleError(emitter, e);
@@ -435,30 +442,34 @@ public class AiChatServiceImpl implements AiChatService {
          try (Response response = okHttpClient.newCall(request).execute()) {
              if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
              
-             InputStream is = response.body().byteStream();
-             BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-             String line;
-             while ((line = reader.readLine()) != null) {
-                 if (line.isEmpty()) continue;
-                 if (line.startsWith("data: ")) {
-                     String data = line.substring(6).trim();
-                     if ("[DONE]".equals(data)) break;
-                     try {
-                         JsonNode root = objectMapper.readTree(data);
-                         JsonNode choices = root.path("choices");
-                         if (choices.isArray() && choices.size() > 0) {
-                             JsonNode delta = choices.get(0).path("delta");
-                             String reasoningContent = delta.path("reasoning_content").asText("");
-                             String content = delta.path("content").asText("");
-                             
-                             if (!reasoningContent.isEmpty() || !content.isEmpty()) {
-                                 sendChatResponse(emitter, content, reasoningContent);
-                                 fullContent.append(content);
-                             }
-                         }
-                     } catch (Exception e) { }
-                 }
-             }
+                    InputStream is = response.body().byteStream();
+                    // 使用更小的缓冲区，减少延迟
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(is, java.nio.charset.StandardCharsets.UTF_8), 8192);
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        if (line.isEmpty()) continue;
+                        if (line.startsWith("data: ")) {
+                            String data = line.substring(6).trim();
+                            if ("[DONE]".equals(data)) break;
+                            try {
+                                JsonNode root = objectMapper.readTree(data);
+                                JsonNode choices = root.path("choices");
+                                if (choices.isArray() && choices.size() > 0) {
+                                    JsonNode delta = choices.get(0).path("delta");
+                                    String reasoningContent = delta.path("reasoning_content").asText("");
+                                    String content = delta.path("content").asText("");
+                                    
+                                    // 立即发送，不等待累积
+                                    if (!reasoningContent.isEmpty() || !content.isEmpty()) {
+                                        sendChatResponse(emitter, content, reasoningContent);
+                                        fullContent.append(content);
+                                    }
+                                }
+                            } catch (Exception e) {
+                                log.debug("Parse SSE error in performBlockingChat: {}", e.getMessage());
+                            }
+                        }
+                    }
          }
     }
 
@@ -549,11 +560,14 @@ public class AiChatServiceImpl implements AiChatService {
                     }
 
                     InputStream is = response.body().byteStream();
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+                    // 使用更小的缓冲区（1KB），减少延迟，提高响应速度
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(is, java.nio.charset.StandardCharsets.UTF_8), 1024);
                     String line;
                     
+                    // 优化：逐行处理，立即发送，不缓冲
                     while ((line = reader.readLine()) != null) {
                         if (line.isEmpty()) continue;
+                        
                         if (line.startsWith("data: ")) {
                             String data = line.substring(6).trim();
                             if ("[DONE]".equals(data)) break;
@@ -576,13 +590,14 @@ public class AiChatServiceImpl implements AiChatService {
                                         content = delta.get("content").asText();
                                     }
                                     
+                                    // 立即发送，不等待累积，提供更流畅的体验
                                     if (!reasoningContent.isEmpty() || !content.isEmpty()) {
                                         sendChatResponse(emitter, content, reasoningContent);
                                     }
                                 }
                             } catch (Exception e) {
                                 // 忽略解析错误，继续处理下一行
-                                System.err.println("Parse SSE error: " + e.getMessage());
+                                log.debug("Parse SSE error: {}", e.getMessage());
                             }
                         }
                     }
