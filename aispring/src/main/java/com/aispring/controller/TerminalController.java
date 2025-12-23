@@ -44,6 +44,11 @@ public class TerminalController {
     private final TaskCompiler taskCompiler;
     private final ObjectMapper objectMapper;
     private final TerminalPromptManager promptManager;
+    
+    // Phase 2 新增服务
+    private final SessionStateService sessionStateService;
+    private final CheckpointService checkpointService;
+    private final ToolApprovalService toolApprovalService;
 
     @Data
     public static class TerminalChatRequest {
@@ -662,6 +667,203 @@ public class TerminalController {
     public ApiResponse<Void> deleteSession(@AuthenticationPrincipal CustomUserDetails currentUser,
                                          @PathVariable String sessionId) {
         chatRecordService.deleteSession(currentUser.getUser().getId().toString(), sessionId);
+        return ApiResponse.success(null);
+    }
+    
+    // ================== Phase 2: 检查点相关端点 ==================
+    
+    /**
+     * 获取会话的所有检查点
+     */
+    @GetMapping("/checkpoints/{sessionId}")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<List<com.aispring.entity.checkpoint.ChatCheckpoint>> getCheckpoints(
+            @AuthenticationPrincipal CustomUserDetails currentUser,
+            @PathVariable String sessionId) {
+        List<com.aispring.entity.checkpoint.ChatCheckpoint> checkpoints = 
+                checkpointService.getSessionCheckpoints(sessionId, currentUser.getUser().getId());
+        return ApiResponse.success(checkpoints);
+    }
+    
+    /**
+     * 创建手动检查点
+     */
+    @PostMapping("/checkpoints")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<String> createManualCheckpoint(
+            @AuthenticationPrincipal CustomUserDetails currentUser,
+            @RequestBody Map<String, Object> request) {
+        String sessionId = (String) request.get("sessionId");
+        Integer messageOrder = (Integer) request.get("messageOrder");
+        String description = (String) request.get("description");
+        
+        @SuppressWarnings("unchecked")
+        Map<String, com.aispring.entity.checkpoint.ChatCheckpoint.FileSnapshot> fileSnapshots = 
+                (Map<String, com.aispring.entity.checkpoint.ChatCheckpoint.FileSnapshot>) request.get("fileSnapshots");
+        
+        String checkpointId = checkpointService.createCheckpoint(
+                sessionId,
+                currentUser.getUser().getId(),
+                messageOrder,
+                com.aispring.entity.checkpoint.CheckpointType.MANUAL,
+                fileSnapshots,
+                description
+        );
+        
+        return ApiResponse.success(checkpointId);
+    }
+    
+    /**
+     * 跳转到检查点
+     */
+    @PostMapping("/checkpoints/{checkpointId}/jump")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<List<String>> jumpToCheckpoint(
+            @AuthenticationPrincipal CustomUserDetails currentUser,
+            @PathVariable String checkpointId) {
+        List<String> restoredFiles = checkpointService.jumpToCheckpoint(checkpointId);
+        return ApiResponse.success(restoredFiles);
+    }
+    
+    /**
+     * 删除检查点
+     */
+    @DeleteMapping("/checkpoints/{checkpointId}")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<Void> deleteCheckpoint(
+            @AuthenticationPrincipal CustomUserDetails currentUser,
+            @PathVariable String checkpointId) {
+        checkpointService.deleteCheckpoint(checkpointId);
+        return ApiResponse.success(null);
+    }
+    
+    /**
+     * 导出检查点
+     */
+    @GetMapping("/checkpoints/{checkpointId}/export")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<String> exportCheckpoint(
+            @AuthenticationPrincipal CustomUserDetails currentUser,
+            @PathVariable String checkpointId) {
+        String json = checkpointService.exportCheckpoint(checkpointId);
+        return ApiResponse.success(json);
+    }
+    
+    // ================== Phase 2: 批准相关端点 ==================
+    
+    /**
+     * 获取会话的待批准列表
+     */
+    @GetMapping("/approvals/pending/{sessionId}")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<List<com.aispring.entity.approval.ToolApproval>> getPendingApprovals(
+            @AuthenticationPrincipal CustomUserDetails currentUser,
+            @PathVariable String sessionId) {
+        List<com.aispring.entity.approval.ToolApproval> approvals = 
+                toolApprovalService.getPendingApprovals(sessionId);
+        return ApiResponse.success(approvals);
+    }
+    
+    /**
+     * 批准工具调用
+     */
+    @PostMapping("/approvals/{decisionId}/approve")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<Boolean> approveToolCall(
+            @AuthenticationPrincipal CustomUserDetails currentUser,
+            @PathVariable String decisionId,
+            @RequestBody(required = false) Map<String, String> request) {
+        String reason = request != null ? request.get("reason") : null;
+        boolean success = toolApprovalService.approveToolCall(decisionId, reason);
+        return ApiResponse.success(success);
+    }
+    
+    /**
+     * 拒绝工具调用
+     */
+    @PostMapping("/approvals/{decisionId}/reject")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<Boolean> rejectToolCall(
+            @AuthenticationPrincipal CustomUserDetails currentUser,
+            @PathVariable String decisionId,
+            @RequestBody Map<String, String> request) {
+        String reason = request.get("reason");
+        boolean success = toolApprovalService.rejectToolCall(decisionId, reason);
+        return ApiResponse.success(success);
+    }
+    
+    /**
+     * 获取用户的批准设置
+     */
+    @GetMapping("/approvals/settings")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<com.aispring.entity.approval.UserApprovalSettings> getUserApprovalSettings(
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+        com.aispring.entity.approval.UserApprovalSettings settings = 
+                toolApprovalService.getUserSettings(currentUser.getUser().getId());
+        return ApiResponse.success(settings);
+    }
+    
+    /**
+     * 更新用户的批准设置
+     */
+    @PutMapping("/approvals/settings")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<Void> updateUserApprovalSettings(
+            @AuthenticationPrincipal CustomUserDetails currentUser,
+            @RequestBody com.aispring.entity.approval.UserApprovalSettings settings) {
+        toolApprovalService.updateUserSettings(currentUser.getUser().getId(), settings);
+        return ApiResponse.success(null);
+    }
+    
+    /**
+     * 批量批准所有待批准工具
+     */
+    @PostMapping("/approvals/approve-all/{sessionId}")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<Integer> approveAllPending(
+            @AuthenticationPrincipal CustomUserDetails currentUser,
+            @PathVariable String sessionId) {
+        int count = toolApprovalService.approveAllPending(sessionId);
+        return ApiResponse.success(count);
+    }
+    
+    // ================== Phase 2: 会话状态相关端点 ==================
+    
+    /**
+     * 获取会话状态
+     */
+    @GetMapping("/state/{sessionId}")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<com.aispring.entity.session.SessionState> getSessionState(
+            @AuthenticationPrincipal CustomUserDetails currentUser,
+            @PathVariable String sessionId) {
+        com.aispring.entity.session.SessionState state = 
+                sessionStateService.getOrCreateState(sessionId, currentUser.getUser().getId());
+        return ApiResponse.success(state);
+    }
+    
+    /**
+     * 请求中断当前 Agent 循环
+     */
+    @PostMapping("/state/{sessionId}/interrupt")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<Boolean> interruptAgentLoop(
+            @AuthenticationPrincipal CustomUserDetails currentUser,
+            @PathVariable String sessionId) {
+        boolean success = sessionStateService.requestInterrupt(sessionId);
+        return ApiResponse.success(success);
+    }
+    
+    /**
+     * 清除中断标志
+     */
+    @PostMapping("/state/{sessionId}/clear-interrupt")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<Void> clearInterrupt(
+            @AuthenticationPrincipal CustomUserDetails currentUser,
+            @PathVariable String sessionId) {
+        sessionStateService.clearInterrupt(sessionId);
         return ApiResponse.success(null);
     }
 }
