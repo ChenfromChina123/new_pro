@@ -87,8 +87,8 @@ public class TerminalController {
              }
              agentStateService.saveAgentState(state);
              
-             // Cursor 工作流程：工具执行成功后，自动触发下一轮循环
-             // 如果状态是 RUNNING 且有任务，自动继续执行
+             // Cursor 工作流程：工具执行后自动触发下一轮循环（无论成功或失败）
+             // 1. 如果有任务流水线，继续执行任务
              if (result.getNewAgentStatus() == AgentStatus.RUNNING && 
                  state.getTaskState() != null && 
                  state.getTaskState().getCurrentTaskId() != null) {
@@ -98,6 +98,24 @@ public class TerminalController {
                  String systemPrompt = promptManager.getExecutorPrompt(context);
                  
                  // 继续执行，不等待用户输入
+                 return aiChatService.askAgentStream(
+                     continuationPrompt,
+                     sessionId,
+                     request.getModel(),
+                     String.valueOf(userId),
+                     systemPrompt,
+                     null,
+                     (fullResponse) -> handleAgentResponse(fullResponse, sessionId, userId)
+                 );
+             }
+             // 2. 如果是即时执行模式（EXECUTE），也要自动处理结果
+             else if (result.getNewAgentStatus() == AgentStatus.RUNNING || 
+                      result.getNewAgentStatus() == AgentStatus.WAITING_TOOL) {
+                 // 即时执行模式：让AI根据工具结果决定下一步
+                 String continuationPrompt = buildContinuationPromptForExecute(request.getTool_result());
+                 String context = agentPromptBuilder.buildPromptContext(state);
+                 String systemPrompt = promptManager.getExecutorPrompt(context);
+                 
                  return aiChatService.askAgentStream(
                      continuationPrompt,
                      sessionId,
@@ -219,7 +237,7 @@ public class TerminalController {
     }
     
     /**
-     * 构建继续执行的 Prompt - 基于工具结果
+     * 构建继续执行的 Prompt - 基于工具结果（任务模式）
      */
     private String buildContinuationPrompt(AgentState state, ToolResult toolResult) {
         StringBuilder sb = new StringBuilder();
@@ -250,6 +268,32 @@ public class TerminalController {
                 sb.append("\n\n当前任务：").append(currentTask.getGoal());
                 sb.append("\n请继续执行当前任务的下一个步骤，或如果任务已完成，请输出 TASK_COMPLETE 决策。");
             }
+        }
+        
+        return sb.toString();
+    }
+    
+    /**
+     * 构建继续执行的 Prompt - 基于工具结果（即时执行模式）
+     */
+    private String buildContinuationPromptForExecute(ToolResult toolResult) {
+        StringBuilder sb = new StringBuilder();
+        
+        if (toolResult.getExitCode() == 0) {
+            sb.append("命令执行成功。\n");
+            if (toolResult.getStdout() != null && !toolResult.getStdout().isEmpty()) {
+                sb.append("输出结果：\n").append(toolResult.getStdout());
+            }
+            if (toolResult.getArtifacts() != null && !toolResult.getArtifacts().isEmpty()) {
+                sb.append("\n已创建文件：").append(String.join(", ", toolResult.getArtifacts()));
+            }
+            sb.append("\n\n请分析执行结果并回答用户的问题。如果任务已完成，请输出 TASK_COMPLETE 决策。");
+        } else {
+            sb.append("命令执行失败。\n");
+            if (toolResult.getStderr() != null && !toolResult.getStderr().isEmpty()) {
+                sb.append("错误信息：\n").append(toolResult.getStderr());
+            }
+            sb.append("\n\n请分析错误原因，修正命令并重新执行，或向用户解释问题并提供解决方案。");
         }
         
         return sb.toString();
