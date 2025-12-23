@@ -2883,15 +2883,21 @@ body.dark-mode .message-copy-button:hover {
   opacity: 1;
 }
 
-/* 悬浮的返回底部按钮（不占用容器空间） */
+/* 悬浮的返回底部按钮（不占用容器空间，位于输入框上方中间） */
 .scroll-to-bottom-floating {
   position: fixed;
-  bottom: 140px; /* 距离底部140px，避免与输入框重叠 */
+  bottom: 120px; /* 距离底部120px，位于输入框上方 */
   left: 50%;
   transform: translateX(-50%);
   z-index: 200;
   pointer-events: none;
   animation: slideUpFade 0.3s ease-out;
+  width: 100%;
+  max-width: 1200px; /* 与页面最大宽度一致 */
+  padding: 0 32px; /* 与 chat-input-area 的左右 padding 一致 */
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
 }
 
 @keyframes slideUpFade {
@@ -2922,6 +2928,9 @@ body.dark-mode .message-copy-button:hover {
   backdrop-filter: blur(8px);
   pointer-events: auto;
   white-space: nowrap;
+  max-width: 980px; /* 与 input-container 最大宽度一致 */
+  width: 100%;
+  justify-content: center;
 }
 
 .scroll-to-bottom-btn:hover {
