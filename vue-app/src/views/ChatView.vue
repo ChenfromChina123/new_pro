@@ -472,8 +472,20 @@ const scrollToPrevMessage = () => {
       setTimeout(() => {
         elements[i].classList.remove('highlight-message')
       }, 2000)
+      // 滚动后更新按钮状态
+      setTimeout(() => {
+        handleMessagesScroll()
+      }, 300)
       return
     }
+  }
+  
+  // 如果没有找到上一条用户消息，滚动到顶部
+  if (scrollTop > 0) {
+    messagesContainer.value.scrollTo({ top: 0, behavior: 'smooth' })
+    setTimeout(() => {
+      handleMessagesScroll()
+    }, 300)
   }
 }
 
@@ -495,8 +507,22 @@ const scrollToNextMessage = () => {
       setTimeout(() => {
         elements[i].classList.remove('highlight-message')
       }, 2000)
+      // 滚动后更新按钮状态
+      setTimeout(() => {
+        handleMessagesScroll()
+      }, 300)
       return
     }
+  }
+  
+  // 如果没有找到下一条用户消息，滚动到底部
+  const { scrollHeight, clientHeight } = messagesContainer.value
+  const distanceToBottom = scrollHeight - scrollTop - clientHeight
+  if (distanceToBottom > SCROLL_BOTTOM_THRESHOLD_PX) {
+    scrollToBottom('smooth')
+    setTimeout(() => {
+      handleMessagesScroll()
+    }, 300)
   }
 }
 
@@ -505,6 +531,10 @@ const scrollToNextMessage = () => {
  */
 const handleWheel = (e) => {
   // 1. 快速导航箭头显示逻辑
+  // 更新滚动状态，确保按钮显示状态准确
+  updatePinnedState()
+  handleMessagesScroll()
+  
   showNavArrows.value = true
   if (navArrowsTimer) clearTimeout(navArrowsTimer)
   
@@ -788,8 +818,20 @@ const handleMessagesScroll = () => {
   // 更新导航箭头状态
   if (messagesContainer.value) {
     const { scrollTop, scrollHeight, clientHeight } = messagesContainer.value
-    canScrollUp.value = scrollTop > 10
-    canScrollDown.value = scrollTop + clientHeight < scrollHeight - 10
+    const distanceToBottom = scrollHeight - scrollTop - clientHeight
+    
+    // 优化：更精确的判断逻辑
+    // 上箭头：如果不在顶部（有内容可以向上滚动）
+    canScrollUp.value = scrollTop > 5
+    
+    // 下箭头：如果不在底部（有内容可以向下滚动）
+    // 考虑到底部的阈值，避免在底部时还显示下箭头
+    canScrollDown.value = distanceToBottom > SCROLL_BOTTOM_THRESHOLD_PX
+    
+    // 如果已经在最底部，确保下箭头隐藏
+    if (isPinnedToBottom.value) {
+      canScrollDown.value = false
+    }
   }
 }
 
