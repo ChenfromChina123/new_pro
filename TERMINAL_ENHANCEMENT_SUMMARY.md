@@ -11,10 +11,16 @@
   - 修复了输入守卫逻辑，不会误拦截工具结果
   - 无论成功失败都会继续执行
 
-#### Decision ID 自动生成
-- **问题**: AI 生成的 UUID 可能格式不正确
-- **修复**: 系统自动生成 `decision_id`，不再依赖 AI
-- **位置**: `TerminalController.handleAgentResponse()`
+#### Decision ID 鲁棒性增强
+- **问题**: 前端回传 `ToolResult` 时可能出现 `decision_id` 为空或字段名不匹配（`decision_id` vs `decisionId`），导致工具执行被后端拒绝。
+- **修复**: 
+  - **前端兼容性**: 在 `TerminalView.vue` 中支持 `decision_id` 和 `decisionId` 两个字段的读取，确保回传 ID 不为 null。
+  - **后端容错**: 在 `StateMutator.java` 中增加空值校验。如果结果中没有 `decisionId`，后端将跳过 ID 匹配验证，避免因前端未拿到 ID 而导致的执行中断。
+
+#### Markdown 渲染与换行修复
+- **问题**: AI 响应（尤其是深度思考后）的第一段内容无法正确渲染为 Markdown 格式。
+- **原因**: 预处理逻辑中存在盲目替换 `<br>` 为空格的操作，破坏了 Markdown 的段落识别。
+- **修复**: 在 `ChatView.vue` 中禁用了激进的 `<br>` 替换逻辑，保留了必要的换行符，并增加了 `.trim()` 处理，确保 Markdown 解析器（marked）能正确识别首段格式。
 
 #### 详细日志记录
 - **调试阶段**: 所有输入输出都保存到日志
