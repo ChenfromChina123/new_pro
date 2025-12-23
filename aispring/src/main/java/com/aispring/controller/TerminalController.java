@@ -452,6 +452,7 @@ public class TerminalController {
         Integer senderType = (Integer) request.get("sender_type"); 
         String model = (String) request.get("model");
 
+        String reasoningContent = (String) request.get("reasoning_content");  // 终端可能也有思考内容
         chatRecordService.createChatRecord(
             content,
             senderType,
@@ -459,7 +460,8 @@ public class TerminalController {
             sessionId,
             model,
             "completed",
-            "terminal"
+            "terminal",
+            reasoningContent
         );
         return ApiResponse.success(null);
     }

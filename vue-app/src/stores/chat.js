@@ -427,6 +427,7 @@ export const useChatStore = defineStore('chat', () => {
         session_id: currentSessionId.value,
         user_message: userMessage.content,
         ai_response: aiMessage.content,
+        ai_reasoning: aiMessage.reasoning_content || null,  // 保存深度思考内容
         model: selectedModel.value
       })
     } catch (error) {

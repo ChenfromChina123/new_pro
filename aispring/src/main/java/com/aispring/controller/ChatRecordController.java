@@ -48,6 +48,7 @@ public class ChatRecordController {
         private String session_id;
         private String user_message;
         private String ai_response;
+        private String ai_reasoning;  // AI 深度思考内容
         private String model;
         private String sessionId;
         private String role; // "user" or "assistant"
@@ -76,32 +77,38 @@ public class ChatRecordController {
         String model = request.getModel();
         
         if (request.getUser_message() != null || request.getAi_response() != null) {
+            // 保存用户消息
             chatRecordService.createChatRecord(
                 request.getUser_message(),
                 1,
                 userId,
                 session,
                 model,
-                "completed"
+                "completed",
+                null  // 用户消息没有 reasoning_content
             );
+            // 保存 AI 消息，包含 reasoning_content
             chatRecordService.createChatRecord(
                 request.getAi_response(),
                 2,
                 userId,
                 session,
                 model,
-                "completed"
+                "completed",
+                request.getAi_reasoning()  // 传递深度思考内容
             );
         } else {
             Integer senderType = (request.getRole() != null && request.getRole().equalsIgnoreCase("user")) ? 1 : 2;
             String content = request.getContent();
+            String reasoningContent = senderType == 2 ? request.getAi_reasoning() : null;
             chatRecordService.createChatRecord(
                 content,
                 senderType,
                 userId,
                 session,
                 model,
-                "completed"
+                "completed",
+                reasoningContent
             );
         }
         

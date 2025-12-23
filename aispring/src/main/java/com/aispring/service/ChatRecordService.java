@@ -35,12 +35,21 @@ public class ChatRecordService {
     @Transactional
     public ChatRecord createChatRecord(String content, Integer senderType, String userId, 
                                       String sessionId, String aiModel, String status) {
-        return createChatRecord(content, senderType, userId, sessionId, aiModel, status, "chat");
+        return createChatRecord(content, senderType, userId, sessionId, aiModel, status, "chat", null);
     }
 
     @Transactional
     public ChatRecord createChatRecord(String content, Integer senderType, String userId, 
                                       String sessionId, String aiModel, String status, String sessionType) {
+        return createChatRecord(content, senderType, userId, sessionId, aiModel, status, sessionType, null);
+    }
+
+    /**
+     * 创建聊天记录（包含深度思考内容）
+     */
+    @Transactional
+    public ChatRecord createChatRecord(String content, Integer senderType, String userId, 
+                                      String sessionId, String aiModel, String status, String sessionType, String reasoningContent) {
         // 如果没有会话ID，生成新的
         if (sessionId == null || sessionId.isEmpty()) {
             sessionId = UUID.randomUUID().toString().replace("-", "");
@@ -78,6 +87,7 @@ public class ChatRecordService {
             .messageOrder(messageOrder)
             .senderType(senderType)
             .content(content)
+            .reasoningContent(reasoningContent)  // 保存深度思考内容
             .aiModel(aiModel)
             .status(status != null ? status : "completed")
             .sendTime(LocalDateTime.now())
