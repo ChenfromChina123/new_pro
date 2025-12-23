@@ -24,6 +24,55 @@
 
 ## 🚀 最近更新
 
+### 🔄 AI 终端系统重构 Phase 1-2 (2025-12-23)
+**基于 void-main 的现代化重构，引入检查点、批准机制和 Redis 状态管理**
+
+#### 新增功能
+- **检查点系统（Time Travel）**: 支持会话状态快照和回滚
+  - 自动创建检查点（用户消息后、工具编辑后）
+  - 手动创建、删除、导出/导入检查点
+  - 文件快照和 Diff 区域跟踪
+  - 检查点跳转（恢复历史状态）
+
+- **工具批准机制**: 精细化控制工具执行权限
+  - 4 类工具自动批准设置（危险工具、读文件、编辑文件、MCP 工具）
+  - 待批准队列管理
+  - 批量批准/拒绝操作
+  - 批准记录审计
+
+- **Redis 状态管理**: 高性能会话状态存储
+  - Agent 状态实时跟踪
+  - 流式状态管理
+  - 任务流水线状态
+  - Agent 循环中断机制
+
+#### 数据库架构
+- 新增 5 张表：
+  - `chat_checkpoints`: 检查点表
+  - `tool_approvals`: 工具批准记录表
+  - `user_approval_settings`: 用户批准设置表
+  - `session_states`: 会话状态持久化表
+  - `agent_loops`: Agent 循环历史表
+- 扩展 `chat_records` 表，新增 `checkpoint_id`, `loop_id`, `tool_approval_id` 字段
+
+#### API 端点
+新增 16 个 REST API 端点：
+- 检查点相关：6 个（获取、创建、跳转、删除、导出）
+- 批准相关：7 个（获取待批准、批准/拒绝、设置管理、批量操作）
+- 会话状态相关：3 个（获取状态、请求中断、清除中断）
+
+#### 技术栈升级
+- **Redis**: Lettuce 客户端 + Spring Data Redis
+- **JSON 持久化**: Hibernate JSON 类型支持
+- **数据库迁移**: Flyway 迁移脚本
+
+**详细文档**: 
+- 📊 [重构进度报告](./docs/REFACTOR_PROGRESS.md)
+- 📖 [Void-Main AI 机制分析](./docs/VOID_MAIN_AI_MECHANISM_ANALYSIS.md)
+- 📖 [AISpring 重构指南](./docs/AISPRING_AI_TERMINAL_REFACTOR_GUIDE.md)
+
+---
+
 ### 🧠 AI 终端架构全面升级 (Agent 2.0)
 - **工程化 Agent 架构**: 实现了基于 FSM (有限状态机) 的新一代 Agent 核心。
   - **决策信封 (Decision Envelope)**: 引入了严格的后端-前端通信协议，所有的 Agent 决策都封装在结构化的 JSON 信封中，包含唯一的 `decision_id`、预期结果 (`expectation`) 和操作范围 (`scope`)。
