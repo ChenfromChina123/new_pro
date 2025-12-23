@@ -3012,24 +3012,43 @@ body.dark-mode .message-copy-button:hover {
   cursor: pointer;
 }
 
+.reasoning-block.collapsed:hover {
+  border-color: rgba(99, 102, 241, 0.2);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.08);
+}
+
 .reasoning-preview {
-  padding: 8px 16px 12px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, rgba(248, 250, 252, 0.5) 100%);
-  border-top: 1px solid rgba(99, 102, 241, 0.08);
-  max-height: 60px;
+  padding: 10px 16px 14px;
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.6) 0%, rgba(241, 245, 249, 0.8) 100%);
+  border-top: 1px solid rgba(99, 102, 241, 0.12);
+  max-height: 70px;
   overflow: hidden;
+  position: relative;
+}
+
+.reasoning-preview::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 20px;
+  background: linear-gradient(to top, rgba(248, 250, 252, 0.8), transparent);
+  pointer-events: none;
 }
 
 .reasoning-preview .preview-text {
-  font-size: 12px;
+  font-size: 12.5px;
   color: #64748b;
-  line-height: 1.5;
+  line-height: 1.6;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
-  opacity: 0.85;
+  opacity: 0.9;
+  position: relative;
+  z-index: 1;
 }
 
 @keyframes reasoning-pulse {
