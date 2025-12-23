@@ -25,6 +25,25 @@ spring:
         format_sql: true
     open-in-view: false
   
+  # Redis配置 - 用于Session状态存储
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    database: ${REDIS_DATABASE:1}
+    password: ${REDIS_PASSWORD:}
+    timeout: 2000ms
+    lettuce:
+      pool:
+        max-active: 20
+        max-idle: 10
+        min-idle: 5
+        max-wait: 2000ms
+      shutdown-timeout: 200ms
+    # Session状态TTL配置
+    session-state:
+      ttl: 86400  # 24小时（秒）
+      inactive-ttl: 3600  # 非活跃会话1小时后过期（秒）
+  
   # 文件上传配置
   servlet:
     multipart:
