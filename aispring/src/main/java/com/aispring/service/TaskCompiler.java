@@ -59,6 +59,15 @@ public class TaskCompiler {
     }
 
     private String extractJson(String text) {
+        // 1. 尝试匹配 markdown 代码块
+        String pattern = "```json\\s*(\\[[\\s\\S]*?\\])\\s*```";
+        java.util.regex.Pattern r = java.util.regex.Pattern.compile(pattern);
+        java.util.regex.Matcher m = r.matcher(text);
+        if (m.find()) {
+            return m.group(1);
+        }
+        
+        // 2. 尝试寻找最外层的数组括号
         int start = text.indexOf("[");
         int end = text.lastIndexOf("]");
         if (start >= 0 && end > start) {
