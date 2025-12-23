@@ -164,6 +164,25 @@
         </div>
         
         <div class="chat-input-area">
+          <!-- 返回底部悬浮按钮（移动到输入框上方） -->
+          <transition name="fade">
+            <div 
+              v-if="showScrollToBottomBtn" 
+              class="scroll-to-bottom-floating"
+              @mouseenter="handleMouseEnterScrollBottom"
+              @mouseleave="handleMouseLeaveScrollBottom"
+            >
+              <button 
+                class="scroll-to-bottom-btn"
+                title="返回底部"
+                @click="scrollToBottom('smooth')"
+              >
+                <i class="fas fa-arrow-down" />
+                <span>最新消息</span>
+              </button>
+            </div>
+          </transition>
+
           <div class="input-container">
             <textarea
               v-model="inputMessage"
@@ -352,25 +371,6 @@
         </transition>
       </div>
     </div>
-    
-    <!-- 返回底部悬浮按钮（不占用容器空间） -->
-    <transition name="fade">
-      <div 
-        v-if="showScrollToBottomBtn" 
-        class="scroll-to-bottom-floating"
-        @mouseenter="handleMouseEnterScrollBottom"
-        @mouseleave="handleMouseLeaveScrollBottom"
-      >
-        <button 
-          class="scroll-to-bottom-btn"
-          title="返回底部"
-          @click="scrollToBottom('smooth')"
-        >
-          <i class="fas fa-arrow-down" />
-          <span>最新消息</span>
-        </button>
-      </div>
-    </transition>
   </div>
 </template>
 
@@ -443,11 +443,14 @@ const scrollToMessage = (index) => {
   const elements = messagesContainer.value?.querySelectorAll('.message')
   if (elements && elements[index]) {
     elements[index].scrollIntoView({ behavior: 'smooth', block: 'center' })
-    // 添加高亮动画
-    elements[index].classList.add('highlight-message')
-    setTimeout(() => {
-      elements[index].classList.remove('highlight-message')
-    }, 2000)
+    // 将高亮效果应用到消息气泡
+    const bubble = elements[index].querySelector('.message-bubble')
+    if (bubble) {
+      bubble.classList.add('highlight-message')
+      setTimeout(() => {
+        bubble.classList.remove('highlight-message')
+      }, 2000)
+    }
     // 移动端下点击后自动关闭面板
     if (window.innerWidth < 768) {
       showHistoryPanel.value = false
@@ -467,11 +470,14 @@ const scrollToPrevMessage = () => {
   for (let i = elements.length - 1; i >= 0; i--) {
     if (elements[i].classList.contains('user') && elements[i].offsetTop < scrollTop) {
       elements[i].scrollIntoView({ behavior: 'smooth', block: 'center' })
-      // 添加高亮动画
-      elements[i].classList.add('highlight-message')
-      setTimeout(() => {
-        elements[i].classList.remove('highlight-message')
-      }, 2000)
+      // 将高亮效果应用到消息气泡
+      const bubble = elements[i].querySelector('.message-bubble')
+      if (bubble) {
+        bubble.classList.add('highlight-message')
+        setTimeout(() => {
+          bubble.classList.remove('highlight-message')
+        }, 2000)
+      }
       // 滚动后更新按钮状态
       setTimeout(() => {
         handleMessagesScroll()
@@ -502,11 +508,14 @@ const scrollToNextMessage = () => {
   for (let i = 0; i < elements.length; i++) {
     if (elements[i].classList.contains('user') && elements[i].offsetTop > viewportBottom) {
       elements[i].scrollIntoView({ behavior: 'smooth', block: 'center' })
-      // 添加高亮动画
-      elements[i].classList.add('highlight-message')
-      setTimeout(() => {
-        elements[i].classList.remove('highlight-message')
-      }, 2000)
+      // 将高亮效果应用到消息气泡
+      const bubble = elements[i].querySelector('.message-bubble')
+      if (bubble) {
+        bubble.classList.add('highlight-message')
+        setTimeout(() => {
+          bubble.classList.remove('highlight-message')
+        }, 2000)
+      }
       // 滚动后更新按钮状态
       setTimeout(() => {
         handleMessagesScroll()
@@ -2337,6 +2346,7 @@ body.dark-mode .message-copy-button:hover {
 }
 
 .chat-input-area {
+  position: relative;
   padding: 20px 32px 32px;
   background-color: transparent;
   display: flex;
@@ -2851,53 +2861,71 @@ body.dark-mode .message-copy-button:hover {
 /* 导航功能样式 */
 .nav-arrows {
   position: fixed;
-  right: 24px;
+  right: 32px;
   top: 50%;
   transform: translateY(-50%);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   z-index: 100;
+  padding: 8px;
+  background-color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  border-radius: 30px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+}
+
+body.dark-mode .nav-arrows {
+  background-color: rgba(30, 41, 59, 0.8);
 }
 
 .nav-arrow-btn {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  background-color: transparent;
+  background-color: var(--bg-primary);
   border: 1px solid var(--border-color);
   color: var(--text-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: none;
-  transition: all 0.2s ease;
-  opacity: 0.8;
-}
-
-.nav-arrow-btn:hover {
-  background-color: var(--bg-secondary);
-  color: var(--primary-color);
-  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   opacity: 1;
 }
 
-/* 悬浮的返回底部按钮（不占用容器空间，位于输入框上方中间） */
+.nav-arrow-btn:hover {
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.nav-arrow-btn:active {
+  transform: translateY(0) scale(0.95);
+}
+
+.nav-arrow-btn.up {
+  margin-bottom: 2px;
+}
+
+.nav-arrow-btn.down {
+  margin-top: 2px;
+}
+
+/* 悬浮的返回底部按钮（现在相对于输入框区域定位） */
 .scroll-to-bottom-floating {
-  position: fixed;
-  bottom: 120px; /* 距离底部120px，位于输入框上方 */
+  position: absolute;
+  top: -25px; /* 稍微再向上一点，确保不遮挡输入框边框 */
   left: 50%;
   transform: translateX(-50%);
   z-index: 200;
   pointer-events: none;
   animation: slideUpFade 0.3s ease-out;
-  width: 100%;
-  max-width: 1200px; /* 与页面最大宽度一致 */
-  padding: 0 32px; /* 与 chat-input-area 的左右 padding 一致 */
-  box-sizing: border-box;
-  display: flex;
-  justify-content: center;
 }
 
 @keyframes slideUpFade {
@@ -2928,9 +2956,6 @@ body.dark-mode .message-copy-button:hover {
   backdrop-filter: blur(8px);
   pointer-events: auto;
   white-space: nowrap;
-  max-width: 980px; /* 与 input-container 最大宽度一致 */
-  width: 100%;
-  justify-content: center;
 }
 
 .scroll-to-bottom-btn:hover {
@@ -3076,13 +3101,24 @@ body.dark-mode .message-copy-button:hover {
 }
 
 .highlight-message {
-  animation: highlight-pulse 2s ease;
+  animation: highlight-pulse 2s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 16px;
+  position: relative;
 }
 
 @keyframes highlight-pulse {
-  0% { background-color: rgba(59, 130, 246, 0.1); }
-  50% { background-color: rgba(59, 130, 246, 0.2); }
-  100% { background-color: transparent; }
+  0% { 
+    background-color: rgba(59, 130, 246, 0.15);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+  }
+  30% {
+    background-color: rgba(59, 130, 246, 0.25);
+    box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.15);
+  }
+  100% { 
+    background-color: transparent;
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
 }
 
 .typing-cursor::after {
