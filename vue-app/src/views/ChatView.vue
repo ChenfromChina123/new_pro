@@ -67,6 +67,9 @@
                       <div class="header-text">
                         <span class="reasoning-title">深度思考</span>
                         <span v-if="!message.isReasoningCollapsed" class="reasoning-subtitle">AI 推理过程</span>
+                        <span v-else-if="message.reasoning_content" class="reasoning-count">
+                          {{ getReasoningLength(message.reasoning_content) }} 字
+                        </span>
                       </div>
                     </div>
                     <div class="header-right">
@@ -76,6 +79,14 @@
                       />
                     </div>
                   </div>
+                  <!-- 折叠状态下的内容预览 -->
+                  <div 
+                    v-if="message.isReasoningCollapsed && message.reasoning_content"
+                    class="reasoning-preview"
+                  >
+                    <span class="preview-text">{{ getReasoningPreview(message.reasoning_content) }}</span>
+                  </div>
+                  
                   <transition name="reasoning-slide">
                     <div 
                       v-show="!message.isReasoningCollapsed" 
@@ -83,7 +94,7 @@
                     >
                       <div 
                         class="markdown-body"
-                        v-html="formatMessage(message.reasoning_content)" 
+                        v-html="formatReasoningCached(message)" 
                       />
                     </div>
                   </transition>
@@ -1270,6 +1281,63 @@ const formatMessageCached = (() => {
     return html
   }
 })()
+
+/**
+ * 缓存深度思考内容的渲染结果
+ */
+const formatReasoningCached = (() => {
+  const cache = new WeakMap()
+  return (message) => {
+    if (!message || !message.reasoning_content) return ''
+    const raw = sanitizeNullRuns(message.reasoning_content)
+    let cached = cache.get(message)
+    if (cached && cached.raw === raw) return cached.html
+    const html = formatMessage(raw)
+    cache.set(message, { raw, html })
+    return html
+  }
+})()
+
+/**
+ * 获取深度思考内容的预览文本（用于折叠状态）
+ */
+const getReasoningPreview = (content) => {
+  if (!content) return ''
+  // 移除 markdown 标记和 HTML 标签
+  const text = content
+    .replace(/```[\s\S]*?```/g, '[代码块]')
+    .replace(/`[^`]+`/g, '[代码]')
+    .replace(/#{1,6}\s+/g, '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\n+/g, ' ')
+    .trim()
+  
+  // 返回前 80 个字符，如果更长则添加省略号
+  if (text.length <= 80) return text
+  return text.substring(0, 80) + '...'
+}
+
+/**
+ * 获取深度思考内容的字符长度（用于显示统计）
+ */
+const getReasoningLength = (content) => {
+  if (!content) return 0
+  // 移除 markdown 标记和 HTML 标签来计算实际文本长度
+  const text = content
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/`[^`]+`/g, '')
+    .replace(/#{1,6}\s+/g, '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return text.length
+}
 
 const formatMessage = (content) => {
   try {
@@ -2941,6 +3009,27 @@ body.dark-mode .message-copy-button:hover {
 
 .reasoning-block.collapsed {
   border-color: rgba(99, 102, 241, 0.1);
+  cursor: pointer;
+}
+
+.reasoning-preview {
+  padding: 8px 16px 12px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, rgba(248, 250, 252, 0.5) 100%);
+  border-top: 1px solid rgba(99, 102, 241, 0.08);
+  max-height: 60px;
+  overflow: hidden;
+}
+
+.reasoning-preview .preview-text {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.85;
 }
 
 @keyframes reasoning-pulse {
@@ -3018,6 +3107,13 @@ body.dark-mode .message-copy-button:hover {
   opacity: 0.8;
 }
 
+.reasoning-count {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 400;
+  opacity: 0.7;
+}
+
 .reasoning-block .header-right {
   display: flex;
   align-items: center;
@@ -3087,6 +3183,13 @@ body.dark-mode .message-copy-button:hover {
   min-width: 0;
   overflow-x: hidden;
   border-top: 1px solid rgba(99, 102, 241, 0.08);
+  position: relative;
+}
+
+/* 优化 markdown 渲染性能 */
+.reasoning-block .reasoning-content .markdown-body {
+  will-change: contents;
+  contain: layout style paint;
 }
 
 .reasoning-block .reasoning-content .markdown-body {
