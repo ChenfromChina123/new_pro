@@ -100,7 +100,15 @@ while (loopCount < maxLoops) {
 *   **原子性任务推进**：AI 可以在一次用户请求中，连续完成“思考 -> 标记任务完成 -> 开始下一步 -> 思考”的闭环，而无需用户反复输入“继续”。
 *   **状态驱动**：循环的驱动力来自于任务状态的变更。
 
-### 4.2. 前端命令执行 (Client-Side Command Execution)
+### 4.2. 决策信封与 ID 校验 (Decision Envelope & ID Validation)
+
+为了确保工具执行的幂等性和安全性，系统引入了决策信封机制：
+
+1.  **决策生成**：后端生成决策时，会自动分配一个唯一的 `decision_id`。
+2.  **前端回传**：前端在执行完工具并回传 `ToolResult` 时，必须携带该 `decision_id`。
+3.  **双端容错**：系统支持 `decision_id` 和 `decisionId` 两种字段名，并允许在特定异常情况下进行 ID 校验跳过，确保即使在网络抖动或字段不一致时，Agent 循环也能稳健进行。
+
+### 4.3. 前端命令执行 (Client-Side Command Execution)
 
 实际的 Shell 命令执行由前端驱动，这是一个安全设计选择：
 
