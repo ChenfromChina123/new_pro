@@ -426,31 +426,45 @@ const scrollToMessage = (index) => {
 }
 
 /**
- * 滚动到上一条/下一条消息
+ * 滚动到上一条用户消息
  */
 const scrollToPrevMessage = () => {
   if (!messagesContainer.value) return
   const scrollTop = messagesContainer.value.scrollTop
   const elements = Array.from(messagesContainer.value.querySelectorAll('.message'))
   
-  // 找到当前视口上方第一条消息
+  // 找到当前视口上方第一条用户消息（有 'user' 类名）
   for (let i = elements.length - 1; i >= 0; i--) {
-    if (elements[i].offsetTop < scrollTop) {
-      elements[i].scrollIntoView({ behavior: 'smooth', block: 'start' })
+    if (elements[i].classList.contains('user') && elements[i].offsetTop < scrollTop) {
+      elements[i].scrollIntoView({ behavior: 'smooth', block: 'center' })
+      // 添加高亮动画
+      elements[i].classList.add('highlight-message')
+      setTimeout(() => {
+        elements[i].classList.remove('highlight-message')
+      }, 2000)
       return
     }
   }
 }
 
+/**
+ * 滚动到下一条用户消息
+ */
 const scrollToNextMessage = () => {
   if (!messagesContainer.value) return
   const scrollTop = messagesContainer.value.scrollTop
+  const viewportBottom = scrollTop + messagesContainer.value.clientHeight
   const elements = Array.from(messagesContainer.value.querySelectorAll('.message'))
   
-  // 找到当前视口下方第一条消息
+  // 找到当前视口下方第一条用户消息（有 'user' 类名）
   for (let i = 0; i < elements.length; i++) {
-    if (elements[i].offsetTop > scrollTop + messagesContainer.value.clientHeight) {
-      elements[i].scrollIntoView({ behavior: 'smooth', block: 'start' })
+    if (elements[i].classList.contains('user') && elements[i].offsetTop > viewportBottom) {
+      elements[i].scrollIntoView({ behavior: 'smooth', block: 'center' })
+      // 添加高亮动画
+      elements[i].classList.add('highlight-message')
+      setTimeout(() => {
+        elements[i].classList.remove('highlight-message')
+      }, 2000)
       return
     }
   }
