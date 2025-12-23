@@ -66,8 +66,14 @@
                       </div>
                       <div class="header-text">
                         <span class="reasoning-title">深度思考</span>
-                        <span v-if="!message.isReasoningCollapsed" class="reasoning-subtitle">AI 推理过程</span>
-                        <span v-else-if="message.reasoning_content" class="reasoning-count">
+                        <span 
+                          v-if="!message.isReasoningCollapsed" 
+                          class="reasoning-subtitle"
+                        >AI 推理过程</span>
+                        <span 
+                          v-else-if="message.reasoning_content" 
+                          class="reasoning-count"
+                        >
                           {{ getReasoningLength(message.reasoning_content) }} 字
                         </span>
                       </div>
@@ -3043,6 +3049,7 @@ body.dark-mode .message-copy-button:hover {
   line-height: 1.6;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
