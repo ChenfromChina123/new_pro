@@ -849,8 +849,8 @@ const processAgentLoop = async (prompt, toolResult) => {
     console.log('[TerminalView] processAgentLoop called:', {
       prompt: prompt || '(empty)',
       hasToolResult: toolResult != null,
-      toolResultDecisionId: toolResult?.decisionId,
-      toolResultExitCode: toolResult?.exitCode,
+      toolResultDecisionId: toolResult?.decision_id,
+      toolResultExitCode: toolResult?.exit_code,
       sessionId: currentSessionId.value
     })
     
@@ -1057,8 +1057,8 @@ const processAgentLoop = async (prompt, toolResult) => {
           if (!terminalStore.canExecuteTool(decision.action)) {
               console.warn('Tool action not in whitelist:', decision.action)
               const result = {
-                  decisionId: decision.decision_id,
-                  exitCode: -1,
+                  decision_id: decision.decision_id,
+                  exit_code: -1,
                   stderr: `Action ${decision.action} is not allowed (not in whitelist)`,
                   artifacts: []
               }
@@ -1071,10 +1071,10 @@ const processAgentLoop = async (prompt, toolResult) => {
           terminalStore.setAgentStatus('WAITING_TOOL')
           isExecuting.value = true
           
-          // 注意：字段名使用驼峰命名，匹配后端 ToolResult 类
+          // 注意：字段名使用下划线命名，匹配后端全局 Jackson SNAKE_CASE 配置
           let result = {
-              decisionId: decision.decision_id,
-              exitCode: 0,
+              decision_id: decision.decision_id,
+              exit_code: 0,
               stdout: '',
               stderr: '',
               artifacts: []
@@ -1083,23 +1083,23 @@ const processAgentLoop = async (prompt, toolResult) => {
           try {
               if (decision.action === 'execute_command') {
                   const res = await executeCommand(decision.params.command)
-                  result.exitCode = res.exitCode ?? res.exit_code ?? 0
+                  result.exit_code = res.exitCode ?? res.exit_code ?? 0
                   result.stdout = res.stdout || ''
                   result.stderr = res.stderr || ''
                   
                   terminalLogs.value.push({ 
                     command: decision.params.command, 
                     output: result.stdout || result.stderr, 
-                    type: result.exitCode === 0 ? 'stdout' : 'stderr',
+                    type: result.exit_code === 0 ? 'stdout' : 'stderr',
                     cwd: res.cwd 
                   })
                   
               } else if (decision.action === 'write_file' || decision.action === 'ensure_file') {
                   const res = await writeFile(decision.params.path, decision.params.content, true)
-                  result.exitCode = res.exitCode ?? res.exit_code ?? 0
+                  result.exit_code = res.exitCode ?? res.exit_code ?? 0
                   result.stdout = res.stdout || ''
                   result.stderr = res.stderr || ''
-                  if (result.exitCode === 0) {
+                  if (result.exit_code === 0) {
                       result.artifacts.push(decision.params.path)
                       // 解耦架构：更新可见文件列表
                       if (!visibleFiles.value.includes(decision.params.path)) {
@@ -1110,7 +1110,7 @@ const processAgentLoop = async (prompt, toolResult) => {
                   terminalLogs.value.push({ 
                     command: `write_file: ${decision.params.path}`, 
                     output: result.stdout || result.stderr, 
-                    type: result.exitCode === 0 ? 'stdout' : 'stderr',
+                    type: result.exit_code === 0 ? 'stdout' : 'stderr',
                     cwd: res.cwd 
                   })
               } else if (decision.action === 'read_file') {
@@ -1124,20 +1124,20 @@ const processAgentLoop = async (prompt, toolResult) => {
               } else if (decision.action === 'search_files') {
                   // 搜索文件内容
                   const res = await searchFiles(decision.params)
-                  result.exitCode = res.exitCode ?? res.exit_code ?? 0
+                  result.exit_code = res.exitCode ?? res.exit_code ?? 0
                   result.stdout = res.stdout || ''
                   result.stderr = res.stderr || ''
                   
                   terminalLogs.value.push({ 
                     command: `search_files: ${decision.params.pattern}`, 
                     output: result.stdout || result.stderr, 
-                    type: result.exitCode === 0 ? 'stdout' : 'stderr',
+                    type: result.exit_code === 0 ? 'stdout' : 'stderr',
                     cwd: res.cwd 
                   })
               } else if (decision.action === 'read_file_context') {
                   // 批量读取文件上下文
                   const res = await readFileContext(decision.params.files)
-                  result.exitCode = res.exitCode ?? res.exit_code ?? 0
+                  result.exit_code = res.exitCode ?? res.exit_code ?? 0
                   result.stdout = res.stdout || ''
                   result.stderr = res.stderr || ''
                   
@@ -1153,13 +1153,13 @@ const processAgentLoop = async (prompt, toolResult) => {
                   terminalLogs.value.push({ 
                     command: `read_file_context: ${decision.params.files?.length || 0} files`, 
                     output: result.stdout || result.stderr, 
-                    type: result.exitCode === 0 ? 'stdout' : 'stderr',
+                    type: result.exit_code === 0 ? 'stdout' : 'stderr',
                     cwd: res.cwd 
                   })
               } else if (decision.action === 'modify_file') {
                   // 精确修改文件
                   const res = await modifyFile(decision.params)
-                  result.exitCode = res.exitCode ?? res.exit_code ?? 0
+                  result.exit_code = res.exitCode ?? res.exit_code ?? 0
                   result.stdout = res.stdout || ''
                   result.stderr = res.stderr || ''
                   
@@ -1174,15 +1174,15 @@ const processAgentLoop = async (prompt, toolResult) => {
                   terminalLogs.value.push({ 
                     command: `modify_file: ${decision.params.path}`, 
                     output: result.stdout || result.stderr, 
-                    type: result.exitCode === 0 ? 'stdout' : 'stderr',
+                    type: result.exit_code === 0 ? 'stdout' : 'stderr',
                     cwd: res.cwd 
                   })
               }
               
-              currentAiMsg.status = result.exitCode === 0 ? 'success' : 'error'
+              currentAiMsg.status = result.exit_code === 0 ? 'success' : 'error'
               
           } catch (e) {
-              result.exitCode = -1
+              result.exit_code = -1
               result.stderr = e.message
               currentAiMsg.status = 'error'
           } finally {
@@ -1193,8 +1193,8 @@ const processAgentLoop = async (prompt, toolResult) => {
           // Cursor 工作流程：工具执行完成后，自动触发下一轮循环
           // 后端会自动处理工具结果并继续执行，这里只需要发送结果
           console.log('[TerminalView] Sending tool result back:', {
-            decisionId: result.decisionId,
-            exitCode: result.exitCode,
+            decision_id: result.decision_id,
+            exit_code: result.exit_code,
             stdoutLength: result.stdout?.length || 0,
             stderrLength: result.stderr?.length || 0,
             artifacts: result.artifacts?.length || 0
