@@ -396,7 +396,8 @@ const route = useRoute()
 const inputMessage = ref('')
 const messagesContainer = ref(null)
 const isPinnedToBottom = ref(true)
-const SCROLL_BOTTOM_THRESHOLD_PX = 40
+const SCROLL_BOTTOM_THRESHOLD_PX = 40  // 判断是否在底部的阈值（像素）
+const SCROLL_BOTTOM_SHOW_THRESHOLD_PX = 100  // 显示按钮的阈值（距离底部多少像素内显示）
 let autoScrollScheduled = false
 
 // Navigation State
@@ -674,37 +675,54 @@ const currentSessionTitle = computed(() => {
  */
 const scrollToBottom = (behavior = 'smooth') => {
   if (messagesContainer.value) {
+    const el = messagesContainer.value
     // 优先使用 scrollTop 直接设置，这样最可靠
     if (behavior === 'auto') {
-      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+      el.scrollTop = el.scrollHeight
       // 立即检查并隐藏按钮
       nextTick(() => {
         updatePinnedState()
-        if (isPinnedToBottom.value) {
+        // 强制检查是否真的到底了
+        const distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+        if (distanceToBottom <= SCROLL_BOTTOM_THRESHOLD_PX) {
           showScrollToBottomBtn.value = false
           scrollDownCount = 0
+          if (scrollBottomTimer) {
+            clearTimeout(scrollBottomTimer)
+            scrollBottomTimer = null
+          }
         }
       })
     } else {
-      messagesContainer.value.scrollTo({
-        top: messagesContainer.value.scrollHeight,
+      el.scrollTo({
+        top: el.scrollHeight,
         behavior: behavior
       })
       // 平滑滚动完成后检查并隐藏按钮
       // 使用延迟检查，确保滚动动画完成
       const checkBottom = () => {
         updatePinnedState()
-        if (isPinnedToBottom.value) {
+        const distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+        // 确保真的到底了才隐藏按钮
+        if (distanceToBottom <= SCROLL_BOTTOM_THRESHOLD_PX) {
           showScrollToBottomBtn.value = false
           scrollDownCount = 0
+          if (scrollBottomTimer) {
+            clearTimeout(scrollBottomTimer)
+            scrollBottomTimer = null
+          }
         }
       }
       // smooth 滚动通常需要 200-500ms，使用较长的延迟确保检测准确
       setTimeout(checkBottom, 500)
       // 如果浏览器支持 scrollend 事件，也监听它
-      if ('onscrollend' in messagesContainer.value) {
-        messagesContainer.value.addEventListener('scrollend', checkBottom, { once: true })
+      if ('onscrollend' in el) {
+        el.addEventListener('scrollend', checkBottom, { once: true })
       }
+      // 额外使用 requestAnimationFrame 确保检测准确
+      requestAnimationFrame(() => {
+        requestAnimationFrame(checkBottom)
+      })
     }
   }
 }
@@ -737,6 +755,11 @@ const scheduleAutoScrollToBottom = () => {
 const handleMessagesScroll = () => {
   updatePinnedState()
   
+  const el = messagesContainer.value
+  if (!el) return
+  
+  const distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+  
   // 优化：当已经在底部时，立即隐藏"最新消息"按钮
   if (isPinnedToBottom.value && showScrollToBottomBtn.value) {
     showScrollToBottomBtn.value = false
@@ -744,6 +767,21 @@ const handleMessagesScroll = () => {
     if (scrollBottomTimer) {
       clearTimeout(scrollBottomTimer)
       scrollBottomTimer = null
+    }
+  } else if (!isPinnedToBottom.value && distanceToBottom <= SCROLL_BOTTOM_SHOW_THRESHOLD_PX) {
+    // 如果不在底部但在显示阈值内，显示按钮
+    if (!showScrollToBottomBtn.value) {
+      showScrollToBottomBtn.value = true
+      if (scrollBottomTimer) clearTimeout(scrollBottomTimer)
+      // 设置自动隐藏计时器
+      if (!isHoveringScrollBottom.value) {
+        scrollBottomTimer = setTimeout(() => {
+          if (!isPinnedToBottom.value) {
+            showScrollToBottomBtn.value = false
+            scrollDownCount = 0
+          }
+        }, 3000)
+      }
     }
   }
   
