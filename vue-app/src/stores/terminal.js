@@ -36,7 +36,10 @@ export const useTerminalStore = defineStore('terminal', () => {
     'execute_command',
     'read_file',
     'write_file',
-    'ensure_file'
+    'ensure_file',
+    'read_file_context',  // 批量读取文件上下文
+    'search_files',       // 搜索文件内容
+    'modify_file'         // 精确修改文件
   ])
 
   // 计算属性：按任务分组的消息

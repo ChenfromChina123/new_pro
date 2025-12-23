@@ -24,6 +24,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -243,6 +245,33 @@ public class TerminalController {
                         log.info("Plan compiled successfully. Tasks: {}, Current: {}", 
                             taskState.getTasks() != null ? taskState.getTasks().size() : 0,
                             currentState.getTaskState().getCurrentTaskId());
+                        
+                        // 发送任务列表给前端
+                        try {
+                            List<Map<String, Object>> taskList = new ArrayList<>();
+                            if (taskState.getTasks() != null) {
+                                for (com.aispring.entity.agent.Task task : taskState.getTasks()) {
+                                    Map<String, Object> taskMap = new HashMap<>();
+                                    taskMap.put("id", task.getId());
+                                    taskMap.put("desc", task.getGoal()); // 使用 goal 作为描述
+                                    taskMap.put("status", task.getStatus().toString().toLowerCase());
+                                    taskList.add(taskMap);
+                                }
+                            }
+                            
+                            Map<String, Object> taskListMessage = new HashMap<>();
+                            taskListMessage.put("type", "task_list");
+                            taskListMessage.put("tasks", taskList);
+                            
+                            String taskListJson = objectMapper.writeValueAsString(taskListMessage);
+                            chatRecordService.createChatRecord(
+                                taskListJson, 2, String.valueOf(userId), sessionId, 
+                                "system", "completed", "terminal"
+                            );
+                            log.info("Task list message saved to chat records");
+                        } catch (Exception taskListEx) {
+                            log.error("Failed to save task list to chat records: {}", taskListEx.getMessage(), taskListEx);
+                        }
                     } catch (Exception e) {
                         log.error("Failed to compile plan: {}", e.getMessage(), e);
                     }
