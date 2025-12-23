@@ -35,7 +35,9 @@ public class StateMutator {
         }
 
         // 2. Validate Decision ID
-        if (!lastDecision.getDecisionId().equals(result.getDecisionId())) {
+        // 允许结果中没有 decisionId（如果后端自动生成了 ID 但前端没拿到）
+        if (result.getDecisionId() != null && !result.getDecisionId().isEmpty() 
+                && !lastDecision.getDecisionId().equals(result.getDecisionId())) {
             return MutatorResult.builder()
                     .accepted(false)
                     .reason("决策ID不匹配，期望：" + lastDecision.getDecisionId() + "，实际：" + result.getDecisionId())
