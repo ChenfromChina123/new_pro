@@ -45,7 +45,8 @@ public class TerminalController {
 
     @Data
     public static class TerminalChatRequest {
-        @NotBlank(message = "提示词不能为空")
+        // 提示词可以为空（工具结果反馈时）
+        // @NotBlank(message = "提示词不能为空")
         private String prompt;
         private String session_id;
         private String model;
@@ -81,14 +82,17 @@ public class TerminalController {
         log.info("Has Task Pipeline: {}", state.getTaskState() != null);
         
         // 2. Input Guard - 修复：只在没有tool_result且不是控制命令时才拦截
-        if (state.getStatus() == AgentStatus.RUNNING || state.getStatus() == AgentStatus.WAITING_TOOL) {
-            if (isControlCommand(request.getPrompt())) {
+        if ((state.getStatus() == AgentStatus.RUNNING || state.getStatus() == AgentStatus.WAITING_TOOL) 
+            && request.getTool_result() == null) {
+            // 有 tool_result 时允许通过（工具结果反馈）
+            if (request.getPrompt() != null && isControlCommand(request.getPrompt())) {
                 log.info("Control command received: {}", request.getPrompt());
                 handleControlCommand(state, request.getPrompt());
                 return sendSystemMessage("Agent " + state.getStatus());
-            } else if (request.getTool_result() == null && (request.getPrompt() == null || request.getPrompt().trim().isEmpty())) {
-                // 只有在既没有tool_result也没有有效prompt时才拦截
-                log.warn("Agent busy, no tool result or valid prompt");
+            } else if (request.getPrompt() == null || request.getPrompt().trim().isEmpty()) {
+                // 既没有tool_result也没有有效prompt，拦截
+                log.warn("Agent busy, no tool result or valid prompt. Status: {}, Has tool_result: {}", 
+                    state.getStatus(), request.getTool_result() != null);
                 return sendSystemMessage("Agent 正在运行中，请等待或输入 pause 暂停。");
             }
         }
@@ -96,10 +100,19 @@ public class TerminalController {
         // 3. Handle Tool Result (Feedback Loop)
         if (request.getTool_result() != null) {
              log.info("Processing tool result...");
-             log.info("Tool Result - ExitCode: {}, Stdout: {}, Stderr: {}", 
+             log.info("Tool Result - DecisionId: {}, ExitCode: {}, Stdout length: {}, Stderr length: {}", 
+                 request.getTool_result().getDecisionId(),
                  request.getTool_result().getExitCode(),
-                 request.getTool_result().getStdout() != null ? request.getTool_result().getStdout().substring(0, Math.min(100, request.getTool_result().getStdout().length())) : "null",
-                 request.getTool_result().getStderr() != null ? request.getTool_result().getStderr().substring(0, Math.min(100, request.getTool_result().getStderr().length())) : "null");
+                 request.getTool_result().getStdout() != null ? request.getTool_result().getStdout().length() : 0,
+                 request.getTool_result().getStderr() != null ? request.getTool_result().getStderr().length() : 0);
+             if (request.getTool_result().getStdout() != null && !request.getTool_result().getStdout().isEmpty()) {
+                 log.info("Tool Result Stdout (first 200 chars): {}", 
+                     request.getTool_result().getStdout().substring(0, Math.min(200, request.getTool_result().getStdout().length())));
+             }
+             if (request.getTool_result().getStderr() != null && !request.getTool_result().getStderr().isEmpty()) {
+                 log.info("Tool Result Stderr (first 200 chars): {}", 
+                     request.getTool_result().getStderr().substring(0, Math.min(200, request.getTool_result().getStderr().length())));
+             }
              
              MutatorResult result = stateMutator.applyToolResult(state, request.getTool_result());
              log.info("MutatorResult - Accepted: {}, NewStatus: {}", result.isAccepted(), result.getNewAgentStatus());

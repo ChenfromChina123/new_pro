@@ -846,8 +846,16 @@ const sendMessage = async (overrideText) => {
 
 const processAgentLoop = async (prompt, toolResult) => {
   try {
+    console.log('[TerminalView] processAgentLoop called:', {
+      prompt: prompt || '(empty)',
+      hasToolResult: toolResult != null,
+      toolResultDecisionId: toolResult?.decisionId,
+      toolResultExitCode: toolResult?.exitCode,
+      sessionId: currentSessionId.value
+    })
+    
     const body = {
-        prompt: prompt,
+        prompt: prompt || "",
         session_id: currentSessionId.value,
         model: currentModel.value,
         tool_result: toolResult,
@@ -857,6 +865,13 @@ const processAgentLoop = async (prompt, toolResult) => {
             visible_functions: visibleFunctions.value
         }
     }
+    
+    console.log('[TerminalView] Request body:', {
+      prompt: body.prompt,
+      session_id: body.session_id,
+      hasToolResult: body.tool_result != null,
+      toolResult: body.tool_result
+    })
     
     const response = await fetch(`${API_CONFIG.baseURL}/api/terminal/chat-stream`, {
       method: 'POST',
@@ -1042,8 +1057,8 @@ const processAgentLoop = async (prompt, toolResult) => {
           if (!terminalStore.canExecuteTool(decision.action)) {
               console.warn('Tool action not in whitelist:', decision.action)
               const result = {
-                  decision_id: decision.decision_id,
-                  exit_code: -1,
+                  decisionId: decision.decision_id,
+                  exitCode: -1,
                   stderr: `Action ${decision.action} is not allowed (not in whitelist)`,
                   artifacts: []
               }
@@ -1056,9 +1071,10 @@ const processAgentLoop = async (prompt, toolResult) => {
           terminalStore.setAgentStatus('WAITING_TOOL')
           isExecuting.value = true
           
+          // 注意：字段名使用驼峰命名，匹配后端 ToolResult 类
           let result = {
-              decision_id: decision.decision_id,
-              exit_code: 0,
+              decisionId: decision.decision_id,
+              exitCode: 0,
               stdout: '',
               stderr: '',
               artifacts: []
@@ -1067,23 +1083,23 @@ const processAgentLoop = async (prompt, toolResult) => {
           try {
               if (decision.action === 'execute_command') {
                   const res = await executeCommand(decision.params.command)
-                  result.exit_code = res.exitCode ?? res.exit_code
+                  result.exitCode = res.exitCode ?? res.exit_code ?? 0
                   result.stdout = res.stdout || ''
                   result.stderr = res.stderr || ''
                   
                   terminalLogs.value.push({ 
                     command: decision.params.command, 
                     output: result.stdout || result.stderr, 
-                    type: result.exit_code === 0 ? 'stdout' : 'stderr',
+                    type: result.exitCode === 0 ? 'stdout' : 'stderr',
                     cwd: res.cwd 
                   })
                   
               } else if (decision.action === 'write_file' || decision.action === 'ensure_file') {
                   const res = await writeFile(decision.params.path, decision.params.content, true)
-                  result.exit_code = res.exitCode ?? res.exit_code
+                  result.exitCode = res.exitCode ?? res.exit_code ?? 0
                   result.stdout = res.stdout || ''
                   result.stderr = res.stderr || ''
-                  if (result.exit_code === 0) {
+                  if (result.exitCode === 0) {
                       result.artifacts.push(decision.params.path)
                       // 解耦架构：更新可见文件列表
                       if (!visibleFiles.value.includes(decision.params.path)) {
@@ -1094,7 +1110,7 @@ const processAgentLoop = async (prompt, toolResult) => {
                   terminalLogs.value.push({ 
                     command: `write_file: ${decision.params.path}`, 
                     output: result.stdout || result.stderr, 
-                    type: result.exit_code === 0 ? 'stdout' : 'stderr',
+                    type: result.exitCode === 0 ? 'stdout' : 'stderr',
                     cwd: res.cwd 
                   })
               } else if (decision.action === 'read_file') {
@@ -1103,25 +1119,25 @@ const processAgentLoop = async (prompt, toolResult) => {
                       visibleFiles.value.push(decision.params.path)
                   }
                   // read_file 通常不需要执行，只是标记可见
-                  result.exit_code = 0
+                  result.exitCode = 0
                   result.stdout = 'File marked as visible'
               } else if (decision.action === 'search_files') {
                   // 搜索文件内容
                   const res = await searchFiles(decision.params)
-                  result.exit_code = res.exitCode ?? res.exit_code
+                  result.exitCode = res.exitCode ?? res.exit_code ?? 0
                   result.stdout = res.stdout || ''
                   result.stderr = res.stderr || ''
                   
                   terminalLogs.value.push({ 
                     command: `search_files: ${decision.params.pattern}`, 
                     output: result.stdout || result.stderr, 
-                    type: result.exit_code === 0 ? 'stdout' : 'stderr',
+                    type: result.exitCode === 0 ? 'stdout' : 'stderr',
                     cwd: res.cwd 
                   })
               } else if (decision.action === 'read_file_context') {
                   // 批量读取文件上下文
                   const res = await readFileContext(decision.params.files)
-                  result.exit_code = res.exitCode ?? res.exit_code
+                  result.exitCode = res.exitCode ?? res.exit_code ?? 0
                   result.stdout = res.stdout || ''
                   result.stderr = res.stderr || ''
                   
@@ -1137,17 +1153,17 @@ const processAgentLoop = async (prompt, toolResult) => {
                   terminalLogs.value.push({ 
                     command: `read_file_context: ${decision.params.files?.length || 0} files`, 
                     output: result.stdout || result.stderr, 
-                    type: result.exit_code === 0 ? 'stdout' : 'stderr',
+                    type: result.exitCode === 0 ? 'stdout' : 'stderr',
                     cwd: res.cwd 
                   })
               } else if (decision.action === 'modify_file') {
                   // 精确修改文件
                   const res = await modifyFile(decision.params)
-                  result.exit_code = res.exitCode ?? res.exit_code
+                  result.exitCode = res.exitCode ?? res.exit_code ?? 0
                   result.stdout = res.stdout || ''
                   result.stderr = res.stderr || ''
                   
-                  if (result.exit_code === 0 && decision.params?.path) {
+                  if (result.exitCode === 0 && decision.params?.path) {
                       result.artifacts.push(decision.params.path)
                       // 更新可见文件列表
                       if (!visibleFiles.value.includes(decision.params.path)) {
@@ -1158,15 +1174,15 @@ const processAgentLoop = async (prompt, toolResult) => {
                   terminalLogs.value.push({ 
                     command: `modify_file: ${decision.params.path}`, 
                     output: result.stdout || result.stderr, 
-                    type: result.exit_code === 0 ? 'stdout' : 'stderr',
+                    type: result.exitCode === 0 ? 'stdout' : 'stderr',
                     cwd: res.cwd 
                   })
               }
               
-              currentAiMsg.status = result.exit_code === 0 ? 'success' : 'error'
+              currentAiMsg.status = result.exitCode === 0 ? 'success' : 'error'
               
           } catch (e) {
-              result.exit_code = -1
+              result.exitCode = -1
               result.stderr = e.message
               currentAiMsg.status = 'error'
           } finally {
@@ -1176,6 +1192,13 @@ const processAgentLoop = async (prompt, toolResult) => {
           // 3. Feedback Loop (Send Result back)
           // Cursor 工作流程：工具执行完成后，自动触发下一轮循环
           // 后端会自动处理工具结果并继续执行，这里只需要发送结果
+          console.log('[TerminalView] Sending tool result back:', {
+            decisionId: result.decisionId,
+            exitCode: result.exitCode,
+            stdoutLength: result.stdout?.length || 0,
+            stderrLength: result.stderr?.length || 0,
+            artifacts: result.artifacts?.length || 0
+          })
           await processAgentLoop("", result)  // 空 prompt，后端会自动构建继续执行的 prompt
           
       } else if (decision.type === 'TASK_COMPLETE') {
