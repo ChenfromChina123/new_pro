@@ -50,6 +50,16 @@ public class ChatRecordService {
     @Transactional
     public ChatRecord createChatRecord(String content, Integer senderType, String userId, 
                                       String sessionId, String aiModel, String status, String sessionType, String reasoningContent) {
+        return createChatRecord(content, senderType, userId, sessionId, aiModel, status, sessionType, reasoningContent, null, null, null);
+    }
+
+    /**
+     * 创建聊天记录（包含所有字段，包括工具执行结果）
+     */
+    @Transactional
+    public ChatRecord createChatRecord(String content, Integer senderType, String userId, 
+                                      String sessionId, String aiModel, String status, String sessionType, 
+                                      String reasoningContent, Integer exitCode, String stdout, String stderr) {
         // 如果没有会话ID，生成新的
         if (sessionId == null || sessionId.isEmpty()) {
             sessionId = UUID.randomUUID().toString().replace("-", "");
@@ -70,7 +80,7 @@ public class ChatRecordService {
 
         // 如果是第一条用户消息且标题是默认的，自动更新标题
         if (senderType == 1 && ("新对话".equals(session.getTitle()) || "未命名会话".equals(session.getTitle()))) {
-            String title = content.length() > 20 ? content.substring(0, 20) + "..." : content;
+            String title = content != null && content.length() > 20 ? content.substring(0, 20) + "..." : (content != null ? content : "新对话");
             session.setTitle(title);
             chatSessionRepository.save(session);
         }
@@ -86,11 +96,14 @@ public class ChatRecordService {
             .userId(userId)
             .messageOrder(messageOrder)
             .senderType(senderType)
-            .content(content)
+            .content(content != null ? content : "")
             .reasoningContent(reasoningContent)  // 保存深度思考内容
             .aiModel(aiModel)
             .status(status != null ? status : "completed")
             .sendTime(LocalDateTime.now())
+            .exitCode(exitCode)
+            .stdout(stdout)
+            .stderr(stderr)
             .build();
         
         return chatRecordRepository.save(chatRecord);

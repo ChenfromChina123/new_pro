@@ -159,59 +159,58 @@
                               class="tool-call-card"
                             >
                               <div class="tool-header">
-                                <span class="tool-icon">🐚</span>
-                                <span
-                                  v-if="item.data.tool === 'execute_command'"
-                                  class="tool-label"
-                                >执行命令</span>
-                                <span
-                                  v-else-if="item.data.tool === 'write_file'"
-                                  class="tool-label"
-                                >写入文件</span>
-                                <span
-                                  v-else-if="item.data.tool === 'ensure_file'"
-                                  class="tool-label"
-                                >确保文件</span>
-                                <span
-                                  v-else-if="item.data.tool === 'search_files'"
-                                  class="tool-label"
-                                >搜索文件</span>
-                                <span
-                                  v-else-if="item.data.tool === 'read_file_context'"
-                                  class="tool-label"
-                                >读取上下文</span>
-                                <span
-                                  v-else-if="item.data.tool === 'modify_file'"
-                                  class="tool-label"
-                                >修改文件</span>
-                                <span
-                                  v-else
-                                  class="tool-label"
-                                >工具调用</span>
+                                <div class="tool-header-left">
+                                  <span class="tool-icon">🛠️</span>
+                                  <span class="tool-label">{{ formatToolSummary(item) }}</span>
+                                </div>
+                                <button
+                                  class="collapse-btn"
+                                  @click="toggleToolCollapse(item.data.toolKey || item.id)"
+                                >
+                                  {{ isToolCollapsed(item.data.toolKey || item.id) ? '展开' : '收起' }}
+                                </button>
                               </div>
-                              <div class="tool-command">
-                                <code v-if="item.data.tool === 'execute_command'">{{ item.data.command }}</code>
-                                <code v-else-if="item.data.tool === 'write_file' || item.data.tool === 'ensure_file'">{{ item.data.filePath }}</code>
-                                <code v-else-if="item.data.tool === 'search_files'">{{ item.data.searchPattern || '搜索中...' }}</code>
-                                <code v-else-if="item.data.tool === 'read_file_context'">{{ item.data.filePath || '读取中...' }}</code>
-                                <code v-else-if="item.data.tool === 'modify_file'">{{ item.data.filePath }}</code>
-                              </div>
-                              <div
-                                class="tool-status"
-                                :class="item.data.status"
-                              >
-                                <span
-                                  v-if="item.data.status === 'pending'"
-                                  class="spinner"
-                                >⌛ 执行中...</span>
-                                <span
-                                  v-else-if="item.data.status === 'success'"
-                                  class="status-success"
-                                >✓ 执行成功</span>
-                                <span
-                                  v-else
-                                  class="status-error"
-                                >✗ 执行失败</span>
+                              
+                              <div v-show="!isToolCollapsed(item.data.toolKey || item.id)">
+                                <div class="tool-command">
+                                  <code v-if="item.data.tool === 'execute_command'">{{ item.data.command }}</code>
+                                  <code v-else-if="item.data.tool === 'write_file' || item.data.tool === 'ensure_file'">{{ item.data.filePath }}</code>
+                                  <code v-else-if="item.data.tool === 'search_files'">{{ item.data.searchPattern || '搜索中...' }}</code>
+                                  <code v-else-if="item.data.tool === 'read_file_context'">{{ item.data.filePath || '读取中...' }}</code>
+                                  <code v-else-if="item.data.tool === 'modify_file'">{{ item.data.filePath }}</code>
+                                </div>
+                                <div
+                                  class="tool-status"
+                                  :class="item.data.status"
+                                >
+                                  <span
+                                    v-if="item.data.status === 'pending'"
+                                    class="spinner"
+                                  >⌛ 执行中...</span>
+                                  <span
+                                    v-else-if="item.data.status === 'success'"
+                                    class="status-success"
+                                  >✓ 执行成功</span>
+                                  <span
+                                    v-else
+                                    class="status-error"
+                                  >✗ 执行失败</span>
+                                </div>
+
+                                <!-- 工具执行结果（默认随卡片折叠） -->
+                                <div
+                                  v-if="item.data.toolResult"
+                                  class="tool-result"
+                                >
+                                  <div v-if="item.data.toolResult.stdout">
+                                    <div class="result-title">输出 (stdout)</div>
+                                    <pre class="result-block">{{ item.data.toolResult.stdout }}</pre>
+                                  </div>
+                                  <div v-if="item.data.toolResult.stderr">
+                                    <div class="result-title">错误 (stderr)</div>
+                                    <pre class="result-block error">{{ item.data.toolResult.stderr }}</pre>
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -601,8 +600,55 @@ const scrollToTask = (taskId) => {
   })
 }
 
+// 工具卡片折叠/展开
+const isToolCollapsed = (key) => collapsedTools.value.has(key)
+const toggleToolCollapse = (key) => {
+  if (!key) return
+  if (collapsedTools.value.has(key)) {
+    collapsedTools.value.delete(key)
+  } else {
+    collapsedTools.value.add(key)
+  }
+}
+
+// 显示工具调用摘要
+const formatToolSummary = (item) => {
+  const tool = item?.data?.tool
+  if (!tool) return '工具调用'
+
+  const path = item.data.filePath || item.data.path
+  const pattern = item.data.searchPattern || item.data.pattern
+  const filePattern = item.data.filePattern || item.data.file_pattern
+
+  const formatRange = (f) => {
+    const start = f?.start_line ?? f?.start ?? '?'
+    const end = f?.end_line ?? f?.end ?? start ?? '?'
+    return `${f?.path || path || '文件'}[${start},${end}]`
+  }
+
+  switch (tool) {
+    case 'read_file_context':
+      if (item.data.files?.length) {
+        return `read: ${item.data.files.map(formatRange).join(', ')}`
+      }
+      return `read: ${path || '文件'}`
+    case 'search_files':
+      return `search: ${pattern || '*'} in ${filePattern || '*' }`
+    case 'modify_file':
+      return `modify: ${path || '文件'} (${item.data.operations?.length || 0} ops)`
+    case 'write_file':
+    case 'ensure_file':
+      return `write: ${path || '文件'}`
+    case 'execute_command':
+      return `exec: ${item.data.command || ''}`
+    default:
+      return tool
+  }
+}
+
 const inputMessage = ref('')
 const currentModel = ref('deepseek-chat')
+const collapsedTools = ref(new Set()) // 默认折叠工具执行结果
 const isTyping = ref(false)
 const isExecuting = ref(false)
 const messagesRef = ref(null)
@@ -797,7 +843,7 @@ const handleEnter = (e) => {
   }
 }
 
-const saveMessage = async (content, senderType) => {
+const saveMessage = async (content, senderType, extra = {}) => {
   try {
     await fetch(`${API_CONFIG.baseURL}/api/terminal/save-record`, {
       method: 'POST',
@@ -809,7 +855,8 @@ const saveMessage = async (content, senderType) => {
         session_id: currentSessionId.value,
         content: content,
         sender_type: senderType,
-        model: currentModel.value
+        model: currentModel.value,
+        ...extra
       })
     })
   } catch (e) { console.error(e) }
@@ -1024,7 +1071,7 @@ const processAgentLoop = async (prompt, toolResult) => {
         }
       }
 
-      // 检查是否是任务列表消息
+      // 检查是否是任务列表消息（实时）
       if (decision.type === 'task_list' || decision.tasks) {
         console.log('[TerminalView] Task list received:', decision.tasks)
         terminalStore.currentTasks = decision.tasks || []
@@ -1048,6 +1095,16 @@ const processAgentLoop = async (prompt, toolResult) => {
       currentAiMsg.command = decision.params?.command
       currentAiMsg.filePath = decision.params?.path
       currentAiMsg.searchPattern = decision.params?.pattern
+      currentAiMsg.filePattern = decision.params?.file_pattern
+      currentAiMsg.files = decision.params?.files
+      currentAiMsg.operations = decision.params?.operations
+      currentAiMsg.toolKey = decision.decision_id || `tool-${messages.value.length}`
+      // 工具调用的正文避免显示原始 JSON，改用折叠卡片展示
+      if (decision.type === 'TOOL_CALL') {
+        currentAiMsg.message = ''
+      }
+      // 默认折叠工具结果
+      collapsedTools.value.add(currentAiMsg.toolKey)
       
       // 解耦架构：保存身份信息（如果后端返回）
       if (decision.identity) {
@@ -1129,7 +1186,7 @@ const processAgentLoop = async (prompt, toolResult) => {
                       visibleFiles.value.push(decision.params.path)
                   }
                   // read_file 通常不需要执行，只是标记可见
-                  result.exitCode = 0
+                  result.exit_code = 0
                   result.stdout = 'File marked as visible'
               } else if (decision.action === 'search_files') {
                   // 搜索文件内容
@@ -1173,7 +1230,7 @@ const processAgentLoop = async (prompt, toolResult) => {
                   result.stdout = res.stdout || ''
                   result.stderr = res.stderr || ''
                   
-                  if (result.exitCode === 0 && decision.params?.path) {
+                  if (result.exit_code === 0 && decision.params?.path) {
                       result.artifacts.push(decision.params.path)
                       // 更新可见文件列表
                       if (!visibleFiles.value.includes(decision.params.path)) {
@@ -1188,7 +1245,8 @@ const processAgentLoop = async (prompt, toolResult) => {
                     cwd: res.cwd 
                   })
               }
-              
+              // 将结果挂载到当前消息，供折叠卡片展示
+              currentAiMsg.toolResult = result
               currentAiMsg.status = result.exit_code === 0 ? 'success' : 'error'
               
           } catch (e) {
@@ -1209,6 +1267,14 @@ const processAgentLoop = async (prompt, toolResult) => {
             stderrLength: result.stderr?.length || 0,
             artifacts: result.artifacts?.length || 0
           })
+          
+          // 持久化工具执行结果
+          await saveMessage(`TOOL_RESULT: ${decision.action}`, 3, {
+            exit_code: result.exit_code,
+            stdout: result.stdout,
+            stderr: result.stderr
+          })
+
           await processAgentLoop("", result)  // 空 prompt，后端会自动构建继续执行的 prompt
           
       } else if (decision.type === 'TASK_COMPLETE') {
@@ -1619,10 +1685,16 @@ const formatTime = (timestamp) => {
 .tool-header { 
   display: flex; 
   align-items: center;
+  justify-content: space-between;
   gap: 10px; 
   font-size: 0.85rem; 
   color: #94a3b8; 
   margin-bottom: 12px; 
+}
+.tool-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 .tool-command {
   background: #0f172a;
@@ -1634,6 +1706,18 @@ const formatTime = (timestamp) => {
   color: #38bdf8; 
   font-family: 'Fira Code', monospace; 
   font-size: 0.9rem;
+}
+.collapse-btn {
+  background: #0f172a;
+  color: #cbd5e1;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.collapse-btn:hover {
+  background: #1e293b;
 }
 .tool-status { 
   font-size: 0.85rem; 

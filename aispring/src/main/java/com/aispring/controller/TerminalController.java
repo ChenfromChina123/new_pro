@@ -627,6 +627,12 @@ public class TerminalController {
         String model = (String) request.get("model");
 
         String reasoningContent = (String) request.get("reasoning_content");  // 终端可能也有思考内容
+        
+        // 工具执行结果字段
+        Integer exitCode = (Integer) request.get("exit_code");
+        String stdout = (String) request.get("stdout");
+        String stderr = (String) request.get("stderr");
+
         chatRecordService.createChatRecord(
             content,
             senderType,
@@ -635,7 +641,10 @@ public class TerminalController {
             model,
             "completed",
             "terminal",
-            reasoningContent
+            reasoningContent,
+            exitCode,
+            stdout,
+            stderr
         );
         return ApiResponse.success(null);
     }

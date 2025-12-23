@@ -61,6 +61,16 @@ public class ChatRecord {
     
     @Column(name = "send_time", nullable = false)
     private LocalDateTime sendTime;
+
+    // 工具执行相关字段
+    @Column(name = "exit_code")
+    private Integer exitCode;
+
+    @Column(name = "stdout", columnDefinition = "TEXT")
+    private String stdout;
+
+    @Column(name = "stderr", columnDefinition = "TEXT")
+    private String stderr;
     
     /**
      * 转换为Map用于API响应
@@ -77,6 +87,12 @@ public class ChatRecord {
         map.put("ai_model", aiModel);
         map.put("status", status);
         map.put("send_time", sendTime != null ? sendTime.format(FORMATTER) : null);
+        
+        // 工具执行结果字段
+        map.put("exit_code", exitCode);
+        map.put("stdout", stdout);
+        map.put("stderr", stderr);
+        
         return map;
     }
 }
