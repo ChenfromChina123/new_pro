@@ -390,7 +390,15 @@ public class TerminalController {
             return null;
         }
         
-        // 方式1: 查找 ```json 代码块
+        // 方式1: 查找 ```json 代码块 (支持正则匹配以应对复杂情况)
+        String pattern = "```json\\s*(\\[[\\s\\S]*?\\]|\\{[\\s\\S]*?\\})\\s*```";
+        java.util.regex.Pattern r = java.util.regex.Pattern.compile(pattern);
+        java.util.regex.Matcher m = r.matcher(text);
+        if (m.find()) {
+            return m.group(1);
+        }
+
+        // 方式2: 简单查找 ```json
         int codeBlockStart = text.indexOf("```json");
         if (codeBlockStart >= 0) {
             int jsonStart = codeBlockStart + 7; // Length of "```json"

@@ -1075,9 +1075,14 @@ const processAgentLoop = async (prompt, toolResult) => {
       if (decision.type === 'task_list' || decision.tasks) {
         console.log('[TerminalView] Task list received:', decision.tasks)
         terminalStore.currentTasks = decision.tasks || []
-        currentAiMsg.message = '任务计划已生成'
+        currentAiMsg.message = '任务计划已生成，即将开始执行...'
         currentAiMsg.status = 'success'
         await saveMessage(JSON.stringify(decision), 2)
+        
+        // 自动触发第一步执行
+        setTimeout(async () => {
+            await processAgentLoop("开始执行任务", null)
+        }, 1000)
         return
       }
       
@@ -1278,11 +1283,14 @@ const processAgentLoop = async (prompt, toolResult) => {
           await processAgentLoop("", result)  // 空 prompt，后端会自动构建继续执行的 prompt
           
       } else if (decision.type === 'TASK_COMPLETE') {
-          terminalStore.setAgentStatus('IDLE') // Or COMPLETED
-          currentAiMsg.message = "Task Completed"
+          currentAiMsg.message = "当前任务已完成"
           currentAiMsg.status = 'success'
-          // Refresh tasks
-          // await terminalStore.fetchTasks() // If we had a fetch task endpoint
+          
+          // 自动触发下一轮检查（由后端判断是继续执行还是结束）
+          await saveMessage(JSON.stringify(decision), 2)
+          setTimeout(async () => {
+              await processAgentLoop("继续执行", null)
+          }, 1000)
       } else if (decision.type === 'PAUSE') {
           terminalStore.setAgentStatus('PAUSED')
       }
