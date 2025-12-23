@@ -50,6 +50,9 @@ public class ChatRecord {
     @Column(name = "content", columnDefinition = "TEXT", nullable = false)
     private String content;
     
+    @Column(name = "reasoning_content", columnDefinition = "TEXT")
+    private String reasoningContent;  // AI 深度思考内容
+    
     @Column(name = "ai_model", length = 50)
     private String aiModel;  // deepseek, doubao, etc.
     
@@ -70,6 +73,7 @@ public class ChatRecord {
         map.put("message_order", messageOrder);
         map.put("sender_type", senderType);
         map.put("content", content);
+        map.put("reasoning_content", reasoningContent);
         map.put("ai_model", aiModel);
         map.put("status", status);
         map.put("send_time", sendTime != null ? sendTime.format(FORMATTER) : null);
