@@ -3,6 +3,9 @@ package com.aispring.service.impl;
 import com.aispring.config.StorageProperties;
 import com.aispring.dto.response.TerminalCommandResponse;
 import com.aispring.dto.response.TerminalFileDto;
+import com.aispring.entity.terminal.FileSearchRequest;
+import com.aispring.entity.terminal.FileContextRequest;
+import com.aispring.entity.terminal.FileModifyRequest;
 import com.aispring.service.TerminalService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +22,8 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 import java.util.stream.Stream;
 
 @Service
@@ -331,5 +336,204 @@ public class TerminalServiceImpl implements TerminalService {
         sanitized = sanitized.replaceAll("/(etc|var|usr|bin|sbin|lib|root|home)(/[^\\s\\n\\r]*)?", "[RESTRICTED PATH]");
         
         return sanitized;
+    }
+
+    @Override
+    public TerminalCommandResponse searchFiles(Long userId, FileSearchRequest request, String relativeCwd) {
+        log.info("=== Search Files ===");
+        log.info("User: {}, Pattern: {}, FilePattern: {}, ContextLines: {}", 
+            userId, request.getPattern(), request.getFilePattern(), request.getContextLines());
+        
+        String userRoot = getUserTerminalRoot(userId);
+        Path rootPath = Paths.get(userRoot);
+        Path cwdPath = resolvePath(rootPath, relativeCwd);
+        
+        try {
+            Pattern pattern = Pattern.compile(
+                request.getPattern(),
+                request.isCaseSensitive() ? 0 : Pattern.CASE_INSENSITIVE
+            );
+            
+            List<String> results = new ArrayList<>();
+            int contextLines = request.getContextLines();
+            
+            try (Stream<Path> stream = Files.walk(cwdPath, 10)) {
+                stream.filter(path -> {
+                    if (Files.isDirectory(path)) return false;
+                    String fileName = path.getFileName().toString();
+                    
+                    // 文件模式匹配
+                    if (request.getFilePattern() != null && !request.getFilePattern().isEmpty()) {
+                        String filePattern = request.getFilePattern().replace("*", ".*");
+                        if (!fileName.matches(filePattern)) return false;
+                    }
+                    return true;
+                }).forEach(filePath -> {
+                    try {
+                        List<String> lines = Files.readAllLines(filePath, StandardCharsets.UTF_8);
+                        String relativePath = getRelativePath(rootPath, filePath);
+                        
+                        for (int i = 0; i < lines.size(); i++) {
+                            Matcher matcher = pattern.matcher(lines.get(i));
+                            if (matcher.find()) {
+                                int lineNum = i + 1;
+                                
+                                // 添加上下文
+                                results.add(String.format("\n=== %s:%d ===\n", relativePath, lineNum));
+                                
+                                int start = Math.max(0, i - contextLines);
+                                int end = Math.min(lines.size(), i + contextLines + 1);
+                                
+                                for (int j = start; j < end; j++) {
+                                    String prefix = (j == i) ? ">>> " : "    ";
+                                    results.add(String.format("%s%d: %s", prefix, j + 1, lines.get(j)));
+                                }
+                                results.add(""); // 空行分隔
+                            }
+                        }
+                    } catch (IOException e) {
+                        log.warn("Error reading file: {}", filePath, e);
+                    }
+                });
+            }
+            
+            String output = String.join("\n", results);
+            if (output.isEmpty()) {
+                output = "No matches found for pattern: " + request.getPattern();
+            }
+            
+            log.info("Search completed, found {} matches", results.size());
+            return new TerminalCommandResponse(output, "", 0, getRelativePath(rootPath, cwdPath));
+            
+        } catch (Exception e) {
+            log.error("Search failed", e);
+            return new TerminalCommandResponse("", "Search failed: " + e.getMessage(), -1, getRelativePath(rootPath, cwdPath));
+        }
+    }
+
+    @Override
+    public TerminalCommandResponse readFileContext(Long userId, FileContextRequest request, String relativeCwd) {
+        log.info("=== Read File Context ===");
+        log.info("User: {}, Files: {}", userId, request.getFiles().size());
+        
+        String userRoot = getUserTerminalRoot(userId);
+        Path rootPath = Paths.get(userRoot);
+        Path cwdPath = resolvePath(rootPath, relativeCwd);
+        
+        List<String> results = new ArrayList<>();
+        
+        for (FileContextRequest.FileRange fileRange : request.getFiles()) {
+            try {
+                Path targetPath = resolvePath(rootPath, fileRange.getPath());
+                
+                if (!Files.exists(targetPath) || Files.isDirectory(targetPath)) {
+                    results.add(String.format("\n=== %s (NOT FOUND) ===\n", fileRange.getPath()));
+                    continue;
+                }
+                
+                List<String> lines = Files.readAllLines(targetPath, StandardCharsets.UTF_8);
+                int startLine = Math.max(1, fileRange.getStartLine()) - 1; // 转换为0索引
+                int endLine = Math.min(lines.size(), fileRange.getEndLine());
+                
+                results.add(String.format("\n=== %s (lines %d-%d) ===\n", 
+                    getRelativePath(rootPath, targetPath), 
+                    fileRange.getStartLine(), 
+                    endLine));
+                
+                for (int i = startLine; i < endLine; i++) {
+                    results.add(String.format("%d: %s", i + 1, lines.get(i)));
+                }
+                
+                log.info("Read file: {}, lines {}-{}", fileRange.getPath(), fileRange.getStartLine(), endLine);
+                
+            } catch (Exception e) {
+                log.error("Error reading file context: {}", fileRange.getPath(), e);
+                results.add(String.format("\n=== %s (ERROR) ===\n%s\n", fileRange.getPath(), e.getMessage()));
+            }
+        }
+        
+        String output = String.join("\n", results);
+        return new TerminalCommandResponse(output, "", 0, getRelativePath(rootPath, cwdPath));
+    }
+
+    @Override
+    public TerminalCommandResponse modifyFile(Long userId, FileModifyRequest request, String relativeCwd) {
+        log.info("=== Modify File ===");
+        log.info("User: {}, Path: {}, Operations: {}", userId, request.getPath(), request.getOperations().size());
+        
+        String userRoot = getUserTerminalRoot(userId);
+        Path rootPath = Paths.get(userRoot);
+        Path cwdPath = resolvePath(rootPath, relativeCwd);
+        Path targetPath = resolvePath(rootPath, request.getPath());
+        
+        if (!targetPath.startsWith(rootPath)) {
+            return new TerminalCommandResponse("", "Invalid path (out of sandbox)", 1, getRelativePath(rootPath, cwdPath));
+        }
+        
+        if (!Files.exists(targetPath) || Files.isDirectory(targetPath)) {
+            return new TerminalCommandResponse("", "File not found: " + request.getPath(), 1, getRelativePath(rootPath, cwdPath));
+        }
+        
+        try {
+            List<String> lines = new ArrayList<>(Files.readAllLines(targetPath, StandardCharsets.UTF_8));
+            
+            // 按行号倒序处理操作，避免索引偏移
+            request.getOperations().sort((a, b) -> Integer.compare(b.getStartLine(), a.getStartLine()));
+            
+            for (FileModifyRequest.ModifyOperation op : request.getOperations()) {
+                int startIdx = op.getStartLine() - 1; // 转换为0索引
+                
+                log.info("Operation: type={}, startLine={}, endLine={}", 
+                    op.getType(), op.getStartLine(), op.getEndLine());
+                
+                switch (op.getType()) {
+                    case "delete":
+                        if (op.getEndLine() != null && op.getEndLine() >= op.getStartLine()) {
+                            int endIdx = Math.min(op.getEndLine(), lines.size());
+                            lines.subList(startIdx, endIdx).clear();
+                            log.info("Deleted lines {}-{}", op.getStartLine(), endIdx);
+                        }
+                        break;
+                        
+                    case "insert":
+                        if (op.getContent() != null) {
+                            String[] insertLines = op.getContent().split("\n");
+                            for (int i = insertLines.length - 1; i >= 0; i--) {
+                                lines.add(startIdx, insertLines[i]);
+                            }
+                            log.info("Inserted {} lines at line {}", insertLines.length, op.getStartLine());
+                        }
+                        break;
+                        
+                    case "replace":
+                        if (op.getEndLine() != null && op.getEndLine() >= op.getStartLine() && op.getContent() != null) {
+                            int endIdx = Math.min(op.getEndLine(), lines.size());
+                            lines.subList(startIdx, endIdx).clear();
+                            
+                            String[] replaceLines = op.getContent().split("\n");
+                            for (int i = replaceLines.length - 1; i >= 0; i--) {
+                                lines.add(startIdx, replaceLines[i]);
+                            }
+                            log.info("Replaced lines {}-{} with {} lines", 
+                                op.getStartLine(), endIdx, replaceLines.length);
+                        }
+                        break;
+                        
+                    default:
+                        log.warn("Unknown operation type: {}", op.getType());
+                }
+            }
+            
+            Files.write(targetPath, lines, StandardCharsets.UTF_8);
+            String output = String.format("File modified: %s (%d operations applied)", 
+                getRelativePath(rootPath, targetPath), request.getOperations().size());
+            
+            log.info("File modification completed successfully");
+            return new TerminalCommandResponse(output, "", 0, getRelativePath(rootPath, cwdPath));
+            
+        } catch (Exception e) {
+            log.error("File modification failed", e);
+            return new TerminalCommandResponse("", "Modification failed: " + e.getMessage(), -1, getRelativePath(rootPath, cwdPath));
+        }
     }
 }

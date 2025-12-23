@@ -1,7 +1,6 @@
 package com.aispring.entity.terminal;
 
 import lombok.Data;
-import java.util.List;
 
 /**
  * 文件搜索请求
