@@ -94,8 +94,10 @@ public class TerminalPromptManager {
 
             # 可用工具（工具名必须保持英文，且严格按此调用）
             - execute_command(command) - 执行命令
-            - read_file(path) - 读取文件
-            - write_file(path, content) - 写入文件
+            - search_files(pattern, file_pattern, context_lines) - 搜索文件内容，返回匹配行及上下文
+            - read_file_context(files) - 批量读取文件指定行范围，files格式：[{"path":"xxx","start_line":1,"end_line":50}]
+            - write_file(path, content) - 写入整个文件内容
+            - modify_file(path, operations) - 精确修改文件，operations格式：[{"type":"delete|insert|replace","start_line":1,"end_line":5,"content":"..."}]
             - ensure_file(path, content) - 确保文件存在（不存在则创建）
 
             # 重要：输出格式要求
@@ -109,22 +111,40 @@ public class TerminalPromptManager {
 
             # JSON 格式要求
             - 字段名必须使用英文/下划线形式
-            - 必须包含 decision_id（使用 UUID 格式）
             - 必须包含 type（"TOOL_CALL" 或 "TASK_COMPLETE"）
             - 必须包含 action（工具名称或 "none"）
             - 必须包含 params（参数对象）
+            - decision_id 会由系统自动生成，不需要你填写
 
             工具调用示例（直接输出这个格式，不要其他文字）：
-            {"decision_id":"550e8400-e29b-41d4-a716-446655440000","type":"TOOL_CALL","action":"ensure_file","params":{"path":"index.html","content":"<!DOCTYPE html>\\n<html>\\n<head>\\n<title>我的网页</title>\\n</head>\\n<body>\\n</body>\\n</html>"},"expectation":{"world_change":["index.html"]}}
+            
+            1. 搜索文件：
+            {"type":"TOOL_CALL","action":"search_files","params":{"pattern":"function.*login","file_pattern":"*.js","context_lines":20}}
+            
+            2. 批量读取文件上下文：
+            {"type":"TOOL_CALL","action":"read_file_context","params":{"files":[{"path":"src/main.js","start_line":10,"end_line":50},{"path":"src/utils.js","start_line":1,"end_line":30}]}}
+            
+            3. 精确修改文件：
+            {"type":"TOOL_CALL","action":"modify_file","params":{"path":"src/main.js","operations":[{"type":"delete","start_line":5,"end_line":10},{"type":"insert","start_line":5,"content":"// 新增的代码\\nconsole.log('hello');"}]}}
+            
+            4. 执行命令：
+            {"type":"TOOL_CALL","action":"execute_command","params":{"command":"ls -la"}}
 
             若任务已完成（直接输出这个格式）：
-            {"decision_id":"550e8400-e29b-41d4-a716-446655440000","type":"TASK_COMPLETE","action":"none","params":{}}
+            {"type":"TASK_COMPLETE","action":"none","params":{}}
 
             # 再次强调
             - 只输出 JSON，不要输出任何其他文字
             - 不要使用 ```json 代码块
             - 不要添加说明文字
+            - 不要生成 decision_id，系统会自动生成
             - 直接输出 JSON 对象
+            
+            # 工具使用建议
+            - 搜索后先用 search_files 找到感兴趣的文件和行号
+            - 然后用 read_file_context 批量读取多个文件的上下文
+            - 修改文件时优先使用 modify_file 而不是 write_file，可以精确控制修改范围
+            - 一次可以读取多个文件的不同片段，提高效率
             """;
 
     /**
