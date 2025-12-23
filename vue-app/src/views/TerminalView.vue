@@ -1073,7 +1073,7 @@ const processAgentLoop = async (prompt, toolResult) => {
           
           // 注意：字段名使用下划线命名，匹配后端全局 Jackson SNAKE_CASE 配置
           let result = {
-              decision_id: decision.decision_id,
+              decision_id: decision.decision_id || decision.decisionId,
               exit_code: 0,
               stdout: '',
               stderr: '',

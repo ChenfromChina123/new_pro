@@ -29,6 +29,7 @@
   - **决策信封 (Decision Envelope)**: 引入了严格的后端-前端通信协议，所有的 Agent 决策都封装在结构化的 JSON 信封中，包含唯一的 `decision_id`、预期结果 (`expectation`) 和操作范围 (`scope`)。
   - **状态机驱动**: 后端实现了完整且严格的状态机 (IDLE -> PLANNING -> RUNNING -> WAITING_TOOL -> PAUSED)，确保 Agent 行为的可预测性和可控性。
   - **决策去重**: 实现了基于 `decision_id` 的全链路去重机制，防止前端在网络波动或重试时重复执行同一操作。
+  - **决策 ID 鲁棒性修复**: 修复了前端回传 `ToolResult` 时可能出现 `decision_id` 为空或不匹配导致的工具执行被拒绝问题。增强了后端 `StateMutator` 的验证逻辑（增加空值容错），并优化了前端 `TerminalView` 对 `decision_id` 的获取路径，确保工具执行闭环的稳定性。
   - **输入锁 (Input Guard)**: 当 Agent 处于 `RUNNING` 状态时，自动锁定用户输入框，仅允许 `pause`/`stop` 等控制指令，防止用户干扰执行流。
   - **安全白名单**: 实现了文件操作的白名单追踪机制，Agent 仅能感知和修改其创建或显式追踪的文件，保护系统安全。
 - **声明式前端执行器**: 前端重构为纯粹的“世界修改器” (World Modifier)，不再进行复杂的逻辑判断，仅负责执行后端下发的 `TOOL_CALL` 并回传标准化的 `ToolResult`。
