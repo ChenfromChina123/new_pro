@@ -72,7 +72,7 @@ public class TerminalPromptManager {
             用户意图：%s
 
             # 输出格式
-            请严格按照以下结构输出：
+            请先输出给用户的说明（Markdown格式），然后输出JSON格式的计划。具体结构如下：
 
             ## 1. 项目分析
             （在这里输出你的 Markdown 格式的项目说明和需求分析...）
