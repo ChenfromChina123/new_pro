@@ -248,18 +248,23 @@ export const useTerminalStore = defineStore('terminal', () => {
               lastCommandAction = null
             }
           } else if (senderType === 3) {
+            const exitCode = r.exitCode ?? r.exit_code ?? 0
+            const stdout = r.stdout || ''
+            const stderr = r.stderr || ''
+            const output = stdout || stderr || content
+
             if (lastCommandAction) {
               newLogs.push({
                 command: lastCommandAction.command || (lastCommandAction.tool === 'write_file' || lastCommandAction.tool === 'ensure_file' ? `write_file: ${lastCommandAction.filePath}` : 'unknown'),
-                output: content,
-                type: 'stdout',
+                output: output,
+                type: exitCode === 0 ? 'stdout' : 'stderr',
                 cwd: lastCommandAction.cwd || '/'
               })
             } else {
               newLogs.push({
                 command: 'Command Result',
-                output: content,
-                type: 'stdout',
+                output: output,
+                type: exitCode === 0 ? 'stdout' : 'stderr',
                 cwd: '/'
               })
             }
