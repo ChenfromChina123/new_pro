@@ -21,6 +21,24 @@ export const useTerminalStore = defineStore('terminal', () => {
   const agentStatus = ref('IDLE') // IDLE, RUNNING, PAUSED, ERROR, etc.
   const decisionHistory = ref(new Set()) // decision_id set for de-duplication
 
+  // 解耦架构：身份信息管理
+  const identityInfo = ref(null) // { core, task, viewpoint }
+
+  // 解耦架构：状态切片管理
+  const stateSlices = ref([]) // Array of { source, scope, data, timestamp, authority }
+
+  // 解耦架构：作用域管理
+  const visibleFiles = ref([]) // 可见文件列表
+  const visibleFunctions = ref([]) // 可见函数列表
+
+  // 解耦架构：工具执行白名单
+  const toolWhitelist = ref([
+    'execute_command',
+    'read_file',
+    'write_file',
+    'ensure_file'
+  ])
+
   // 计算属性：按任务分组的消息
   const groupedMessages = computed(() => {
     const groups = []
@@ -108,6 +126,11 @@ export const useTerminalStore = defineStore('terminal', () => {
         // Reset state
         agentStatus.value = 'IDLE'
         decisionHistory.value.clear()
+        // 解耦架构：清除解耦相关状态
+        identityInfo.value = null
+        stateSlices.value = []
+        visibleFiles.value = []
+        visibleFunctions.value = []
         return newSession
       }
     } catch (e) {
@@ -147,6 +170,11 @@ export const useTerminalStore = defineStore('terminal', () => {
     activeTaskId.value = null
     agentStatus.value = 'IDLE' 
     decisionHistory.value.clear()
+    // 解耦架构：清除解耦相关状态
+    identityInfo.value = null
+    stateSlices.value = []
+    visibleFiles.value = []
+    visibleFunctions.value = []
     
     const session = sessions.value.find(s => s.sessionId === sessionId)
     if (session && session.currentCwd) {
@@ -257,6 +285,60 @@ export const useTerminalStore = defineStore('terminal', () => {
       return decisionHistory.value.has(id)
   }
 
+  // 解耦架构：身份管理方法
+  const setIdentity = (identity) => {
+    identityInfo.value = identity
+  }
+
+  const clearIdentity = () => {
+    identityInfo.value = null
+  }
+
+  // 解耦架构：状态切片管理方法
+  const addStateSlice = (slice) => {
+    stateSlices.value.push({
+      ...slice,
+      timestamp: new Date().toISOString()
+    })
+    // 保持最近 100 个切片
+    if (stateSlices.value.length > 100) {
+      stateSlices.value.shift()
+    }
+  }
+
+  const clearStateSlices = () => {
+    stateSlices.value = []
+  }
+
+  // 解耦架构：作用域管理方法
+  const setScope = (files, functions) => {
+    visibleFiles.value = files || []
+    visibleFunctions.value = functions || []
+  }
+
+  const clearScope = () => {
+    visibleFiles.value = []
+    visibleFunctions.value = []
+  }
+
+  // 解耦架构：工具执行策略检查
+  const canExecuteTool = (action) => {
+    return toolWhitelist.value.includes(action)
+  }
+
+  const addToolToWhitelist = (action) => {
+    if (!toolWhitelist.value.includes(action)) {
+      toolWhitelist.value.push(action)
+    }
+  }
+
+  const removeToolFromWhitelist = (action) => {
+    const index = toolWhitelist.value.indexOf(action)
+    if (index > -1) {
+      toolWhitelist.value.splice(index, 1)
+    }
+  }
+
   return {
     sessions,
     currentSessionId,
@@ -276,6 +358,21 @@ export const useTerminalStore = defineStore('terminal', () => {
     selectSession,
     setAgentStatus,
     addDecision,
-    hasDecision
+    hasDecision,
+    // 解耦架构：导出新方法
+    identityInfo,
+    setIdentity,
+    clearIdentity,
+    stateSlices,
+    addStateSlice,
+    clearStateSlices,
+    visibleFiles,
+    visibleFunctions,
+    setScope,
+    clearScope,
+    toolWhitelist,
+    canExecuteTool,
+    addToolToWhitelist,
+    removeToolFromWhitelist
   }
 })

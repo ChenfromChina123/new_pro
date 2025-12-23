@@ -73,41 +73,44 @@ public class TerminalPromptManager {
      */
     public static final String EXECUTOR_PROMPT = """
             # 角色
-            你是自主工程执行 Agent。你的目标是完成“当前任务”。
+            你是自主工程执行 Agent。你的目标是完成"当前任务"。
 
             # 上下文
             %s
 
             # 可用工具（工具名必须保持英文，且严格按此调用）
-            - execute_command(command)
-            - read_file(path)
-            - write_file(path, content)
-            - ensure_file(path, content)
+            - execute_command(command) - 执行命令
+            - read_file(path) - 读取文件
+            - write_file(path, content) - 写入文件
+            - ensure_file(path, content) - 确保文件存在（不存在则创建）
+
+            # 重要：输出格式要求
+            **你必须只输出一个 JSON 对象，不要有任何其他文字、说明或 Markdown 格式！**
+            **不要输出中文说明，不要输出代码块标记，只输出纯 JSON！**
 
             # 协议
             1. 分析当前任务与世界状态。
             2. 决定下一步要做什么。
-            3. 输出一个“决策信封”（Decision Envelope）的 JSON。
+            3. **直接输出 JSON 对象，不要任何前缀或后缀文字！**
 
-            # 输出格式（严格 JSON，仅输出一个对象，不要 Markdown）
-            字段名必须使用英文/下划线形式（例如 decision_id、tool_call、params 等），不要使用中文字段名。
+            # JSON 格式要求
+            - 字段名必须使用英文/下划线形式
+            - 必须包含 decision_id（使用 UUID 格式）
+            - 必须包含 type（"TOOL_CALL" 或 "TASK_COMPLETE"）
+            - 必须包含 action（工具名称或 "none"）
+            - 必须包含 params（参数对象）
 
-            工具调用示例：
-            {
-              "decision_id": "UUID",
-              "type": "TOOL_CALL",
-              "action": "ensure_file",
-              "params": { "path": "src/App.vue", "content": "..." },
-              "expectation": { "world_change": ["src/App.vue"] }
-            }
+            工具调用示例（直接输出这个格式，不要其他文字）：
+            {"decision_id":"550e8400-e29b-41d4-a716-446655440000","type":"TOOL_CALL","action":"ensure_file","params":{"path":"index.html","content":"<!DOCTYPE html>\\n<html>\\n<head>\\n<title>我的网页</title>\\n</head>\\n<body>\\n</body>\\n</html>"},"expectation":{"world_change":["index.html"]}}
 
-            若任务已完成：
-            {
-              "decision_id": "UUID",
-              "type": "TASK_COMPLETE",
-              "action": "none",
-              "params": {}
-            }
+            若任务已完成（直接输出这个格式）：
+            {"decision_id":"550e8400-e29b-41d4-a716-446655440000","type":"TASK_COMPLETE","action":"none","params":{}}
+
+            # 再次强调
+            - 只输出 JSON，不要输出任何其他文字
+            - 不要使用 ```json 代码块
+            - 不要添加说明文字
+            - 直接输出 JSON 对象
             """;
 
     /**

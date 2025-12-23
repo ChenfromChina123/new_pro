@@ -472,8 +472,23 @@ const handleWheel = (e) => {
   }
 
   // 2. 返回底部按钮触发逻辑
-  // 优化：只有当不在底部时，向下滑动才会累加计数并可能显示按钮
-  if (e.deltaY > 0 && !isPinnedToBottom.value) { 
+  // 优化：更新滚动状态，确保状态是最新的
+  updatePinnedState()
+  
+  // 如果已经在底部，不显示按钮并清除相关状态
+  if (isPinnedToBottom.value) {
+    showScrollToBottomBtn.value = false
+    scrollDownCount = 0
+    if (scrollBottomTimer) {
+      clearTimeout(scrollBottomTimer)
+      scrollBottomTimer = null
+    }
+    return // 已在底部，无需处理后续逻辑
+  }
+  
+  // 不在底部时的处理逻辑
+  if (e.deltaY > 0) {
+    // 向下滚动且不在底部时，累加计数
     scrollDownCount++
     if (scrollDownCount >= 3) {
       showScrollToBottomBtn.value = true
@@ -610,16 +625,43 @@ const currentSessionTitle = computed(() => {
   return chatStore.currentSession?.title || '新对话'
 })
 
+/**
+ * 滚动到底部
+ * @param {string} behavior - 滚动行为 'smooth' 或 'auto'
+ */
 const scrollToBottom = (behavior = 'smooth') => {
   if (messagesContainer.value) {
     // 优先使用 scrollTop 直接设置，这样最可靠
     if (behavior === 'auto') {
       messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+      // 立即检查并隐藏按钮
+      nextTick(() => {
+        updatePinnedState()
+        if (isPinnedToBottom.value) {
+          showScrollToBottomBtn.value = false
+          scrollDownCount = 0
+        }
+      })
     } else {
       messagesContainer.value.scrollTo({
         top: messagesContainer.value.scrollHeight,
         behavior: behavior
       })
+      // 平滑滚动完成后检查并隐藏按钮
+      // 使用延迟检查，确保滚动动画完成
+      const checkBottom = () => {
+        updatePinnedState()
+        if (isPinnedToBottom.value) {
+          showScrollToBottomBtn.value = false
+          scrollDownCount = 0
+        }
+      }
+      // smooth 滚动通常需要 200-500ms，使用较长的延迟确保检测准确
+      setTimeout(checkBottom, 500)
+      // 如果浏览器支持 scrollend 事件，也监听它
+      if ('onscrollend' in messagesContainer.value) {
+        messagesContainer.value.addEventListener('scrollend', checkBottom, { once: true })
+      }
     }
   }
 }
@@ -645,8 +687,22 @@ const scheduleAutoScrollToBottom = () => {
   })
 }
 
+/**
+ * 处理消息容器的滚动事件
+ * 当滚动到底部时自动隐藏"最新消息"按钮
+ */
 const handleMessagesScroll = () => {
   updatePinnedState()
+  
+  // 优化：当已经在底部时，立即隐藏"最新消息"按钮
+  if (isPinnedToBottom.value && showScrollToBottomBtn.value) {
+    showScrollToBottomBtn.value = false
+    scrollDownCount = 0
+    if (scrollBottomTimer) {
+      clearTimeout(scrollBottomTimer)
+      scrollBottomTimer = null
+    }
+  }
   
   // 更新导航箭头状态
   if (messagesContainer.value) {
