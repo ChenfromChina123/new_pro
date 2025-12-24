@@ -632,7 +632,7 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted, computed, watch } from 'vue'
+import { ref, nextTick, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useUIStore } from '@/stores/ui'
 import { useTerminalStore } from '@/stores/terminal'
@@ -970,6 +970,19 @@ onMounted(async () => {
     await loadSessionState()
   }
   
+  // 状态轮询（参考 void-main 的状态同步机制）
+  // 当 Agent 正在运行时，定期轮询状态以确保同步
+  const statePollInterval = setInterval(async () => {
+    if (currentSessionId.value && (agentStatus.value === 'RUNNING' || agentStatus.value === 'AWAITING_APPROVAL')) {
+      await loadSessionState()
+    }
+  }, 2000) // 每 2 秒轮询一次
+  
+  // 清理定时器
+  onUnmounted(() => {
+    clearInterval(statePollInterval)
+  })
+  
   scrollToBottom()
 })
 
@@ -1015,12 +1028,44 @@ const loadPendingApprovals = async () => {
 }
 
 // Phase 2: 加载会话状态
+// Phase 2: 加载会话状态（参考 void-main 的状态同步）
 const loadSessionState = async () => {
   if (!currentSessionId.value) return
   try {
     const result = await sessionStateService.getSessionState(currentSessionId.value)
     if (result?.data) {
       sessionState.value = result.data
+      
+      // 同步 AgentStatus（参考 void-main 的状态管理）
+      if (result.data.status) {
+        terminalStore.setAgentStatus(result.data.status)
+        agentStatus.value = result.data.status
+      }
+      
+      // 同步 StreamState
+      if (result.data.streamState) {
+        const streamState = result.data.streamState
+        // 根据 StreamState 更新 UI 状态
+        if (streamState.type === 'STREAMING_LLM') {
+          isTyping.value = true
+        } else if (streamState.type === 'RUNNING_TOOL') {
+          isTyping.value = false
+          // 可以在这里显示工具执行状态
+        } else if (streamState.type === 'AWAITING_USER') {
+          isTyping.value = false
+          // 如果等待批准，加载待批准列表
+          if (result.data.status === 'AWAITING_APPROVAL') {
+            await loadPendingApprovals()
+          }
+        } else if (streamState.type === 'IDLE') {
+          isTyping.value = false
+        }
+      }
+      
+      console.log('[TerminalView] Session state loaded:', {
+        status: result.data.status,
+        streamState: result.data.streamState?.type
+      })
     }
   } catch (error) {
     console.error('加载会话状态失败:', error)
@@ -1096,7 +1141,7 @@ const handleExportCheckpoint = async (checkpointId) => {
   }
 }
 
-// Phase 2: 批准工具调用
+// Phase 2: 批准工具调用（参考 void-main 的批准机制）
 const approveTool = async (payload) => {
   // Support both (id, reason) and ({id, reason})
   let decisionId, reason
@@ -1109,19 +1154,32 @@ const approveTool = async (payload) => {
   }
 
   try {
+    console.log('[TerminalView] Approving tool call:', decisionId)
     await approvalService.approveToolCall(decisionId, reason)
+    
+    // 重新加载待批准列表
     await loadPendingApprovals()
-    // Check if there are more pending approvals
+    
+    // 检查是否还有待批准的工具
     if (pendingApprovals.value.length === 0) {
       showApprovalDialog.value = false
+      // 更新状态为运行中（后端会自动继续循环）
+      terminalStore.setAgentStatus('RUNNING')
+      
+      // 轮询状态以确保同步（后端可能正在执行工具）
+      setTimeout(async () => {
+        await loadSessionState()
+      }, 500)
     }
+    
+    uiStore.showToast('工具调用已批准')
   } catch (error) {
     console.error('批准工具调用失败:', error)
     uiStore.showToast('批准失败: ' + error.message)
   }
 }
 
-// Phase 2: 拒绝工具调用
+// Phase 2: 拒绝工具调用（参考 void-main 的拒绝机制）
 const rejectTool = async (payload) => {
   // Support both (id, reason) and ({id, reason})
   let decisionId, reason
@@ -1134,11 +1192,26 @@ const rejectTool = async (payload) => {
   }
 
   try {
+    console.log('[TerminalView] Rejecting tool call:', decisionId)
     await approvalService.rejectToolCall(decisionId, reason)
+    
+    // 重新加载待批准列表
     await loadPendingApprovals()
+    
+    // 检查是否还有待批准的工具
     if (pendingApprovals.value.length === 0) {
       showApprovalDialog.value = false
+      // 拒绝后，Agent 状态应该回到 IDLE 或继续等待
+      // 后端会处理拒绝后的逻辑
+      terminalStore.setAgentStatus('IDLE')
+      
+      // 轮询状态以确保同步
+      setTimeout(async () => {
+        await loadSessionState()
+      }, 500)
     }
+    
+    uiStore.showToast('工具调用已拒绝')
   } catch (error) {
     console.error('拒绝工具调用失败:', error)
     uiStore.showToast('拒绝失败: ' + error.message)
@@ -1456,44 +1529,108 @@ const processAgentLoop = async (prompt, toolResult) => {
                   }
                 }
             } else if (currentEvent === 'tool_result') {
-                // Handle tool result from backend
+                // 处理工具执行结果（参考 void-main 的 tool result 处理）
                 console.log('[TerminalView] Received tool result:', json)
+                
+                // 更新消息状态
                 currentAiMsg.toolResult = json
                 currentAiMsg.status = json.success ? 'success' : 'error'
                 
-                // Update artifacts if present
-                if (json.success && json.result) {
-                    // Try to parse result if it contains file paths or artifacts
-                    // This is optional depending on how backend formats result
+                // 提取工具信息
+                const toolName = json.toolName || currentAiMsg.tool || 'Unknown'
+                const decisionId = json.decisionId || json.decision_id
+                
+                // 更新工具显示
+                if (!currentAiMsg.tool) {
+                  currentAiMsg.tool = toolName
+                }
+                if (decisionId && !currentAiMsg.toolKey) {
+                  currentAiMsg.toolKey = decisionId
                 }
                 
-                // Append to logs
+                // 更新消息内容
+                if (json.success) {
+                  currentAiMsg.message = `工具 "${toolName}" 执行成功`
+                  if (json.stringResult) {
+                    currentAiMsg.toolResultText = json.stringResult
+                  }
+                } else {
+                  currentAiMsg.message = `工具 "${toolName}" 执行失败`
+                  if (json.error) {
+                    currentAiMsg.toolResultText = json.error
+                  }
+                }
+                
+                // 追加到终端日志
                 terminalLogs.value.push({ 
-                  command: `Tool: ${currentAiMsg.tool || 'Unknown'}`, 
-                  output: json.result || json.error, 
+                  command: `Tool: ${toolName}`, 
+                  output: json.stringResult || json.result || json.error || '', 
                   type: json.success ? 'stdout' : 'stderr',
                   cwd: currentCwd.value 
                 })
                 
-                // Save tool result message
-                saveMessage(`TOOL_RESULT: ${currentAiMsg.tool}`, 3, {
+                // 保存工具结果消息
+                await saveMessage(`TOOL_RESULT: ${toolName}`, 3, {
                   exit_code: json.success ? 0 : -1,
-                  stdout: json.result,
-                  stderr: json.error
+                  stdout: json.stringResult || json.result || '',
+                  stderr: json.error || ''
                 })
+                
+                // 重要：工具结果已由后端处理，Agent 循环会自动继续
+                // 不需要前端再次调用 processAgentLoop
+                // 后端会在工具执行后自动继续循环
+                
+                // 更新状态
+                terminalStore.setAgentStatus('RUNNING')
                 
             } else if (currentEvent === 'waiting_approval') {
-                // Handle approval request
+                // 处理等待批准事件（参考 void-main 的 approval 机制）
                 console.log('[TerminalView] Waiting for approval:', json)
-                currentAiMsg.status = 'pending'
-                currentAiMsg.message = '等待用户批准工具调用...'
                 
-                // Reload pending approvals to update list and show dialog
-                loadPendingApprovals().then(() => {
-                    if (pendingApprovals.value.length > 0) {
-                        showApprovalDialog.value = true
-                    }
-                })
+                const toolName = json.tool || json.toolName
+                const decisionId = json.decision_id || json.decisionId
+                const params = json.params || {}
+                
+                // 更新消息状态
+                currentAiMsg.status = 'pending'
+                currentAiMsg.message = `等待用户批准工具调用: ${toolName}`
+                currentAiMsg.tool = toolName
+                currentAiMsg.toolKey = decisionId
+                
+                // 更新 Agent 状态
+                terminalStore.setAgentStatus('AWAITING_APPROVAL')
+                
+                // 重新加载待批准列表并显示对话框
+                await loadPendingApprovals()
+                if (pendingApprovals.value.length > 0) {
+                  showApprovalDialog.value = true
+                }
+                
+            } else if (currentEvent === 'interrupt') {
+                // 处理中断事件
+                console.log('[TerminalView] Agent loop interrupted:', json)
+                
+                currentAiMsg.status = 'interrupted'
+                currentAiMsg.message = json.message || 'Agent 循环已被中断'
+                
+                terminalStore.setAgentStatus('IDLE')
+                isTyping.value = false
+                
+            } else if (currentEvent === 'error') {
+                // 处理错误事件（参考 void-main 的 error handling）
+                console.error('[TerminalView] Agent error:', json)
+                
+                currentAiMsg.status = 'error'
+                currentAiMsg.message = json.message || '发生错误'
+                
+                terminalStore.setAgentStatus('ERROR')
+                isTyping.value = false
+                
+                // 显示错误提示
+                if (json.message) {
+                  // 可以在这里添加错误提示 UI
+                  console.error('Agent Error:', json.message)
+                }
             }
           } catch (err) {
             // JSON 解析失败，可能是部分数据，继续累积
@@ -1630,11 +1767,15 @@ const processAgentLoop = async (prompt, toolResult) => {
           })
       }
 
-      // 2. Handle Action (Simplified for Backend Execution)
+      // 2. Handle Action (参考 void-main 的 Agent 循环)
+      // 注意：后端已经接管了工具执行和循环控制
+      // 前端只需要显示状态，不需要主动触发下一步
+      
       if (decision.type === 'TOOL_CALL') {
-          // 不再前端执行，等待 SSE tool_result 事件
-          // 但需要发送回执或保持状态同步（如果需要的话）
-          // 这里什么都不做，因为后端已经自己在跑循环了
+          // 工具调用已由后端处理，等待 SSE tool_result 事件
+          // 后端会自动执行工具并继续循环
+          // 前端只需要显示工具调用信息
+          console.log('[TerminalView] Tool call detected, waiting for backend execution')
           
       } else if (decision.type === 'TASK_COMPLETE') {
           currentAiMsg.message = "当前任务已完成"
