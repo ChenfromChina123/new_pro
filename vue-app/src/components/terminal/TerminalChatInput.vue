@@ -14,6 +14,13 @@
               :options="featureOptions"
             />
           </div>
+          <span class="toolbar-label">模式</span>
+          <div class="selector-container mode-selector">
+            <CustomSelect
+              v-model="localMode"
+              :options="modeOptions.length > 0 ? modeOptions : defaultModeOptions"
+            />
+          </div>
           <span class="toolbar-label">模型</span>
           <div class="selector-container model-selector">
             <CustomSelect
@@ -84,7 +91,11 @@ const props = defineProps({
   },
   modeOptions: {
     type: Array,
-    default: () => []
+    default: () => [
+      { value: 'AGENT', label: '自主操作' },
+      { value: 'GATHER', label: '信息收集' },
+      { value: 'NORMAL', label: '普通对话' }
+    ]
   },
   disabled: {
     type: Boolean,
@@ -103,6 +114,13 @@ const props = defineProps({
 const emit = defineEmits(['update:message', 'update:model', 'update:feature', 'update:mode', 'send', 'enter'])
 
 const textareaRef = ref(null)
+
+// 默认模式选项
+const defaultModeOptions = [
+  { value: 'AGENT', label: '自主操作' },
+  { value: 'GATHER', label: '信息收集' },
+  { value: 'NORMAL', label: '普通对话' }
+]
 
 const localMessage = computed({
   get: () => props.message,

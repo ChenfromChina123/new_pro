@@ -261,6 +261,7 @@
               v-model:message="inputMessage"
               v-model:model="currentModel"
               v-model:feature="currentFeature"
+              v-model:mode="chatMode"
               :model-options="modelOptions"
               :disabled="isInputDisabled"
               :placeholder="inputPlaceholder"
