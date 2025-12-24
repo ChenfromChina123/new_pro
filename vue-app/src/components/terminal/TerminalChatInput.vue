@@ -8,14 +8,14 @@
       <div class="input-toolbar">
         <div class="toolbar-left">
           <span class="toolbar-label">模式</span>
-          <div class="model-selector">
+          <div class="selector-container mode-selector">
             <CustomSelect
               v-model="localMode"
               :options="modeOptions"
             />
           </div>
           <span class="toolbar-label">模型</span>
-          <div class="model-selector">
+          <div class="selector-container model-selector">
             <CustomSelect
               v-model="localModel"
               :options="modelOptions"
@@ -208,11 +208,15 @@ watch(
   white-space: nowrap;
 }
 
-.model-selector :deep(.custom-select) {
+.selector-container :deep(.custom-select) {
   width: 160px;
 }
 
-.model-selector :deep(.select-trigger) {
+.mode-selector :deep(.custom-select) {
+  width: 120px;
+}
+
+.selector-container :deep(.select-trigger) {
   background: #fff;
   border: 1px solid #e2e8f0;
   padding: 0 10px;
@@ -222,7 +226,7 @@ watch(
   transition: all 0.2s;
 }
 
-.model-selector :deep(.select-trigger:hover) {
+.selector-container :deep(.select-trigger:hover) {
   border-color: #cbd5e1;
 }
 
