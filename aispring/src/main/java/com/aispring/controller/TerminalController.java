@@ -29,6 +29,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Collections;
 import java.util.Map;
 
 @RestController
@@ -59,6 +60,7 @@ public class TerminalController {
         private String prompt;
         private String session_id;
         private String model;
+        private String chat_mode; // 聊天模式：AGENT, GATHER, NORMAL
         private List<Map<String, Object>> tasks; // Legacy support
         private ToolResult tool_result; // For feedback loop
     }
@@ -181,30 +183,84 @@ public class TerminalController {
 
         // 4. Construct System Prompt & Determine Role
         String systemPrompt;
-        if (state.getTaskState() != null && state.getTaskState().getPipelineId() != null) {
-            // Executor Mode - Already has a plan
-            state.setStatus(AgentStatus.RUNNING);
-            String context = agentPromptBuilder.buildPromptContext(state);
-            systemPrompt = promptManager.getExecutorPrompt(context);
-        } else {
-            // IDLE or No Plan - Classify Intent
-            String intent = aiChatService.ask(
-                promptManager.getIntentClassifierPrompt(request.getPrompt()),
-                null, request.getModel(), String.valueOf(userId)
-            ).trim().toUpperCase();
+        
+        // 如果指定了 chat_mode，使用新的提示词系统
+        if (request.getChat_mode() != null && !request.getChat_mode().isEmpty()) {
+            TerminalPromptManager.ChatMode mode;
+            try {
+                mode = TerminalPromptManager.ChatMode.valueOf(request.getChat_mode().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid chat_mode: {}, defaulting to AGENT", request.getChat_mode());
+                mode = TerminalPromptManager.ChatMode.AGENT;
+            }
             
-            if (intent.contains("PLAN")) {
-                state.setStatus(AgentStatus.PLANNING);
-                systemPrompt = promptManager.getPlannerPrompt(request.getPrompt());
-            } else if (intent.contains("EXECUTE")) {
+            // 获取工作区信息
+            String workspaceRoot = terminalService.getUserTerminalRoot(userId);
+            String currentDirectory = chatRecordService.getSessionCwd(sessionId, String.valueOf(userId));
+            if (currentDirectory == null || currentDirectory.isEmpty()) {
+                currentDirectory = "/";
+            }
+            
+            // 获取目录树（可选，限制大小）
+            String directoryTree = null;
+            try {
+                directoryTree = terminalService.getDirectoryTree(userId, null, currentDirectory);
+                // 限制目录树大小，避免提示词过长
+                if (directoryTree != null && directoryTree.length() > 5000) {
+                    directoryTree = directoryTree.substring(0, 5000) + "\n... (truncated)";
+                }
+            } catch (Exception e) {
+                log.warn("Failed to get directory tree: {}", e.getMessage());
+            }
+            
+            // 获取持久化终端ID列表（如果有）
+            List<String> persistentTerminalIds = Collections.emptyList(); // TODO: 从会话状态获取
+            
+            // 构建系统提示词
+            systemPrompt = promptManager.buildSystemMessage(
+                mode,
+                workspaceRoot,
+                currentDirectory,
+                directoryTree,
+                persistentTerminalIds,
+                true // includeToolDefinitions
+            );
+            
+            // 更新 Agent 状态
+            if (mode == TerminalPromptManager.ChatMode.AGENT) {
+                state.setStatus(AgentStatus.RUNNING);
+            } else if (mode == TerminalPromptManager.ChatMode.GATHER) {
+                state.setStatus(AgentStatus.RUNNING);
+            } else {
+                state.setStatus(AgentStatus.IDLE);
+            }
+        } else {
+            // 兼容旧逻辑：根据任务状态或意图分类
+            if (state.getTaskState() != null && state.getTaskState().getPipelineId() != null) {
+                // Executor Mode - Already has a plan
                 state.setStatus(AgentStatus.RUNNING);
                 String context = agentPromptBuilder.buildPromptContext(state);
                 systemPrompt = promptManager.getExecutorPrompt(context);
             } else {
-                // Default to CHAT
-                state.setStatus(AgentStatus.IDLE);
-                String context = agentPromptBuilder.buildPromptContext(state);
-                systemPrompt = promptManager.getChatPrompt(context);
+                // IDLE or No Plan - Classify Intent
+                String intent = aiChatService.ask(
+                    promptManager.getIntentClassifierPrompt(request.getPrompt()),
+                    null, request.getModel(), String.valueOf(userId)
+                ).trim().toUpperCase();
+                
+                if (intent.contains("PLAN")) {
+                    state.setStatus(AgentStatus.PLANNING);
+                    systemPrompt = promptManager.getPlannerPrompt(request.getPrompt());
+                } else if (intent.contains("EXECUTE")) {
+                    state.setStatus(AgentStatus.RUNNING);
+                    String context = agentPromptBuilder.buildPromptContext(state);
+                    systemPrompt = promptManager.getExecutorPrompt(context);
+                } else {
+                    // Default to CHAT
+                    state.setStatus(AgentStatus.IDLE);
+                    String context = agentPromptBuilder.buildPromptContext(state);
+                    systemPrompt = promptManager.getChatPrompt(context);
+                }
             }
         }
         agentStateService.saveAgentState(state);

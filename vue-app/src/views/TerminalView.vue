@@ -266,7 +266,11 @@
               :can-send="!!inputMessage.trim() && !isInputDisabled"
               @enter="handleEnter"
               @send="sendMessage"
-            />
+            >
+              <template #top>
+                <ChatModeSelector v-model="chatMode" />
+              </template>
+            </TerminalChatInput>
           </div>
         </div>
 
@@ -642,6 +646,7 @@ import TerminalFileExplorer from '@/components/TerminalFileExplorer.vue'
 import TerminalNotebook from '@/components/TerminalNotebook.vue'
 import TerminalFileEditor from '@/components/TerminalFileEditor.vue'
 import TerminalChatInput from '@/components/terminal/TerminalChatInput.vue'
+import ChatModeSelector from '@/components/terminal/ChatModeSelector.vue'
 import CheckpointDialog from '@/components/terminal/CheckpointDialog.vue'
 import ToolApprovalDialog from '@/components/terminal/ToolApprovalDialog.vue'
 import CheckpointTimeline from '@/components/terminal/CheckpointTimeline.vue'
@@ -802,6 +807,7 @@ const formatToolSummary = (item) => {
 
 const inputMessage = ref('')
 const currentModel = ref('deepseek-chat')
+const chatMode = ref('AGENT') // 聊天模式：AGENT, GATHER, NORMAL
 const collapsedTools = ref(new Set()) // 默认折叠工具执行结果
 const isTyping = ref(false)
 const isExecuting = ref(false)
@@ -1431,6 +1437,7 @@ const processAgentLoop = async (prompt, toolResult) => {
         prompt: prompt || "",
         session_id: currentSessionId.value,
         model: currentModel.value,
+        chat_mode: chatMode.value, // 传递聊天模式
         tool_result: toolResult,
         // 解耦架构：包含作用域信息
         scope: {
