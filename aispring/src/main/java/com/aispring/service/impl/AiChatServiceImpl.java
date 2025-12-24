@@ -810,7 +810,12 @@ public class AiChatServiceImpl implements AiChatService {
              for (int i = start; i < history.size(); i++) {
                  ChatRecord record = history.get(i);
                  Map<String, String> msg = new HashMap<>();
-                 msg.put("role", record.getSenderType() == 1 ? "user" : "assistant");
+                 // 参考 void-main：工具结果（senderType=3）作为用户消息反馈给 LLM
+                 if (record.getSenderType() == 1 || record.getSenderType() == 3) {
+                     msg.put("role", "user");
+                 } else {
+                     msg.put("role", "assistant");
+                 }
                  msg.put("content", record.getContent());
                  messages.add(msg);
              }
