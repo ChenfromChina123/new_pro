@@ -103,6 +103,34 @@ export const API_ENDPOINTS = {
     getArticles: '/api/vocabulary/articles',
     getArticle: (articleId) => `/api/vocabulary/articles/${articleId}`,
     downloadArticlePdf: (articleId) => `/api/vocabulary/articles/${articleId}/download-pdf`
+  },
+  
+  // AI终端 - 检查点相关（Phase 2 新增）
+  terminal: {
+    // 检查点相关
+    checkpoints: {
+      list: (sessionId) => `/api/terminal/checkpoints/${sessionId}`,
+      create: '/api/terminal/checkpoints',
+      jump: (checkpointId) => `/api/terminal/checkpoints/${checkpointId}/jump`,
+      delete: (checkpointId) => `/api/terminal/checkpoints/${checkpointId}`,
+      export: (checkpointId) => `/api/terminal/checkpoints/${checkpointId}/export`
+    },
+    
+    // 批准相关
+    approvals: {
+      pending: (sessionId) => `/api/terminal/approvals/pending/${sessionId}`,
+      approve: (decisionId) => `/api/terminal/approvals/${decisionId}/approve`,
+      reject: (decisionId) => `/api/terminal/approvals/${decisionId}/reject`,
+      settings: '/api/terminal/approvals/settings',
+      approveAll: (sessionId) => `/api/terminal/approvals/approve-all/${sessionId}`
+    },
+    
+    // 会话状态相关
+    state: {
+      get: (sessionId) => `/api/terminal/state/${sessionId}`,
+      interrupt: (sessionId) => `/api/terminal/state/${sessionId}/interrupt`,
+      clearInterrupt: (sessionId) => `/api/terminal/state/${sessionId}/clear-interrupt`
+    }
   }
 }
 
