@@ -431,14 +431,17 @@ public class AiChatServiceImpl implements AiChatService {
                                     log.info("工具需要批准: {}", toolName);
                                     toolApprovalService.createApprovalRequest(sessionId, userIdLong, toolName, unvalidatedParams, decisionId);
                                     
-                                    // 发送等待批准事件
+                                    // 发送等待批准事件（包含完整的工具信息）
+                                    Map<String, Object> approvalData = new HashMap<>();
+                                    approvalData.put("decision_id", decisionId);
+                                    approvalData.put("decisionId", decisionId); // 兼容字段
+                                    approvalData.put("tool", toolName);
+                                    approvalData.put("toolName", toolName); // 兼容字段
+                                    approvalData.put("params", unvalidatedParams);
+                                    
                                     emitter.send(SseEmitter.event()
                                             .name("waiting_approval")
-                                            .data(objectMapper.writeValueAsString(Map.of(
-                                                    "decision_id", decisionId,
-                                                    "tool", toolName,
-                                                    "params", unvalidatedParams
-                                            ))));
+                                            .data(objectMapper.writeValueAsString(approvalData)));
                                     
                                     // 更新状态为等待批准
                                     sessionState.setStatus(com.aispring.entity.agent.AgentStatus.AWAITING_APPROVAL);
@@ -464,10 +467,22 @@ public class AiChatServiceImpl implements AiChatService {
                                 
                                 ToolsService.ToolResult result = toolsService.callTool(toolName, unvalidatedParams, userIdLong, sessionId);
                                 
-                                // 4. 发送工具结果给前端
+                                // 4. 发送工具结果给前端（包含工具名称和参数信息）
+                                Map<String, Object> toolResultData = new HashMap<>();
+                                toolResultData.put("toolName", toolName);
+                                toolResultData.put("tool", toolName); // 兼容字段
+                                toolResultData.put("params", unvalidatedParams);
+                                toolResultData.put("decisionId", decisionId);
+                                toolResultData.put("decision_id", decisionId); // 兼容字段
+                                toolResultData.put("success", result.isSuccess());
+                                toolResultData.put("stringResult", result.getStringResult());
+                                toolResultData.put("result", result.getStringResult()); // 兼容字段
+                                toolResultData.put("error", result.getError());
+                                toolResultData.put("data", result.getData());
+                                
                                 emitter.send(SseEmitter.event()
                                         .name("tool_result")
-                                        .data(objectMapper.writeValueAsString(result)));
+                                        .data(objectMapper.writeValueAsString(toolResultData)));
                                 
                                 // 5. 将工具结果保存到消息历史（参考 void-main 的机制）
                                 // void-main 中，工具结果格式化为 XML 并作为用户消息添加到历史
