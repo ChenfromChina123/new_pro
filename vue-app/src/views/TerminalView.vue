@@ -260,10 +260,7 @@
             <TerminalChatInput
               v-model:message="inputMessage"
               v-model:model="currentModel"
-              v-model:feature="currentFeature"
-              v-model:mode="chatMode"
               :model-options="modelOptions"
-              :mode-options="modeOptions"
               :disabled="isInputDisabled"
               :placeholder="inputPlaceholder"
               :can-send="!!inputMessage.trim() && !isInputDisabled"
@@ -805,8 +802,6 @@ const formatToolSummary = (item) => {
 
 const inputMessage = ref('')
 const currentModel = ref('deepseek-chat')
-const currentFeature = ref('CHAT') // 功能特性：CHAT, CODEX, AUTOCOMPLETE, APPLY, SCM
-const chatMode = ref('AGENT') // 聊天模式：AGENT, GATHER, NORMAL
 const collapsedTools = ref(new Set()) // 默认折叠工具执行结果
 const isTyping = ref(false)
 const isExecuting = ref(false)
@@ -946,27 +941,6 @@ const initResizeMain = (e) => {
   document.addEventListener('mouseup', onMouseUp)
   document.body.style.cursor = 'col-resize'
 }
-
-const modeOptions = [
-  {
-    value: 'AGENT',
-    label: '自主操作',
-    icon: '🤖',
-    description: 'AI 可以自主使用工具进行代码开发、文件编辑等操作'
-  },
-  {
-    value: 'GATHER',
-    label: '信息收集',
-    icon: '🔍',
-    description: 'AI 只能使用读取类工具收集信息，不能进行修改操作'
-  },
-  {
-    value: 'NORMAL',
-    label: '普通对话',
-    icon: '💬',
-    description: '普通对话模式，不提供工具调用功能'
-  }
-]
 
 const modelOptions = [
   { label: 'DeepSeek Chat', value: 'deepseek-chat', description: '适用于通用对话和指令遵循' },
