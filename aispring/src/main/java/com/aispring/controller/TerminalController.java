@@ -184,15 +184,29 @@ public class TerminalController {
         // 4. Construct System Prompt & Determine Role
         String systemPrompt;
         
-        // 如果指定了 chat_mode，使用新的提示词系统
-        if (request.getChat_mode() != null && !request.getChat_mode().isEmpty()) {
-            ChatMode mode;
+        // 解析功能特性和聊天模式
+        com.aispring.entity.ai.FeatureName feature = com.aispring.entity.ai.FeatureName.CHAT;
+        if (request.getFeature() != null && !request.getFeature().isEmpty()) {
             try {
-                mode = ChatMode.fromCode(request.getChat_mode());
+                feature = com.aispring.entity.ai.FeatureName.fromCode(request.getFeature());
+            } catch (Exception e) {
+                log.warn("Invalid feature: {}, defaulting to CHAT", request.getFeature());
+            }
+        }
+        
+        ChatMode mode = ChatMode.AGENT;
+        if (request.getChat_mode() != null) {
+            mode = request.getChat_mode();
+        } else if (request.getChat_mode() != null && !request.getChat_mode().toString().isEmpty()) {
+            try {
+                mode = ChatMode.fromCode(request.getChat_mode().toString());
             } catch (Exception e) {
                 log.warn("Invalid chat_mode: {}, defaulting to AGENT", request.getChat_mode());
-                mode = ChatMode.AGENT;
             }
+        }
+        
+        // 如果指定了功能特性或聊天模式，使用新的提示词系统
+        if (request.getFeature() != null || request.getChat_mode() != null) {
             
             // 获取工作区信息
             String workspaceRoot = terminalService.getUserTerminalRoot(userId);
