@@ -1946,6 +1946,8 @@ function exportSessionState(data) {
   max-width: 90%;
   align-self: flex-start;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .thought-block {
@@ -1954,6 +1956,7 @@ function exportSessionState(data) {
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   overflow: hidden;
+  word-break: break-word;
 }
 
 .thought-title {
@@ -1976,16 +1979,20 @@ function exportSessionState(data) {
   white-space: pre-wrap;
   font-style: italic;
   border-top: 1px solid #e2e8f0;
+  word-break: break-word;
 }
 
 .ai-text {
   font-size: 1rem;
   line-height: 1.6;
   color: #1e293b;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .ai-text :deep(p) {
   margin-bottom: 12px;
+  word-break: break-word;
 }
 
 .ai-text :deep(p:last-child) {
@@ -1998,6 +2005,7 @@ function exportSessionState(data) {
   border-radius: 4px;
   font-family: 'Fira Code', monospace;
   font-size: 0.9em;
+  word-break: break-all;
 }
 
 .ai-text :deep(pre) {
@@ -2045,6 +2053,7 @@ function exportSessionState(data) {
   font-family: 'Fira Code', monospace;
   font-size: 0.85rem;
   overflow-x: auto;
+  word-break: break-all;
 }
 
 .tool-status {
@@ -2052,6 +2061,7 @@ function exportSessionState(data) {
   font-size: 0.8rem;
   font-weight: 500;
   border-top: 1px solid #e2e8f0;
+  word-break: break-word;
 }
 
 .status-success { color: #10b981; }
@@ -2082,6 +2092,7 @@ function exportSessionState(data) {
   overflow-y: auto;
   white-space: pre-wrap;
   color: #334155;
+  word-break: break-all;
 }
 
 .result-block.error {
@@ -2089,65 +2100,13 @@ function exportSessionState(data) {
   color: #be123c;
 }
 
-/* Tool and Command Result Styles */
-.tool-call-card { 
-  background: #1e293b; 
-  color: #e2e8f0; 
-  padding: 16px; 
-  border-radius: 12px; 
-  margin: 16px 0; 
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-.tool-header { 
-  display: flex; 
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px; 
-  font-size: 0.85rem; 
-  color: #94a3b8; 
-  margin-bottom: 12px; 
-}
-.tool-header-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.tool-command {
-  background: #0f172a;
-  padding: 12px;
-  border-radius: 8px;
-  border: 1px solid #334155;
-}
-.tool-command code { 
-  color: #38bdf8; 
-  font-family: 'Fira Code', monospace; 
-  font-size: 0.9rem;
-}
-.collapse-btn {
-  background: #0f172a;
-  color: #cbd5e1;
-  border: 1px solid #334155;
-  border-radius: 6px;
-  padding: 6px 10px;
-  font-size: 0.8rem;
-  cursor: pointer;
-}
-.collapse-btn:hover {
-  background: #1e293b;
-}
-.tool-status { 
-  font-size: 0.85rem; 
-  margin-top: 12px; 
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
+/* System Messages and Task Panels */
 .system-bubble {
   margin: 16px 0;
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid #e2e8f0;
+  word-break: break-word;
 }
 .result-header {
   background: #f8fafc;
