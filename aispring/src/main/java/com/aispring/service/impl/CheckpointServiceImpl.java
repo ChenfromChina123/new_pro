@@ -112,7 +112,8 @@ public class CheckpointServiceImpl implements CheckpointService {
                         checkpoint.getUserId(),
                         filePath,
                         snapshot.getFileContent(),
-                        null  // 相对于当前工作目录
+                        null,  // 相对于当前工作目录
+                        true   // 允许覆盖
                 );
                 restoredFiles.add(filePath);
                 log.debug("恢复文件: path={}", filePath);

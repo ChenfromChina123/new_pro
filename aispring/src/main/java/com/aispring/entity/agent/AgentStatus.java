@@ -13,9 +13,19 @@ public enum AgentStatus {
     IDLE,
     
     /**
+     * 规划中 - Agent 正在规划任务
+     */
+    PLANNING,
+    
+    /**
      * 运行中 - Agent 正在执行任务
      */
     RUNNING,
+    
+    /**
+     * 等待工具 - Agent 正在等待工具执行结果
+     */
+    WAITING_TOOL,
     
     /**
      * 等待批准 - Agent 正在等待用户批准工具执行

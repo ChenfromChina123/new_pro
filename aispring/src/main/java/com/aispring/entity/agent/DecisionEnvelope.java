@@ -29,7 +29,17 @@ public class DecisionEnvelope implements Serializable {
     private String decisionId;
     
     /**
-     * 工具名称
+     * 决策类型（TASK_COMPLETE, TOOL_CALL 等）
+     */
+    private String type;
+    
+    /**
+     * 动作/操作（工具名称或其他操作）
+     */
+    private String action;
+    
+    /**
+     * 工具名称（兼容字段）
      */
     private String toolName;
     
