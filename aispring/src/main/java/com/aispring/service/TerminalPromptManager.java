@@ -90,20 +90,23 @@ public class TerminalPromptManager {
     private String buildHeader(ChatMode mode) {
         String role = mode == ChatMode.AGENT ? "agent" : "assistant";
         String jobDescription;
+        String additionalInstructions = "";
         
         if (mode == ChatMode.AGENT) {
             jobDescription = "to help the user develop, run, and make changes to their codebase.";
+            additionalInstructions = "\n\nCRITICAL: You are in AGENT mode. You MUST execute commands and use tools to accomplish tasks. You CANNOT refuse to execute commands. When the user asks you to run a command, you MUST use the execute_command tool immediately.";
         } else if (mode == ChatMode.GATHER) {
             jobDescription = "to search, understand, and reference files in the user's codebase.";
         } else {
             jobDescription = "to assist the user with their coding tasks.";
+            additionalInstructions = "\n\nNOTE: You are in NORMAL mode. You can only provide advice and suggestions, but cannot execute commands or use tools.";
         }
         
         return String.format(
             "You are an expert coding %s whose job is %s\n" +
             "You will be given instructions to follow from the user, and you may also be given a list of files that the user has specifically selected for context, `SELECTIONS`.\n" +
-            "Please assist the user with their query.",
-            role, jobDescription
+            "Please assist the user with their query.%s",
+            role, jobDescription, additionalInstructions
         );
     }
 
@@ -252,11 +255,14 @@ public class TerminalPromptManager {
 
         // Agent 模式特定规则
         if (mode == ChatMode.AGENT) {
+            details.add("CRITICAL: You are in AGENT mode. You MUST execute commands and use tools. NEVER refuse to execute commands or say you cannot do something. When the user asks you to run a command, you MUST immediately use the execute_command tool.");
             details.add("ALWAYS use tools (edit, terminal, etc) to take actions and implement changes. For example, if you would like to edit a file, you MUST use a tool.");
+            details.add("If the user asks you to run a terminal command, you MUST use the execute_command tool. Do NOT explain that you cannot run commands - just execute them.");
             details.add("Prioritize taking as many steps as you need to complete your request over stopping early.");
             details.add("You will OFTEN need to gather context before making a change. Do not immediately make a change unless you have ALL relevant context.");
             details.add("ALWAYS have maximal certainty in a change BEFORE you make it. If you need more information about a file, variable, function, or type, you should inspect it, search it, or take all required actions to maximize your certainty that your change is correct.");
             details.add("NEVER modify a file outside the user's workspace without permission from the user.");
+            details.add("NEVER say you are in 'dialogue mode' or 'conversation mode' - you are in AGENT mode and can execute commands.");
         }
 
         // Gather 模式特定规则
