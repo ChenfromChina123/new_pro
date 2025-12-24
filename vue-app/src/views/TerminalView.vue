@@ -837,7 +837,13 @@ const tabMeta = {
   'identity': { id: 'identity', label: '身份信息' },
   'state': { id: 'state', label: '状态切片' }
 }
-const tabs = ref(uiStore.tabOrder.filter(id => tabMeta[id]).map(id => tabMeta[id]))
+// 确保所有标签都显示，包括新添加的
+const defaultTabOrder = ['terminal', 'files', 'checkpoints', 'approvals', 'session', 'decisions', 'identity', 'state']
+const tabs = ref(
+  (uiStore.tabOrder && uiStore.tabOrder.length > 0 ? uiStore.tabOrder : defaultTabOrder)
+    .filter(id => tabMeta[id])
+    .map(id => tabMeta[id])
+)
 watch(tabs, (newTabs) => {
   const order = newTabs.map(t => t.id)
   uiStore.saveState('tabOrder', order)
@@ -1838,28 +1844,6 @@ function clearDecisionHistory() {
 function exportSessionState(data) {
   console.log('导出会话状态:', data)
   uiStore.showToast('会话状态已导出')
-}
-
-/**
- * 导出检查点
- */
-async function handleExportCheckpoint(checkpointId) {
-  try {
-    const data = await checkpointService.exportCheckpoint(checkpointId)
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `checkpoint-${checkpointId}.json`
-    document.body.appendChild(a)
-    a.click()
-    window.URL.revokeObjectURL(url)
-    document.body.removeChild(a)
-    uiStore.showToast('导出成功')
-  } catch (error) {
-    console.error('导出检查点失败:', error)
-    uiStore.showToast('导出失败: ' + error.message)
-  }
 }
 </script>
 
