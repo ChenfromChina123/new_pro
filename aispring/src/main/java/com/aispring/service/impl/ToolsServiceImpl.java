@@ -428,8 +428,15 @@ public class ToolsServiceImpl implements ToolsService {
     private ToolResult executeRunCommand(Map<String, Object> params, Long userId) {
         try {
             String command = params.get("command").toString();
+            log.info("开始执行命令: command={}, userId={}", command, userId);
+            
             com.aispring.dto.response.TerminalCommandResponse response = 
                     terminalService.executeCommand(userId, command, null);
+            
+            log.info("命令执行完成: command={}, exitCode={}, stdoutLength={}, stderrLength={}", 
+                    command, response.getExitCode(), 
+                    response.getStdout() != null ? response.getStdout().length() : 0,
+                    response.getStderr() != null ? response.getStderr().length() : 0);
             
             String stderr = response.getStderr() != null ? response.getStderr() : "";
             String output = response.getStdout() + (stderr.isEmpty() ? "" : "\n" + stderr);
@@ -438,6 +445,7 @@ public class ToolsServiceImpl implements ToolsService {
             return ToolResult.success(Map.of("command", command, "output", output, 
                     "exitCode", response.getExitCode()), result);
         } catch (Exception e) {
+            log.error("执行命令异常: command={}, error={}", params.get("command"), e.getMessage(), e);
             return ToolResult.error("执行命令失败: " + e.getMessage());
         }
     }

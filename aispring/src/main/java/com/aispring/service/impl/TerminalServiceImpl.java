@@ -303,6 +303,7 @@ public class TerminalServiceImpl implements TerminalService {
         StringBuilder stderr = new StringBuilder();
 
         try {
+            log.info("开始执行命令: command={}, cwd={}", command, cwdPath);
             Process process = pb.start();
             
             // Read output in threads to avoid blocking
@@ -312,6 +313,7 @@ public class TerminalServiceImpl implements TerminalService {
                     while ((line = reader.readLine()) != null) {
                         stdout.append(line).append("\n");
                     }
+                    log.debug("stdout 读取完成: length={}", stdout.length());
                 } catch (IOException e) {
                     log.error("Error reading stdout", e);
                 }
@@ -323,6 +325,7 @@ public class TerminalServiceImpl implements TerminalService {
                     while ((line = reader.readLine()) != null) {
                         stderr.append(line).append("\n");
                     }
+                    log.debug("stderr 读取完成: length={}", stderr.length());
                 } catch (IOException e) {
                     log.error("Error reading stderr", e);
                 }
@@ -333,12 +336,32 @@ public class TerminalServiceImpl implements TerminalService {
 
             boolean finished = process.waitFor(30, TimeUnit.SECONDS); // Timeout
             if (!finished) {
+                log.warn("命令执行超时: command={}, 强制终止进程", command);
                 process.destroyForcibly();
+                // 即使超时，也尝试等待线程完成（但设置超时）
+                try {
+                    outThread.join(2000);
+                    errThread.join(2000);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                }
                 return new TerminalCommandResponse(stdout.toString(), "Command timed out after 30s.\n" + stderr.toString(), 124, getRelativePath(rootPath, cwdPath));
             }
             
-            outThread.join();
-            errThread.join();
+            log.debug("进程执行完成: exitCode={}", process.exitValue());
+            
+            // 等待输出线程完成，但设置超时避免无限等待
+            outThread.join(5000); // 最多等待5秒
+            errThread.join(5000); // 最多等待5秒
+            
+            if (outThread.isAlive()) {
+                log.warn("stdout 读取线程未完成，可能仍在运行，继续执行");
+            }
+            if (errThread.isAlive()) {
+                log.warn("stderr 读取线程未完成，可能仍在运行，继续执行");
+            }
+            
+            log.debug("命令执行完成: stdoutLength={}, stderrLength={}", stdout.length(), stderr.length());
 
             String sanitizedStdout = sanitizeOutput(stdout.toString(), userRoot, rootPath);
             String sanitizedStderr = sanitizeOutput(stderr.toString(), userRoot, rootPath);

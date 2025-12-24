@@ -459,13 +459,22 @@ public class AiChatServiceImpl implements AiChatService {
                                 }
                                 
                                 // 3. 执行工具
-                                log.info("执行工具: {}", toolName);
+                                log.info("执行工具: toolName={}, decisionId={}, params={}", toolName, decisionId, unvalidatedParams);
                                 
                                 // 设置状态为 running tool
                                 sessionState.setStreamState(com.aispring.entity.session.StreamState.runningTool(toolName, unvalidatedParams, decisionId));
                                 sessionStateService.saveState(sessionState);
                                 
-                                ToolsService.ToolResult result = toolsService.callTool(toolName, unvalidatedParams, userIdLong, sessionId);
+                                ToolsService.ToolResult result;
+                                try {
+                                    result = toolsService.callTool(toolName, unvalidatedParams, userIdLong, sessionId);
+                                    log.info("工具执行完成: toolName={}, success={}, resultLength={}", 
+                                            toolName, result.isSuccess(), 
+                                            result.getStringResult() != null ? result.getStringResult().length() : 0);
+                                } catch (Exception e) {
+                                    log.error("工具执行异常: toolName={}, error={}", toolName, e.getMessage(), e);
+                                    result = ToolsService.ToolResult.error("工具执行异常: " + e.getMessage());
+                                }
                                 
                                 // 4. 发送工具结果给前端（包含工具名称和参数信息）
                                 Map<String, Object> toolResultData = new HashMap<>();
