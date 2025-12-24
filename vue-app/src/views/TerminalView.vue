@@ -1434,6 +1434,7 @@ const processAgentLoop = async (prompt, toolResult) => {
         prompt: prompt || "",
         session_id: currentSessionId.value,
         model: currentModel.value,
+        feature: currentFeature.value, // 传递功能特性
         chat_mode: chatMode.value, // 传递聊天模式
         tool_result: toolResult,
         // 解耦架构：包含作用域信息
