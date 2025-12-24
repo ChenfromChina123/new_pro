@@ -46,7 +46,16 @@ export const API_ENDPOINTS = {
     renameFolder: '/api/cloud_disk/rename-folder',
     renameFile: (fileId) => `/api/cloud_disk/rename-file?fileId=${fileId}`,
     resolveRenameFile: (fileId) => `/api/cloud_disk/resolve-rename-file?fileId=${fileId}`,
-    quota: '/api/cloud_disk/quota'
+    quota: '/api/cloud_disk/quota',
+    getContent: (fileId) => `/api/cloud_disk/content/${fileId}`,
+    updateContent: (fileId) => `/api/cloud_disk/content/${fileId}`
+  },
+  
+  // 管理后台
+  admin: {
+    statistics: '/api/admin/statistics',
+    users: '/api/admin/users',
+    files: '/api/admin/files'
   },
   
   // 自定义模型

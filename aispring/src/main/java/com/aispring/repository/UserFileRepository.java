@@ -40,5 +40,10 @@ public interface UserFileRepository extends JpaRepository<UserFile, Long> {
      */
     @Query("SELECT COALESCE(SUM(f.fileSize), 0) FROM UserFile f WHERE f.user.id = :userId")
     Long sumFileSizeByUserId(@Param("userId") Long userId);
+    /**
+     * 计算所有用户已使用的存储空间（单位：字节）
+     */
+    @Query("SELECT COALESCE(SUM(f.fileSize), 0) FROM UserFile f")
+    Long sumAllFileSizes();
 }
 

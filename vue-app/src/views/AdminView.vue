@@ -131,13 +131,49 @@
                   <td>{{ formatSize(file.file_size) }}</td>
                   <td>{{ formatDate(file.upload_time) }}</td>
                   <td>
-                    <button class="btn-small btn-danger">
+                    <button 
+                      class="btn-small btn-secondary"
+                      @click="handleEditFile(file)"
+                      style="margin-right: 8px;"
+                    >
+                      编辑
+                    </button>
+                    <button class="btn-small btn-danger" @click="handleDeleteFile(file.id)">
                       删除
                     </button>
                   </td>
                 </tr>
               </tbody>
             </table>
+          </div>
+        </div>
+        
+        <!-- 文件编辑弹窗 -->
+        <div v-if="showEditModal" class="modal-overlay">
+          <div class="modal-content edit-modal">
+            <div class="modal-header">
+              <h3>编辑文件: {{ editingFile?.filename }}</h3>
+              <button class="close-btn" @click="showEditModal = false">&times;</button>
+            </div>
+            <div class="modal-body">
+              <div class="editor-container">
+                <textarea 
+                  v-model="editContent" 
+                  class="file-editor"
+                  spellcheck="false"
+                ></textarea>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn-secondary" @click="showEditModal = false">取消</button>
+              <button 
+                class="btn-primary" 
+                :disabled="saving"
+                @click="saveFileContent"
+              >
+                {{ saving ? '保存中...' : '保存' }}
+              </button>
+            </div>
           </div>
         </div>
         
@@ -182,12 +218,24 @@ const users = ref([])
 const files = ref([])
 const feedbacks = ref([])
 const currentTab = ref('users')
+const showEditModal = ref(false)
+const editingFile = ref(null)
+const editContent = ref('')
+const saving = ref(false)
 
 const tabs = [
   { key: 'users', label: '用户管理' },
   { key: 'files', label: '文件管理' },
   { key: 'feedback', label: '反馈管理' }
 ]
+
+// 监听标签页切换
+import { watch } from 'vue'
+watch(currentTab, (newTab) => {
+  if (newTab === 'users') fetchUsers()
+  if (newTab === 'files') fetchFiles()
+  if (newTab === 'feedback') fetchFeedbacks()
+})
 
 onMounted(async () => {
   await fetchStatistics()
@@ -209,6 +257,70 @@ const fetchUsers = async () => {
     users.value = response.users || []
   } catch (error) {
     console.error('获取用户列表失败:', error)
+  }
+}
+
+const fetchFiles = async () => {
+  try {
+    const response = await request.get(API_ENDPOINTS.admin.files)
+    files.value = response || []
+  } catch (error) {
+    console.error('获取文件列表失败:', error)
+  }
+}
+
+const fetchFeedbacks = async () => {
+  try {
+    const response = await request.get(API_ENDPOINTS.feedback.admin.list)
+    feedbacks.value = response || []
+  } catch (error) {
+    console.error('获取反馈列表失败:', error)
+  }
+}
+
+const handleEditFile = async (file) => {
+  editingFile.value = file
+  showEditModal.value = true
+  editContent.value = '加载中...'
+  
+  try {
+    const response = await request.get(API_ENDPOINTS.cloudDisk.getContent(file.id))
+    editContent.value = response || ''
+  } catch (error) {
+    console.error('获取文件内容失败:', error)
+    editContent.value = '获取内容失败'
+  }
+}
+
+const saveFileContent = async () => {
+  if (!editingFile.value) return
+  
+  saving.value = true
+  try {
+    await request.put(API_ENDPOINTS.cloudDisk.updateContent(editingFile.value.id), {
+      content: editContent.value
+    })
+    showEditModal.value = false
+    alert('文件保存成功')
+    await fetchFiles()
+  } catch (error) {
+    console.error('保存文件失败:', error)
+    alert('保存失败: ' + (error.response?.data?.message || error.message))
+  } finally {
+    saving.value = false
+  }
+}
+
+const handleDeleteFile = async (fileId) => {
+  if (!confirm('确定要删除这个文件吗？')) return
+  
+  try {
+    await request.delete(API_ENDPOINTS.cloudDisk.delete(fileId))
+    await fetchFiles()
+    await fetchStatistics()
+  } catch (error) {
+    console.error('删除文件失败:', error)
+    alert('删除失败')
   }
 }
 
@@ -395,6 +507,87 @@ const formatSize = (bytes) => {
 .feedback-content {
   margin-bottom: 12px;
   line-height: 1.6;
+}
+
+/* 弹窗样式 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: var(--card-bg);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.modal-body {
+  padding: 24px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.editor-container {
+  height: 400px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.file-editor {
+  width: 100%;
+  height: 100%;
+  padding: 12px;
+  border: none;
+  resize: none;
+  background-color: var(--input-bg);
+  color: var(--text-primary);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  outline: none;
+}
+
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
 }
 </style>
 
