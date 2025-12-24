@@ -487,16 +487,12 @@ public class AiChatServiceImpl implements AiChatService {
                                 sessionState.setStreamState(com.aispring.entity.session.StreamState.idle());
                                 sessionStateService.saveState(sessionState);
                                 
-                            } else {
-                                // 没有检测到工具调用，检查是否有纯文本响应
-                                if (plainText != null && !plainText.isEmpty()) {
-                                    // 纯文本响应，结束循环
-                                    log.debug("LLM 返回纯文本响应，结束 Agent 循环");
-                                }
-                            }
                         } else {
-                            // 没有检测到工具调用，纯文本响应，结束循环
-                            log.debug("LLM 返回纯文本响应，结束 Agent 循环");
+                            // 没有检测到工具调用，检查是否有纯文本响应
+                            if (plainText != null && !plainText.isEmpty()) {
+                                // 纯文本响应，结束循环
+                                log.debug("LLM 返回纯文本响应，结束 Agent 循环");
+                            }
                         }
                     } catch (Exception e) {
                         log.error("Error parsing agent response: {}", e.getMessage(), e);
