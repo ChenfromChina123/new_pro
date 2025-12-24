@@ -178,11 +178,11 @@ export class ValidationPipeline {
         passed: true,
         duration: Date.now() - startTime
       }
-    } catch (error: any) {
+    } catch (error) {
       return {
         phase: ValidationPhase.PERMISSION_CHECK,
         passed: false,
-        reason: `权限校验失败: ${error.message}`,
+        reason: `权限校验失败: ${error instanceof Error ? error.message : String(error)}`,
         duration: Date.now() - startTime
       }
     }
@@ -218,11 +218,11 @@ export class ValidationPipeline {
         passed: true,
         duration: Date.now() - startTime
       }
-    } catch (error: any) {
+    } catch (error) {
       return {
         phase: ValidationPhase.ENVIRONMENT_DETECTION,
         passed: false,
-        reason: `环境检测失败: ${error.message}`,
+        reason: `环境检测失败: ${error instanceof Error ? error.message : String(error)}`,
         duration: Date.now() - startTime
       }
     }
@@ -262,11 +262,11 @@ export class ValidationPipeline {
         passed: true,
         duration: Date.now() - startTime
       }
-    } catch (error: any) {
+    } catch (error) {
       return {
         phase: ValidationPhase.OPERATION_EXECUTION,
         passed: false,
-        reason: `执行预检失败: ${error.message}`,
+        reason: `执行预检失败: ${error instanceof Error ? error.message : String(error)}`,
         duration: Date.now() - startTime
       }
     }

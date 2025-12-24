@@ -133,12 +133,15 @@
                   <td>
                     <button 
                       class="btn-small btn-secondary"
-                      @click="handleEditFile(file)"
                       style="margin-right: 8px;"
+                      @click="handleEditFile(file)"
                     >
                       编辑
                     </button>
-                    <button class="btn-small btn-danger" @click="handleDeleteFile(file.id)">
+                    <button 
+                      class="btn-small btn-danger" 
+                      @click="handleDeleteFile(file.id)"
+                    >
                       删除
                     </button>
                   </td>
@@ -149,11 +152,19 @@
         </div>
         
         <!-- 文件编辑弹窗 -->
-        <div v-if="showEditModal" class="modal-overlay">
+        <div 
+          v-if="showEditModal" 
+          class="modal-overlay"
+        >
           <div class="modal-content edit-modal">
             <div class="modal-header">
               <h3>编辑文件: {{ editingFile?.filename }}</h3>
-              <button class="close-btn" @click="showEditModal = false">&times;</button>
+              <button 
+                class="close-btn" 
+                @click="showEditModal = false"
+              >
+                &times;
+              </button>
             </div>
             <div class="modal-body">
               <div class="editor-container">
@@ -161,11 +172,16 @@
                   v-model="editContent" 
                   class="file-editor"
                   spellcheck="false"
-                ></textarea>
+                />
               </div>
             </div>
             <div class="modal-footer">
-              <button class="btn-secondary" @click="showEditModal = false">取消</button>
+              <button 
+                class="btn-secondary" 
+                @click="showEditModal = false"
+              >
+                取消
+              </button>
               <button 
                 class="btn-primary" 
                 :disabled="saving"
