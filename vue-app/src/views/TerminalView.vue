@@ -260,6 +260,7 @@
             <TerminalChatInput
               v-model:message="inputMessage"
               v-model:model="currentModel"
+              v-model:feature="currentFeature"
               v-model:mode="chatMode"
               :model-options="modelOptions"
               :mode-options="modeOptions"
@@ -804,6 +805,7 @@ const formatToolSummary = (item) => {
 
 const inputMessage = ref('')
 const currentModel = ref('deepseek-chat')
+const currentFeature = ref('CHAT') // 功能特性：CHAT, CODEX, AUTOCOMPLETE, APPLY, SCM
 const chatMode = ref('AGENT') // 聊天模式：AGENT, GATHER, NORMAL
 const collapsedTools = ref(new Set()) // 默认折叠工具执行结果
 const isTyping = ref(false)
