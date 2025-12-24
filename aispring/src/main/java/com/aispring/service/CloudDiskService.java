@@ -18,6 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -826,6 +827,55 @@ public class CloudDiskService {
         return userFileRepository.save(file);
     }
     
+    /**
+     * 获取文件内容
+     * @param userId 用户ID
+     * @param fileId 文件ID
+     * @return 文件文本内容
+     */
+    public String getFileContent(Long userId, Long fileId) throws IOException {
+        UserFile file = userFileRepository.findByIdAndUserId(fileId, userId)
+            .orElseThrow(() -> new IllegalArgumentException("文件不存在"));
+            
+        String relPath = file.getFilepath();
+        Path physicalPath = Paths.get(getCloudDiskAbsolutePath(), String.valueOf(userId), 
+            relPath.startsWith("/") ? relPath.substring(1) : relPath).normalize();
+            
+        if (!Files.exists(physicalPath)) {
+            throw new IOException("物理文件不存在");
+        }
+        
+        return Files.readString(physicalPath, StandardCharsets.UTF_8);
+    }
+
+    /**
+     * 更新文件内容
+     * @param userId 用户ID
+     * @param fileId 文件ID
+     * @param content 新内容
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void updateFileContent(Long userId, Long fileId, String content) throws IOException {
+        UserFile file = userFileRepository.findByIdAndUserId(fileId, userId)
+            .orElseThrow(() -> new IllegalArgumentException("文件不存在"));
+            
+        String relPath = file.getFilepath();
+        Path physicalPath = Paths.get(getCloudDiskAbsolutePath(), String.valueOf(userId), 
+            relPath.startsWith("/") ? relPath.substring(1) : relPath).normalize();
+            
+        // 确保父目录存在
+        Files.createDirectories(physicalPath.getParent());
+        
+        // 写入新内容
+        byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
+        Files.write(physicalPath, bytes);
+        
+        // 更新数据库中的文件大小和修改时间
+        file.setFileSize((long) bytes.length);
+        file.setUploadTime(LocalDateTime.now());
+        userFileRepository.save(file);
+    }
+
     /**
      * 下载文件
      */

@@ -80,6 +80,66 @@ public class CloudDiskController {
         private String finalName;
     }
     
+    @Data
+    public static class FileContentRequest {
+        @NotBlank
+        private String content;
+    }
+
+    /**
+     * 获取文件内容
+     * @param fileId 文件ID
+     * @param customUserDetails 当前用户
+     * @return 文件文本内容
+     */
+    @GetMapping("/content/{fileId}")
+    public ResponseEntity<ApiResponse<String>> getFileContent(
+            @PathVariable Long fileId,
+            @AuthenticationPrincipal CustomUserDetails customUserDetails) {
+        try {
+            Long userId = customUserDetails.getUser().getId();
+            String content = cloudDiskService.getFileContent(userId, fileId);
+            return ResponseEntity.ok(ApiResponse.success("获取文件内容成功", content));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(HttpStatus.NOT_FOUND.value(), e.getMessage()));
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "读取文件失败: " + e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "获取文件内容失败: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 更新文件内容
+     * @param fileId 文件ID
+     * @param request 包含新内容的请求体
+     * @param customUserDetails 当前用户
+     * @return 响应结果
+     */
+    @PutMapping("/content/{fileId}")
+    public ResponseEntity<ApiResponse<Void>> updateFileContent(
+            @PathVariable Long fileId,
+            @Valid @RequestBody FileContentRequest request,
+            @AuthenticationPrincipal CustomUserDetails customUserDetails) {
+        try {
+            Long userId = customUserDetails.getUser().getId();
+            cloudDiskService.updateFileContent(userId, fileId, request.getContent());
+            return ResponseEntity.ok(ApiResponse.success("文件内容更新成功", null));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(HttpStatus.NOT_FOUND.value(), e.getMessage()));
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "更新文件失败: " + e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "更新文件内容失败: " + e.getMessage()));
+        }
+    }
+
     /**
      * 初始化用户文件夹结构
      * Python: POST /api/cloud_disk/init-folder-structure
