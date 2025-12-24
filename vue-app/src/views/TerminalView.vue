@@ -361,6 +361,75 @@
             </template>
           </div>
 
+          <!-- Checkpoint Timeline Panel -->
+          <div
+            v-if="activeTab === 'checkpoints'"
+            class="panel-content"
+          >
+            <CheckpointTimeline
+              :checkpoints="checkpoints"
+              :current-checkpoint-id="currentCheckpointId"
+              :current-state="{ messageCount: messages.length, taskCount: currentTasks.length }"
+              @create="handleCreateCheckpoint"
+              @jump="jumpToCheckpoint"
+              @delete="handleDeleteCheckpoint"
+              @export="handleExportCheckpoint"
+            />
+          </div>
+
+          <!-- Tool Approval Manager Panel -->
+          <div
+            v-if="activeTab === 'approvals'"
+            class="panel-content"
+          >
+            <ToolApprovalManager
+              :pending-approvals="pendingApprovals"
+              :approval-history="approvalHistory"
+              :auto-approval-rules="autoApprovalRules"
+              @approve="approveTool"
+              @reject="rejectTool"
+              @approve-all="approveAll"
+              @reject-all="rejectAll"
+              @update-rules="updateAutoApprovalRules"
+              @clear-history="clearApprovalHistory"
+            />
+          </div>
+
+          <!-- Session State Panel -->
+          <div
+            v-if="activeTab === 'session'"
+            class="panel-content"
+          >
+            <SessionStatePanel
+              :session-state="sessionState"
+              :agent-status="agentStatus"
+              :tasks="currentTasks"
+              :decision-history="decisionHistory"
+              :is-streaming="isTyping"
+              :message-count="messages.length"
+              :tool-call-count="toolCallCount"
+              :checkpoint-count="checkpoints.length"
+              :pending-approval-count="pendingApprovals.length"
+              :avg-response-time="0"
+              :avg-tool-execution-time="0"
+              :llm-call-count="0"
+              :total-tokens="0"
+              @refresh="loadSessionState"
+              @export="exportSessionState"
+            />
+          </div>
+
+          <!-- Agent Decision Flow Panel -->
+          <div
+            v-if="activeTab === 'decisions'"
+            class="panel-content"
+          >
+            <AgentDecisionFlow
+              :decisions="decisionHistory"
+              @clear="clearDecisionHistory"
+            />
+          </div>
+
           <!-- Identity Info Panel -->
           <div
             v-if="activeTab === 'identity'"
@@ -526,6 +595,10 @@ import TerminalChatInput from '@/components/terminal/TerminalChatInput.vue'
 import TaskSidebar from '@/components/terminal/TaskSidebar.vue'
 import CheckpointDialog from '@/components/terminal/CheckpointDialog.vue'
 import ToolApprovalDialog from '@/components/terminal/ToolApprovalDialog.vue'
+import CheckpointTimeline from '@/components/terminal/CheckpointTimeline.vue'
+import ToolApprovalManager from '@/components/terminal/ToolApprovalManager.vue'
+import SessionStatePanel from '@/components/terminal/SessionStatePanel.vue'
+import AgentDecisionFlow from '@/components/terminal/AgentDecisionFlow.vue'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 import { marked } from 'marked'
@@ -533,6 +606,8 @@ import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
 // Phase 2: 导入新的 Terminal API 服务
 import terminalService, { checkpointService, approvalService, sessionStateService } from '@/services/terminalService'
+// Phase 3: 导入 Agent 循环管理器
+import { createAgentLoopManager } from '@/services/agentLoopManager'
 
 // Configure marked
 const renderer = new marked.Renderer()
@@ -727,6 +802,20 @@ const showApprovalSettings = ref(false)
 // Phase 2: 会话状态
 const sessionState = ref(null)
 
+// Phase 3: Agent 循环管理器
+const agentLoopManager = ref(null)
+const approvalHistory = ref([])
+const autoApprovalRules = ref({
+  read_file: true,
+  search_files: true,
+  execute_command: false,
+  write_file: false,
+  modify_file: false,
+  delete_file: false
+})
+const toolCallCount = ref(0)
+const currentCheckpointId = ref(null)
+
 watch(rightPanelCollapsed, (val) => uiStore.saveState('rightPanelCollapsed', val))
 watch(taskListCollapsed, (val) => uiStore.saveState('taskListCollapsed', val))
 watch(rightPanelWidth, (val) => uiStore.saveState('rightPanelWidth', val))
@@ -741,6 +830,10 @@ const taskProgress = computed(() => {
 const tabMeta = {
   'terminal': { id: 'terminal', label: '终端输出' },
   'files': { id: 'files', label: '文件管理' },
+  'checkpoints': { id: 'checkpoints', label: '⏱️ 检查点' },
+  'approvals': { id: 'approvals', label: '⚠️ 工具批准' },
+  'session': { id: 'session', label: '📊 会话状态' },
+  'decisions': { id: 'decisions', label: '🧠 决策流程' },
   'identity': { id: 'identity', label: '身份信息' },
   'state': { id: 'state', label: '状态切片' }
 }
@@ -804,6 +897,15 @@ onMounted(async () => {
     terminalStore.clearStateSlices()
     terminalStore.clearScope()
   }
+  
+  // Phase 3: 初始化 Agent 循环管理器
+  if (currentSessionId.value) {
+    agentLoopManager.value = createAgentLoopManager(currentSessionId.value)
+    await loadCheckpoints()
+    await loadPendingApprovals()
+    await loadSessionState()
+  }
+  
   scrollToBottom()
 })
 
@@ -1690,6 +1792,74 @@ const formatTime = (timestamp) => {
     minute: '2-digit', 
     second: '2-digit' 
   })
+}
+
+// Phase 3: 新增方法
+
+/**
+ * 更新自动批准规则
+ */
+function updateAutoApprovalRules(payload) {
+  if (typeof payload === 'object' && !payload.toolName) {
+    // 批量更新
+    autoApprovalRules.value = { ...autoApprovalRules.value, ...payload }
+  } else {
+    // 单个更新
+    autoApprovalRules.value[payload.toolName] = payload.enabled
+  }
+  
+  // 同步到 AgentLoopManager
+  if (agentLoopManager.value) {
+    Object.entries(autoApprovalRules.value).forEach(([toolName, enabled]) => {
+      agentLoopManager.value.updateAutoApprovalRule(toolName, enabled)
+    })
+  }
+}
+
+/**
+ * 清空批准历史
+ */
+function clearApprovalHistory() {
+  approvalHistory.value = []
+}
+
+/**
+ * 清空决策历史
+ */
+function clearDecisionHistory() {
+  if (confirm('确定要清空决策历史吗？')) {
+    terminalStore.decisionHistory = []
+  }
+}
+
+/**
+ * 导出会话状态
+ */
+function exportSessionState(data) {
+  console.log('导出会话状态:', data)
+  uiStore.showToast('会话状态已导出')
+}
+
+/**
+ * 导出检查点
+ */
+async function handleExportCheckpoint(checkpointId) {
+  try {
+    const data = await checkpointService.exportCheckpoint(checkpointId)
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `checkpoint-${checkpointId}.json`
+    document.body.appendChild(a)
+    a.click()
+    window.URL.revokeObjectURL(url)
+    document.body.removeChild(a)
+    uiStore.showToast('导出成功')
+  } catch (error) {
+    console.error('导出检查点失败:', error)
+    uiStore.showToast('导出失败: ' + error.message)
+  }
 }
 </script>
 
