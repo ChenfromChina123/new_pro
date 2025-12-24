@@ -1474,7 +1474,7 @@ const processAgentLoop = async (prompt, toolResult) => {
     let fullContent = ''
     let currentEvent = 'message'
     
-    const processBuffer = () => {
+    const processBuffer = async () => {
       const lines = buffer.split('\n')
       buffer = lines.pop() || ''
       let needsScroll = false
@@ -1589,7 +1589,6 @@ const processAgentLoop = async (prompt, toolResult) => {
                 
                 const toolName = json.tool || json.toolName
                 const decisionId = json.decision_id || json.decisionId
-                const params = json.params || {}
                 
                 // 更新消息状态
                 currentAiMsg.status = 'pending'
@@ -1600,11 +1599,14 @@ const processAgentLoop = async (prompt, toolResult) => {
                 // 更新 Agent 状态
                 terminalStore.setAgentStatus('AWAITING_APPROVAL')
                 
-                // 重新加载待批准列表并显示对话框
-                await loadPendingApprovals()
-                if (pendingApprovals.value.length > 0) {
-                  showApprovalDialog.value = true
-                }
+                // 重新加载待批准列表并显示对话框（异步执行，不阻塞流式处理）
+                loadPendingApprovals().then(() => {
+                  if (pendingApprovals.value.length > 0) {
+                    showApprovalDialog.value = true
+                  }
+                }).catch(err => {
+                  console.error('Failed to load pending approvals:', err)
+                })
                 
             } else if (currentEvent === 'interrupt') {
                 // 处理中断事件
@@ -1651,9 +1653,9 @@ const processAgentLoop = async (prompt, toolResult) => {
       const { done, value } = await reader.read()
       if (done) break
       buffer += decoder.decode(value, { stream: true })
-      processBuffer()
+      await processBuffer()
     }
-    if (buffer) processBuffer()
+    if (buffer) await processBuffer()
 
     isTyping.value = false
     
