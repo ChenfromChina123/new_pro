@@ -37,27 +37,27 @@ public class AdminController {
 
     @Data
     public static class AdminStatistics {
-        private long total_users;
-        private long total_chats;
-        private long total_files;
-        private long total_storage;
+        private long totalUsers;
+        private long totalChats;
+        private long totalFiles;
+        private long totalStorage;
     }
 
     @Data
     public static class AdminUserDTO {
         private Long id;
         private String email;
-        private java.time.LocalDateTime created_at;
-        private boolean is_active;
+        private java.time.LocalDateTime createdAt;
+        private boolean active;
     }
 
     @Data
     public static class AdminFileDTO {
         private Long id;
         private String filename;
-        private String user_email;
-        private Long file_size;
-        private java.time.LocalDateTime upload_time;
+        private String userEmail;
+        private Long fileSize;
+        private java.time.LocalDateTime uploadTime;
     }
 
     /**
@@ -66,11 +66,11 @@ public class AdminController {
     @GetMapping("/statistics")
     public ResponseEntity<ApiResponse<AdminStatistics>> getStatistics() {
         AdminStatistics stats = new AdminStatistics();
-        stats.setTotal_users(userRepository.count());
-        stats.setTotal_chats(chatRecordRepository.count());
-        stats.setTotal_files(userFileRepository.count());
+        stats.setTotalUsers(userRepository.count());
+        stats.setTotalChats(chatRecordRepository.count());
+        stats.setTotalFiles(userFileRepository.count());
         Long storage = userFileRepository.sumAllFileSizes();
-        stats.setTotal_storage(storage != null ? storage : 0L);
+        stats.setTotalStorage(storage != null ? storage : 0L);
         return ResponseEntity.ok(ApiResponse.success(stats));
     }
 
@@ -84,8 +84,8 @@ public class AdminController {
             AdminUserDTO dto = new AdminUserDTO();
             dto.setId(u.getId());
             dto.setEmail(u.getEmail());
-            dto.setCreated_at(u.getCreatedAt());
-            dto.set_active(u.isActive());
+            dto.setCreatedAt(u.getCreatedAt());
+            dto.setActive(u.getIsActive() != null && u.getIsActive());
             return dto;
         }).collect(Collectors.toList());
         
@@ -104,9 +104,9 @@ public class AdminController {
             AdminFileDTO dto = new AdminFileDTO();
             dto.setId(f.getId());
             dto.setFilename(f.getFilename());
-            dto.setUser_email(f.getUser().getEmail());
-            dto.setFile_size(f.getFileSize());
-            dto.setUpload_time(f.getUploadTime());
+            dto.setUserEmail(f.getUser().getEmail());
+            dto.setFileSize(f.getFileSize());
+            dto.setUploadTime(f.getUploadTime());
             return dto;
         }).collect(Collectors.toList());
         

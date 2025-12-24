@@ -14,7 +14,7 @@
               👥
             </div>
             <div class="stat-info">
-              <h3>{{ statistics.total_users || 0 }}</h3>
+              <h3>{{ statistics.totalUsers || 0 }}</h3>
               <p>总用户数</p>
             </div>
           </div>
@@ -24,7 +24,7 @@
               💬
             </div>
             <div class="stat-info">
-              <h3>{{ statistics.total_chats || 0 }}</h3>
+              <h3>{{ statistics.totalChats || 0 }}</h3>
               <p>对话次数</p>
             </div>
           </div>
@@ -34,7 +34,7 @@
               📁
             </div>
             <div class="stat-info">
-              <h3>{{ statistics.total_files || 0 }}</h3>
+              <h3>{{ statistics.totalFiles || 0 }}</h3>
               <p>文件总数</p>
             </div>
           </div>
@@ -44,7 +44,7 @@
               💾
             </div>
             <div class="stat-info">
-              <h3>{{ formatSize(statistics.total_storage || 0) }}</h3>
+              <h3>{{ formatSize(statistics.totalStorage || 0) }}</h3>
               <p>存储空间</p>
             </div>
           </div>
@@ -87,10 +87,10 @@
                 >
                   <td>{{ user.id }}</td>
                   <td>{{ user.email }}</td>
-                  <td>{{ formatDate(user.created_at) }}</td>
+                  <td>{{ formatDate(user.createdAt) }}</td>
                   <td>
-                    <span :class="['badge', user.is_active ? 'success' : 'danger']">
-                      {{ user.is_active ? '正常' : '禁用' }}
+                    <span :class="['badge', user.active ? 'success' : 'danger']">
+                      {{ user.active ? '正常' : '禁用' }}
                     </span>
                   </td>
                   <td>
@@ -127,9 +127,9 @@
                   :key="file.id"
                 >
                   <td>{{ file.filename }}</td>
-                  <td>{{ file.user_email }}</td>
-                  <td>{{ formatSize(file.file_size) }}</td>
-                  <td>{{ formatDate(file.upload_time) }}</td>
+                  <td>{{ file.userEmail }}</td>
+                  <td>{{ formatSize(file.fileSize) }}</td>
+                  <td>{{ formatDate(file.uploadTime) }}</td>
                   <td>
                     <button 
                       class="btn-small btn-secondary"
@@ -190,8 +190,8 @@
               class="feedback-item"
             >
               <div class="feedback-header">
-                <span class="feedback-user">{{ feedback.user_email }}</span>
-                <span class="feedback-date">{{ formatDate(feedback.created_at) }}</span>
+                <span class="feedback-user">{{ feedback.userEmail }}</span>
+                <span class="feedback-date">{{ formatDate(feedback.createdAt) }}</span>
               </div>
               <p class="feedback-content">
                 {{ feedback.content }}
@@ -245,7 +245,7 @@ onMounted(async () => {
 const fetchStatistics = async () => {
   try {
     const response = await request.get(API_ENDPOINTS.admin.statistics)
-    statistics.value = response || {}
+    statistics.value = response.data || {}
   } catch (error) {
     console.error('获取统计数据失败:', error)
   }
@@ -254,7 +254,7 @@ const fetchStatistics = async () => {
 const fetchUsers = async () => {
   try {
     const response = await request.get(API_ENDPOINTS.admin.users)
-    users.value = response.users || []
+    users.value = response.data?.users || []
   } catch (error) {
     console.error('获取用户列表失败:', error)
   }
@@ -263,7 +263,7 @@ const fetchUsers = async () => {
 const fetchFiles = async () => {
   try {
     const response = await request.get(API_ENDPOINTS.admin.files)
-    files.value = response || []
+    files.value = response.data || []
   } catch (error) {
     console.error('获取文件列表失败:', error)
   }
@@ -272,7 +272,7 @@ const fetchFiles = async () => {
 const fetchFeedbacks = async () => {
   try {
     const response = await request.get(API_ENDPOINTS.feedback.admin.list)
-    feedbacks.value = response || []
+    feedbacks.value = response.data || []
   } catch (error) {
     console.error('获取反馈列表失败:', error)
   }
@@ -285,7 +285,7 @@ const handleEditFile = async (file) => {
   
   try {
     const response = await request.get(API_ENDPOINTS.cloudDisk.getContent(file.id))
-    editContent.value = response || ''
+    editContent.value = response.data || ''
   } catch (error) {
     console.error('获取文件内容失败:', error)
     editContent.value = '获取内容失败'
