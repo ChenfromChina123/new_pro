@@ -1,7 +1,8 @@
 package com.aispring.entity.ai;
 
-import lombok.Builder;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * 模型能力定义（参考 void-main 的 VoidStaticModelInfo）
@@ -12,7 +13,8 @@ import lombok.Data;
  * @since 2025-12-23
  */
 @Data
-@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class ModelCapability {
     /**
      * 上下文窗口大小（输入 token 数）
@@ -74,54 +76,36 @@ public class ModelCapability {
      * 默认能力配置（适用于大多数模型）
      */
     public static ModelCapability defaultCapability() {
-        return ModelCapability.builder()
-                .contextWindow(4096)
-                .reservedOutputTokenSpace(4096)
-                .supportsSystemMessage("system-role")
-                .supportsFIM(false)
-                .supportsReasoning(false)
-                .build();
+        return new ModelCapability(
+                4096, 4096, "system-role", null, false, false, false, false
+        );
     }
     
     /**
      * DeepSeek Chat 模型能力
      */
     public static ModelCapability deepseekChat() {
-        return ModelCapability.builder()
-                .contextWindow(64000)
-                .reservedOutputTokenSpace(4096)
-                .supportsSystemMessage("system-role")
-                .supportsFIM(false)
-                .supportsReasoning(false)
-                .build();
+        return new ModelCapability(
+                64000, 4096, "system-role", null, false, false, false, false
+        );
     }
     
     /**
      * DeepSeek Reasoner 模型能力
      */
     public static ModelCapability deepseekReasoner() {
-        return ModelCapability.builder()
-                .contextWindow(64000)
-                .reservedOutputTokenSpace(4096)
-                .supportsSystemMessage("system-role")
-                .supportsFIM(false)
-                .supportsReasoning(true)
-                .canTurnOffReasoning(false)
-                .canIOReasoning(true)
-                .build();
+        return new ModelCapability(
+                64000, 4096, "system-role", null, false, true, false, true
+        );
     }
     
     /**
      * 支持 FIM 的模型能力（用于 Codex 功能）
      */
     public static ModelCapability fimCapable() {
-        return ModelCapability.builder()
-                .contextWindow(32000)
-                .reservedOutputTokenSpace(4096)
-                .supportsSystemMessage("system-role")
-                .supportsFIM(true)
-                .supportsReasoning(false)
-                .build();
+        return new ModelCapability(
+                32000, 4096, "system-role", null, true, false, false, false
+        );
     }
 }
 
