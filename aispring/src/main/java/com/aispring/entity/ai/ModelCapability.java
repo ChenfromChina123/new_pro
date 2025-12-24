@@ -19,14 +19,12 @@ public class ModelCapability {
     /**
      * 上下文窗口大小（输入 token 数）
      */
-    @Builder.Default
-    private Integer contextWindow = 4096;
+    private Integer contextWindow;
     
     /**
      * 为输出保留的 token 空间
      */
-    @Builder.Default
-    private Integer reservedOutputTokenSpace = 4096;
+    private Integer reservedOutputTokenSpace;
     
     /**
      * 是否支持系统消息
@@ -35,8 +33,7 @@ public class ModelCapability {
      * developer-role: 使用 developer role
      * separated: 作为独立字段传递
      */
-    @Builder.Default
-    private String supportsSystemMessage = "system-role";
+    private String supportsSystemMessage;
     
     /**
      * 特殊工具格式
@@ -51,26 +48,22 @@ public class ModelCapability {
      * 是否支持 FIM (Fill-In-The-Middle)
      * 用于代码编辑功能（Codex）
      */
-    @Builder.Default
-    private Boolean supportsFIM = false;
+    private Boolean supportsFIM;
     
     /**
      * 是否支持推理模式（Reasoning）
      */
-    @Builder.Default
-    private Boolean supportsReasoning = false;
+    private Boolean supportsReasoning;
     
     /**
      * 是否可以关闭推理模式
      */
-    @Builder.Default
-    private Boolean canTurnOffReasoning = false;
+    private Boolean canTurnOffReasoning;
     
     /**
      * 是否可以输出推理过程
      */
-    @Builder.Default
-    private Boolean canIOReasoning = false;
+    private Boolean canIOReasoning;
     
     /**
      * 默认能力配置（适用于大多数模型）
