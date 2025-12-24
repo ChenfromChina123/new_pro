@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import request from '@/utils/request'
 import { useAuthStore } from '@/stores/auth'
 import { API_CONFIG } from '@/config/api'
+import terminalService from '@/services/terminalService'
 
 export const useTerminalStore = defineStore('terminal', () => {
   const authStore = useAuthStore()
@@ -18,8 +19,10 @@ export const useTerminalStore = defineStore('terminal', () => {
   const isLoading = ref(false)
 
   // Agent V2 State
-  const agentStatus = ref('IDLE') // IDLE, RUNNING, PAUSED, ERROR, etc.
+  const agentStatus = ref('IDLE') // IDLE, RUNNING, PAUSED, ERROR, AWAITING_APPROVAL
   const decisionHistory = ref(new Set()) // decision_id set for de-duplication
+  const checkpoints = ref([])
+  const pendingApprovals = ref([])
 
   // 解耦架构：身份信息管理
   const identityInfo = ref(null) // { core, task, viewpoint }
@@ -347,6 +350,131 @@ export const useTerminalStore = defineStore('terminal', () => {
     }
   }
 
+  // --- Phase 1-5 Refactoring Features ---
+
+  // Checkpoints
+  const loadCheckpoints = async () => {
+    if (!currentSessionId.value) return
+    try {
+      const res = await terminalService.checkpoint.getCheckpoints(currentSessionId.value)
+      if (res.code === 200) {
+        checkpoints.value = res.data || []
+      }
+    } catch (e) {
+      console.error('Failed to load checkpoints:', e)
+    }
+  }
+
+  const createCheckpoint = async (description) => {
+    if (!currentSessionId.value) return
+    try {
+      await terminalService.checkpoint.createCheckpoint({
+        sessionId: currentSessionId.value,
+        messageOrder: messages.value.length, // Approximate order
+        description
+      })
+      await loadCheckpoints()
+      return true
+    } catch (e) {
+      console.error('Failed to create checkpoint:', e)
+      return false
+    }
+  }
+
+  const restoreCheckpoint = async (checkpointId) => {
+    try {
+      const res = await terminalService.checkpoint.jumpToCheckpoint(checkpointId)
+      if (res.code === 200) {
+        // Reload history after jump
+        await selectSession(currentSessionId.value)
+        await loadCheckpoints()
+        return true
+      }
+    } catch (e) {
+      console.error('Failed to restore checkpoint:', e)
+    }
+    return false
+  }
+
+  const removeCheckpoint = async (checkpointId) => {
+    try {
+      await terminalService.checkpoint.deleteCheckpoint(checkpointId)
+      await loadCheckpoints()
+      return true
+    } catch (e) {
+      console.error('Failed to delete checkpoint:', e)
+      return false
+    }
+  }
+
+  // Approvals
+  const loadPendingApprovals = async () => {
+    if (!currentSessionId.value) return
+    try {
+      const res = await terminalService.approval.getPendingApprovals(currentSessionId.value)
+      if (res.code === 200) {
+        pendingApprovals.value = res.data || []
+        if (pendingApprovals.value.length > 0) {
+            agentStatus.value = 'AWAITING_APPROVAL'
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load pending approvals:', e)
+    }
+  }
+
+  const handleApproval = async (decisionId, approved, reason = '') => {
+    try {
+      if (approved) {
+        await terminalService.approval.approveToolCall(decisionId, reason)
+      } else {
+        await terminalService.approval.rejectToolCall(decisionId, reason)
+      }
+      // Remove from local list immediately for UI responsiveness
+      pendingApprovals.value = pendingApprovals.value.filter(p => p.id !== decisionId)
+      
+      // If no more approvals, status might change (will be updated by next poll or SSE)
+      if (pendingApprovals.value.length === 0 && agentStatus.value === 'AWAITING_APPROVAL') {
+          agentStatus.value = 'RUNNING' 
+      }
+      return true
+    } catch (e) {
+      console.error('Approval action failed:', e)
+      return false
+    }
+  }
+
+  // Session State
+  const checkSessionStatus = async () => {
+      if (!currentSessionId.value) return
+      try {
+          const res = await terminalService.sessionState.getSessionState(currentSessionId.value)
+          if (res.code === 200) {
+              const state = res.data
+              agentStatus.value = state.status
+              // If status is awaiting approval, load approvals
+              if (state.status === 'AWAITING_APPROVAL') {
+                  loadPendingApprovals()
+              }
+          }
+      } catch (e) {
+          console.error('Check status failed:', e)
+      }
+  }
+
+  const interruptSession = async () => {
+      if (!currentSessionId.value) return
+      try {
+          await terminalService.sessionState.interruptAgentLoop(currentSessionId.value)
+          // Optimistic update
+          agentStatus.value = 'PAUSED' // or whatever the backend sets
+          return true
+      } catch (e) {
+          console.error('Interrupt failed:', e)
+          return false
+      }
+  }
+
   return {
     sessions,
     currentSessionId,
@@ -367,6 +495,17 @@ export const useTerminalStore = defineStore('terminal', () => {
     setAgentStatus,
     addDecision,
     hasDecision,
+    // New features
+    checkpoints,
+    pendingApprovals,
+    loadCheckpoints,
+    createCheckpoint,
+    restoreCheckpoint,
+    removeCheckpoint,
+    loadPendingApprovals,
+    handleApproval,
+    checkSessionStatus,
+    interruptSession,
     // 解耦架构：导出新方法
     identityInfo,
     setIdentity,
