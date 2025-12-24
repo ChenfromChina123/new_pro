@@ -146,24 +146,58 @@ public class TerminalServiceImpl implements TerminalService {
         }
 
         try {
-            byte[] bytes = Files.readAllBytes(targetPath);
-            try {
-                // 优先尝试使用 UTF-8 读取
-                java.nio.charset.CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder();
-                decoder.onMalformedInput(java.nio.charset.CodingErrorAction.REPORT);
-                return decoder.decode(java.nio.ByteBuffer.wrap(bytes)).toString();
-            } catch (java.nio.charset.CharacterCodingException e) {
-                try {
-                    // 如果 UTF-8 失败，尝试使用 GBK (针对中文 Windows 环境常见的编码)
-                    return new String(bytes, java.nio.charset.Charset.forName("GBK"));
-                } catch (Exception e2) {
-                    // 如果还是失败，强制使用 UTF-8 并替换非法字符
-                    return new String(bytes, StandardCharsets.UTF_8);
-                }
-            }
+            return readFileWithEncodingDetection(targetPath);
         } catch (IOException e) {
             log.error("Error reading file: " + relativePath, e);
             throw new RuntimeException("Could not read file: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 带编码检测的文件读取
+     * @param path 文件路径
+     * @return 文件内容
+     */
+    private String readFileWithEncodingDetection(Path path) throws IOException {
+        byte[] bytes = Files.readAllBytes(path);
+        if (bytes.length == 0) return "";
+
+        // 1. 检查 BOM
+        if (bytes.length >= 3 && (bytes[0] & 0xFF) == 0xEF && (bytes[1] & 0xFF) == 0xBB && (bytes[2] & 0xFF) == 0xBF) {
+            return new String(bytes, 3, bytes.length - 3, StandardCharsets.UTF_8);
+        } else if (bytes.length >= 2 && (bytes[0] & 0xFF) == 0xFF && (bytes[1] & 0xFF) == 0xFE) {
+            return new String(bytes, 2, bytes.length - 2, java.nio.charset.Charset.forName("UTF-16LE"));
+        } else if (bytes.length >= 2 && (bytes[0] & 0xFF) == 0xFE && (bytes[1] & 0xFF) == 0xFF) {
+            return new String(bytes, 2, bytes.length - 2, java.nio.charset.Charset.forName("UTF-16BE"));
+        }
+
+        // 2. 尝试 UTF-8
+        try {
+            java.nio.charset.CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder();
+            decoder.onMalformedInput(java.nio.charset.CodingErrorAction.REPORT);
+            return decoder.decode(java.nio.ByteBuffer.wrap(bytes)).toString();
+        } catch (java.nio.charset.CharacterCodingException e) {
+            // 3. 尝试 GBK
+            try {
+                java.nio.charset.Charset gbk = java.nio.charset.Charset.forName("GBK");
+                java.nio.charset.CharsetDecoder gbkDecoder = gbk.newDecoder();
+                gbkDecoder.onMalformedInput(java.nio.charset.CodingErrorAction.REPORT);
+                return gbkDecoder.decode(java.nio.ByteBuffer.wrap(bytes)).toString();
+            } catch (Exception e2) {
+                // 4. 尝试 UTF-16LE (无 BOM)
+                try {
+                    if (bytes.length % 2 == 0) {
+                        java.nio.charset.Charset utf16le = java.nio.charset.Charset.forName("UTF-16LE");
+                        java.nio.charset.CharsetDecoder utf16Decoder = utf16le.newDecoder();
+                        utf16Decoder.onMalformedInput(java.nio.charset.CodingErrorAction.REPORT);
+                        return utf16Decoder.decode(java.nio.ByteBuffer.wrap(bytes)).toString();
+                    }
+                } catch (Exception e3) {
+                    // Ignore
+                }
+                // 5. 强制 UTF-8 降级
+                return new String(bytes, StandardCharsets.UTF_8);
+            }
         }
     }
 
