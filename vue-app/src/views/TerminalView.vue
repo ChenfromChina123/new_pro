@@ -2158,6 +2158,7 @@ function exportSessionState(data) {
   font-family: 'Fira Code', monospace;
   font-size: 0.9em;
   word-break: break-all;
+  color: #475569;
 }
 
 .ai-text :deep(pre) {
@@ -2167,6 +2168,18 @@ function exportSessionState(data) {
   border-radius: 8px;
   overflow-x: auto;
   margin: 12px 0;
+  word-break: normal;
+  white-space: pre;
+}
+
+.ai-text :deep(pre code) {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  color: inherit;
+  font-size: 0.9rem;
+  word-break: normal;
+  white-space: pre;
 }
 
 .tool-call-card {
