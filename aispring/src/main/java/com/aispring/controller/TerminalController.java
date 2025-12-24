@@ -44,7 +44,7 @@ public class TerminalController {
     private final TaskCompiler taskCompiler;
     private final ObjectMapper objectMapper;
     private final TerminalPromptManager promptManager;
-    
+
     // Phase 2 新增服务
     private final SessionStateService sessionStateService;
     private final CheckpointService checkpointService;

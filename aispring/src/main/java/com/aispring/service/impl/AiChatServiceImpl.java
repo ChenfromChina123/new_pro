@@ -739,6 +739,11 @@ public class AiChatServiceImpl implements AiChatService {
             try {
                 if (deepseekChatClient == null) return;
 
+                // 如果sessionId为空，无法保存标题和建议，直接返回
+                if (sessionId == null || sessionId.isEmpty()) {
+                    return;
+                }
+
                 // 检查是否需要生成标题
                 boolean needTitle = true;
                 if (sessionId != null && !sessionId.isEmpty()) {

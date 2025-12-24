@@ -58,4 +58,9 @@ public class DecisionEnvelope implements Serializable {
      */
     @Builder.Default
     private boolean requiresApproval = false;
+    
+    /**
+     * 决策期望（可选）
+     */
+    private DecisionExpectation expectation;
 }
