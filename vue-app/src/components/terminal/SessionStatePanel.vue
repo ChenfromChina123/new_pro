@@ -12,7 +12,7 @@
       </div>
     </div>
 
-    <div class="panel-content">
+    <div class="session-content">
       <!-- Agent 状态卡片 -->
       <div class="state-card agent-card">
         <div class="card-header">
@@ -487,33 +487,14 @@ function exportState() {
   background: #2563eb;
 }
 
-.panel-content {
+.session-content {
   flex: 1;
   overflow-y: auto;
   min-height: 0;
-  padding: 20px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  scrollbar-width: thin;
-  scrollbar-color: #3b82f6 #f1f5f9;
-}
-
-.panel-content::-webkit-scrollbar {
-  width: 6px;
-}
-
-.panel-content::-webkit-scrollbar-track {
-  background: #f1f5f9;
-}
-
-.panel-content::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
-}
-
-.panel-content::-webkit-scrollbar-thumb:hover {
-  background: #3b82f6;
 }
 
 .state-card {
