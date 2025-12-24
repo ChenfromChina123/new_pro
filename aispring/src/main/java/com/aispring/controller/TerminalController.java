@@ -186,12 +186,12 @@ public class TerminalController {
         
         // 如果指定了 chat_mode，使用新的提示词系统
         if (request.getChat_mode() != null && !request.getChat_mode().isEmpty()) {
-            TerminalPromptManager.ChatMode mode;
+            ChatMode mode;
             try {
-                mode = TerminalPromptManager.ChatMode.valueOf(request.getChat_mode().toUpperCase());
-            } catch (IllegalArgumentException e) {
+                mode = ChatMode.fromCode(request.getChat_mode());
+            } catch (Exception e) {
                 log.warn("Invalid chat_mode: {}, defaulting to AGENT", request.getChat_mode());
-                mode = TerminalPromptManager.ChatMode.AGENT;
+                mode = ChatMode.AGENT;
             }
             
             // 获取工作区信息
@@ -227,9 +227,9 @@ public class TerminalController {
             );
             
             // 更新 Agent 状态
-            if (mode == TerminalPromptManager.ChatMode.AGENT) {
+            if (mode == ChatMode.AGENT) {
                 state.setStatus(AgentStatus.RUNNING);
-            } else if (mode == TerminalPromptManager.ChatMode.GATHER) {
+            } else if (mode == ChatMode.GATHER) {
                 state.setStatus(AgentStatus.RUNNING);
             } else {
                 state.setStatus(AgentStatus.IDLE);

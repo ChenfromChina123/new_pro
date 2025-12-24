@@ -1,5 +1,6 @@
 package com.aispring.service;
 
+import com.aispring.entity.ai.ChatMode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -29,14 +30,8 @@ public class TerminalPromptManager {
         this.toolsService = null; // 将在 Spring 容器中注入
     }
 
-    /**
-     * 聊天模式枚举
-     */
-    public enum ChatMode {
-        AGENT,    // Agent 模式：可以执行所有工具，进行代码开发和修改
-        GATHER,   // Gather 模式：只能使用读取类工具，用于收集信息
-        NORMAL    // Normal 模式：普通对话，不提供工具
-    }
+    // 使用独立的 ChatMode 枚举类
+    // import com.aispring.entity.ai.ChatMode;
 
     /**
      * 构建系统提示词（参考 void-main 的 chat_systemMessage）
