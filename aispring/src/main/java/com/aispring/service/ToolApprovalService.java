@@ -1,6 +1,5 @@
 package com.aispring.service;
 
-import com.aispring.entity.approval.ApprovalStatus;
 import com.aispring.entity.approval.ToolApproval;
 import com.aispring.entity.approval.UserApprovalSettings;
 

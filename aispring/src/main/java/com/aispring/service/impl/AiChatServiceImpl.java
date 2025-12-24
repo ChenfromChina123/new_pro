@@ -1,6 +1,7 @@
 package com.aispring.service.impl;
 
 import com.aispring.service.AiChatService;
+import com.aispring.service.ToolsService;
 import com.aispring.repository.ChatRecordRepository;
 import com.aispring.entity.ChatRecord;
 import com.aispring.entity.ChatSession;
@@ -56,7 +57,8 @@ public class AiChatServiceImpl implements AiChatService {
     
     // Phase 2 新增服务
     private final com.aispring.service.SessionStateService sessionStateService;
-    private final com.aispring.service.CheckpointService checkpointService;
+    private final com.aispring.service.ToolApprovalService toolApprovalService;
+    private final com.aispring.service.ToolsService toolsService;
     
     @Value("${ai.max-tokens:4096}")
     private Integer maxTokens;
@@ -87,8 +89,8 @@ public class AiChatServiceImpl implements AiChatService {
                              ChatRecordRepository chatRecordRepository,
                              com.aispring.service.ChatRecordService chatRecordService, // 添加到构造函数
                              com.aispring.service.SessionStateService sessionStateService,
-                             com.aispring.service.CheckpointService checkpointService,
                              com.aispring.service.ToolApprovalService toolApprovalService,
+                             com.aispring.service.ToolsService toolsService,
                              @Value("${ai.doubao.api-key:}") String doubaoApiKey,
                              @Value("${ai.doubao.api-url:}") String doubaoApiUrl,
                              @Value("${ai.deepseek.api-key:}") String deepseekApiKey,
@@ -98,7 +100,9 @@ public class AiChatServiceImpl implements AiChatService {
         this.chatRecordRepository = chatRecordRepository;
         this.chatRecordService = chatRecordService; // 初始化
         this.sessionStateService = sessionStateService;
-        this.checkpointService = checkpointService;
+        this.toolApprovalService = toolApprovalService;
+        this.toolsService = toolsService;
+        
         this.doubaoApiKey = doubaoApiKey;
         this.doubaoApiUrl = doubaoApiUrl;
         this.deepseekApiKey = deepseekApiKey;
@@ -239,7 +243,7 @@ public class AiChatServiceImpl implements AiChatService {
                 String currentSystemPrompt = initialSystemPrompt;
                 List<Map<String, Object>> currentTasks = initialTasks != null ? new ArrayList<>(initialTasks) : new ArrayList<>();
                 int loopCount = 0;
-                int maxLoops = 10;
+                int maxLoops = 20; // 增加最大循环次数
 
                 while (loopCount < maxLoops) {
                     loopCount++;
@@ -271,23 +275,23 @@ public class AiChatServiceImpl implements AiChatService {
                     boolean shouldContinue = false;
                     try {
                         // 简单提取 JSON
-                        int jsonStart = fullResponse.indexOf("{");
-                        int jsonEnd = fullResponse.lastIndexOf("}");
-                        if (jsonStart >= 0 && jsonEnd > jsonStart) {
-                            String jsonStr = fullResponse.substring(jsonStart, jsonEnd + 1);
+                        String jsonStr = extractJson(fullResponse);
+                        
+                        if (jsonStr != null) {
                             JsonNode root = objectMapper.readTree(jsonStr);
+                            String type = root.has("type") ? root.get("type").asText() : "";
                             
-                            if (root.has("type") && "task_update".equals(root.get("type").asText())) {
-                                // 更新任务状态
+                            if ("task_update".equals(type)) {
+                                // ... existing task update logic ...
                                 String taskId = root.path("taskId").asText();
                                 String status = root.path("status").asText();
-                                String desc = root.path("desc").asText(""); // AI might return desc
+                                String desc = root.path("desc").asText("");
                                 
                                 boolean taskFound = false;
                                 for (Map<String, Object> task : currentTasks) {
                                     if (String.valueOf(task.get("id")).equals(taskId)) {
                                         task.put("status", status);
-                                        desc = (String) task.get("desc"); // Use original desc
+                                        desc = (String) task.get("desc");
                                         taskFound = true;
                                         break;
                                     }
@@ -296,14 +300,81 @@ public class AiChatServiceImpl implements AiChatService {
                                 if (taskFound) {
                                     shouldContinue = true;
                                     currentPrompt = String.format("任务 %s (ID: %s) 状态已更新为 %s。请继续执行该任务的具体操作，或进行下一步。", desc, taskId, status);
-                                    
-                                    // 更新 System Prompt 中的任务上下文
                                     currentSystemPrompt = updateSystemPromptWithTasks(currentSystemPrompt, currentTasks);
                                 }
+                            } else if ("TOOL_CALL".equals(type) || "tool_call".equals(type)) {
+                                // === 后端工具执行逻辑 ===
+                                String toolName = root.path("action").asText();
+                                String decisionId = root.path("decision_id").asText(java.util.UUID.randomUUID().toString());
+                                JsonNode paramsNode = root.path("params");
+                                Map<String, Object> params = objectMapper.convertValue(paramsNode, Map.class);
+                                
+                                log.info("检测到工具调用: {}, decisionId={}", toolName, decisionId);
+                                
+                                // 1. 检查批准
+                                if (toolApprovalService.requiresApproval(userIdLong, toolName)) {
+                                    log.info("工具需要批准: {}", toolName);
+                                    toolApprovalService.createApprovalRequest(sessionId, userIdLong, toolName, params, decisionId);
+                                    
+                                    // 发送等待批准事件
+                                    emitter.send(SseEmitter.event()
+                                            .name("waiting_approval")
+                                            .data(objectMapper.writeValueAsString(Map.of(
+                                                    "decision_id", decisionId,
+                                                    "tool", toolName,
+                                                    "params", params
+                                            ))));
+                                    
+                                    // 更新状态为等待批准
+                                    sessionState.setStatus(com.aispring.entity.agent.AgentStatus.AWAITING_APPROVAL);
+                                    sessionStateService.saveState(sessionState);
+                                    
+                                    // 暂停循环
+                                    shouldContinue = false; 
+                                    break; // 跳出循环，等待用户操作
+                                }
+                                
+                                // 2. 执行工具
+                                log.info("执行工具: {}", toolName);
+                                ToolsService.ToolResult result = toolsService.callTool(toolName, params, userIdLong, sessionId);
+                                
+                                // 3. 发送工具结果给前端（用于展示）
+                                emitter.send(SseEmitter.event()
+                                        .name("tool_result")
+                                        .data(objectMapper.writeValueAsString(result)));
+                                
+                                // 4. 构建下一次 Prompt
+                                currentPrompt = String.format("工具 '%s' 执行结果 (Exit Code: %s):\n%s\n%s\n请根据结果继续执行。", 
+                                        toolName, 
+                                        result.isSuccess() ? "0" : "-1",
+                                        result.getStringResult(),
+                                        result.getError() != null ? "Error: " + result.getError() : "");
+                                
+                                shouldContinue = true;
+                                
+                            } else if ("TASK_LIST".equals(type) || "task_list".equals(type)) {
+                                // 任务列表更新，通常意味着开始
+                                JsonNode tasksNode = root.path("tasks");
+                                if (tasksNode.isArray()) {
+                                    List<Map<String, Object>> newTasks = new ArrayList<>();
+                                    for (JsonNode t : tasksNode) {
+                                        Map<String, Object> taskMap = objectMapper.convertValue(t, Map.class);
+                                        newTasks.add(taskMap);
+                                    }
+                                    currentTasks = newTasks;
+                                    currentSystemPrompt = updateSystemPromptWithTasks(currentSystemPrompt, currentTasks);
+                                    
+                                    currentPrompt = "任务列表已接收。请开始执行第一个任务。";
+                                    shouldContinue = true;
+                                }
+                            } else if ("TASK_COMPLETE".equals(type)) {
+                                currentPrompt = "当前任务已完成。请检查是否还有剩余任务，如果有则继续，没有则结束。";
+                                shouldContinue = true;
                             }
                         }
                     } catch (Exception e) {
                         System.err.println("Error parsing agent response for loop: " + e.getMessage());
+                        e.printStackTrace();
                     }
                     
                     if (!shouldContinue) {
@@ -311,40 +382,46 @@ public class AiChatServiceImpl implements AiChatService {
                     }
                 }
                 
-                // Phase 3: Agent 循环完成，更新会话状态
-                sessionState = sessionStateService.getState(sessionId).orElse(sessionState);
-                sessionState.setStatus(com.aispring.entity.agent.AgentStatus.COMPLETED);
-                sessionState.setCurrentLoopId(null);
-                sessionState.setStreamState(com.aispring.entity.session.StreamState.idle());
-                sessionStateService.saveState(sessionState);
-                
-                // Phase 3: 清除中断标志（如果有）
-                sessionStateService.clearInterrupt(sessionId);
-                
-                log.info("Agent 循环完成: sessionId={}, loopId={}, loopCount={}", 
-                        sessionId, loopId, loopCount);
-                
-                emitter.send(SseEmitter.event().data("[DONE]"));
-                emitter.complete();
+                // ... cleanup logic ...
+                // Only mark as COMPLETED if not PAUSED or AWAITING_APPROVAL
+                com.aispring.entity.session.SessionState finalState = sessionStateService.getState(sessionId).orElse(null);
+                if (finalState != null && finalState.getStatus() == com.aispring.entity.agent.AgentStatus.RUNNING) {
+                     finalState.setStatus(com.aispring.entity.agent.AgentStatus.COMPLETED);
+                     finalState.setCurrentLoopId(null);
+                     finalState.setStreamState(com.aispring.entity.session.StreamState.idle());
+                     sessionStateService.saveState(finalState);
+                     
+                     emitter.send(SseEmitter.event().data("[DONE]"));
+                     emitter.complete();
+                } else {
+                    // 如果是等待批准或暂停，不要发送 [DONE]，保持连接或者让前端知道是暂停状态
+                    // 但 SSE 连接通常在一次请求后结束，所以这里可能需要断开，前端根据状态决定是否重新发起
+                    emitter.send(SseEmitter.event().data("[DONE]")); // 结束本次 SSE 连接
+                    emitter.complete();
+                }
                 
             } catch (Exception e) {
-                // Phase 3: Agent 循环错误，更新会话状态
-                try {
-                    com.aispring.entity.session.SessionState errorState = 
-                            sessionStateService.getState(sessionId).orElse(null);
-                    if (errorState != null) {
-                        errorState.setStatus(com.aispring.entity.agent.AgentStatus.ERROR);
-                        errorState.setCurrentLoopId(null);
-                        sessionStateService.saveState(errorState);
-                    }
-                } catch (Exception ex) {
-                    log.error("更新错误状态失败", ex);
-                }
+                // ... error handling ...
                 handleError(emitter, e);
             }
         }).start();
         
         return emitter;
+    }
+
+    private String extractJson(String content) {
+        if (content == null) return null;
+        int jsonStart = content.indexOf("```json");
+        if (jsonStart != -1) {
+             int end = content.indexOf("```", jsonStart + 7);
+             if (end != -1) return content.substring(jsonStart + 7, end).trim();
+        }
+        jsonStart = content.indexOf("{");
+        int jsonEnd = content.lastIndexOf("}");
+        if (jsonStart >= 0 && jsonEnd > jsonStart) {
+            return content.substring(jsonStart, jsonEnd + 1);
+        }
+        return null;
     }
     
 
@@ -531,146 +608,6 @@ public class AiChatServiceImpl implements AiChatService {
                         }
                     }
          }
-    }
-
-
-    private SseEmitter askStreamWithOkHttp(String prompt, String sessionId, String model, String userId, SseEmitter emitter, String systemPrompt) {
-        new Thread(() -> {
-            try {
-                // 异步生成标题（仅限第一条消息）和建议问题（每条消息）
-                generateTitleAndSuggestionsAsync(prompt, sessionId, userId, emitter);
-
-                String apiKey = "";
-                String apiUrl = "";
-                String requestModel = "";
-                boolean isDoubao = false;
-
-                if ("deepseek-reasoner".equals(model)) {
-                    apiKey = deepseekApiKey;
-                    apiUrl = deepseekApiUrl + "/v1/chat/completions";
-                    requestModel = "deepseek-reasoner";
-                } else if ("doubao-reasoner".equals(model)) {
-                    apiKey = doubaoApiKey;
-                    apiUrl = doubaoApiUrl + "/api/v3/chat/completions"; // 火山方舟通常路径
-                    // 如果 doubaoApiUrl 已经包含完整路径（如 /api/v3/...），需要适配
-                    if (doubaoApiUrl.endsWith("/chat/completions")) {
-                        apiUrl = doubaoApiUrl;
-                    } else if (doubaoApiUrl.endsWith("/")) {
-                        apiUrl = doubaoApiUrl + "api/v3/chat/completions";
-                    }
-                    requestModel = "doubao-seed-1-6-251015";
-                    isDoubao = true;
-                }
-
-                // 准备消息历史
-                List<Map<String, String>> messages = new ArrayList<>();
-                
-                // Add System Prompt if exists
-                if (systemPrompt != null && !systemPrompt.isEmpty()) {
-                    Map<String, String> sysMsg = new HashMap<>();
-                    sysMsg.put("role", "system");
-                    sysMsg.put("content", systemPrompt);
-                    messages.add(sysMsg);
-                }
-
-                if (sessionId != null && !sessionId.isEmpty()) {
-                    List<ChatRecord> history = chatRecordRepository.findByUserIdAndSessionIdOrderByMessageOrderAsc(userId, sessionId);
-                    int start = Math.max(0, history.size() - MAX_CONTEXT_MESSAGES);
-                    List<ChatRecord> recentHistory = history.subList(start, history.size());
-                    
-                    for (ChatRecord record : recentHistory) {
-                        Map<String, String> msg = new HashMap<>();
-                        msg.put("role", record.getSenderType() == 1 ? "user" : "assistant");
-                        msg.put("content", record.getContent());
-                        messages.add(msg);
-                    }
-                }
-                
-                // 添加当前用户消息
-                Map<String, String> currentMsg = new HashMap<>();
-                currentMsg.put("role", "user");
-                currentMsg.put("content", prompt);
-                messages.add(currentMsg);
-
-                // 构建请求体
-                Map<String, Object> payload = new HashMap<>();
-                payload.put("model", requestModel);
-                payload.put("messages", messages);
-                payload.put("stream", true);
-                payload.put("temperature", 0.6); // 深度思考模型通常建议较低温度
-                payload.put("max_tokens", maxTokens); // 设置最大输出token
-                
-                if (isDoubao) {
-                    // 豆包-reasoner 特有参数
-                    payload.put("thinking", Map.of("type", "enabled"));
-                }
-
-                String jsonPayload = objectMapper.writeValueAsString(payload);
-                
-                RequestBody body = RequestBody.create(jsonPayload, MediaType.get("application/json; charset=utf-8"));
-                Request request = new Request.Builder()
-                        .url(apiUrl)
-                        .addHeader("Authorization", "Bearer " + apiKey)
-                        .post(body)
-                        .build();
-
-                try (Response response = okHttpClient.newCall(request).execute()) {
-                    if (!response.isSuccessful()) {
-                        throw new IOException("Unexpected code " + response);
-                    }
-
-                    InputStream is = response.body().byteStream();
-                    // 使用更小的缓冲区（1KB），减少延迟，提高响应速度
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(is, java.nio.charset.StandardCharsets.UTF_8), 1024);
-                    String line;
-                    
-                    // 优化：逐行处理，立即发送，不缓冲
-                    while ((line = reader.readLine()) != null) {
-                        if (line.isEmpty()) continue;
-                        
-                        if (line.startsWith("data: ")) {
-                            String data = line.substring(6).trim();
-                            if ("[DONE]".equals(data)) break;
-                            
-                            try {
-                                JsonNode root = objectMapper.readTree(data);
-                                JsonNode choices = root.path("choices");
-                                if (choices.isArray() && choices.size() > 0) {
-                                    JsonNode delta = choices.get(0).path("delta");
-                                    
-                                    // 提取推理内容
-                                    String reasoningContent = "";
-                                    if (delta.has("reasoning_content")) {
-                                        reasoningContent = delta.get("reasoning_content").asText();
-                                    }
-                                    
-                                    // 提取回复内容
-                                    String content = "";
-                                    if (delta.has("content")) {
-                                        content = delta.get("content").asText();
-                                    }
-                                    
-                                    // 立即发送，不等待累积，提供更流畅的体验
-                                    if (!reasoningContent.isEmpty() || !content.isEmpty()) {
-                                        sendChatResponse(emitter, content, reasoningContent);
-                                    }
-                                }
-                            } catch (Exception e) {
-                                // 忽略解析错误，继续处理下一行
-                                log.debug("Parse SSE error: {}", e.getMessage());
-                            }
-                        }
-                    }
-                    
-                    emitter.send(SseEmitter.event().data("[DONE]"));
-                    emitter.complete();
-                }
-            } catch (Exception e) {
-                handleError(emitter, e);
-            }
-        }).start();
-        
-        return emitter;
     }
 
 

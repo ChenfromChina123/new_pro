@@ -7,6 +7,8 @@ import com.aispring.dto.response.TerminalFileDto;
 import com.aispring.entity.ChatRecord;
 import com.aispring.entity.ChatSession;
 import com.aispring.entity.agent.*;
+import com.aispring.entity.agent.AgentState;
+import com.aispring.entity.agent.ToolResult;
 import com.aispring.entity.terminal.FileSearchRequest;
 import com.aispring.entity.terminal.FileContextRequest;
 import com.aispring.entity.terminal.FileModifyRequest;

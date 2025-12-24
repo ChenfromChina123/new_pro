@@ -606,8 +606,6 @@ import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
 // Phase 2: 导入新的 Terminal API 服务
 import terminalService, { checkpointService, approvalService, sessionStateService } from '@/services/terminalService'
-// Phase 3: 导入 Agent 循环管理器
-import { createAgentLoopManager } from '@/services/agentLoopManager'
 
 // Configure marked
 const renderer = new marked.Renderer()
@@ -813,8 +811,6 @@ const showApprovalSettings = ref(false)
 // Phase 2: 会话状态
 const sessionState = ref(null)
 
-// Phase 3: Agent 循环管理器
-const agentLoopManager = ref(null)
 const approvalHistory = ref([])
 const autoApprovalRules = ref({
   read_file: true,
@@ -943,7 +939,6 @@ onMounted(async () => {
   
   // Phase 3: 初始化 Agent 循环管理器
   if (currentSessionId.value) {
-    agentLoopManager.value = createAgentLoopManager(currentSessionId.value)
     await loadCheckpoints()
     await loadPendingApprovals()
     await loadSessionState()
@@ -1312,12 +1307,12 @@ const sendMessage = async (overrideText) => {
   await saveMessage(text, 1)
 
   // Phase 3: 使用 AgentLoopManager 启动循环
-  if (agentLoopManager.value) {
-    await agentLoopManager.value.startLoop(text, currentModel.value)
-    // 创建检查点（用户消息后）
-    await agentLoopManager.value.createCheckpoint('AUTO', `用户消息: ${text.substring(0, 50)}`)
-    await loadCheckpoints()
-  }
+  // if (agentLoopManager.value) {
+  //   await agentLoopManager.value.startLoop(text, currentModel.value)
+  //   // 创建检查点（用户消息后）
+  //   await agentLoopManager.value.createCheckpoint('AUTO', `用户消息: ${text.substring(0, 50)}`)
+  //   await loadCheckpoints()
+  // }
 
   // Start Loop with initial prompt
   await processAgentLoop(text, null)
@@ -1378,6 +1373,7 @@ const processAgentLoop = async (prompt, toolResult) => {
     const decoder = new TextDecoder()
     let buffer = ''
     let fullContent = ''
+    let currentEvent = 'message'
     
     const processBuffer = () => {
       const lines = buffer.split('\n')
@@ -1385,46 +1381,93 @@ const processAgentLoop = async (prompt, toolResult) => {
       let needsScroll = false
       
       for (const line of lines) {
-        if (!line.trim()) continue // 跳过空行
+        const trimmed = line.trim()
+        if (!trimmed) {
+            currentEvent = 'message'
+            continue
+        }
         
-        if (line.startsWith('data:')) {
+        if (line.startsWith('event:')) {
+            currentEvent = line.slice(6).trim()
+        } else if (line.startsWith('data:')) {
           const dataStr = line.slice(5).trim()
           if (dataStr === '[DONE]') continue
           
           try {
             const json = JSON.parse(dataStr)
             
-            // 处理推理内容
-            if (json.reasoning_content) {
-              currentAiMsg.thought = (currentAiMsg.thought || '') + json.reasoning_content
-            }
-            
-            // 处理回复内容 - 实时更新，不等待累积
-            if (json.content) {
-              fullContent += json.content
-              needsScroll = true
-              
-              // 实时更新显示内容，提供更好的流式体验
-              // 如果包含代码块标记，尝试提取前面的文本
-              if (fullContent.includes('```json')) {
-                const codeBlockStart = fullContent.indexOf('```json')
-                if (codeBlockStart >= 0) {
-                  currentAiMsg.message = fullContent.substring(0, codeBlockStart).trim()
-                } else {
-                  currentAiMsg.message = fullContent
+            if (currentEvent === 'message') {
+                // 处理推理内容
+                if (json.reasoning_content) {
+                  currentAiMsg.thought = (currentAiMsg.thought || '') + json.reasoning_content
                 }
-              } else if (fullContent.includes('{') && !fullContent.trim().startsWith('{')) {
-                // 如果有 JSON 但不是以 { 开头，提取前面的文本
-                const jsonStart = fullContent.indexOf('{')
-                if (jsonStart >= 0) {
-                  currentAiMsg.message = fullContent.substring(0, jsonStart).trim()
-                } else {
-                  currentAiMsg.message = fullContent
+                
+                // 处理回复内容 - 实时更新，不等待累积
+                if (json.content) {
+                  fullContent += json.content
+                  needsScroll = true
+                  
+                  // 实时更新显示内容，提供更好的流式体验
+                  // 如果包含代码块标记，尝试提取前面的文本
+                  if (fullContent.includes('```json')) {
+                    const codeBlockStart = fullContent.indexOf('```json')
+                    if (codeBlockStart >= 0) {
+                      currentAiMsg.message = fullContent.substring(0, codeBlockStart).trim()
+                    } else {
+                      currentAiMsg.message = fullContent
+                    }
+                  } else if (fullContent.includes('{') && !fullContent.trim().startsWith('{')) {
+                    // 如果有 JSON 但不是以 { 开头，提取前面的文本
+                    const jsonStart = fullContent.indexOf('{')
+                    if (jsonStart >= 0) {
+                      currentAiMsg.message = fullContent.substring(0, jsonStart).trim()
+                    } else {
+                      currentAiMsg.message = fullContent
+                    }
+                  } else {
+                    // 直接显示全部内容
+                    currentAiMsg.message = fullContent
+                  }
                 }
-              } else {
-                // 直接显示全部内容
-                currentAiMsg.message = fullContent
-              }
+            } else if (currentEvent === 'tool_result') {
+                // Handle tool result from backend
+                console.log('[TerminalView] Received tool result:', json)
+                currentAiMsg.toolResult = json
+                currentAiMsg.status = json.success ? 'success' : 'error'
+                
+                // Update artifacts if present
+                if (json.success && json.result) {
+                    // Try to parse result if it contains file paths or artifacts
+                    // This is optional depending on how backend formats result
+                }
+                
+                // Append to logs
+                terminalLogs.value.push({ 
+                  command: `Tool: ${currentAiMsg.tool || 'Unknown'}`, 
+                  output: json.result || json.error, 
+                  type: json.success ? 'stdout' : 'stderr',
+                  cwd: currentCwd.value 
+                })
+                
+                // Save tool result message
+                saveMessage(`TOOL_RESULT: ${currentAiMsg.tool}`, 3, {
+                  exit_code: json.success ? 0 : -1,
+                  stdout: json.result,
+                  stderr: json.error
+                })
+                
+            } else if (currentEvent === 'waiting_approval') {
+                // Handle approval request
+                console.log('[TerminalView] Waiting for approval:', json)
+                currentAiMsg.status = 'pending'
+                currentAiMsg.message = '等待用户批准工具调用...'
+                
+                // Reload pending approvals to update list and show dialog
+                loadPendingApprovals().then(() => {
+                    if (pendingApprovals.value.length > 0) {
+                        showApprovalDialog.value = true
+                    }
+                })
             }
           } catch (e) {
             // JSON 解析失败，可能是部分数据，继续累积
@@ -1510,13 +1553,6 @@ const processAgentLoop = async (prompt, toolResult) => {
         currentAiMsg.message = '任务计划已生成，即将开始执行...'
         currentAiMsg.status = 'success'
         
-        // Phase 3: 使用 AgentLoopManager 处理任务列表
-        if (agentLoopManager.value) {
-          // 将任务列表类型转换为 TASK_LIST
-          decision.type = 'TASK_LIST'
-          await agentLoopManager.value.processDecision(decision)
-        }
-        
         await saveMessage(JSON.stringify(decision), 2)
         
         // 自动触发第一步执行
@@ -1549,6 +1585,9 @@ const processAgentLoop = async (prompt, toolResult) => {
       // 工具调用的正文避免显示原始 JSON，改用折叠卡片展示
       if (decision.type === 'TOOL_CALL') {
         currentAiMsg.message = ''
+        // 后端接管执行，这里仅显示状态
+        terminalStore.setAgentStatus('WAITING_TOOL')
+        currentAiMsg.status = 'pending'
       }
       // 默认折叠工具结果
       collapsedTools.value.add(currentAiMsg.toolKey)
@@ -1565,222 +1604,17 @@ const processAgentLoop = async (prompt, toolResult) => {
           })
       }
 
-      // Phase 3: 使用 AgentLoopManager 处理决策
-      if (agentLoopManager.value) {
-        const processResult = await agentLoopManager.value.processDecision(decision)
-        console.log('[TerminalView] AgentLoopManager process result:', processResult)
-        
-        // 根据处理结果决定下一步
-        if (processResult.action === 'WAIT_APPROVAL') {
-          // 需要等待批准
-          currentAiMsg.status = 'pending'
-          currentAiMsg.message = '等待用户批准工具调用...'
-          await loadPendingApprovals()
-          // 如果有待批准项，自动显示批准对话框
-          if (pendingApprovals.value.length > 0) {
-            showApprovalDialog.value = true
-          }
-          return
-        } else if (processResult.action === 'IGNORE') {
-          // 重复决策，忽略
-          console.log('[TerminalView] Decision ignored:', processResult.reason)
-          return
-        } else if (processResult.action === 'EXECUTE') {
-          // 可以执行，继续下面的工具执行逻辑
-          console.log('[TerminalView] Tool approved, executing...')
-        } else if (processResult.action === 'CONTINUE') {
-          // 继续执行（如任务列表、任务完成等）
-          console.log('[TerminalView] Continue:', processResult.reason)
-          // 这些情况会在下面处理
-        }
-      }
-
-      // 2. Handle Action
+      // 2. Handle Action (Simplified for Backend Execution)
       if (decision.type === 'TOOL_CALL') {
-          // 解耦架构：工具执行策略检查（保留作为备用）
-          if (!terminalStore.canExecuteTool(decision.action)) {
-              console.warn('Tool action not in whitelist:', decision.action)
-              const result = {
-                  decision_id: decision.decision_id,
-                  exit_code: -1,
-                  stderr: `Action ${decision.action} is not allowed (not in whitelist)`,
-                  artifacts: []
-              }
-              currentAiMsg.status = 'error'
-              currentAiMsg.message = `工具执行被拒绝：${result.stderr}`
-              await processAgentLoop("tool_result_feedback", result)
-              return
-          }
-
-          terminalStore.setAgentStatus('WAITING_TOOL')
-          isExecuting.value = true
-          
-          // 注意：字段名使用下划线命名，匹配后端全局 Jackson SNAKE_CASE 配置
-          let result = {
-              decision_id: decision.decision_id || decision.decisionId,
-              exit_code: 0,
-              stdout: '',
-              stderr: '',
-              artifacts: []
-          }
-          
-          try {
-              if (decision.action === 'execute_command') {
-                  const res = await executeCommand(decision.params.command)
-                  result.exit_code = res.exitCode ?? res.exit_code ?? 0
-                  result.stdout = res.stdout || ''
-                  result.stderr = res.stderr || ''
-                  
-                  terminalLogs.value.push({ 
-                    command: decision.params.command, 
-                    output: result.stdout || result.stderr, 
-                    type: result.exit_code === 0 ? 'stdout' : 'stderr',
-                    cwd: res.cwd 
-                  })
-                  
-              } else if (decision.action === 'write_file' || decision.action === 'ensure_file') {
-                  const res = await writeFile(decision.params.path, decision.params.content, true)
-                  result.exit_code = res.exitCode ?? res.exit_code ?? 0
-                  result.stdout = res.stdout || ''
-                  result.stderr = res.stderr || ''
-                  if (result.exit_code === 0) {
-                      result.artifacts.push(decision.params.path)
-                      // 解耦架构：更新可见文件列表
-                      if (!visibleFiles.value.includes(decision.params.path)) {
-                          visibleFiles.value.push(decision.params.path)
-                      }
-                  }
-                  
-                  terminalLogs.value.push({ 
-                    command: `write_file: ${decision.params.path}`, 
-                    output: result.stdout || result.stderr, 
-                    type: result.exit_code === 0 ? 'stdout' : 'stderr',
-                    cwd: res.cwd 
-                  })
-              } else if (decision.action === 'read_file') {
-                  // 解耦架构：read_file 也更新可见文件列表
-                  if (decision.params?.path && !visibleFiles.value.includes(decision.params.path)) {
-                      visibleFiles.value.push(decision.params.path)
-                  }
-                  // read_file 通常不需要执行，只是标记可见
-                  result.exit_code = 0
-                  result.stdout = 'File marked as visible'
-              } else if (decision.action === 'search_files') {
-                  // 搜索文件内容
-                  const res = await searchFiles(decision.params)
-                  result.exit_code = res.exitCode ?? res.exit_code ?? 0
-                  result.stdout = res.stdout || ''
-                  result.stderr = res.stderr || ''
-                  
-                  terminalLogs.value.push({ 
-                    command: `search_files: ${decision.params.pattern}`, 
-                    output: result.stdout || result.stderr, 
-                    type: result.exit_code === 0 ? 'stdout' : 'stderr',
-                    cwd: res.cwd 
-                  })
-              } else if (decision.action === 'read_file_context') {
-                  // 批量读取文件上下文
-                  const res = await readFileContext(decision.params.files)
-                  result.exit_code = res.exitCode ?? res.exit_code ?? 0
-                  result.stdout = res.stdout || ''
-                  result.stderr = res.stderr || ''
-                  
-                  // 更新可见文件列表
-                  if (decision.params?.files) {
-                      decision.params.files.forEach(file => {
-                          if (file.path && !visibleFiles.value.includes(file.path)) {
-                              visibleFiles.value.push(file.path)
-                          }
-                      })
-                  }
-                  
-                  terminalLogs.value.push({ 
-                    command: `read_file_context: ${decision.params.files?.length || 0} files`, 
-                    output: result.stdout || result.stderr, 
-                    type: result.exit_code === 0 ? 'stdout' : 'stderr',
-                    cwd: res.cwd 
-                  })
-              } else if (decision.action === 'modify_file') {
-                  // 精确修改文件
-                  const res = await modifyFile(decision.params)
-                  result.exit_code = res.exitCode ?? res.exit_code ?? 0
-                  result.stdout = res.stdout || ''
-                  result.stderr = res.stderr || ''
-                  
-                  if (result.exit_code === 0 && decision.params?.path) {
-                      result.artifacts.push(decision.params.path)
-                      // 更新可见文件列表
-                      if (!visibleFiles.value.includes(decision.params.path)) {
-                          visibleFiles.value.push(decision.params.path)
-                      }
-                  }
-                  
-                  terminalLogs.value.push({ 
-                    command: `modify_file: ${decision.params.path}`, 
-                    output: result.stdout || result.stderr, 
-                    type: result.exit_code === 0 ? 'stdout' : 'stderr',
-                    cwd: res.cwd 
-                  })
-              }
-              // 将结果挂载到当前消息，供折叠卡片展示
-              currentAiMsg.toolResult = result
-              currentAiMsg.status = result.exit_code === 0 ? 'success' : 'error'
-              
-          } catch (e) {
-              result.exit_code = -1
-              result.stderr = e.message
-              currentAiMsg.status = 'error'
-          } finally {
-              isExecuting.value = false
-          }
-          
-          // 3. Feedback Loop (Send Result back)
-          // Cursor 工作流程：工具执行完成后，自动触发下一轮循环
-          // 后端会自动处理工具结果并继续执行，这里只需要发送结果
-          console.log('[TerminalView] Sending tool result back:', {
-            decision_id: result.decision_id,
-            exit_code: result.exit_code,
-            stdoutLength: result.stdout?.length || 0,
-            stderrLength: result.stderr?.length || 0,
-            artifacts: result.artifacts?.length || 0
-          })
-          
-          // Phase 3: 更新决策历史（包含执行结果）
-          if (decision.decision_id) {
-            // 将执行结果附加到决策中
-            decision.result = result
-            decision.timestamp = Date.now()
-            // 保存到决策历史（如果还没有保存）
-            if (!terminalStore.hasDecision(decision.decision_id)) {
-              terminalStore.addDecision(decision)
-            }
-            // 更新 AgentLoopManager 的决策历史
-            if (agentLoopManager.value) {
-              agentLoopManager.value.addDecision(decision)
-            }
-          }
-          
-          // 更新工具调用计数
-          toolCallCount.value++
-
-          // 持久化工具执行结果
-          await saveMessage(`TOOL_RESULT: ${decision.action}`, 3, {
-            exit_code: result.exit_code,
-            stdout: result.stdout,
-            stderr: result.stderr
-          })
-
-          await processAgentLoop("", result)  // 空 prompt，后端会自动构建继续执行的 prompt
+          // 不再前端执行，等待 SSE tool_result 事件
+          // 但需要发送回执或保持状态同步（如果需要的话）
+          // 这里什么都不做，因为后端已经自己在跑循环了
           
       } else if (decision.type === 'TASK_COMPLETE') {
           currentAiMsg.message = "当前任务已完成"
           currentAiMsg.status = 'success'
           
-          // 自动触发下一轮检查（由后端判断是继续执行还是结束）
           await saveMessage(JSON.stringify(decision), 2)
-          setTimeout(async () => {
-              await processAgentLoop("继续执行", null)
-          }, 1000)
       } else if (decision.type === 'PAUSE') {
           terminalStore.setAgentStatus('PAUSED')
       }
@@ -1918,11 +1752,11 @@ function updateAutoApprovalRules(payload) {
   }
   
   // 同步到 AgentLoopManager
-  if (agentLoopManager.value) {
-    Object.entries(autoApprovalRules.value).forEach(([toolName, enabled]) => {
-      agentLoopManager.value.updateAutoApprovalRule(toolName, enabled)
-    })
-  }
+  // if (agentLoopManager.value) {
+  //   Object.entries(autoApprovalRules.value).forEach(([toolName, enabled]) => {
+  //     agentLoopManager.value.updateAutoApprovalRule(toolName, enabled)
+  //   })
+  // }
 }
 
 /**
