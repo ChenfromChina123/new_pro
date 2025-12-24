@@ -487,7 +487,7 @@ public class TerminalController {
     public ApiResponse<MutatorResult> reportToolResult(@AuthenticationPrincipal CustomUserDetails currentUser,
                                                        @RequestBody ToolResult result) {
          // This endpoint is an alternative to sending tool_result via chat-stream
-         Long userId = currentUser.getUser().getId();
+         // Long userId = currentUser.getUser().getId();
          // We need session_id in ToolResult? 
          // ToolResult doesn't have session_id.
          // This endpoint is tricky if we don't know the session.

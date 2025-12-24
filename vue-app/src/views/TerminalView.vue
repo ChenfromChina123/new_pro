@@ -490,91 +490,25 @@
     </div>
     
     <!-- Phase 2: 检查点对话框 -->
-    <div v-if="showCheckpointDialog" class="dialog-overlay" @click="showCheckpointDialog = false">
-      <div class="dialog-content" @click.stop>
-        <div class="dialog-header">
-          <h3>检查点（时间旅行）</h3>
-          <button class="close-btn" @click="showCheckpointDialog = false">×</button>
-        </div>
-        <div class="dialog-body">
-          <div v-if="checkpoints.length === 0" class="empty-state">
-            <p>暂无检查点</p>
-            <p class="hint">检查点将在用户消息和工具编辑后自动创建</p>
-          </div>
-          <div v-else class="checkpoint-list">
-            <div 
-              v-for="checkpoint in checkpoints" 
-              :key="checkpoint.checkpointId"
-              class="checkpoint-item"
-            >
-              <div class="checkpoint-info">
-                <div class="checkpoint-header">
-                  <span class="checkpoint-type">{{ checkpoint.checkpointType }}</span>
-                  <span class="checkpoint-time">{{ new Date(checkpoint.createdAt).toLocaleString() }}</span>
-                </div>
-                <div class="checkpoint-description">{{ checkpoint.description || '无描述' }}</div>
-                <div class="checkpoint-files" v-if="checkpoint.fileSnapshots">
-                  文件数: {{ Object.keys(checkpoint.fileSnapshots).length }}
-                </div>
-              </div>
-              <div class="checkpoint-actions">
-                <button class="btn-primary" @click="jumpToCheckpoint(checkpoint.checkpointId)">
-                  跳转
-                </button>
-                <button class="btn-secondary" @click="checkpointService.deleteCheckpoint(checkpoint.checkpointId).then(() => loadCheckpoints())">
-                  删除
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <CheckpointDialog
+      :visible="showCheckpointDialog"
+      :checkpoints="checkpoints"
+      @close="showCheckpointDialog = false"
+      @create="handleCreateCheckpoint"
+      @jump="jumpToCheckpoint"
+      @delete="handleDeleteCheckpoint"
+    />
     
     <!-- Phase 2: 批准对话框 -->
-    <div v-if="showApprovalDialog" class="dialog-overlay" @click="showApprovalDialog = false">
-      <div class="dialog-content" @click.stop>
-        <div class="dialog-header">
-          <h3>待批准工具调用</h3>
-          <button class="close-btn" @click="showApprovalDialog = false">×</button>
-        </div>
-        <div class="dialog-body">
-          <div v-if="pendingApprovals.length === 0" class="empty-state">
-            <p>暂无待批准项</p>
-          </div>
-          <div v-else class="approval-list">
-            <div 
-              v-for="approval in pendingApprovals" 
-              :key="approval.decisionId"
-              class="approval-item"
-            >
-              <div class="approval-info">
-                <div class="approval-header">
-                  <span class="tool-name">{{ approval.toolName }}</span>
-                  <span class="approval-time">{{ new Date(approval.createdAt).toLocaleString() }}</span>
-                </div>
-                <div class="approval-params">
-                  <pre>{{ JSON.stringify(approval.toolParams, null, 2) }}</pre>
-                </div>
-              </div>
-              <div class="approval-actions">
-                <button class="btn-success" @click="approveTool(approval.decisionId)">
-                  批准
-                </button>
-                <button class="btn-danger" @click="rejectTool(approval.decisionId, '用户拒绝')">
-                  拒绝
-                </button>
-              </div>
-            </div>
-            <div class="approval-bulk-actions">
-              <button class="btn-primary" @click="approveAll">
-                批量批准全部
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <ToolApprovalDialog
+      :visible="showApprovalDialog"
+      :pending-approvals="pendingApprovals"
+      @close="showApprovalDialog = false"
+      @approve="approveTool"
+      @reject="rejectTool"
+      @approve-all="approveAll"
+      @reject-all="rejectAll"
+    />
   </div>
 </template>
 
@@ -590,6 +524,8 @@ import TerminalNotebook from '@/components/TerminalNotebook.vue'
 import TerminalFileEditor from '@/components/TerminalFileEditor.vue'
 import TerminalChatInput from '@/components/terminal/TerminalChatInput.vue'
 import TaskSidebar from '@/components/terminal/TaskSidebar.vue'
+import CheckpointDialog from '@/components/terminal/CheckpointDialog.vue'
+import ToolApprovalDialog from '@/components/terminal/ToolApprovalDialog.vue'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 import { marked } from 'marked'
@@ -931,40 +867,115 @@ const jumpToCheckpoint = async (checkpointId) => {
     const result = await checkpointService.jumpToCheckpoint(checkpointId)
     if (result?.data) {
       console.log('已跳转到检查点，恢复文件:', result.data)
-      // 可以显示提示消息
-      alert(`已恢复 ${result.data.length} 个文件`)
+      uiStore.showToast(`已恢复 ${result.data.length} 个文件`)
       // 刷新文件浏览器
       if (fileExplorer.value) {
         fileExplorer.value.refresh()
       }
+      showCheckpointDialog.value = false
     }
   } catch (error) {
     console.error('跳转到检查点失败:', error)
-    alert('跳转失败: ' + error.message)
+    uiStore.showToast('跳转失败: ' + error.message)
+  }
+}
+
+// Phase 2: 创建检查点
+const handleCreateCheckpoint = async (description) => {
+  if (!currentSessionId.value) return
+  try {
+    const messageOrder = messages.value ? messages.value.length : 0
+    await checkpointService.createCheckpoint({
+      sessionId: currentSessionId.value,
+      messageOrder: messageOrder,
+      description: description
+    })
+    await loadCheckpoints()
+    uiStore.showToast('检查点创建成功')
+  } catch (error) {
+    console.error('创建检查点失败:', error)
+    uiStore.showToast('创建失败: ' + error.message)
+  }
+}
+
+// Phase 2: 删除检查点
+const handleDeleteCheckpoint = async (checkpointId) => {
+  try {
+    await checkpointService.deleteCheckpoint(checkpointId)
+    await loadCheckpoints()
+    uiStore.showToast('检查点已删除')
+  } catch (error) {
+    console.error('删除检查点失败:', error)
+    uiStore.showToast('删除失败: ' + error.message)
+  }
+}
+
+// Phase 2: 导出检查点
+const handleExportCheckpoint = async (checkpointId) => {
+  try {
+    const data = await checkpointService.exportCheckpoint(checkpointId)
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `checkpoint-${checkpointId}.json`
+    document.body.appendChild(a)
+    a.click()
+    window.URL.revokeObjectURL(url)
+    document.body.removeChild(a)
+    uiStore.showToast('导出成功')
+  } catch (error) {
+    console.error('导出检查点失败:', error)
+    uiStore.showToast('导出失败: ' + error.message)
   }
 }
 
 // Phase 2: 批准工具调用
-const approveTool = async (decisionId, reason) => {
+const approveTool = async (payload) => {
+  // Support both (id, reason) and ({id, reason})
+  let decisionId, reason
+  if (typeof payload === 'object' && payload.id) {
+    decisionId = payload.id
+    reason = payload.reason
+  } else {
+    decisionId = payload
+    reason = arguments[1]
+  }
+
   try {
     await approvalService.approveToolCall(decisionId, reason)
     await loadPendingApprovals()
-    showApprovalDialog.value = false
+    // Check if there are more pending approvals
+    if (pendingApprovals.value.length === 0) {
+      showApprovalDialog.value = false
+    }
   } catch (error) {
     console.error('批准工具调用失败:', error)
-    alert('批准失败: ' + error.message)
+    uiStore.showToast('批准失败: ' + error.message)
   }
 }
 
 // Phase 2: 拒绝工具调用
-const rejectTool = async (decisionId, reason) => {
+const rejectTool = async (payload) => {
+  // Support both (id, reason) and ({id, reason})
+  let decisionId, reason
+  if (typeof payload === 'object' && payload.id) {
+    decisionId = payload.id
+    reason = payload.reason
+  } else {
+    decisionId = payload
+    reason = arguments[1]
+  }
+
   try {
     await approvalService.rejectToolCall(decisionId, reason)
     await loadPendingApprovals()
-    showApprovalDialog.value = false
+    if (pendingApprovals.value.length === 0) {
+      showApprovalDialog.value = false
+    }
   } catch (error) {
     console.error('拒绝工具调用失败:', error)
-    alert('拒绝失败: ' + error.message)
+    uiStore.showToast('拒绝失败: ' + error.message)
   }
 }
 
@@ -975,9 +986,35 @@ const approveAll = async () => {
     await approvalService.approveAllPending(currentSessionId.value)
     await loadPendingApprovals()
     showApprovalDialog.value = false
+    uiStore.showToast('已全部批准')
   } catch (error) {
     console.error('批量批准失败:', error)
-    alert('批量批准失败: ' + error.message)
+    uiStore.showToast('批量批准失败: ' + error.message)
+  }
+}
+
+// Phase 2: 批量拒绝
+const rejectAll = async () => {
+  if (!currentSessionId.value) return
+  try {
+    // Assuming backend supports this or we loop through
+    // Since backend API might not have rejectAll, we can loop if needed
+    // But let's check if approvalService has rejectAllPending. 
+    // If not, we iterate.
+    if (approvalService.rejectAllPending) {
+        await approvalService.rejectAllPending(currentSessionId.value)
+    } else {
+        // Fallback: reject one by one
+        for (const approval of pendingApprovals.value) {
+            await approvalService.rejectToolCall(approval.decisionId, '批量拒绝')
+        }
+    }
+    await loadPendingApprovals()
+    showApprovalDialog.value = false
+    uiStore.showToast('已全部拒绝')
+  } catch (error) {
+    console.error('批量拒绝失败:', error)
+    uiStore.showToast('批量拒绝失败: ' + error.message)
   }
 }
 

@@ -57,7 +57,6 @@ public class AiChatServiceImpl implements AiChatService {
     // Phase 2 新增服务
     private final com.aispring.service.SessionStateService sessionStateService;
     private final com.aispring.service.CheckpointService checkpointService;
-    private final com.aispring.service.ToolApprovalService toolApprovalService;
     
     @Value("${ai.max-tokens:4096}")
     private Integer maxTokens;
@@ -100,7 +99,6 @@ public class AiChatServiceImpl implements AiChatService {
         this.chatRecordService = chatRecordService; // 初始化
         this.sessionStateService = sessionStateService;
         this.checkpointService = checkpointService;
-        this.toolApprovalService = toolApprovalService;
         this.doubaoApiKey = doubaoApiKey;
         this.doubaoApiUrl = doubaoApiUrl;
         this.deepseekApiKey = deepseekApiKey;
@@ -349,62 +347,7 @@ public class AiChatServiceImpl implements AiChatService {
         return emitter;
     }
     
-    /**
-     * Phase 3: 创建用户消息检查点
-     * 在用户发送消息后自动创建检查点
-     */
-    private void createUserMessageCheckpoint(String sessionId, Long userId, Integer messageOrder) {
-        try {
-            // 当前实现为简化版本，不包含文件快照
-            // 实际应用中，应该收集当前工作目录的文件状态
-            String checkpointId = checkpointService.createCheckpoint(
-                    sessionId,
-                    userId,
-                    messageOrder,
-                    com.aispring.entity.checkpoint.CheckpointType.USER_MESSAGE,
-                    new java.util.HashMap<>(), // 文件快照（待实现）
-                    "用户消息后自动检查点"
-            );
-            log.info("创建用户消息检查点: checkpointId={}, sessionId={}, messageOrder={}", 
-                    checkpointId, sessionId, messageOrder);
-        } catch (Exception e) {
-            log.error("创建用户消息检查点失败: sessionId={}, messageOrder={}", sessionId, messageOrder, e);
-        }
-    }
-    
-    /**
-     * Phase 3: 创建工具编辑检查点
-     * 在工具修改文件后自动创建检查点
-     */
-    private void createToolEditCheckpoint(String sessionId, Long userId, Integer messageOrder, 
-                                         String filePath, String fileContent) {
-        try {
-            // 创建文件快照
-            java.util.Map<String, com.aispring.entity.checkpoint.ChatCheckpoint.FileSnapshot> fileSnapshots = 
-                    new java.util.HashMap<>();
-            
-            com.aispring.entity.checkpoint.ChatCheckpoint.FileSnapshot snapshot = 
-                    com.aispring.entity.checkpoint.ChatCheckpoint.FileSnapshot.builder()
-                            .fileContent(fileContent)
-                            .diffAreas(new java.util.ArrayList<>()) // Diff 区域（待实现）
-                            .build();
-            
-            fileSnapshots.put(filePath, snapshot);
-            
-            String checkpointId = checkpointService.createCheckpoint(
-                    sessionId,
-                    userId,
-                    messageOrder,
-                    com.aispring.entity.checkpoint.CheckpointType.TOOL_EDIT,
-                    fileSnapshots,
-                    "工具编辑文件: " + filePath
-            );
-            log.info("创建工具编辑检查点: checkpointId={}, sessionId={}, file={}", 
-                    checkpointId, sessionId, filePath);
-        } catch (Exception e) {
-            log.error("创建工具编辑检查点失败: sessionId={}, file={}", sessionId, filePath, e);
-        }
-    }
+
     
     private String updateSystemPromptWithTasks(String systemPrompt, List<Map<String, Object>> tasks) {
         if (tasks == null || tasks.isEmpty()) return systemPrompt;
