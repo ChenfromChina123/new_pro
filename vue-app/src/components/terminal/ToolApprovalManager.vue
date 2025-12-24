@@ -571,26 +571,7 @@ function clearHistory() {
   flex: 1;
   overflow-y: auto;
   min-height: 0;
-  padding: 20px;
-  scrollbar-width: thin;
-  scrollbar-color: #3b82f6 #f1f5f9;
-}
-
-.manager-content::-webkit-scrollbar {
-  width: 6px;
-}
-
-.manager-content::-webkit-scrollbar-track {
-  background: #f1f5f9;
-}
-
-.manager-content::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
-}
-
-.manager-content::-webkit-scrollbar-thumb:hover {
-  background: #3b82f6;
+  padding: 16px;
 }
 
 .pending-section, .history-section {

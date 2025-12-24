@@ -21,6 +21,7 @@ export const useTerminalStore = defineStore('terminal', () => {
   // Agent V2 State
   const agentStatus = ref('IDLE') // IDLE, RUNNING, PAUSED, ERROR, AWAITING_APPROVAL
   const decisionHistory = ref(new Set()) // decision_id set for de-duplication
+  const decisionHistoryList = ref([]) // 完整的决策对象数组（用于可视化）
   const checkpoints = ref([])
   const pendingApprovals = ref([])
 
@@ -288,8 +289,25 @@ export const useTerminalStore = defineStore('terminal', () => {
       agentStatus.value = status
   }
   
-  const addDecision = (id) => {
-      decisionHistory.value.add(id)
+  const addDecision = (decisionOrId) => {
+      // 支持传入 ID 或完整决策对象
+      if (typeof decisionOrId === 'string' || typeof decisionOrId === 'number') {
+          // 只传入 ID
+          decisionHistory.value.add(decisionOrId)
+      } else if (decisionOrId && decisionOrId.decision_id) {
+          // 传入完整决策对象
+          const id = decisionOrId.decision_id
+          if (!decisionHistory.value.has(id)) {
+              decisionHistory.value.add(id)
+              decisionHistoryList.value.push(decisionOrId)
+          } else {
+              // 如果已存在，更新它
+              const index = decisionHistoryList.value.findIndex(d => d.decision_id === id)
+              if (index >= 0) {
+                  decisionHistoryList.value[index] = decisionOrId
+              }
+          }
+      }
   }
   
   const hasDecision = (id) => {
@@ -486,7 +504,8 @@ export const useTerminalStore = defineStore('terminal', () => {
     currentCwd,
     isLoading,
     agentStatus, 
-    decisionHistory, 
+    decisionHistory,
+    decisionHistoryList,
     groupedSessions,
     fetchSessions,
     createNewSession,

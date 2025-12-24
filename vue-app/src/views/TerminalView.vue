@@ -335,7 +335,7 @@
           <!-- File Explorer -->
           <div
             v-if="activeTab === 'files'"
-            class="panel-content file-panel-container"
+            class="panel-content-wrapper file-panel-container"
           >
             <template v-if="!editingFile">
               <TerminalFileExplorer
@@ -364,7 +364,7 @@
           <!-- Checkpoint Timeline Panel -->
           <div
             v-if="activeTab === 'checkpoints'"
-            class="panel-content"
+            class="panel-content-wrapper"
           >
             <CheckpointTimeline
               :checkpoints="checkpoints"
@@ -380,7 +380,7 @@
           <!-- Tool Approval Manager Panel -->
           <div
             v-if="activeTab === 'approvals'"
-            class="panel-content"
+            class="panel-content-wrapper"
           >
             <ToolApprovalManager
               :pending-approvals="pendingApprovals"
@@ -398,13 +398,13 @@
           <!-- Session State Panel -->
           <div
             v-if="activeTab === 'session'"
-            class="panel-content"
+            class="panel-content-wrapper"
           >
             <SessionStatePanel
               :session-state="sessionState"
               :agent-status="agentStatus"
               :tasks="currentTasks"
-              :decision-history="decisionHistory"
+              :decision-history="decisionHistoryList"
               :is-streaming="isTyping"
               :message-count="messages.length"
               :tool-call-count="toolCallCount"
@@ -422,10 +422,10 @@
           <!-- Agent Decision Flow Panel -->
           <div
             v-if="activeTab === 'decisions'"
-            class="panel-content"
+            class="panel-content-wrapper"
           >
             <AgentDecisionFlow
-              :decisions="decisionHistory"
+              :decisions="decisionHistoryList"
               @clear="clearDecisionHistory"
             />
           </div>
@@ -433,7 +433,7 @@
           <!-- Identity Info Panel -->
           <div
             v-if="activeTab === 'identity'"
-            class="panel-content identity-panel"
+            class="panel-content-wrapper identity-panel"
           >
             <div class="identity-panel-header">
               <h4>Agent 身份信息</h4>
@@ -508,7 +508,7 @@
           <!-- State Slices Panel -->
           <div
             v-if="activeTab === 'state'"
-            class="panel-content state-panel"
+            class="panel-content-wrapper state-panel"
           >
             <div class="state-panel-header">
               <h4>状态切片 ({{ stateSlices.length }})</h4>
@@ -642,6 +642,7 @@ const {
   groupedMessages,
   agentStatus,
   decisionHistory,
+  decisionHistoryList,
   identityInfo,
   stateSlices,
   visibleFiles,
@@ -1310,6 +1311,14 @@ const sendMessage = async (overrideText) => {
   scrollToBottom()
   await saveMessage(text, 1)
 
+  // Phase 3: 使用 AgentLoopManager 启动循环
+  if (agentLoopManager.value) {
+    await agentLoopManager.value.startLoop(text, currentModel.value)
+    // 创建检查点（用户消息后）
+    await agentLoopManager.value.createCheckpoint('AUTO', `用户消息: ${text.substring(0, 50)}`)
+    await loadCheckpoints()
+  }
+
   // Start Loop with initial prompt
   await processAgentLoop(text, null)
 }
@@ -1500,6 +1509,14 @@ const processAgentLoop = async (prompt, toolResult) => {
         terminalStore.currentTasks = decision.tasks || []
         currentAiMsg.message = '任务计划已生成，即将开始执行...'
         currentAiMsg.status = 'success'
+        
+        // Phase 3: 使用 AgentLoopManager 处理任务列表
+        if (agentLoopManager.value) {
+          // 将任务列表类型转换为 TASK_LIST
+          decision.type = 'TASK_LIST'
+          await agentLoopManager.value.processDecision(decision)
+        }
+        
         await saveMessage(JSON.stringify(decision), 2)
         
         // 自动触发第一步执行
@@ -1515,7 +1532,9 @@ const processAgentLoop = async (prompt, toolResult) => {
           return
       }
       if (decision.decision_id) {
-          terminalStore.addDecision(decision.decision_id)
+          // Phase 3: 添加时间戳并保存完整决策对象
+          decision.timestamp = decision.timestamp || Date.now()
+          terminalStore.addDecision(decision)
       }
 
       // Update UI with Decision info
@@ -1546,9 +1565,39 @@ const processAgentLoop = async (prompt, toolResult) => {
           })
       }
 
+      // Phase 3: 使用 AgentLoopManager 处理决策
+      if (agentLoopManager.value) {
+        const processResult = await agentLoopManager.value.processDecision(decision)
+        console.log('[TerminalView] AgentLoopManager process result:', processResult)
+        
+        // 根据处理结果决定下一步
+        if (processResult.action === 'WAIT_APPROVAL') {
+          // 需要等待批准
+          currentAiMsg.status = 'pending'
+          currentAiMsg.message = '等待用户批准工具调用...'
+          await loadPendingApprovals()
+          // 如果有待批准项，自动显示批准对话框
+          if (pendingApprovals.value.length > 0) {
+            showApprovalDialog.value = true
+          }
+          return
+        } else if (processResult.action === 'IGNORE') {
+          // 重复决策，忽略
+          console.log('[TerminalView] Decision ignored:', processResult.reason)
+          return
+        } else if (processResult.action === 'EXECUTE') {
+          // 可以执行，继续下面的工具执行逻辑
+          console.log('[TerminalView] Tool approved, executing...')
+        } else if (processResult.action === 'CONTINUE') {
+          // 继续执行（如任务列表、任务完成等）
+          console.log('[TerminalView] Continue:', processResult.reason)
+          // 这些情况会在下面处理
+        }
+      }
+
       // 2. Handle Action
       if (decision.type === 'TOOL_CALL') {
-          // 解耦架构：工具执行策略检查
+          // 解耦架构：工具执行策略检查（保留作为备用）
           if (!terminalStore.canExecuteTool(decision.action)) {
               console.warn('Tool action not in whitelist:', decision.action)
               const result = {
@@ -1696,6 +1745,24 @@ const processAgentLoop = async (prompt, toolResult) => {
             artifacts: result.artifacts?.length || 0
           })
           
+          // Phase 3: 更新决策历史（包含执行结果）
+          if (decision.decision_id) {
+            // 将执行结果附加到决策中
+            decision.result = result
+            decision.timestamp = Date.now()
+            // 保存到决策历史（如果还没有保存）
+            if (!terminalStore.hasDecision(decision.decision_id)) {
+              terminalStore.addDecision(decision)
+            }
+            // 更新 AgentLoopManager 的决策历史
+            if (agentLoopManager.value) {
+              agentLoopManager.value.addDecision(decision)
+            }
+          }
+          
+          // 更新工具调用计数
+          toolCallCount.value++
+
           // 持久化工具执行结果
           await saveMessage(`TOOL_RESULT: ${decision.action}`, 3, {
             exit_code: result.exit_code,
@@ -1870,7 +1937,8 @@ function clearApprovalHistory() {
  */
 function clearDecisionHistory() {
   if (confirm('确定要清空决策历史吗？')) {
-    terminalStore.decisionHistory = []
+    terminalStore.decisionHistory.clear()
+    terminalStore.decisionHistoryList = []
   }
 }
 
@@ -2447,6 +2515,25 @@ function exportSessionState(data) {
   opacity: 0;
   pointer-events: none;
 }
+/* 极简滚动条全局样式 - 仅对右侧面板生效 */
+.right-panel ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.right-panel ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.right-panel ::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.2);
+  border-radius: 10px;
+}
+
+.right-panel ::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.4);
+}
+
 .panel-tabs { 
   display: flex; 
   background: #f8fafc; 
@@ -2456,24 +2543,44 @@ function exportSessionState(data) {
   overflow-y: hidden;
   white-space: nowrap;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  scrollbar-color: #3b82f6 #f1f5f9;
-  padding: 0 4px;
+  scrollbar-width: none;
+  padding: 0;
 }
+
 .panel-tabs::-webkit-scrollbar {
-  height: 8px; /* 增加高度使其更容易看到 */
+  display: none;
 }
-.panel-tabs::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  border-radius: 4px;
+
+.tab { 
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px; 
+  font-size: 0.85rem; 
+  color: #64748b; 
+  border-right: 1px solid #f1f5f9; 
+  cursor: pointer; 
+  flex-shrink: 0;
+  transition: all 0.2s;
+  user-select: none;
+  min-width: 80px;
+  position: relative;
 }
-.panel-tabs::-webkit-scrollbar-thumb {
-  background: #3b82f6; /* 使用更明显的颜色 */
-  border-radius: 4px;
-  border: 2px solid #f1f5f9;
+
+.tab.active { 
+  background: #fff; 
+  color: #3b82f6; 
+  font-weight: 600;
 }
-.panel-tabs::-webkit-scrollbar-thumb:hover {
-  background: #2563eb;
+
+.tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #3b82f6;
 }
 .tab { 
   display: inline-flex;
@@ -2578,46 +2685,23 @@ function exportSessionState(data) {
   border-left: 3px solid #10b981;
 }
 
-.panel-content {
+.panel-content-wrapper {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   position: relative;
   background: #fff;
-  min-height: 0; /* 确保 flex 子元素可以正确收缩 */
+  min-height: 0;
 }
 
-.panel-content.identity-panel,
-.panel-content.state-panel {
+.panel-content-wrapper.identity-panel,
+.panel-content-wrapper.state-panel {
   overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: #3b82f6 #f1f5f9;
-}
-
-.panel-content.identity-panel::-webkit-scrollbar,
-.panel-content.state-panel::-webkit-scrollbar {
-  width: 6px;
-}
-
-.panel-content.identity-panel::-webkit-scrollbar-track,
-.panel-content.state-panel::-webkit-scrollbar-track {
-  background: #f1f5f9;
-}
-
-.panel-content.identity-panel::-webkit-scrollbar-thumb,
-.panel-content.state-panel::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
-}
-
-.panel-content.identity-panel::-webkit-scrollbar-thumb:hover,
-.panel-content.state-panel::-webkit-scrollbar-thumb:hover {
-  background: #3b82f6;
 }
 
 /* File Editor Styles are now handled in TerminalFileEditor.vue component */
-.panel-content.file-panel-container {
+.panel-content-wrapper.file-panel-container {
   padding: 0;
   overflow: hidden;
 }
