@@ -462,20 +462,53 @@ public class AiChatServiceImpl implements AiChatService {
                                         .name("tool_result")
                                         .data(objectMapper.writeValueAsString(result)));
                                 
-                                // 5. 构建下一次 Prompt（无论成功或失败都继续）
+                                // 5. 将工具结果保存到消息历史（参考 void-main 的机制）
+                                // 工具结果会被添加到消息历史，LLM 在下一次调用时会自动看到
+                                String toolResultMessage;
                                 if (result.isSuccess()) {
-                                    currentPrompt = String.format("工具 '%s' 执行成功:\n%s\n\n请根据结果继续执行。", 
+                                    toolResultMessage = String.format("工具 '%s' 执行成功:\n%s", 
                                             toolName, result.getStringResult());
                                 } else {
-                                    currentPrompt = String.format("工具 '%s' 执行失败:\n%s\n\n请分析错误原因并修正。", 
+                                    toolResultMessage = String.format("工具 '%s' 执行失败:\n%s", 
                                             toolName, result.getError() != null ? result.getError() : result.getStringResult());
+                                }
+                                
+                                // 保存工具结果到消息历史（senderType=3 表示系统反馈/工具结果）
+                                try {
+                                    chatRecordService.createChatRecord(
+                                        toolResultMessage,
+                                        3, // System feedback
+                                        userId,
+                                        sessionId,
+                                        model,
+                                        "completed",
+                                        "terminal",
+                                        null, // reasoning_content
+                                        result.isSuccess() ? 0 : -1, // exit_code
+                                        result.getStringResult(), // stdout
+                                        result.getError() // stderr
+                                    );
+                                    log.info("工具结果已保存到消息历史: tool={}, success={}", toolName, result.isSuccess());
+                                } catch (Exception e) {
+                                    log.error("保存工具结果到消息历史失败: {}", e.getMessage(), e);
+                                }
+                                
+                                // 6. 构建下一次 Prompt（参考 void-main：工具结果已在历史中）
+                                // void-main 中，工具结果作为消息添加到历史，LLM 自动看到
+                                // 但为了确保 LLM 理解这是工具结果反馈，我们提供一个清晰的提示
+                                if (result.isSuccess()) {
+                                    // 成功：提示继续执行
+                                    currentPrompt = "工具执行成功。请根据结果继续执行下一步操作。如果当前任务已完成，请输出 TASK_COMPLETE。";
+                                } else {
+                                    // 失败：提示分析错误并修正
+                                    currentPrompt = "工具执行失败。请分析错误原因，修正参数或方法后重试。";
                                 }
                                 
                                 // 设置状态为 idle（工具执行完成）
                                 sessionState.setStreamState(com.aispring.entity.session.StreamState.idle());
                                 sessionStateService.saveState(sessionState);
                                 
-                                // 继续循环
+                                // 继续循环（参考 void-main：工具执行后自动继续）
                                 shouldSendAnotherMessage = true;
                                 
                             } else if ("TASK_LIST".equals(type) || "task_list".equals(type)) {
@@ -533,18 +566,102 @@ public class AiChatServiceImpl implements AiChatService {
         return emitter;
     }
 
+    /**
+     * 提取 JSON（参考 void-main 的解析机制，支持多种格式）
+     * 改进：更准确地提取工具调用 JSON，支持各种可能的格式
+     */
     private String extractJson(String content) {
-        if (content == null) return null;
-        int jsonStart = content.indexOf("```json");
-        if (jsonStart != -1) {
-             int end = content.indexOf("```", jsonStart + 7);
-             if (end != -1) return content.substring(jsonStart + 7, end).trim();
+        if (content == null || content.isEmpty()) return null;
+        
+        // 方式1: 查找 ```json 代码块（最优先，最可靠）
+        int codeBlockStart = content.indexOf("```json");
+        if (codeBlockStart != -1) {
+            int jsonStart = codeBlockStart + 7; // Length of "```json"
+            int codeBlockEnd = content.indexOf("```", jsonStart);
+            if (codeBlockEnd > jsonStart) {
+                String json = content.substring(jsonStart, codeBlockEnd).trim();
+                if (!json.isEmpty()) {
+                    return json;
+                }
+            }
         }
-        jsonStart = content.indexOf("{");
-        int jsonEnd = content.lastIndexOf("}");
-        if (jsonStart >= 0 && jsonEnd > jsonStart) {
-            return content.substring(jsonStart, jsonEnd + 1);
+        
+        // 方式2: 查找 ``` 代码块（可能是其他语言标记，但内容是 JSON）
+        codeBlockStart = content.indexOf("```");
+        if (codeBlockStart != -1) {
+            int jsonStart = content.indexOf("\n", codeBlockStart);
+            if (jsonStart < 0) jsonStart = codeBlockStart + 3;
+            int codeBlockEnd = content.indexOf("```", jsonStart);
+            if (codeBlockEnd > jsonStart) {
+                String json = content.substring(jsonStart, codeBlockEnd).trim();
+                // 检查是否是 JSON（以 { 或 [ 开头）
+                if ((json.startsWith("{") || json.startsWith("[")) && 
+                    (json.endsWith("}") || json.endsWith("]"))) {
+                    return json;
+                }
+            }
         }
+        
+        // 方式3: 查找第一个完整的 JSON 对象（从第一个 { 到匹配的 }）
+        // 使用栈来匹配括号，确保提取完整的 JSON
+        int startObj = content.indexOf("{");
+        if (startObj >= 0) {
+            int braceCount = 0;
+            int endObj = startObj;
+            for (int i = startObj; i < content.length(); i++) {
+                char c = content.charAt(i);
+                if (c == '{') braceCount++;
+                else if (c == '}') {
+                    braceCount--;
+                    if (braceCount == 0) {
+                        endObj = i;
+                        break;
+                    }
+                }
+            }
+            if (braceCount == 0 && endObj > startObj) {
+                String json = content.substring(startObj, endObj + 1).trim();
+                // 验证是否是有效的 JSON 格式
+                if (json.startsWith("{") && json.endsWith("}")) {
+                    return json;
+                }
+            }
+        }
+        
+        // 方式4: 查找第一个完整的 JSON 数组（从第一个 [ 到匹配的 ]）
+        int startArr = content.indexOf("[");
+        if (startArr >= 0) {
+            int bracketCount = 0;
+            int endArr = startArr;
+            for (int i = startArr; i < content.length(); i++) {
+                char c = content.charAt(i);
+                if (c == '[') bracketCount++;
+                else if (c == ']') {
+                    bracketCount--;
+                    if (bracketCount == 0) {
+                        endArr = i;
+                        break;
+                    }
+                }
+            }
+            if (bracketCount == 0 && endArr > startArr) {
+                String json = content.substring(startArr, endArr + 1).trim();
+                if (json.startsWith("[") && json.endsWith("]")) {
+                    return json;
+                }
+            }
+        }
+        
+        // 方式5: 如果整个内容看起来像 JSON
+        String trimmed = content.trim();
+        if ((trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+            (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
+            return trimmed;
+        }
+        
+        log.debug("Failed to extract JSON from content (length: {}): {}", 
+                content.length(), 
+                content.length() > 200 ? content.substring(0, 200) + "..." : content);
         return null;
     }
     
@@ -924,10 +1041,21 @@ public class AiChatServiceImpl implements AiChatService {
                     messages.add(new UserMessage(record.getContent()));
                 } else if (record.getSenderType() == 2) { // AI
                     messages.add(new AssistantMessage(record.getContent()));
-                } else if (record.getSenderType() == 3) { // Command Result / System Feedback
-                    // Feed command results back as User messages or System messages
-                    // In agent loops, command results are usually treated as environment feedback (User-like)
-                    messages.add(new UserMessage("Command execution result: " + record.getContent()));
+                } else if (record.getSenderType() == 3) { // Tool Result / System Feedback
+                    // 参考 void-main：工具结果作为用户消息反馈给 LLM（环境反馈）
+                    // 格式：清晰标识这是工具执行结果，让 LLM 知道这是环境反馈
+                    String toolResultContent = record.getContent();
+                    if (record.getExitCode() != null && record.getExitCode() == 0) {
+                        // 成功：直接显示结果，LLM 会自动理解这是工具执行结果
+                        messages.add(new UserMessage(toolResultContent));
+                    } else {
+                        // 失败：明确标识错误
+                        String errorMsg = toolResultContent;
+                        if (record.getStderr() != null && !record.getStderr().isEmpty()) {
+                            errorMsg = toolResultContent + "\n错误信息: " + record.getStderr();
+                        }
+                        messages.add(new UserMessage(errorMsg));
+                    }
                 }
             }
         }
