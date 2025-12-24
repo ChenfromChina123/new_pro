@@ -1999,6 +1999,15 @@ function exportSessionState(data) {
   margin-bottom: 0;
 }
 
+.ai-text :deep(ol), .ai-text :deep(ul) {
+  margin-bottom: 12px;
+  padding-left: 24px;
+}
+
+.ai-text :deep(li) {
+  margin-bottom: 4px;
+}
+
 .ai-text :deep(code) {
   background: #f1f5f9;
   padding: 2px 4px;
