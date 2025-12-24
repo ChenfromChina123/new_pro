@@ -199,10 +199,15 @@ public class TerminalController {
         if (request.getChat_mode() != null && !request.getChat_mode().isEmpty()) {
             try {
                 mode = com.aispring.entity.ai.ChatMode.fromCode(request.getChat_mode());
+                log.info("Parsed chat_mode: {} -> {}", request.getChat_mode(), mode);
             } catch (Exception e) {
-                log.warn("Invalid chat_mode: {}, defaulting to AGENT", request.getChat_mode());
+                log.warn("Invalid chat_mode: {}, defaulting to AGENT", request.getChat_mode(), e);
             }
+        } else {
+            log.warn("chat_mode is null or empty, using default AGENT");
         }
+        
+        log.info("Final mode: {}, feature: {}", mode, feature);
         
         // 如果指定了功能特性或聊天模式，使用新的提示词系统
         if (request.getFeature() != null || request.getChat_mode() != null) {
@@ -238,6 +243,9 @@ public class TerminalController {
                 persistentTerminalIds,
                 true // includeToolDefinitions
             );
+            
+            log.info("Built system prompt for mode: {}, length: {}", mode, systemPrompt.length());
+            log.debug("System prompt preview: {}", systemPrompt.substring(0, Math.min(500, systemPrompt.length())));
             
             // 更新 Agent 状态
             if (mode == com.aispring.entity.ai.ChatMode.AGENT) {
