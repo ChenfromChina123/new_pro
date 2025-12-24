@@ -301,105 +301,69 @@ public class TerminalController {
     /**
      * 处理 Agent 响应 - 提取决策信封或任务计划
      */
+    /**
+     * 处理 Agent 响应（Hook）
+     * 
+     * 注意：新的 Agent 循环（askAgentStreamInternal）已经通过 XML 解析处理工具调用
+     * 此方法仅用于处理任务列表（task_list）的解析，不处理工具调用
+     */
     private void handleAgentResponse(String fullResponse, String sessionId, @SuppressWarnings("unused") Long userId) {
         try {
-            log.info("=== Handling Agent Response ===");
-            log.info("Response length: {}", fullResponse != null ? fullResponse.length() : 0);
+            log.debug("=== Handling Agent Response (Hook) ===");
+            log.debug("Response length: {}", fullResponse != null ? fullResponse.length() : 0);
             
-            // Parse Decision Envelope or Plan
+            // 只解析任务列表（Plan），工具调用已由新的 Agent 循环通过 XML 解析处理
             String json = extractJson(fullResponse);
-            if (json != null) {
-                json = json.trim();
-                log.info("Extracted JSON: {}", json.substring(0, Math.min(200, json.length())));
-                
-                if (json.startsWith("[")) {
-                    // It is a Plan!
-                    log.info("Detected task plan");
-                    try {
-                        TaskState taskState = taskCompiler.compile(json, "pipeline-" + System.currentTimeMillis());
-                        AgentState currentState = agentStateService.getAgentState(sessionId, userId);
-                        currentState.setTaskState(taskState);
-                        if (taskState.getTasks() != null && !taskState.getTasks().isEmpty()) {
-                            currentState.getTaskState().setCurrentTaskId(taskState.getTasks().get(0).getId());
-                            taskState.getTasks().get(0).setStatus(com.aispring.entity.agent.TaskStatus.IN_PROGRESS);
-                        }
-                        currentState.setStatus(AgentStatus.RUNNING);
-                        agentStateService.saveAgentState(currentState);
-                        
-                        log.info("Plan compiled successfully. Tasks: {}, Current: {}", 
-                            taskState.getTasks() != null ? taskState.getTasks().size() : 0,
-                            currentState.getTaskState().getCurrentTaskId());
-                        
-                        // 发送任务列表给前端
-                        try {
-                            List<Map<String, Object>> taskList = new ArrayList<>();
-                            if (taskState.getTasks() != null) {
-                                for (com.aispring.entity.agent.Task task : taskState.getTasks()) {
-                                    Map<String, Object> taskMap = new HashMap<>();
-                                    taskMap.put("id", task.getId());
-                                    taskMap.put("desc", task.getGoal()); // 使用 goal 作为描述
-                                    taskMap.put("status", task.getStatus().toString().toLowerCase());
-                                    taskList.add(taskMap);
-                                }
-                            }
-                            
-                            Map<String, Object> taskListMessage = new HashMap<>();
-                            taskListMessage.put("type", "task_list");
-                            taskListMessage.put("tasks", taskList);
-                            
-                            String taskListJson = objectMapper.writeValueAsString(taskListMessage);
-                            chatRecordService.createChatRecord(
-                                taskListJson, 2, String.valueOf(userId), sessionId, 
-                                "system", "completed", "terminal"
-                            );
-                            log.info("Task list message saved to chat records");
-                        } catch (Exception taskListEx) {
-                            log.error("Failed to save task list to chat records: {}", taskListEx.getMessage(), taskListEx);
-                        }
-                    } catch (Exception e) {
-                        log.error("Failed to compile plan: {}", e.getMessage(), e);
+            if (json != null && json.trim().startsWith("[")) {
+                // It is a Plan (任务列表)
+                log.info("Detected task plan in response");
+                try {
+                    TaskState taskState = taskCompiler.compile(json, "pipeline-" + System.currentTimeMillis());
+                    AgentState currentState = agentStateService.getAgentState(sessionId, userId);
+                    currentState.setTaskState(taskState);
+                    if (taskState.getTasks() != null && !taskState.getTasks().isEmpty()) {
+                        currentState.getTaskState().setCurrentTaskId(taskState.getTasks().get(0).getId());
+                        taskState.getTasks().get(0).setStatus(com.aispring.entity.agent.TaskStatus.IN_PROGRESS);
                     }
-                } else {
-                    // Try to parse as DecisionEnvelope
-                    log.info("Attempting to parse as decision envelope");
+                    currentState.setStatus(AgentStatus.RUNNING);
+                    agentStateService.saveAgentState(currentState);
+                    
+                    log.info("Plan compiled successfully. Tasks: {}, Current: {}", 
+                        taskState.getTasks() != null ? taskState.getTasks().size() : 0,
+                        currentState.getTaskState().getCurrentTaskId());
+                    
+                    // 发送任务列表给前端
                     try {
-                        DecisionEnvelope decision = objectMapper.readValue(json, DecisionEnvelope.class);
-                        
-                        // 自动生成 decision_id（如果AI没有提供）
-                        if (decision.getDecisionId() == null || decision.getDecisionId().trim().isEmpty()) {
-                            decision.setDecisionId(java.util.UUID.randomUUID().toString());
-                            log.info("Auto-generated decision_id: {}", decision.getDecisionId());
-                        } else {
-                            log.info("Using AI-provided decision_id: {}", decision.getDecisionId());
-                        }
-                        
-                        AgentState currentState = agentStateService.getAgentState(sessionId, userId);
-                        currentState.setLastDecision(decision);
-                        
-                        log.info("Decision - Type: {}, Action: {}", decision.getType(), decision.getAction());
-                        
-                        if ("TASK_COMPLETE".equals(decision.getType())) {
-                            log.info("Task completion detected");
-                            stateMutator.markTaskComplete(currentState);
-                            if (currentState.getStatus() == AgentStatus.COMPLETED) {
-                                log.info("All tasks completed for session: {}", sessionId);
-                            } else {
-                                currentState.setStatus(AgentStatus.RUNNING);
-                                log.info("Moving to next task");
+                        List<Map<String, Object>> taskList = new ArrayList<>();
+                        if (taskState.getTasks() != null) {
+                            for (com.aispring.entity.agent.Task task : taskState.getTasks()) {
+                                Map<String, Object> taskMap = new HashMap<>();
+                                taskMap.put("id", task.getId());
+                                taskMap.put("desc", task.getGoal()); // 使用 goal 作为描述
+                                taskMap.put("status", task.getStatus().toString().toLowerCase());
+                                taskList.add(taskMap);
                             }
-                        } else if ("TOOL_CALL".equals(decision.getType())) {
-                            currentState.setStatus(AgentStatus.WAITING_TOOL);
-                            log.info("Tool call detected, status set to WAITING_TOOL");
                         }
-                        agentStateService.saveAgentState(currentState);
-                        log.info("Agent state saved successfully");
-                    } catch (Exception e) {
-                        log.warn("Response is not a decision envelope: {}", e.getMessage());
-                        log.debug("Full response: {}", fullResponse);
+                        
+                        Map<String, Object> taskListMessage = new HashMap<>();
+                        taskListMessage.put("type", "task_list");
+                        taskListMessage.put("tasks", taskList);
+                        
+                        String taskListJson = objectMapper.writeValueAsString(taskListMessage);
+                        chatRecordService.createChatRecord(
+                            taskListJson, 2, String.valueOf(userId), sessionId, 
+                            "system", "completed", "terminal"
+                        );
+                        log.info("Task list message saved to chat records");
+                    } catch (Exception taskListEx) {
+                        log.error("Failed to save task list to chat records: {}", taskListEx.getMessage(), taskListEx);
                     }
+                } catch (Exception e) {
+                    log.error("Failed to compile plan: {}", e.getMessage(), e);
                 }
             } else {
-                log.warn("No JSON found in response");
+                // 不是任务列表，可能是工具调用（已由新的 Agent 循环处理）或纯文本响应
+                log.debug("Response is not a task plan (may be tool call or plain text, handled by Agent loop)");
             }
         } catch (Exception e) {
             log.error("Error in handleAgentResponse: {}", e.getMessage(), e);
