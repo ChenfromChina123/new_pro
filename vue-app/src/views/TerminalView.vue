@@ -30,6 +30,27 @@
                 </div>
               </div>
               <div class="header-right">
+                <!-- Phase 2: 检查点按钮 -->
+                <button 
+                  class="control-btn checkpoint-btn"
+                  title="检查点（时间旅行）"
+                  @click="showCheckpointDialog = true"
+                >
+                  ⏱️ 检查点
+                  <span v-if="checkpoints.length > 0" class="badge">{{ checkpoints.length }}</span>
+                </button>
+                
+                <!-- Phase 2: 批准按钮 -->
+                <button 
+                  v-if="pendingApprovals.length > 0"
+                  class="control-btn approval-btn"
+                  title="待批准工具"
+                  @click="showApprovalDialog = true"
+                >
+                  ⚠️ 待批准
+                  <span class="badge">{{ pendingApprovals.length }}</span>
+                </button>
+                
                 <button 
                   v-if="agentStatus === 'RUNNING'"
                   class="control-btn stop-btn"
@@ -467,6 +488,93 @@
         </div>
       </div>
     </div>
+    
+    <!-- Phase 2: 检查点对话框 -->
+    <div v-if="showCheckpointDialog" class="dialog-overlay" @click="showCheckpointDialog = false">
+      <div class="dialog-content" @click.stop>
+        <div class="dialog-header">
+          <h3>检查点（时间旅行）</h3>
+          <button class="close-btn" @click="showCheckpointDialog = false">×</button>
+        </div>
+        <div class="dialog-body">
+          <div v-if="checkpoints.length === 0" class="empty-state">
+            <p>暂无检查点</p>
+            <p class="hint">检查点将在用户消息和工具编辑后自动创建</p>
+          </div>
+          <div v-else class="checkpoint-list">
+            <div 
+              v-for="checkpoint in checkpoints" 
+              :key="checkpoint.checkpointId"
+              class="checkpoint-item"
+            >
+              <div class="checkpoint-info">
+                <div class="checkpoint-header">
+                  <span class="checkpoint-type">{{ checkpoint.checkpointType }}</span>
+                  <span class="checkpoint-time">{{ new Date(checkpoint.createdAt).toLocaleString() }}</span>
+                </div>
+                <div class="checkpoint-description">{{ checkpoint.description || '无描述' }}</div>
+                <div class="checkpoint-files" v-if="checkpoint.fileSnapshots">
+                  文件数: {{ Object.keys(checkpoint.fileSnapshots).length }}
+                </div>
+              </div>
+              <div class="checkpoint-actions">
+                <button class="btn-primary" @click="jumpToCheckpoint(checkpoint.checkpointId)">
+                  跳转
+                </button>
+                <button class="btn-secondary" @click="checkpointService.deleteCheckpoint(checkpoint.checkpointId).then(() => loadCheckpoints())">
+                  删除
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Phase 2: 批准对话框 -->
+    <div v-if="showApprovalDialog" class="dialog-overlay" @click="showApprovalDialog = false">
+      <div class="dialog-content" @click.stop>
+        <div class="dialog-header">
+          <h3>待批准工具调用</h3>
+          <button class="close-btn" @click="showApprovalDialog = false">×</button>
+        </div>
+        <div class="dialog-body">
+          <div v-if="pendingApprovals.length === 0" class="empty-state">
+            <p>暂无待批准项</p>
+          </div>
+          <div v-else class="approval-list">
+            <div 
+              v-for="approval in pendingApprovals" 
+              :key="approval.decisionId"
+              class="approval-item"
+            >
+              <div class="approval-info">
+                <div class="approval-header">
+                  <span class="tool-name">{{ approval.toolName }}</span>
+                  <span class="approval-time">{{ new Date(approval.createdAt).toLocaleString() }}</span>
+                </div>
+                <div class="approval-params">
+                  <pre>{{ JSON.stringify(approval.toolParams, null, 2) }}</pre>
+                </div>
+              </div>
+              <div class="approval-actions">
+                <button class="btn-success" @click="approveTool(approval.decisionId)">
+                  批准
+                </button>
+                <button class="btn-danger" @click="rejectTool(approval.decisionId, '用户拒绝')">
+                  拒绝
+                </button>
+              </div>
+            </div>
+            <div class="approval-bulk-actions">
+              <button class="btn-primary" @click="approveAll">
+                批量批准全部
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -487,6 +595,8 @@ import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 import { marked } from 'marked'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
+// Phase 2: 导入新的 Terminal API 服务
+import terminalService, { checkpointService, approvalService, sessionStateService } from '@/services/terminalService'
 
 // Configure marked
 const renderer = new marked.Renderer()
@@ -667,6 +777,20 @@ const taskListCollapsed = ref(uiStore.taskListCollapsed)
 const rightPanelWidth = ref(uiStore.rightPanelWidth)
 const activeTab = ref(uiStore.activeTab === 'req' ? 'terminal' : uiStore.activeTab)
 
+// Phase 2: 检查点相关状态
+const checkpoints = ref([])
+const showCheckpointDialog = ref(false)
+const selectedCheckpoint = ref(null)
+
+// Phase 2: 批准相关状态
+const pendingApprovals = ref([])
+const showApprovalDialog = ref(false)
+const approvalSettings = ref(null)
+const showApprovalSettings = ref(false)
+
+// Phase 2: 会话状态
+const sessionState = ref(null)
+
 watch(rightPanelCollapsed, (val) => uiStore.saveState('rightPanelCollapsed', val))
 watch(taskListCollapsed, (val) => uiStore.saveState('taskListCollapsed', val))
 watch(rightPanelWidth, (val) => uiStore.saveState('rightPanelWidth', val))
@@ -750,7 +874,112 @@ onMounted(async () => {
 watch(currentSessionId, async () => {
   await nextTick()
   scrollToBottom()
+  // Phase 2: 加载检查点和批准数据
+  if (currentSessionId.value) {
+    await loadCheckpoints()
+    await loadPendingApprovals()
+    await loadSessionState()
+  }
 })
+
+// Phase 2: 加载检查点
+const loadCheckpoints = async () => {
+  if (!currentSessionId.value) return
+  try {
+    const result = await checkpointService.getCheckpoints(currentSessionId.value)
+    if (result?.data) {
+      checkpoints.value = result.data
+    }
+  } catch (error) {
+    console.error('加载检查点失败:', error)
+  }
+}
+
+// Phase 2: 加载待批准列表
+const loadPendingApprovals = async () => {
+  if (!currentSessionId.value) return
+  try {
+    const result = await approvalService.getPendingApprovals(currentSessionId.value)
+    if (result?.data) {
+      pendingApprovals.value = result.data
+      // 如果有待批准项，显示对话框
+      if (result.data.length > 0) {
+        showApprovalDialog.value = true
+      }
+    }
+  } catch (error) {
+    console.error('加载待批准列表失败:', error)
+  }
+}
+
+// Phase 2: 加载会话状态
+const loadSessionState = async () => {
+  if (!currentSessionId.value) return
+  try {
+    const result = await sessionStateService.getSessionState(currentSessionId.value)
+    if (result?.data) {
+      sessionState.value = result.data
+    }
+  } catch (error) {
+    console.error('加载会话状态失败:', error)
+  }
+}
+
+// Phase 2: 跳转到检查点
+const jumpToCheckpoint = async (checkpointId) => {
+  try {
+    const result = await checkpointService.jumpToCheckpoint(checkpointId)
+    if (result?.data) {
+      console.log('已跳转到检查点，恢复文件:', result.data)
+      // 可以显示提示消息
+      alert(`已恢复 ${result.data.length} 个文件`)
+      // 刷新文件浏览器
+      if (fileExplorer.value) {
+        fileExplorer.value.refresh()
+      }
+    }
+  } catch (error) {
+    console.error('跳转到检查点失败:', error)
+    alert('跳转失败: ' + error.message)
+  }
+}
+
+// Phase 2: 批准工具调用
+const approveTool = async (decisionId, reason) => {
+  try {
+    await approvalService.approveToolCall(decisionId, reason)
+    await loadPendingApprovals()
+    showApprovalDialog.value = false
+  } catch (error) {
+    console.error('批准工具调用失败:', error)
+    alert('批准失败: ' + error.message)
+  }
+}
+
+// Phase 2: 拒绝工具调用
+const rejectTool = async (decisionId, reason) => {
+  try {
+    await approvalService.rejectToolCall(decisionId, reason)
+    await loadPendingApprovals()
+    showApprovalDialog.value = false
+  } catch (error) {
+    console.error('拒绝工具调用失败:', error)
+    alert('拒绝失败: ' + error.message)
+  }
+}
+
+// Phase 2: 批量批准
+const approveAll = async () => {
+  if (!currentSessionId.value) return
+  try {
+    await approvalService.approveAllPending(currentSessionId.value)
+    await loadPendingApprovals()
+    showApprovalDialog.value = false
+  } catch (error) {
+    console.error('批量批准失败:', error)
+    alert('批量批准失败: ' + error.message)
+  }
+}
 
 watch(terminalLogs, () => {
   nextTick()
@@ -873,8 +1102,21 @@ const inputPlaceholder = computed(() => {
     return '输入您的指令...'
 })
 
+// Phase 2: 更新中断处理函数
 const handleStop = async () => {
+  if (!currentSessionId.value) return
+  
+  try {
+    const result = await sessionStateService.interruptAgentLoop(currentSessionId.value)
+    if (result?.data) {
+      console.log('Agent 循环已中断')
+      // 可以显示提示消息
+    }
+  } catch (error) {
+    console.error('中断 Agent 循环失败:', error)
+    // 降级处理：发送 stop 消息
     await sendMessage('stop')
+  }
 }
 
 const sendMessage = async (overrideText) => {
@@ -2289,6 +2531,260 @@ const formatTime = (timestamp) => {
 .authority-badge.model_output {
   background: #fef3c7;
   color: #92400e;
+}
+
+/* Phase 2: 对话框样式 */
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.dialog-content {
+  background: #fff;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.dialog-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #64748b;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.close-btn:hover {
+  background: #f1f5f9;
+}
+
+.dialog-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* 检查点列表样式 */
+.checkpoint-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.checkpoint-item {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.checkpoint-info {
+  flex: 1;
+}
+
+.checkpoint-header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.checkpoint-type {
+  background: #3b82f6;
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.checkpoint-time {
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.checkpoint-description {
+  color: #1e293b;
+  margin-bottom: 4px;
+}
+
+.checkpoint-files {
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.checkpoint-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* 批准列表样式 */
+.approval-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.approval-item {
+  background: #fef3c7;
+  border: 1px solid #fbbf24;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.approval-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.tool-name {
+  background: #f59e0b;
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.approval-time {
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.approval-params {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.approval-params pre {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #1e293b;
+}
+
+.approval-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.approval-bulk-actions {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e2e8f0;
+}
+
+/* 按钮样式 */
+.btn-primary, .btn-secondary, .btn-success, .btn-danger {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: #3b82f6;
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: #2563eb;
+}
+
+.btn-secondary {
+  background: #64748b;
+  color: #fff;
+}
+
+.btn-secondary:hover {
+  background: #475569;
+}
+
+.btn-success {
+  background: #10b981;
+  color: #fff;
+}
+
+.btn-success:hover {
+  background: #059669;
+}
+
+.btn-danger {
+  background: #ef4444;
+  color: #fff;
+}
+
+.btn-danger:hover {
+  background: #dc2626;
+}
+
+/* 控制按钮样式增强 */
+.control-btn {
+  position: relative;
+}
+
+.control-btn .badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+}
+
+.checkpoint-btn, .approval-btn {
+  margin-right: 8px;
 }
 
 </style>
