@@ -7,6 +7,13 @@
     >
       <div class="input-toolbar">
         <div class="toolbar-left">
+          <span class="toolbar-label">模式</span>
+          <div class="model-selector">
+            <CustomSelect
+              v-model="localMode"
+              :options="modeOptions"
+            />
+          </div>
           <span class="toolbar-label">模型</span>
           <div class="model-selector">
             <CustomSelect
@@ -57,6 +64,14 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
+  mode: {
+    type: String,
+    default: 'AGENT'
+  },
+  modeOptions: {
+    type: Array,
+    default: () => []
+  },
   disabled: {
     type: Boolean,
     default: false
@@ -71,7 +86,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:message', 'update:model', 'send', 'enter'])
+const emit = defineEmits(['update:message', 'update:model', 'update:mode', 'send', 'enter'])
 
 const textareaRef = ref(null)
 
@@ -83,6 +98,11 @@ const localMessage = computed({
 const localModel = computed({
   get: () => props.model,
   set: (val) => emit('update:model', val)
+})
+
+const localMode = computed({
+  get: () => props.mode,
+  set: (val) => emit('update:mode', val)
 })
 
 /**
