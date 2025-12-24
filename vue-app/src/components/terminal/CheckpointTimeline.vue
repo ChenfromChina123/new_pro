@@ -324,6 +324,26 @@ function exportTimeline() {
   flex: 1;
   overflow-y: auto;
   padding: 20px;
+  position: relative;
+  scrollbar-width: thin;
+  scrollbar-color: #3b82f6 #f1f5f9;
+}
+
+.timeline-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.timeline-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.timeline-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.timeline-container::-webkit-scrollbar-thumb:hover {
+  background: #3b82f6;
 }
 
 .empty-state {

@@ -788,6 +788,16 @@ const taskListCollapsed = ref(uiStore.taskListCollapsed)
 const rightPanelWidth = ref(uiStore.rightPanelWidth)
 const activeTab = ref(uiStore.activeTab === 'req' ? 'terminal' : uiStore.activeTab)
 
+// 监听 activeTab 变化，确保选中的标签在视图内
+watch(activeTab, () => {
+  nextTick(() => {
+    const activeTabEl = document.querySelector('.tab.active')
+    if (activeTabEl) {
+      activeTabEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })
+    }
+  })
+})
+
 // Phase 2: 检查点相关状态
 const checkpoints = ref([])
 const showCheckpointDialog = ref(false)
@@ -843,19 +853,30 @@ const tabs = ref([])
 
 // 初始化标签页，确保包含所有默认标签
 const initTabs = () => {
-  const storedOrder = uiStore.tabOrder || []
-  // 合并已存储的顺序和默认顺序，确保新标签也能显示
-  const mergedOrder = [...storedOrder]
+  let storedOrder = uiStore.tabOrder || []
   
+  // 确保 storedOrder 是数组
+  if (!Array.isArray(storedOrder)) {
+    storedOrder = []
+  }
+  
+  // 确保所有默认标签都在列表中
+  const mergedOrder = [...storedOrder]
   defaultTabOrder.forEach(id => {
     if (!mergedOrder.includes(id)) {
       mergedOrder.push(id)
     }
   })
   
-  tabs.value = mergedOrder
-    .filter(id => tabMeta[id])
-    .map(id => tabMeta[id])
+  // 过滤掉不存在于 tabMeta 中的 id
+  const validOrder = mergedOrder.filter(id => tabMeta[id])
+  
+  // 更新 store 中的 tabOrder，确保下一次加载时包含所有标签
+  if (validOrder.length !== storedOrder.length) {
+    uiStore.saveState('tabOrder', validOrder)
+  }
+  
+  tabs.value = validOrder.map(id => tabMeta[id])
 }
 
 initTabs()
@@ -2432,16 +2453,42 @@ function exportSessionState(data) {
   border-bottom: 1px solid #e2e8f0; 
   flex-shrink: 0; 
   overflow-x: auto;
+  overflow-y: hidden;
   white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #3b82f6 #f1f5f9;
+  padding: 0 4px;
 }
 .panel-tabs::-webkit-scrollbar {
-  height: 4px;
+  height: 8px; /* 增加高度使其更容易看到 */
+}
+.panel-tabs::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
 }
 .panel-tabs::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 2px;
+  background: #3b82f6; /* 使用更明显的颜色 */
+  border-radius: 4px;
+  border: 2px solid #f1f5f9;
 }
-.tab { padding: 12px 20px; font-size: 0.9rem; color: #64748b; border-right: 1px solid #e2e8f0; cursor: pointer; }
+.panel-tabs::-webkit-scrollbar-thumb:hover {
+  background: #2563eb;
+}
+.tab { 
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 24px; 
+  font-size: 0.9rem; 
+  color: #64748b; 
+  border-right: 1px solid #e2e8f0; 
+  cursor: pointer; 
+  flex-shrink: 0;
+  transition: all 0.2s;
+  user-select: none;
+  min-width: 100px;
+}
 .tab.active { background: #fff; color: #3b82f6; font-weight: 600; border-bottom: 2px solid #3b82f6; }
 
 .terminal-content-wrapper {
@@ -2532,8 +2579,40 @@ function exportSessionState(data) {
 
 .panel-content {
   flex: 1;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* 默认隐藏溢出，由子元素或特定类处理 */
   height: 100%;
+  position: relative;
+  background: #fff;
+}
+
+.panel-content.identity-panel,
+.panel-content.state-panel {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #3b82f6 #f1f5f9;
+}
+
+.panel-content.identity-panel::-webkit-scrollbar,
+.panel-content.state-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.panel-content.identity-panel::-webkit-scrollbar-track,
+.panel-content.state-panel::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.panel-content.identity-panel::-webkit-scrollbar-thumb,
+.panel-content.state-panel::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.panel-content.identity-panel::-webkit-scrollbar-thumb:hover,
+.panel-content.state-panel::-webkit-scrollbar-thumb:hover {
+  background: #3b82f6;
 }
 
 /* File Editor Styles are now handled in TerminalFileEditor.vue component */
