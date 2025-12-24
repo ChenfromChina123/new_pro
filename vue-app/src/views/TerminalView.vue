@@ -839,11 +839,26 @@ const tabMeta = {
 }
 // 确保所有标签都显示，包括新添加的
 const defaultTabOrder = ['terminal', 'files', 'checkpoints', 'approvals', 'session', 'decisions', 'identity', 'state']
-const tabs = ref(
-  (uiStore.tabOrder && uiStore.tabOrder.length > 0 ? uiStore.tabOrder : defaultTabOrder)
+const tabs = ref([])
+
+// 初始化标签页，确保包含所有默认标签
+const initTabs = () => {
+  const storedOrder = uiStore.tabOrder || []
+  // 合并已存储的顺序和默认顺序，确保新标签也能显示
+  const mergedOrder = [...storedOrder]
+  
+  defaultTabOrder.forEach(id => {
+    if (!mergedOrder.includes(id)) {
+      mergedOrder.push(id)
+    }
+  })
+  
+  tabs.value = mergedOrder
     .filter(id => tabMeta[id])
     .map(id => tabMeta[id])
-)
+}
+
+initTabs()
 watch(tabs, (newTabs) => {
   const order = newTabs.map(t => t.id)
   uiStore.saveState('tabOrder', order)
@@ -2411,7 +2426,21 @@ function exportSessionState(data) {
   opacity: 0;
   pointer-events: none;
 }
-.panel-tabs { display: flex; background: #f8fafc; border-bottom: 1px solid #e2e8f0; flex-shrink: 0; }
+.panel-tabs { 
+  display: flex; 
+  background: #f8fafc; 
+  border-bottom: 1px solid #e2e8f0; 
+  flex-shrink: 0; 
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.panel-tabs::-webkit-scrollbar {
+  height: 4px;
+}
+.panel-tabs::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 2px;
+}
 .tab { padding: 12px 20px; font-size: 0.9rem; color: #64748b; border-right: 1px solid #e2e8f0; cursor: pointer; }
 .tab.active { background: #fff; color: #3b82f6; font-weight: 600; border-bottom: 2px solid #3b82f6; }
 
