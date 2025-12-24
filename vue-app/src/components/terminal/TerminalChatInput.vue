@@ -7,6 +7,13 @@
     >
       <div class="input-toolbar">
         <div class="toolbar-left">
+          <span class="toolbar-label">功能</span>
+          <div class="selector-container feature-selector">
+            <CustomSelect
+              v-model="localFeature"
+              :options="featureOptions"
+            />
+          </div>
           <span class="toolbar-label">模型</span>
           <div class="selector-container model-selector">
             <CustomSelect
@@ -57,6 +64,28 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
+  feature: {
+    type: String,
+    default: 'CHAT'
+  },
+  featureOptions: {
+    type: Array,
+    default: () => [
+      { value: 'CHAT', label: '聊天' },
+      { value: 'CODEX', label: '代码编辑' },
+      { value: 'AUTOCOMPLETE', label: '自动补全' },
+      { value: 'APPLY', label: '应用更改' },
+      { value: 'SCM', label: '提交消息' }
+    ]
+  },
+  mode: {
+    type: String,
+    default: 'AGENT'
+  },
+  modeOptions: {
+    type: Array,
+    default: () => []
+  },
   disabled: {
     type: Boolean,
     default: false
@@ -71,7 +100,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:message', 'update:model', 'send', 'enter'])
+const emit = defineEmits(['update:message', 'update:model', 'update:feature', 'update:mode', 'send', 'enter'])
 
 const textareaRef = ref(null)
 
@@ -83,6 +112,16 @@ const localMessage = computed({
 const localModel = computed({
   get: () => props.model,
   set: (val) => emit('update:model', val)
+})
+
+const localFeature = computed({
+  get: () => props.feature,
+  set: (val) => emit('update:feature', val)
+})
+
+const localMode = computed({
+  get: () => props.mode,
+  set: (val) => emit('update:mode', val)
 })
 
 /**
@@ -188,12 +227,12 @@ watch(
   white-space: nowrap;
 }
 
-.selector-container :deep(.custom-select) {
-  width: 160px;
+.feature-selector :deep(.custom-select) {
+  width: 130px;
 }
 
-.mode-selector :deep(.custom-select) {
-  width: 120px;
+.model-selector :deep(.custom-select) {
+  width: 160px;
 }
 
 .selector-container :deep(.select-trigger) {
