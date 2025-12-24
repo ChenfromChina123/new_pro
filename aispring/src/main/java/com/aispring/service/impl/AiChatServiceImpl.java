@@ -54,6 +54,11 @@ public class AiChatServiceImpl implements AiChatService {
     private final com.aispring.service.ChatRecordService chatRecordService; // 注入 ChatRecordService
     private final OkHttpClient okHttpClient;
     
+    // Phase 2 新增服务
+    private final com.aispring.service.SessionStateService sessionStateService;
+    private final com.aispring.service.CheckpointService checkpointService;
+    private final com.aispring.service.ToolApprovalService toolApprovalService;
+    
     @Value("${ai.max-tokens:4096}")
     private Integer maxTokens;
     
@@ -82,6 +87,9 @@ public class AiChatServiceImpl implements AiChatService {
                              ObjectProvider<StreamingChatClient> streamingChatClientProvider,
                              ChatRecordRepository chatRecordRepository,
                              com.aispring.service.ChatRecordService chatRecordService, // 添加到构造函数
+                             com.aispring.service.SessionStateService sessionStateService,
+                             com.aispring.service.CheckpointService checkpointService,
+                             com.aispring.service.ToolApprovalService toolApprovalService,
                              @Value("${ai.doubao.api-key:}") String doubaoApiKey,
                              @Value("${ai.doubao.api-url:}") String doubaoApiUrl,
                              @Value("${ai.deepseek.api-key:}") String deepseekApiKey,
@@ -90,6 +98,9 @@ public class AiChatServiceImpl implements AiChatService {
         this.streamingChatClientProvider = streamingChatClientProvider;
         this.chatRecordRepository = chatRecordRepository;
         this.chatRecordService = chatRecordService; // 初始化
+        this.sessionStateService = sessionStateService;
+        this.checkpointService = checkpointService;
+        this.toolApprovalService = toolApprovalService;
         this.doubaoApiKey = doubaoApiKey;
         this.doubaoApiUrl = doubaoApiUrl;
         this.deepseekApiKey = deepseekApiKey;
@@ -210,8 +221,22 @@ public class AiChatServiceImpl implements AiChatService {
         System.out.println("=== askAgentStream Called ===");
         System.out.println("Model: " + model);
         
+        // Phase 3: 生成循环 ID
+        String loopId = java.util.UUID.randomUUID().toString();
+        
         new Thread(() -> {
             try {
+                // Phase 3: 初始化会话状态
+                Long userIdLong = Long.valueOf(userId);
+                com.aispring.entity.session.SessionState sessionState = 
+                        sessionStateService.getOrCreateState(sessionId, userIdLong);
+                sessionState.setStatus(com.aispring.entity.agent.AgentStatus.RUNNING);
+                sessionState.setCurrentLoopId(loopId);
+                sessionState.setStreamState(com.aispring.entity.session.StreamState.streamingLLM());
+                sessionStateService.saveState(sessionState);
+                
+                log.info("Agent 循环开始: sessionId={}, loopId={}", sessionId, loopId);
+                
                 String currentPrompt = initialPrompt;
                 String currentSystemPrompt = initialSystemPrompt;
                 List<Map<String, Object>> currentTasks = initialTasks != null ? new ArrayList<>(initialTasks) : new ArrayList<>();
@@ -221,6 +246,16 @@ public class AiChatServiceImpl implements AiChatService {
                 while (loopCount < maxLoops) {
                     loopCount++;
                     System.out.println("Agent Loop: " + loopCount);
+                    
+                    // Phase 3: 检查中断标志
+                    if (sessionStateService.isInterruptRequested(sessionId)) {
+                        log.warn("Agent 循环被中断: sessionId={}, loopId={}, loopCount={}", 
+                                sessionId, loopId, loopCount);
+                        emitter.send(SseEmitter.event()
+                                .name("interrupt")
+                                .data("{\"message\": \"Agent 循环已被用户中断\"}"));
+                        break;
+                    }
                     
                     // 执行对话并获取完整回复
                     String fullResponse = performBlockingChat(currentPrompt, sessionId, model, userId, currentSystemPrompt, emitter);
@@ -278,15 +313,97 @@ public class AiChatServiceImpl implements AiChatService {
                     }
                 }
                 
+                // Phase 3: Agent 循环完成，更新会话状态
+                sessionState = sessionStateService.getState(sessionId).orElse(sessionState);
+                sessionState.setStatus(com.aispring.entity.agent.AgentStatus.COMPLETED);
+                sessionState.setCurrentLoopId(null);
+                sessionState.setStreamState(com.aispring.entity.session.StreamState.idle());
+                sessionStateService.saveState(sessionState);
+                
+                // Phase 3: 清除中断标志（如果有）
+                sessionStateService.clearInterrupt(sessionId);
+                
+                log.info("Agent 循环完成: sessionId={}, loopId={}, loopCount={}", 
+                        sessionId, loopId, loopCount);
+                
                 emitter.send(SseEmitter.event().data("[DONE]"));
                 emitter.complete();
                 
             } catch (Exception e) {
+                // Phase 3: Agent 循环错误，更新会话状态
+                try {
+                    com.aispring.entity.session.SessionState errorState = 
+                            sessionStateService.getState(sessionId).orElse(null);
+                    if (errorState != null) {
+                        errorState.setStatus(com.aispring.entity.agent.AgentStatus.ERROR);
+                        errorState.setCurrentLoopId(null);
+                        sessionStateService.saveState(errorState);
+                    }
+                } catch (Exception ex) {
+                    log.error("更新错误状态失败", ex);
+                }
                 handleError(emitter, e);
             }
         }).start();
         
         return emitter;
+    }
+    
+    /**
+     * Phase 3: 创建用户消息检查点
+     * 在用户发送消息后自动创建检查点
+     */
+    private void createUserMessageCheckpoint(String sessionId, Long userId, Integer messageOrder) {
+        try {
+            // 当前实现为简化版本，不包含文件快照
+            // 实际应用中，应该收集当前工作目录的文件状态
+            String checkpointId = checkpointService.createCheckpoint(
+                    sessionId,
+                    userId,
+                    messageOrder,
+                    com.aispring.entity.checkpoint.CheckpointType.USER_MESSAGE,
+                    new java.util.HashMap<>(), // 文件快照（待实现）
+                    "用户消息后自动检查点"
+            );
+            log.info("创建用户消息检查点: checkpointId={}, sessionId={}, messageOrder={}", 
+                    checkpointId, sessionId, messageOrder);
+        } catch (Exception e) {
+            log.error("创建用户消息检查点失败: sessionId={}, messageOrder={}", sessionId, messageOrder, e);
+        }
+    }
+    
+    /**
+     * Phase 3: 创建工具编辑检查点
+     * 在工具修改文件后自动创建检查点
+     */
+    private void createToolEditCheckpoint(String sessionId, Long userId, Integer messageOrder, 
+                                         String filePath, String fileContent) {
+        try {
+            // 创建文件快照
+            java.util.Map<String, com.aispring.entity.checkpoint.ChatCheckpoint.FileSnapshot> fileSnapshots = 
+                    new java.util.HashMap<>();
+            
+            com.aispring.entity.checkpoint.ChatCheckpoint.FileSnapshot snapshot = 
+                    com.aispring.entity.checkpoint.ChatCheckpoint.FileSnapshot.builder()
+                            .fileContent(fileContent)
+                            .diffAreas(new java.util.ArrayList<>()) // Diff 区域（待实现）
+                            .build();
+            
+            fileSnapshots.put(filePath, snapshot);
+            
+            String checkpointId = checkpointService.createCheckpoint(
+                    sessionId,
+                    userId,
+                    messageOrder,
+                    com.aispring.entity.checkpoint.CheckpointType.TOOL_EDIT,
+                    fileSnapshots,
+                    "工具编辑文件: " + filePath
+            );
+            log.info("创建工具编辑检查点: checkpointId={}, sessionId={}, file={}", 
+                    checkpointId, sessionId, filePath);
+        } catch (Exception e) {
+            log.error("创建工具编辑检查点失败: sessionId={}, file={}", sessionId, filePath, e);
+        }
     }
     
     private String updateSystemPromptWithTasks(String systemPrompt, List<Map<String, Object>> tasks) {
