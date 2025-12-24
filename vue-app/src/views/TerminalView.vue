@@ -1536,22 +1536,33 @@ const processAgentLoop = async (prompt, toolResult) => {
                 }
             } else if (currentEvent === 'tool_result') {
                 // 处理工具执行结果（参考 void-main 的 tool result 处理）
+                // 这是后端执行工具后发送的结果，前端只负责显示
                 console.log('[TerminalView] Received tool result:', json)
                 
                 // 更新消息状态
                 currentAiMsg.toolResult = json
                 currentAiMsg.status = json.success ? 'success' : 'error'
                 
-                // 提取工具信息
-                const toolName = json.toolName || currentAiMsg.tool || 'Unknown'
+                // 提取工具信息（从后端发送的结果中获取）
+                const toolName = json.toolName || json.tool || currentAiMsg.tool || 'Unknown'
                 const decisionId = json.decisionId || json.decision_id
+                const params = json.params || {}
                 
-                // 更新工具显示
+                // 更新工具显示（工具调用由后端识别和执行，前端只显示结果）
                 if (!currentAiMsg.tool) {
                   currentAiMsg.tool = toolName
                 }
                 if (decisionId && !currentAiMsg.toolKey) {
                   currentAiMsg.toolKey = decisionId
+                }
+                
+                // 从后端发送的参数中提取工具调用信息（用于显示）
+                if (toolName === 'run_command') {
+                  currentAiMsg.command = params.command || json.command
+                } else if (toolName === 'read_file' || toolName === 'write_file' || toolName === 'edit_file') {
+                  currentAiMsg.filePath = params.path || params.file || json.path
+                } else if (toolName === 'search_files' || toolName === 'search_in_file') {
+                  currentAiMsg.searchPattern = params.pattern || params.query || json.pattern
                 }
                 
                 // 更新消息内容
@@ -1591,16 +1602,27 @@ const processAgentLoop = async (prompt, toolResult) => {
                 
             } else if (currentEvent === 'waiting_approval') {
                 // 处理等待批准事件（参考 void-main 的 approval 机制）
+                // 这是后端识别工具调用后发送的事件，前端只负责显示
                 console.log('[TerminalView] Waiting for approval:', json)
                 
                 const toolName = json.tool || json.toolName
                 const decisionId = json.decision_id || json.decisionId
+                const params = json.params || {}
                 
-                // 更新消息状态
+                // 更新消息状态（工具调用由后端识别，前端只显示）
                 currentAiMsg.status = 'pending'
                 currentAiMsg.message = `等待用户批准工具调用: ${toolName}`
                 currentAiMsg.tool = toolName
                 currentAiMsg.toolKey = decisionId
+                
+                // 从后端发送的参数中提取工具调用信息（用于显示）
+                if (toolName === 'run_command') {
+                  currentAiMsg.command = params.command
+                } else if (toolName === 'read_file' || toolName === 'write_file' || toolName === 'edit_file') {
+                  currentAiMsg.filePath = params.path || params.file
+                } else if (toolName === 'search_files' || toolName === 'search_in_file') {
+                  currentAiMsg.searchPattern = params.pattern || params.query
+                }
                 
                 // 更新 Agent 状态
                 terminalStore.setAgentStatus('AWAITING_APPROVAL')
@@ -1717,7 +1739,7 @@ const processAgentLoop = async (prompt, toolResult) => {
         }
       }
 
-      // 检查是否是任务列表消息（实时）
+      // 只处理任务列表（task_list），工具调用完全由后端通过 SSE 事件处理
       if (decision.type === 'task_list' || decision.tasks) {
         console.log('[TerminalView] Task list received:', decision.tasks)
         terminalStore.currentTasks = decision.tasks || []
@@ -1733,35 +1755,32 @@ const processAgentLoop = async (prompt, toolResult) => {
         return
       }
       
-      // 1. De-duplication check
+      // 其他类型的决策（如 TASK_COMPLETE、PAUSE）仍然处理
       if (decision.decision_id && terminalStore.hasDecision(decision.decision_id)) {
           console.warn('Duplicate decision ignored:', decision.decision_id)
           return
       }
       if (decision.decision_id) {
-          // Phase 3: 添加时间戳并保存完整决策对象
           decision.timestamp = decision.timestamp || Date.now()
           terminalStore.addDecision(decision)
       }
 
-      // Update UI with Decision info
-      currentAiMsg.tool = decision.type === 'TOOL_CALL' ? decision.action : decision.type
-      currentAiMsg.command = decision.params?.command
-      currentAiMsg.filePath = decision.params?.path
-      currentAiMsg.searchPattern = decision.params?.pattern
-      currentAiMsg.filePattern = decision.params?.file_pattern
-      currentAiMsg.files = decision.params?.files
-      currentAiMsg.operations = decision.params?.operations
-      currentAiMsg.toolKey = decision.decision_id || `tool-${messages.value.length}`
-      // 工具调用的正文避免显示原始 JSON，改用折叠卡片展示
-      if (decision.type === 'TOOL_CALL') {
-        currentAiMsg.message = ''
-        // 后端接管执行，这里仅显示状态
-        terminalStore.setAgentStatus('WAITING_TOOL')
-        currentAiMsg.status = 'pending'
+      // 注意：不再处理 TOOL_CALL 类型的决策
+      // 工具调用完全由后端通过 XML 解析识别，并通过 SSE 事件（tool_result、waiting_approval）通知前端
+      // 前端只显示后端发送的工具调用信息
+      
+      if (decision.type === 'TASK_COMPLETE') {
+          currentAiMsg.message = "当前任务已完成"
+          currentAiMsg.status = 'success'
+          await saveMessage(JSON.stringify(decision), 2)
+      } else if (decision.type === 'PAUSE') {
+          terminalStore.setAgentStatus('PAUSED')
+          await saveMessage(JSON.stringify(decision), 2)
+      } else {
+          // 其他未知类型的决策，只保存不处理
+          console.debug('[TerminalView] Unknown decision type:', decision.type)
+          await saveMessage(JSON.stringify(decision), 2)
       }
-      // 默认折叠工具结果
-      collapsedTools.value.add(currentAiMsg.toolKey)
       
       // 解耦架构：保存身份信息（如果后端返回）
       if (decision.identity) {
@@ -1774,27 +1793,6 @@ const processAgentLoop = async (prompt, toolResult) => {
               terminalStore.addStateSlice(slice)
           })
       }
-
-      // 2. Handle Action (参考 void-main 的 Agent 循环)
-      // 注意：后端已经接管了工具执行和循环控制
-      // 前端只需要显示状态，不需要主动触发下一步
-      
-      if (decision.type === 'TOOL_CALL') {
-          // 工具调用已由后端处理，等待 SSE tool_result 事件
-          // 后端会自动执行工具并继续循环
-          // 前端只需要显示工具调用信息
-          console.log('[TerminalView] Tool call detected, waiting for backend execution')
-          
-      } else if (decision.type === 'TASK_COMPLETE') {
-          currentAiMsg.message = "当前任务已完成"
-          currentAiMsg.status = 'success'
-          
-          await saveMessage(JSON.stringify(decision), 2)
-      } else if (decision.type === 'PAUSE') {
-          terminalStore.setAgentStatus('PAUSED')
-      }
-      
-      await saveMessage(JSON.stringify(decision), 2)
 
   } catch (finalErr) {
     // Fallback for non-JSON or partial content
