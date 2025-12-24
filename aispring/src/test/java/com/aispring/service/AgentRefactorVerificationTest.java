@@ -33,7 +33,7 @@ public class AgentRefactorVerificationTest {
     @BeforeEach
     void setUp() {
         taskCompiler = new TaskCompiler(objectMapper);
-        stateMutator = new StateMutator(objectMapper);
+        stateMutator = new StateMutator();
     }
 
     /**

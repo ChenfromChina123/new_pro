@@ -23,9 +23,13 @@
     "vue3-katex": "^0.8.0"
   },
   "devDependencies": {
+    "@types/node": "^25.0.3",
+    "@typescript-eslint/eslint-plugin": "^8.50.1",
+    "@typescript-eslint/parser": "^8.50.1",
     "@vitejs/plugin-vue": "^5.0.0",
     "eslint": "^8.55.0",
     "eslint-plugin-vue": "^9.19.2",
+    "typescript": "^5.9.3",
     "vite": "^5.0.0"
   }
 }

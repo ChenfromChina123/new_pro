@@ -9,12 +9,9 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class StateMutator {
     
-    private final ObjectMapper objectMapper;
-
     public MutatorResult applyToolResult(AgentState state, ToolResult result) {
         // 1. Check if we are waiting for a tool result
         if (state.getStatus() != AgentStatus.WAITING_TOOL) {

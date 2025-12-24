@@ -48,16 +48,6 @@ public interface ChatCheckpointRepository extends JpaRepository<ChatCheckpoint, 
     long countBySessionId(String sessionId);
     
     /**
-     * 删除指定会话的超出数量的检查点（保留最新的 N 个）
-     * 
-     * @param sessionId 会话ID
-     * @param keepCount 保留的数量
-     */
-    @Modifying
-    @Query(value = "DELETE FROM chat_checkpoints WHERE session_id = :sessionId AND id NOT IN (SELECT id FROM (SELECT id FROM chat_checkpoints WHERE session_id = :sessionId ORDER BY created_at DESC LIMIT :keepCount) AS temp)", nativeQuery = true)
-    void deleteOldCheckpoints(@Param("sessionId") String sessionId, @Param("keepCount") int keepCount);
-    
-    /**
      * 删除指定时间之前的检查点
      */
     @Modifying

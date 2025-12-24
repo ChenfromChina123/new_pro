@@ -13,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * 检查点服务实现
@@ -151,16 +150,21 @@ public class CheckpointServiceImpl implements CheckpointService {
     @Override
     @Transactional
     public void cleanupOldCheckpoints(String sessionId, int keepCount) {
-        long totalCount = checkpointRepository.countBySessionId(sessionId);
+        List<ChatCheckpoint> checkpoints = checkpointRepository
+                .findBySessionIdAndUserIdOrderByCreatedAtAsc(sessionId, null);
         
-        if (totalCount <= keepCount) {
+        if (checkpoints.size() <= keepCount) {
             log.debug("检查点数量未超出限制: sessionId={}, count={}, limit={}", 
-                    sessionId, totalCount, keepCount);
+                    sessionId, checkpoints.size(), keepCount);
             return;
         }
         
-        checkpointRepository.deleteOldCheckpoints(sessionId, keepCount);
-        log.info("清理旧检查点: sessionId={}, 删除数量={}", sessionId, totalCount - keepCount);
+        // 需要删除的数量
+        int deleteCount = checkpoints.size() - keepCount;
+        List<ChatCheckpoint> toDelete = checkpoints.subList(0, deleteCount);
+        
+        checkpointRepository.deleteAllInBatch(toDelete);
+        log.info("清理旧检查点: sessionId={}, 删除数量={}", sessionId, deleteCount);
     }
     
     @Override
