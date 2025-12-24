@@ -7,16 +7,18 @@ import com.aispring.repository.ChatRecordRepository;
 import com.aispring.repository.UserFileRepository;
 import com.aispring.repository.UserRepository;
 import com.aispring.security.CustomUserDetails;
+import com.aispring.service.CloudDiskService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +36,7 @@ public class AdminController {
     private final UserRepository userRepository;
     private final ChatRecordRepository chatRecordRepository;
     private final UserFileRepository userFileRepository;
+    private final CloudDiskService cloudDiskService;
 
     @Data
     public static class AdminStatistics {
@@ -60,6 +63,12 @@ public class AdminController {
         private java.time.LocalDateTime uploadTime;
     }
 
+    @Data
+    public static class FileContentRequest {
+        @NotBlank
+        private String content;
+    }
+
     /**
      * 获取统计数据
      */
@@ -72,6 +81,42 @@ public class AdminController {
         Long storage = userFileRepository.sumAllFileSizes();
         stats.setTotalStorage(storage != null ? storage : 0L);
         return ResponseEntity.ok(ApiResponse.success(stats));
+    }
+
+    /**
+     * 获取文件内容
+     */
+    @GetMapping("/files/content/{fileId}")
+    public ResponseEntity<ApiResponse<String>> getFileContent(@PathVariable Long fileId) {
+        try {
+            String content = cloudDiskService.getFileContentAdmin(fileId);
+            return ResponseEntity.ok(ApiResponse.success("获取文件内容成功", content));
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "读取文件失败: " + e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "获取文件内容失败: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 更新文件内容
+     */
+    @PutMapping("/files/content/{fileId}")
+    public ResponseEntity<ApiResponse<Void>> updateFileContent(
+            @PathVariable Long fileId,
+            @Valid @RequestBody FileContentRequest request) {
+        try {
+            cloudDiskService.updateFileContentAdmin(fileId, request.getContent());
+            return ResponseEntity.ok(ApiResponse.success("文件内容更新成功", null));
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "更新文件失败: " + e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "更新文件内容失败: " + e.getMessage()));
+        }
     }
 
     /**

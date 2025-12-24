@@ -146,7 +146,21 @@ public class TerminalServiceImpl implements TerminalService {
         }
 
         try {
-            return Files.readString(targetPath, StandardCharsets.UTF_8);
+            byte[] bytes = Files.readAllBytes(targetPath);
+            try {
+                // 优先尝试使用 UTF-8 读取
+                java.nio.charset.CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder();
+                decoder.onMalformedInput(java.nio.charset.CodingErrorAction.REPORT);
+                return decoder.decode(java.nio.ByteBuffer.wrap(bytes)).toString();
+            } catch (java.nio.charset.CharacterCodingException e) {
+                try {
+                    // 如果 UTF-8 失败，尝试使用 GBK (针对中文 Windows 环境常见的编码)
+                    return new String(bytes, java.nio.charset.Charset.forName("GBK"));
+                } catch (Exception e2) {
+                    // 如果还是失败，强制使用 UTF-8 并替换非法字符
+                    return new String(bytes, StandardCharsets.UTF_8);
+                }
+            }
         } catch (IOException e) {
             log.error("Error reading file: " + relativePath, e);
             throw new RuntimeException("Could not read file: " + e.getMessage());

@@ -55,7 +55,9 @@ export const API_ENDPOINTS = {
   admin: {
     statistics: '/api/admin/statistics',
     users: '/api/admin/users',
-    files: '/api/admin/files'
+    files: '/api/admin/files',
+    getFileContent: (fileId) => `/api/admin/files/content/${fileId}`,
+    updateFileContent: (fileId) => `/api/admin/files/content/${fileId}`
   },
   
   // 自定义模型

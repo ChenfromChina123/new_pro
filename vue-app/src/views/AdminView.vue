@@ -284,7 +284,7 @@ const handleEditFile = async (file) => {
   editContent.value = '加载中...'
   
   try {
-    const response = await request.get(API_ENDPOINTS.cloudDisk.getContent(file.id))
+    const response = await request.get(API_ENDPOINTS.admin.getFileContent(file.id))
     editContent.value = response.data || ''
   } catch (error) {
     console.error('获取文件内容失败:', error)
@@ -297,7 +297,7 @@ const saveFileContent = async () => {
   
   saving.value = true
   try {
-    await request.put(API_ENDPOINTS.cloudDisk.updateContent(editingFile.value.id), {
+    await request.put(API_ENDPOINTS.admin.updateFileContent(editingFile.value.id), {
       content: editContent.value
     })
     showEditModal.value = false
