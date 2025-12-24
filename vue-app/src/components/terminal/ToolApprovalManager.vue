@@ -570,6 +570,7 @@ function clearHistory() {
 .manager-content {
   flex: 1;
   overflow-y: auto;
+  min-height: 0;
   padding: 20px;
   scrollbar-width: thin;
   scrollbar-color: #3b82f6 #f1f5f9;
