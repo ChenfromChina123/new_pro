@@ -526,9 +526,16 @@
                 </div>
               </div>
             </div>
-            <div v-else class="empty-state">
-              <p>暂无身份信息</p>
-              <p class="hint">身份信息将在 Agent 执行任务时自动更新</p>
+            <div 
+              v-else 
+              class="empty-state"
+            >
+              <p>
+                暂无身份信息
+              </p>
+              <p class="hint">
+                身份信息将在 Agent 执行任务时自动更新
+              </p>
             </div>
           </div>
 
@@ -542,15 +549,18 @@
               <div class="header-actions">
                 <button
                   class="clear-btn"
-                  @click="terminalStore.clearStateSlices()"
                   :disabled="stateSlices.length === 0"
+                  @click="terminalStore.clearStateSlices()"
                 >
                   清除
                 </button>
               </div>
             </div>
             <div class="state-content">
-              <div v-if="stateSlices.length > 0" class="slices-list">
+              <div 
+                v-if="stateSlices.length > 0" 
+                class="slices-list"
+              >
                 <div
                   v-for="(slice, index) in stateSlices.slice().reverse()"
                   :key="index"
@@ -560,7 +570,10 @@
                     <span class="slice-source">{{ slice.source }}</span>
                     <span class="slice-timestamp">{{ formatTime(slice.timestamp) }}</span>
                   </div>
-                  <div class="slice-scope" v-if="slice.scope && slice.scope.length > 0">
+                  <div 
+                    v-if="slice.scope && slice.scope.length > 0"
+                    class="slice-scope" 
+                  >
                     <span class="scope-label">作用域:</span>
                     <span class="scope-value">{{ slice.scope.join(', ') }}</span>
                   </div>
@@ -569,15 +582,25 @@
                     <span class="data-value">{{ Object.keys(slice.data || {}).length }}</span>
                   </div>
                   <div class="slice-authority">
-                    <span class="authority-badge" :class="slice.authority">
+                    <span 
+                      class="authority-badge" 
+                      :class="slice.authority"
+                    >
                       {{ slice.authority === 'fact' ? '事实' : '模型输出' }}
                     </span>
                   </div>
                 </div>
               </div>
-              <div v-else class="empty-state">
-                <p>暂无状态切片</p>
-                <p class="hint">状态切片将在 Agent 执行时自动生成</p>
+              <div 
+                v-else 
+                class="empty-state"
+              >
+                <p>
+                  暂无状态切片
+                </p>
+                <p class="hint">
+                  状态切片将在 Agent 执行时自动生成
+                </p>
               </div>
             </div>
           </div>
@@ -835,8 +858,7 @@ watch(taskListCollapsed, (val) => uiStore.saveState('taskListCollapsed', val))
 watch(rightPanelWidth, (val) => uiStore.saveState('rightPanelWidth', val))
 watch(activeTab, (val) => uiStore.saveState('activeTab', val))
 
-const completedCount = computed(() => currentTasks.value.filter(t => t.status === 'completed').length)
-
+// 标签定义
 const tabMeta = {
   'terminal': { id: 'terminal', label: '终端输出' },
   'files': { id: 'files', label: '文件管理' },
@@ -1475,7 +1497,7 @@ const processAgentLoop = async (prompt, toolResult) => {
             }
           } catch (err) {
             // JSON 解析失败，可能是部分数据，继续累积
-            console.debug('Partial JSON data:', dataStr.substring(0, 50))
+            console.debug('Partial JSON data or parse error:', err, dataStr.substring(0, 50))
           }
         }
       }
@@ -1627,6 +1649,7 @@ const processAgentLoop = async (prompt, toolResult) => {
 
   } catch (finalErr) {
     // Fallback for non-JSON or partial content
+    console.debug('Final JSON process fallback:', finalErr)
     currentAiMsg.message = fullContent
     await saveMessage(fullContent, 2)
   }

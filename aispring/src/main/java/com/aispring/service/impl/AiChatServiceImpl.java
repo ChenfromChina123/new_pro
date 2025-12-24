@@ -307,7 +307,7 @@ public class AiChatServiceImpl implements AiChatService {
                                 String toolName = root.path("action").asText();
                                 String decisionId = root.path("decision_id").asText(java.util.UUID.randomUUID().toString());
                                 JsonNode paramsNode = root.path("params");
-                                Map<String, Object> params = objectMapper.convertValue(paramsNode, Map.class);
+                                Map<String, Object> params = objectMapper.convertValue(paramsNode, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
                                 
                                 log.info("检测到工具调用: {}, decisionId={}", toolName, decisionId);
                                 

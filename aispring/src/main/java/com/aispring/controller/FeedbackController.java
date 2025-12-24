@@ -2,7 +2,6 @@ package com.aispring.controller;
 
 import com.aispring.dto.response.ApiResponse;
 import com.aispring.entity.Feedback;
-import com.aispring.entity.User;
 import com.aispring.repository.UserRepository;
 import com.aispring.security.CustomUserDetails;
 import com.aispring.service.FeedbackService;

@@ -456,7 +456,9 @@ public class ToolsServiceImpl implements ToolsService {
      * 工具定义
      */
     private static class ToolDefinition {
+        @SuppressWarnings("unused")
         final String name;
+        @SuppressWarnings("unused")
         final String description;
         final List<String> requiredParams;
         
