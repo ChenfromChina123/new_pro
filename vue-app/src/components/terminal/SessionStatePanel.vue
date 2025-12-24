@@ -490,6 +490,7 @@ function exportState() {
 .panel-content {
   flex: 1;
   overflow-y: auto;
+  min-height: 0;
   padding: 20px;
   display: flex;
   flex-direction: column;

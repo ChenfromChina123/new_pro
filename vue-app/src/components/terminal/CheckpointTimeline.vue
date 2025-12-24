@@ -323,6 +323,7 @@ function exportTimeline() {
 .timeline-container {
   flex: 1;
   overflow-y: auto;
+  min-height: 0;
   padding: 20px;
   position: relative;
   scrollbar-width: thin;

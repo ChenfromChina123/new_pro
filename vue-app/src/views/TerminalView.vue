@@ -2527,6 +2527,7 @@ function exportSessionState(data) {
 .terminal-content {
   flex: 1;
   overflow-y: auto;
+  min-height: 0;
   padding: 16px;
   font-family: 'Fira Code', 'Cascadia Code', Consolas, monospace;
   font-size: 0.9rem;
@@ -2581,10 +2582,10 @@ function exportSessionState(data) {
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* 默认隐藏溢出，由子元素或特定类处理 */
-  height: 100%;
+  overflow: hidden;
   position: relative;
   background: #fff;
+  min-height: 0; /* 确保 flex 子元素可以正确收缩 */
 }
 
 .panel-content.identity-panel,
