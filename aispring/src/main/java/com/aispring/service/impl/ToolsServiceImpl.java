@@ -26,33 +26,63 @@ public class ToolsServiceImpl implements ToolsService {
     private static final Map<String, ToolDefinition> TOOL_REGISTRY = new HashMap<>();
     
     static {
-        // 注册文件操作工具
-        registerTool("read_file", "读取文件内容", List.of("path"));
-        registerTool("ls_dir", "列出目录内容", List.of("path"));
-        registerTool("get_dir_tree", "获取目录树", List.of("path"));
-        registerTool("create_file_or_folder", "创建文件或文件夹", List.of("path", "is_folder"));
-        registerTool("delete_file_or_folder", "删除文件或文件夹", List.of("path"));
-        registerTool("write_file", "写入文件", List.of("path", "content"));
-        registerTool("edit_file", "编辑文件（search/replace）", List.of("path", "old_string", "new_string"));
-        registerTool("rewrite_file", "重写整个文件", List.of("path", "new_content"));
+        // 注册文件操作工具（参考 void-main 的工具定义）
+        registerTool("read_file", "读取文件内容", 
+            Map.of("path", "文件的完整路径（必需）", 
+                   "start_line", "可选。起始行号，默认为文件开头", 
+                   "end_line", "可选。结束行号，默认为文件结尾"));
+        registerTool("ls_dir", "列出目录内容", 
+            Map.of("path", "可选。目录的完整路径，留空或\"\"表示当前目录"));
+        registerTool("get_dir_tree", "获取目录树结构（递归）", 
+            Map.of("path", "可选。目录的完整路径，留空或\"\"表示当前目录"));
+        registerTool("create_file_or_folder", "创建文件或文件夹", 
+            Map.of("path", "文件或文件夹的完整路径（必需）", 
+                   "is_folder", "可选。是否为文件夹，默认为 false"));
+        registerTool("delete_file_or_folder", "删除文件或文件夹", 
+            Map.of("path", "文件或文件夹的完整路径（必需）", 
+                   "is_recursive", "可选。是否递归删除，默认为 false"));
+        registerTool("write_file", "写入整个文件内容", 
+            Map.of("path", "文件的完整路径（必需）", 
+                   "content", "文件内容（必需）"));
+        registerTool("edit_file", "编辑文件（使用 search/replace 方式）", 
+            Map.of("path", "文件的完整路径（必需）", 
+                   "old_string", "要替换的原始字符串（必需）", 
+                   "new_string", "替换后的新字符串（必需）"));
+        registerTool("rewrite_file", "完全重写文件内容", 
+            Map.of("path", "文件的完整路径（必需）", 
+                   "new_content", "新的文件内容（必需）"));
         
         // 注册搜索工具
-        registerTool("search_pathnames_only", "搜索文件路径", List.of("pattern"));
-        registerTool("search_for_files", "搜索文件内容", List.of("pattern"));
-        registerTool("search_in_file", "在文件中搜索", List.of("path", "pattern"));
+        registerTool("search_pathnames_only", "按文件名搜索文件路径", 
+            Map.of("pattern", "搜索模式（必需）", 
+                   "include_pattern", "可选。文件匹配模式，用于限制搜索结果"));
+        registerTool("search_for_files", "按文件内容搜索文件", 
+            Map.of("pattern", "搜索模式（必需）", 
+                   "is_regex", "可选。是否为正则表达式，默认为 false"));
+        registerTool("search_in_file", "在文件中搜索文本", 
+            Map.of("path", "文件的完整路径（必需）", 
+                   "pattern", "搜索模式（必需）", 
+                   "is_regex", "可选。是否为正则表达式，默认为 false"));
         
         // 注册终端工具
-        registerTool("run_command", "执行命令", List.of("command"));
-        registerTool("run_persistent_command", "执行持久化命令", List.of("command", "terminal_id"));
-        registerTool("open_persistent_terminal", "打开持久化终端", List.of("terminal_id"));
-        registerTool("kill_persistent_terminal", "关闭持久化终端", List.of("terminal_id"));
+        registerTool("run_command", "执行一次性终端命令（30秒超时）", 
+            Map.of("command", "要执行的命令（必需）", 
+                   "cwd", "可选。工作目录，默认为当前目录"));
+        registerTool("run_persistent_command", "在持久化终端中运行命令", 
+            Map.of("command", "要执行的命令（必需）", 
+                   "terminal_id", "持久化终端的ID（必需）"));
+        registerTool("open_persistent_terminal", "打开一个新的持久化终端", 
+            Map.of("cwd", "可选。工作目录，默认为当前目录"));
+        registerTool("kill_persistent_terminal", "关闭持久化终端", 
+            Map.of("terminal_id", "持久化终端的ID（必需）"));
         
         // 注册其他工具
-        registerTool("read_lint_errors", "读取 Lint 错误", List.of());
+        registerTool("read_lint_errors", "读取文件的 Lint 错误", 
+            Map.of("path", "文件的完整路径（必需）"));
     }
     
-    private static void registerTool(String name, String description, List<String> requiredParams) {
-        TOOL_REGISTRY.put(name, new ToolDefinition(name, description, requiredParams));
+    private static void registerTool(String name, String description, Map<String, String> params) {
+        TOOL_REGISTRY.put(name, new ToolDefinition(name, description, params));
     }
     
     @Override
@@ -63,7 +93,7 @@ public class ToolsServiceImpl implements ToolsService {
         }
         
         // 检查必需参数
-        for (String requiredParam : tool.requiredParams) {
+        for (String requiredParam : tool.getRequiredParams()) {
             if (!params.containsKey(requiredParam) || params.get(requiredParam) == null) {
                 return String.format("缺少必需参数: %s (工具: %s)", requiredParam, toolName);
             }
@@ -162,6 +192,15 @@ public class ToolsServiceImpl implements ToolsService {
     public String getToolDescription(String toolName) {
         ToolDefinition tool = TOOL_REGISTRY.get(toolName);
         return tool != null ? tool.description : null;
+    }
+    
+    @Override
+    public ToolsService.ToolInfo getToolInfo(String toolName) {
+        ToolDefinition tool = TOOL_REGISTRY.get(toolName);
+        if (tool == null) {
+            return null;
+        }
+        return new ToolsService.ToolInfo(tool.name, tool.description, tool.params);
     }
     
     // ==================== 工具实现 ====================
@@ -392,7 +431,8 @@ public class ToolsServiceImpl implements ToolsService {
             com.aispring.dto.response.TerminalCommandResponse response = 
                     terminalService.executeCommand(userId, command, null);
             
-            String output = response.getStdout() + (response.getStderr().isEmpty() ? "" : "\n" + response.getStderr());
+            String stderr = response.getStderr() != null ? response.getStderr() : "";
+            String output = response.getStdout() + (stderr.isEmpty() ? "" : "\n" + stderr);
             String result = String.format("命令执行结果 (退出码: %d):\n```\n%s\n```", 
                     response.getExitCode(), output);
             return ToolResult.success(Map.of("command", command, "output", output, 
@@ -460,12 +500,24 @@ public class ToolsServiceImpl implements ToolsService {
         final String name;
         @SuppressWarnings("unused")
         final String description;
-        final List<String> requiredParams;
+        final Map<String, String> params; // 参数名 -> 参数描述
         
-        ToolDefinition(String name, String description, List<String> requiredParams) {
+        ToolDefinition(String name, String description, Map<String, String> params) {
             this.name = name;
             this.description = description;
-            this.requiredParams = requiredParams;
+            this.params = params;
+        }
+        
+        // 获取必需参数列表（用于兼容旧代码）
+        List<String> getRequiredParams() {
+            // 简单实现：所有参数都视为必需（除了明确标记为"可选"的）
+            List<String> required = new ArrayList<>();
+            for (Map.Entry<String, String> entry : params.entrySet()) {
+                if (!entry.getValue().contains("可选")) {
+                    required.add(entry.getKey());
+                }
+            }
+            return required;
         }
     }
 }

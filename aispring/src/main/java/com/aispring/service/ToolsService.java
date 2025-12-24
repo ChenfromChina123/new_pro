@@ -96,5 +96,40 @@ public interface ToolsService {
      * @return 工具描述
      */
     String getToolDescription(String toolName);
+    
+    /**
+     * 获取工具的完整定义信息（包括参数描述）
+     * 
+     * @param toolName 工具名称
+     * @return 工具定义信息，包含名称、描述和参数信息
+     */
+    ToolInfo getToolInfo(String toolName);
+    
+    /**
+     * 工具信息类
+     */
+    class ToolInfo {
+        private final String name;
+        private final String description;
+        private final Map<String, String> params; // 参数名 -> 参数描述
+        
+        public ToolInfo(String name, String description, Map<String, String> params) {
+            this.name = name;
+            this.description = description;
+            this.params = params;
+        }
+        
+        public String getName() {
+            return name;
+        }
+        
+        public String getDescription() {
+            return description;
+        }
+        
+        public Map<String, String> getParams() {
+            return params;
+        }
+    }
 }
 

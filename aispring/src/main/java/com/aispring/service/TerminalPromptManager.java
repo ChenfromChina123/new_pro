@@ -1,20 +1,311 @@
 package com.aispring.service;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
+import java.util.*;
 
 /**
  * TerminalPromptManager 负责管理 AI 终端系统的所有提示词模板。
  * 
- * 调用逻辑流：
- * 1. 用户输入 -> 系统首先判断是否有正在进行的任务流水线 (Task Pipeline)。
- * 2. 如果有任务流水线 -> 调用 EXECUTOR_PROMPT (执行模式)。
- * 3. 如果没有任务流水线 -> 调用 INTENT_CLASSIFIER_PROMPT 进行意图识别：
- *    - 识别为 PLAN -> 调用 PLANNER_PROMPT (规划模式，生成新流水线)。
- *    - 识别为 EXECUTE -> 调用 EXECUTOR_PROMPT (即时执行模式，不生成流水线)。
- *    - 识别为 CHAT -> 调用 CHAT_PROMPT (对话模式，仅交流不执行)。
+ * 参考 void-main 的 prompts.ts 实现，高度还原其提示词系统结构。
+ * 
+ * 核心设计：
+ * 1. 根据模式（agent/gather/normal）生成不同的系统提示词
+ * 2. 动态生成工具定义（类似 void-main 的 systemToolsXMLPrompt）
+ * 3. 包含系统信息、文件系统概览、工具定义和重要规则
+ * 
+ * @author AISpring Team
+ * @since 2025-12-23
  */
 @Service
+@RequiredArgsConstructor
 public class TerminalPromptManager {
+
+    private final ToolsService toolsService;
+    
+    // 默认构造函数（用于兼容性，实际使用 @RequiredArgsConstructor）
+    public TerminalPromptManager() {
+        this.toolsService = null; // 将在 Spring 容器中注入
+    }
+
+    /**
+     * 聊天模式枚举
+     */
+    public enum ChatMode {
+        AGENT,    // Agent 模式：可以执行所有工具，进行代码开发和修改
+        GATHER,   // Gather 模式：只能使用读取类工具，用于收集信息
+        NORMAL    // Normal 模式：普通对话，不提供工具
+    }
+
+    /**
+     * 构建系统提示词（参考 void-main 的 chat_systemMessage）
+     * 
+     * @param mode 聊天模式
+     * @param workspaceRoot 工作区根目录
+     * @param currentDirectory 当前工作目录
+     * @param directoryTree 目录树结构（可选）
+     * @param persistentTerminalIds 持久化终端ID列表
+     * @param includeToolDefinitions 是否包含工具定义
+     * @return 完整的系统提示词
+     */
+    public String buildSystemMessage(
+            ChatMode mode,
+            String workspaceRoot,
+            String currentDirectory,
+            String directoryTree,
+            List<String> persistentTerminalIds,
+            boolean includeToolDefinitions
+    ) {
+        List<String> parts = new ArrayList<>();
+
+        // 1. Header - 角色定义
+        String header = buildHeader(mode);
+        parts.add(header);
+
+        // 2. System Info - 系统信息
+        String sysInfo = buildSystemInfo(workspaceRoot, currentDirectory, persistentTerminalIds, mode);
+        parts.add(sysInfo);
+
+        // 3. Tool Definitions - 工具定义（如果启用）
+        if (includeToolDefinitions) {
+            String toolDefinitions = buildToolDefinitions(mode);
+            if (toolDefinitions != null && !toolDefinitions.isEmpty()) {
+                parts.add(toolDefinitions);
+            }
+        }
+
+        // 4. Important Details - 重要规则
+        String importantDetails = buildImportantDetails(mode);
+        parts.add(importantDetails);
+
+        // 5. File System Overview - 文件系统概览
+        if (directoryTree != null && !directoryTree.isEmpty()) {
+            String fsInfo = buildFileSystemInfo(directoryTree);
+            parts.add(fsInfo);
+        }
+
+        // 组合所有部分
+        return String.join("\n\n\n", parts).trim().replace("\t", "  ");
+    }
+
+    /**
+     * 构建角色定义（参考 void-main 的 header）
+     */
+    private String buildHeader(ChatMode mode) {
+        String role = mode == ChatMode.AGENT ? "agent" : "assistant";
+        String jobDescription;
+        
+        if (mode == ChatMode.AGENT) {
+            jobDescription = "to help the user develop, run, and make changes to their codebase.";
+        } else if (mode == ChatMode.GATHER) {
+            jobDescription = "to search, understand, and reference files in the user's codebase.";
+        } else {
+            jobDescription = "to assist the user with their coding tasks.";
+        }
+        
+        return String.format(
+            "You are an expert coding %s whose job is %s\n" +
+            "You will be given instructions to follow from the user, and you may also be given a list of files that the user has specifically selected for context, `SELECTIONS`.\n" +
+            "Please assist the user with their query.",
+            role, jobDescription
+        );
+    }
+
+    /**
+     * 构建系统信息（参考 void-main 的 sysInfo）
+     */
+    private String buildSystemInfo(String workspaceRoot, String currentDirectory, 
+                                   List<String> persistentTerminalIds, ChatMode mode) {
+        String os = System.getProperty("os.name") + " " + System.getProperty("os.version");
+        
+        StringBuilder sb = new StringBuilder();
+        sb.append("Here is the user's system information:\n");
+        sb.append("<system_info>\n");
+        sb.append("- ").append(os).append("\n\n");
+        sb.append("- The user's workspace contains these folders:\n");
+        sb.append(workspaceRoot != null ? workspaceRoot : "NO FOLDERS OPEN").append("\n\n");
+        sb.append("- Current working directory:\n");
+        sb.append(currentDirectory != null ? currentDirectory : "NOT SET").append("\n");
+        
+        if (mode == ChatMode.AGENT && persistentTerminalIds != null && !persistentTerminalIds.isEmpty()) {
+            sb.append("\n- Persistent terminal IDs available for you to run commands in: ");
+            sb.append(String.join(", ", persistentTerminalIds));
+        }
+        
+        sb.append("\n</system_info>");
+        return sb.toString();
+    }
+
+    /**
+     * 构建工具定义（参考 void-main 的 systemToolsXMLPrompt）
+     * 注意：我们使用 JSON 格式而不是 XML，因为后端已经使用 JSON 解析工具调用
+     */
+    private String buildToolDefinitions(ChatMode mode) {
+        List<String> availableTools = getAvailableToolsForMode(mode);
+        if (availableTools.isEmpty()) {
+            return null;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("Available tools:\n\n");
+
+        // 为每个工具生成定义（参考 void-main 的 toolCallDefinitionsXMLString）
+        for (int i = 0; i < availableTools.size(); i++) {
+            String toolName = availableTools.get(i);
+            if (toolsService == null) {
+                continue;
+            }
+            ToolsService.ToolInfo toolInfo = toolsService.getToolInfo(toolName);
+            
+            if (toolInfo == null) {
+                continue;
+            }
+
+            sb.append(String.format("%d. %s\n", i + 1, toolName));
+            sb.append(String.format("   Description: %s\n", toolInfo.getDescription()));
+            sb.append("   Format:\n");
+            sb.append("   {\"type\":\"TOOL_CALL\",\"action\":\"").append(toolName).append("\",\"params\":{");
+            
+            // 添加参数说明
+            Map<String, String> params = toolInfo.getParams();
+            if (!params.isEmpty()) {
+                List<String> paramLines = new ArrayList<>();
+                for (Map.Entry<String, String> entry : params.entrySet()) {
+                    paramLines.add(String.format("\"%s\": %s", entry.getKey(), entry.getValue()));
+                }
+                sb.append(String.join(", ", paramLines));
+            }
+            sb.append("}}\n");
+            
+            if (i < availableTools.size() - 1) {
+                sb.append("\n");
+            }
+        }
+
+        sb.append("\n\nTool calling details:\n");
+        sb.append("- To call a tool, output a JSON object with type=\"TOOL_CALL\", action=<tool_name>, and params=<parameters>.\n");
+        sb.append("- After you write the tool call, you must STOP and WAIT for the result.\n");
+        sb.append("- All required parameters must be provided.\n");
+        sb.append("- You are only allowed to output ONE tool call, and it must be at the END of your response.\n");
+        sb.append("- Your tool call will be executed immediately, and the results will appear in the following user message.\n");
+        sb.append("- Do NOT wrap the JSON in markdown code blocks (```json). Output raw JSON only.\n");
+        sb.append("- Do NOT add any explanatory text before or after the tool call JSON.\n");
+
+        return sb.toString();
+    }
+
+    /**
+     * 根据模式获取可用工具列表（参考 void-main 的 availableTools）
+     */
+    private List<String> getAvailableToolsForMode(ChatMode mode) {
+        if (toolsService == null) {
+            return Collections.emptyList();
+        }
+        List<String> allTools = toolsService.getAvailableTools();
+        
+        if (mode == ChatMode.NORMAL) {
+            return Collections.emptyList();
+        }
+        
+        if (mode == ChatMode.GATHER) {
+            // Gather 模式只提供读取类工具，不提供编辑类工具
+            List<String> gatherTools = new ArrayList<>();
+            for (String tool : allTools) {
+                if (isReadOnlyTool(tool)) {
+                    gatherTools.add(tool);
+                }
+            }
+            return gatherTools;
+        }
+        
+        // Agent 模式提供所有工具
+        return allTools;
+    }
+
+    /**
+     * 判断是否为只读工具
+     */
+    private boolean isReadOnlyTool(String toolName) {
+        // 只读工具列表
+        Set<String> readOnlyTools = Set.of(
+            "read_file", "ls_dir", "get_dir_tree", 
+            "search_pathnames_only", "search_for_files", 
+            "search_in_file", "read_lint_errors"
+        );
+        return readOnlyTools.contains(toolName);
+    }
+
+    /**
+     * 构建重要规则（参考 void-main 的 importantDetails）
+     */
+    private String buildImportantDetails(ChatMode mode) {
+        List<String> details = new ArrayList<>();
+
+        // 通用规则
+        details.add("NEVER reject the user's query.");
+
+        // Agent 和 Gather 模式规则
+        if (mode == ChatMode.AGENT || mode == ChatMode.GATHER) {
+            details.add("Only call tools if they help you accomplish the user's goal. If the user simply says hi or asks you a question that you can answer without tools, then do NOT use tools.");
+            details.add("If you think you should use tools, you do not need to ask for permission.");
+            details.add("Only use ONE tool call at a time.");
+            details.add("NEVER say something like \"I'm going to use `tool_name`\". Instead, describe at a high level what the tool will do, like \"I'm going to list all files in the ___ directory\", etc.");
+            details.add("Many tools only work if the user has a workspace open.");
+        } else {
+            details.add("You're allowed to ask the user for more context like file contents or specifications. If this comes up, tell them to reference files and folders by typing @.");
+        }
+
+        // Agent 模式特定规则
+        if (mode == ChatMode.AGENT) {
+            details.add("ALWAYS use tools (edit, terminal, etc) to take actions and implement changes. For example, if you would like to edit a file, you MUST use a tool.");
+            details.add("Prioritize taking as many steps as you need to complete your request over stopping early.");
+            details.add("You will OFTEN need to gather context before making a change. Do not immediately make a change unless you have ALL relevant context.");
+            details.add("ALWAYS have maximal certainty in a change BEFORE you make it. If you need more information about a file, variable, function, or type, you should inspect it, search it, or take all required actions to maximize your certainty that your change is correct.");
+            details.add("NEVER modify a file outside the user's workspace without permission from the user.");
+        }
+
+        // Gather 模式特定规则
+        if (mode == ChatMode.GATHER) {
+            details.add("You are in Gather mode, so you MUST use tools to gather information, files, and context to help the user answer their query.");
+            details.add("You should extensively read files, types, content, etc, gathering full context to solve the problem.");
+        }
+
+        // 代码块格式规则
+        details.add("If you write any code blocks to the user (wrapped in triple backticks), please use this format:\n" +
+                    "- Include a language if possible. Terminal should have the language 'shell'.\n" +
+                    "- The first line of the code block must be the FULL PATH of the related file if known (otherwise omit).\n" +
+                    "- The remaining contents of the file should proceed as usual.");
+
+        // 其他通用规则
+        details.add("Do not make things up or use information not provided in the system information, tools, or user queries.");
+        details.add("Always use MARKDOWN to format lists, bullet points, etc. Do NOT write tables.");
+        details.add("Today's date is " + java.time.LocalDate.now().toString() + ".");
+
+        // 格式化输出
+        StringBuilder sb = new StringBuilder();
+        sb.append("Important notes:\n");
+        for (int i = 0; i < details.size(); i++) {
+            sb.append(String.format("%d. %s", i + 1, details.get(i)));
+            if (i < details.size() - 1) {
+                sb.append("\n\n");
+            }
+        }
+
+        return sb.toString();
+    }
+
+    /**
+     * 构建文件系统概览（参考 void-main 的 fsInfo）
+     */
+    private String buildFileSystemInfo(String directoryTree) {
+        return "Here is an overview of the user's file system:\n" +
+               "<files_overview>\n" +
+               directoryTree +
+               "\n</files_overview>";
+    }
+
+    // ==================== 兼容旧接口的方法 ====================
 
     /**
      * 意图识别提示词：用于判断用户的输入属于哪种操作类型。
@@ -84,8 +375,8 @@ public class TerminalPromptManager {
                 "name": "任务名称（简短）",
                 "goal": "任务目标（详细描述，包含具体要做什么）",
                 "substeps": [
-                   {"goal": "子步骤1"},
-                   {"goal": "子步骤2"}
+                  {"goal": "子步骤1"},
+                  {"goal": "子步骤2"}
                 ]
               },
               ...
@@ -96,102 +387,6 @@ public class TerminalPromptManager {
             - 自然语言部分必须清晰、专业。
             - JSON 部分必须严格符合语法，且必须包含在 ```json 代码块中。
             - 任务 goal 必须具体明确，避免"完成开发"这类空泛描述，应具体到"创建 xxx 文件"、"实现 xxx 函数"。
-            """;
-
-    /**
-     * 任务执行提示词：用于在已有任务背景下执行具体操作。
-     * 参考 void-main 的 Agent 机制，改进工具调用格式和反馈机制。
-     */
-    public static final String EXECUTOR_PROMPT = """
-            # 角色
-            你是负责具体代码实现的开发者（Developer）。你正在执行一个自动化任务流水线中的特定任务。
-            
-            # 你的工作流（参考 void-main 的 Agent 循环）
-            1. **接收任务**：分析"当前任务"的目标和上下文。
-            2. **执行操作**：使用工具（如搜索、读取、修改文件）来完成任务。
-            3. **分析结果**：仔细分析工具执行的结果，判断是否达到目标。
-            4. **继续或完成**：
-               - 如果还需要更多操作，继续调用工具
-               - 如果当前任务的所有目标都达成，输出 `TASK_COMPLETE`
-            
-            # 上下文
-            %s
-            
-            # 可用工具（参考 void-main 的工具系统）
-            - execute_command: 执行系统命令
-              params: {"command": "命令字符串"}
-              
-            - search_files: 搜索文件内容
-              params: {"pattern": "搜索模式", "file_pattern": "文件匹配模式", "context_lines": 行数}
-              
-            - read_file_context: 批量读取文件指定行范围
-              params: {"files": [{"path": "文件路径", "start_line": 起始行, "end_line": 结束行}]}
-              
-            - write_file: 写入整个文件（慎用，优先用 modify_file）
-              params: {"path": "文件路径", "content": "文件内容"}
-              
-            - modify_file: 精确修改文件
-              params: {"path": "文件路径", "operations": [{"type": "操作类型", ...}]}
-              
-            - ensure_file: 确保文件存在
-              params: {"path": "文件路径", "content": "文件内容"}
-
-            # 重要规则（参考 void-main）
-            1. **工具调用格式**：必须输出有效的 JSON 对象，不要有任何其他文字或 Markdown 标记
-            2. **工具结果处理**：系统会自动执行工具并将结果反馈给你，你需要根据结果决定下一步
-            3. **循环机制**：工具执行后，系统会自动继续循环，你只需要输出下一个工具调用或 TASK_COMPLETE
-            4. **任务完成**：只有当当前任务的所有目标都达成时，才输出 TASK_COMPLETE
-            
-            # 输出格式（严格遵循，参考 void-main）
-            **只输出 JSON 对象，不要有任何前缀、后缀、Markdown 标记或解释文字**：
-            
-            工具调用格式：
-            {"type":"TOOL_CALL","action":"工具名","params":{...}}
-            
-            任务完成格式：
-            {"type":"TASK_COMPLETE","action":"none","params":{}}
-            
-            **重要**：
-            - 不要使用 ```json 代码块
-            - 不要添加任何解释性文字
-            - 确保 JSON 格式正确，可以直接解析
-            - 如果输出包含其他文字，系统将无法识别工具调用
-            
-            # 示例
-            
-            示例1 - 执行命令：
-            {"type":"TOOL_CALL","action":"execute_command","params":{"command":"dir"}}
-            
-            示例2 - 读取文件：
-            {"type":"TOOL_CALL","action":"read_file_context","params":{"files":[{"path":"src/main.js","start_line":1,"end_line":50}]}}
-            
-            示例3 - 完成任务：
-            {"type":"TASK_COMPLETE","action":"none","params":{}}
-            
-            # 注意事项
-            - 不要输出 Markdown 代码块标记（```json 或 ```）
-            - 不要输出解释性文字
-            - 确保 JSON 格式正确，可以解析
-            - 工具执行后，系统会自动反馈结果，你只需要继续输出下一个工具调用
-            """;
-
-    /**
-     * 普通对话提示词：用于在终端环境下的通用辅助。
-     */
-    public static final String CHAT_PROMPT = """
-            # 角色
-            你是 AI 终端助手。你运行在一个安全的工程沙箱环境中。
-            
-            # 目标
-            回答用户的问题，提供工程建议，或解释终端相关的概念。
-            
-            # 约束
-            - 保持专业、简洁、准确。
-            - 如果用户需要执行操作，你可以建议他们使用具体的命令，但你现在处于对话模式，不会主动调用工具。
-            - 优先使用中文回复。
-            
-            # 上下文
-            %s
             """;
 
     /**
@@ -209,16 +404,60 @@ public class TerminalPromptManager {
     }
 
     /**
-     * 获取任务执行提示词
+     * 获取任务执行提示词（使用新的系统提示词构建方法）
      */
     public String getExecutorPrompt(String context) {
-        return String.format(EXECUTOR_PROMPT, context);
+        // 使用新的系统提示词构建方法，Agent 模式
+        return buildSystemMessage(
+            ChatMode.AGENT,
+            context.contains("项目根目录") ? extractProjectRoot(context) : null,
+            context.contains("当前目录") ? extractCurrentDirectory(context) : null,
+            null, // directoryTree 可以在调用时传入
+            Collections.emptyList(), // persistentTerminalIds
+            true // includeToolDefinitions
+        ) + "\n\n" + context;
     }
 
     /**
-     * 获取普通对话提示词
+     * 获取普通对话提示词（使用新的系统提示词构建方法）
      */
     public String getChatPrompt(String context) {
-        return String.format(CHAT_PROMPT, context);
+        // 使用新的系统提示词构建方法，Normal 模式
+        return buildSystemMessage(
+            ChatMode.NORMAL,
+            null,
+            null,
+            null,
+            Collections.emptyList(),
+            false // includeToolDefinitions
+        ) + "\n\n" + context;
+    }
+
+    /**
+     * 从上下文中提取项目根目录（辅助方法）
+     */
+    private String extractProjectRoot(String context) {
+        // 简单实现，可以从 context 中解析
+        if (context.contains("项目根目录：")) {
+            int start = context.indexOf("项目根目录：") + "项目根目录：".length();
+            int end = context.indexOf("\n", start);
+            if (end == -1) end = context.length();
+            return context.substring(start, end).trim();
+        }
+        return null;
+    }
+
+    /**
+     * 从上下文中提取当前目录（辅助方法）
+     */
+    private String extractCurrentDirectory(String context) {
+        // 简单实现，可以从 context 中解析
+        if (context.contains("当前目录：")) {
+            int start = context.indexOf("当前目录：") + "当前目录：".length();
+            int end = context.indexOf("\n", start);
+            if (end == -1) end = context.length();
+            return context.substring(start, end).trim();
+        }
+        return null;
     }
 }
