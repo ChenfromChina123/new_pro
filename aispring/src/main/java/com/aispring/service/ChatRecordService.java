@@ -207,6 +207,16 @@ public class ChatRecordService {
             }
         });
     }
+    
+    /**
+     * 获取会话的当前工作目录
+     */
+    public String getSessionCwd(String sessionId, String userId) {
+        return chatSessionRepository.findBySessionId(sessionId)
+            .filter(session -> Objects.equals(session.getUserId(), userId))
+            .map(ChatSession::getCurrentCwd)
+            .orElse("/");
+    }
 
     /**
      * 获取用户的所有终端会话
