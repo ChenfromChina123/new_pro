@@ -238,17 +238,26 @@ public class AiChatServiceImpl implements AiChatService {
         // 创建SSE发射器，设置超时时间为5分钟（Agent 循环可能需要更长时间）
         SseEmitter emitter = new SseEmitter(300_000L);
         
-        log.info("=== askAgentStream Called ===");
-        log.info("Model: {}, SessionId: {}", model, sessionId);
+        log.info("=== askAgentStreamInternal Called ===");
+        log.info("Model: {}, SessionId: {}, UserId: {}", model, sessionId, userId);
+        log.info("Initial Prompt: {}", initialPrompt);
+        log.info("System Prompt length: {}", initialSystemPrompt != null ? initialSystemPrompt.length() : 0);
+        if (initialSystemPrompt != null && initialSystemPrompt.length() > 0) {
+            log.info("System Prompt preview (first 500 chars): {}", 
+                initialSystemPrompt.substring(0, Math.min(500, initialSystemPrompt.length())));
+        }
         
         // 生成循环 ID
         String loopId = java.util.UUID.randomUUID().toString();
         
         new Thread(() -> {
             try {
+                log.info("=== Agent Loop Thread Started ===");
                 Long userIdLong = Long.valueOf(userId);
                 com.aispring.entity.session.SessionState sessionState = 
                         sessionStateService.getOrCreateState(sessionId, userIdLong);
+                
+                log.info("SessionState retrieved: status={}, sessionId={}", sessionState.getStatus(), sessionId);
                 
                 // 初始化状态
                 sessionState.setStatus(com.aispring.entity.agent.AgentStatus.RUNNING);
@@ -256,7 +265,8 @@ public class AiChatServiceImpl implements AiChatService {
                 sessionState.setStreamState(com.aispring.entity.session.StreamState.idle());
                 sessionStateService.saveState(sessionState);
                 
-                log.info("Agent 循环开始: sessionId={}, loopId={}", sessionId, loopId);
+                log.info("Agent 循环开始: sessionId={}, loopId={}, systemPrompt length={}", 
+                    sessionId, loopId, initialSystemPrompt != null ? initialSystemPrompt.length() : 0);
                 
                 // 循环变量
                 String currentPrompt = initialPrompt;
@@ -305,7 +315,11 @@ public class AiChatServiceImpl implements AiChatService {
                             sessionStateService.saveState(sessionState);
                             
                             // 执行对话并获取完整回复
+                            log.info("准备调用 LLM: prompt length={}, systemPrompt length={}", 
+                                currentPrompt != null ? currentPrompt.length() : 0,
+                                currentSystemPrompt != null ? currentSystemPrompt.length() : 0);
                             fullResponse = performBlockingChat(currentPrompt, sessionId, model, userId, currentSystemPrompt, emitter);
+                            log.info("LLM 响应完成: response length={}", fullResponse != null ? fullResponse.length() : 0);
                             llmSuccess = true;
                             
                             // Hook for capturing response
@@ -1055,7 +1069,10 @@ public class AiChatServiceImpl implements AiChatService {
         
         // Add System Prompt if exists
         if (systemPrompt != null && !systemPrompt.isEmpty()) {
+            log.debug("添加系统提示词到消息列表: length={}", systemPrompt.length());
             messages.add(new org.springframework.ai.chat.messages.SystemMessage(systemPrompt));
+        } else {
+            log.warn("系统提示词为空或null！这可能导致 AI 不使用工具！");
         }
 
         // 获取历史消息
