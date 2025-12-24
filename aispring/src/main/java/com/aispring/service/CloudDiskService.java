@@ -845,7 +845,21 @@ public class CloudDiskService {
             throw new IOException("物理文件不存在");
         }
         
-        return Files.readString(physicalPath, StandardCharsets.UTF_8);
+        byte[] bytes = Files.readAllBytes(physicalPath);
+        try {
+            // 优先尝试使用 UTF-8 读取
+            java.nio.charset.CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder();
+            decoder.onMalformedInput(java.nio.charset.CodingErrorAction.REPORT);
+            return decoder.decode(java.nio.ByteBuffer.wrap(bytes)).toString();
+        } catch (java.nio.charset.CharacterCodingException e) {
+            try {
+                // 如果 UTF-8 失败，尝试使用 GBK (针对中文 Windows 环境常见的编码)
+                return new String(bytes, java.nio.charset.Charset.forName("GBK"));
+            } catch (Exception e2) {
+                // 如果还是失败，强制使用 UTF-8 并替换非法字符
+                return new String(bytes, StandardCharsets.UTF_8);
+            }
+        }
     }
 
     /**
@@ -861,6 +875,67 @@ public class CloudDiskService {
             
         String relPath = file.getFilepath();
         Path physicalPath = Paths.get(getCloudDiskAbsolutePath(), String.valueOf(userId), 
+            relPath.startsWith("/") ? relPath.substring(1) : relPath).normalize();
+            
+        // 确保父目录存在
+        Files.createDirectories(physicalPath.getParent());
+        
+        // 写入新内容
+        byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
+        Files.write(physicalPath, bytes);
+        
+        // 更新数据库中的文件大小和修改时间
+        file.setFileSize((long) bytes.length);
+        file.setUploadTime(LocalDateTime.now());
+        userFileRepository.save(file);
+    }
+
+    /**
+     * 管理员获取文件内容（不限制用户ID）
+     * @param fileId 文件ID
+     * @return 文件文本内容
+     */
+    public String getFileContentAdmin(Long fileId) throws IOException {
+        UserFile file = userFileRepository.findById(fileId)
+            .orElseThrow(() -> new IllegalArgumentException("文件不存在"));
+            
+        String relPath = file.getFilepath();
+        Path physicalPath = Paths.get(getCloudDiskAbsolutePath(), String.valueOf(file.getUser().getId()), 
+            relPath.startsWith("/") ? relPath.substring(1) : relPath).normalize();
+            
+        if (!Files.exists(physicalPath)) {
+            throw new IOException("物理文件不存在");
+        }
+        
+        byte[] bytes = Files.readAllBytes(physicalPath);
+        try {
+            // 优先尝试使用 UTF-8 读取
+            java.nio.charset.CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder();
+            decoder.onMalformedInput(java.nio.charset.CodingErrorAction.REPORT);
+            return decoder.decode(java.nio.ByteBuffer.wrap(bytes)).toString();
+        } catch (java.nio.charset.CharacterCodingException e) {
+            try {
+                // 如果 UTF-8 失败，尝试使用 GBK
+                return new String(bytes, java.nio.charset.Charset.forName("GBK"));
+            } catch (Exception e2) {
+                // 如果还是失败，强制使用 UTF-8 并替换非法字符
+                return new String(bytes, StandardCharsets.UTF_8);
+            }
+        }
+    }
+
+    /**
+     * 管理员更新文件内容（不限制用户ID）
+     * @param fileId 文件ID
+     * @param content 新内容
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void updateFileContentAdmin(Long fileId, String content) throws IOException {
+        UserFile file = userFileRepository.findById(fileId)
+            .orElseThrow(() -> new IllegalArgumentException("文件不存在"));
+            
+        String relPath = file.getFilepath();
+        Path physicalPath = Paths.get(getCloudDiskAbsolutePath(), String.valueOf(file.getUser().getId()), 
             relPath.startsWith("/") ? relPath.substring(1) : relPath).normalize();
             
         // 确保父目录存在
