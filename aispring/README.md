@@ -201,6 +201,20 @@ public class JwtUtil {
 }
 ```
 
+### 2. 文件编码自动识别
+
+系统实现了智能文件读取逻辑，能够自动识别多种编码格式，解决跨平台（Windows/Linux）文件读取乱码问题：
+- **BOM检测**: 支持 UTF-8、UTF-16LE、UTF-16BE 的 BOM 头识别。
+- **多编码尝试**: 依次尝试 UTF-8 -> GBK -> UTF-16LE -> 强制 UTF-8 降级读取。
+- **服务对齐**: `CloudDiskService` 与 `TerminalService` 共享相同的编码识别逻辑，确保全系统文件查看一致性。
+
+### 3. 管理员高级权限
+
+为 `CloudDiskService` 增加了管理员专用方法：
+- `getFileContentAdmin(Long fileId)`: 允许管理员跨用户读取物理文件内容。
+- `updateFileContentAdmin(Long fileId, String content)`: 允许管理员直接编辑并同步更新用户文件。
+- **安全性**: 所有管理员接口均受 `@PreAuthorize("hasRole('ADMIN')")` 保护。
+
 ### 2. 文件上传
 
 ```java
