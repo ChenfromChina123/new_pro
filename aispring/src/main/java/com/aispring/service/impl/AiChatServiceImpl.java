@@ -2,6 +2,7 @@ package com.aispring.service.impl;
 
 import com.aispring.service.AiChatService;
 import com.aispring.service.ToolsService;
+import com.aispring.service.ToolCallParser;
 import com.aispring.repository.ChatRecordRepository;
 import com.aispring.entity.ChatRecord;
 import com.aispring.entity.ChatSession;
@@ -59,6 +60,7 @@ public class AiChatServiceImpl implements AiChatService {
     private final com.aispring.service.SessionStateService sessionStateService;
     private final com.aispring.service.ToolApprovalService toolApprovalService;
     private final com.aispring.service.ToolsService toolsService;
+    private final com.aispring.service.ToolCallParser toolCallParser;
     
     @Value("${ai.max-tokens:4096}")
     private Integer maxTokens;
@@ -96,6 +98,7 @@ public class AiChatServiceImpl implements AiChatService {
                              com.aispring.service.SessionStateService sessionStateService,
                              com.aispring.service.ToolApprovalService toolApprovalService,
                              com.aispring.service.ToolsService toolsService,
+                             com.aispring.service.ToolCallParser toolCallParser,
                              @Value("${ai.doubao.api-key:}") String doubaoApiKey,
                              @Value("${ai.doubao.api-url:}") String doubaoApiUrl,
                              @Value("${ai.deepseek.api-key:}") String deepseekApiKey,
@@ -107,6 +110,7 @@ public class AiChatServiceImpl implements AiChatService {
         this.sessionStateService = sessionStateService;
         this.toolApprovalService = toolApprovalService;
         this.toolsService = toolsService;
+        this.toolCallParser = toolCallParser;
         
         this.doubaoApiKey = doubaoApiKey;
         this.doubaoApiUrl = doubaoApiUrl;
@@ -363,42 +367,22 @@ public class AiChatServiceImpl implements AiChatService {
                     sessionStateService.saveState(sessionState);
                     
                     // 解析回复，检查是否需要继续循环
+                    // 使用 XML 格式解析工具调用（参考 void-main 的 extractXMLToolsWrapper）
                     try {
-                        String jsonStr = extractJson(fullResponse);
+                        // 提取纯文本（移除工具调用部分）
+                        List<String> availableTools = toolsService.getAvailableTools();
+                        String plainText = toolCallParser.extractPlainText(fullResponse, availableTools);
                         
-                        if (jsonStr != null) {
-                            JsonNode root = objectMapper.readTree(jsonStr);
-                            String type = root.has("type") ? root.get("type").asText() : "";
+                        // 尝试解析工具调用
+                        ToolCallParser.ParsedToolCall parsedToolCall = toolCallParser.extractToolCall(fullResponse, availableTools);
+                        
+                        if (parsedToolCall != null && parsedToolCall.isComplete()) {
+                            // 工具调用处理（参考 void-main 的 _runToolCall）
+                            String toolName = parsedToolCall.getToolName();
+                            String decisionId = parsedToolCall.getToolId();
+                            Map<String, Object> unvalidatedParams = parsedToolCall.getRawParams();
                             
-                            if ("task_update".equals(type)) {
-                                // 任务状态更新
-                                String taskId = root.path("taskId").asText();
-                                String status = root.path("status").asText();
-                                String desc = root.path("desc").asText("");
-                                
-                                boolean taskFound = false;
-                                for (Map<String, Object> task : currentTasks) {
-                                    if (String.valueOf(task.get("id")).equals(taskId)) {
-                                        task.put("status", status);
-                                        desc = (String) task.get("desc");
-                                        taskFound = true;
-                                        break;
-                                    }
-                                }
-                                
-                                if (taskFound) {
-                                    shouldSendAnotherMessage = true;
-                                    currentPrompt = String.format("任务 %s (ID: %s) 状态已更新为 %s。请继续执行该任务的具体操作，或进行下一步。", desc, taskId, status);
-                                    currentSystemPrompt = updateSystemPromptWithTasks(currentSystemPrompt, currentTasks);
-                                }
-                            } else if ("TOOL_CALL".equals(type) || "tool_call".equals(type)) {
-                                // 工具调用处理（参考 void-main 的 _runToolCall）
-                                String toolName = root.path("action").asText();
-                                String decisionId = root.path("decision_id").asText(java.util.UUID.randomUUID().toString());
-                                JsonNode paramsNode = root.path("params");
-                                Map<String, Object> unvalidatedParams = objectMapper.convertValue(paramsNode, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
-                                
-                                log.info("检测到工具调用: {}, decisionId={}", toolName, decisionId);
+                            log.info("检测到 XML 工具调用: {}, decisionId={}, params={}", toolName, decisionId, unvalidatedParams);
                                 
                                 // 1. 参数验证
                                 String validationError = toolsService.validateParams(toolName, unvalidatedParams);
@@ -463,21 +447,21 @@ public class AiChatServiceImpl implements AiChatService {
                                         .data(objectMapper.writeValueAsString(result)));
                                 
                                 // 5. 将工具结果保存到消息历史（参考 void-main 的机制）
-                                // 工具结果会被添加到消息历史，LLM 在下一次调用时会自动看到
-                                String toolResultMessage;
-                                if (result.isSuccess()) {
-                                    toolResultMessage = String.format("工具 '%s' 执行成功:\n%s", 
-                                            toolName, result.getStringResult());
-                                } else {
-                                    toolResultMessage = String.format("工具 '%s' 执行失败:\n%s", 
-                                            toolName, result.getError() != null ? result.getError() : result.getStringResult());
-                                }
+                                // void-main 中，工具结果格式化为 XML 并作为用户消息添加到历史
+                                // 格式：<toolName_result>...</toolName_result>
+                                String toolResultContent = result.isSuccess() 
+                                    ? result.getStringResult() 
+                                    : (result.getError() != null ? result.getError() : result.getStringResult());
                                 
-                                // 保存工具结果到消息历史（senderType=3 表示系统反馈/工具结果）
+                                // 使用 XML 格式（参考 void-main 的 formatToolResult）
+                                String toolResultMessage = toolCallParser.formatToolResult(toolName, toolResultContent);
+                                
+                                // 保存工具结果到消息历史（作为用户消息，参考 void-main 的 prepareMessages_XML_tools）
+                                // void-main 中，工具结果被添加到用户消息中
                                 try {
                                     chatRecordService.createChatRecord(
                                         toolResultMessage,
-                                        3, // System feedback
+                                        1, // User message (工具结果作为用户消息反馈给 LLM)
                                         userId,
                                         sessionId,
                                         model,
@@ -488,29 +472,65 @@ public class AiChatServiceImpl implements AiChatService {
                                         result.getStringResult(), // stdout
                                         result.getError() // stderr
                                     );
-                                    log.info("工具结果已保存到消息历史: tool={}, success={}", toolName, result.isSuccess());
+                                    log.info("工具结果已保存到消息历史（XML格式）: tool={}, success={}", toolName, result.isSuccess());
                                 } catch (Exception e) {
                                     log.error("保存工具结果到消息历史失败: {}", e.getMessage(), e);
                                 }
                                 
-                                // 6. 构建下一次 Prompt（参考 void-main：工具结果已在历史中）
-                                // void-main 中，工具结果作为消息添加到历史，LLM 自动看到
-                                // 但为了确保 LLM 理解这是工具结果反馈，我们提供一个清晰的提示
-                                if (result.isSuccess()) {
-                                    // 成功：提示继续执行
-                                    currentPrompt = "工具执行成功。请根据结果继续执行下一步操作。如果当前任务已完成，请输出 TASK_COMPLETE。";
-                                } else {
-                                    // 失败：提示分析错误并修正
-                                    currentPrompt = "工具执行失败。请分析错误原因，修正参数或方法后重试。";
-                                }
+                                // 6. 继续循环（参考 void-main：工具结果已在历史中，LLM 自动看到）
+                                // void-main 中，工具结果作为用户消息，LLM 会自动处理
+                                // 不需要额外的 prompt，直接继续循环
+                                shouldSendAnotherMessage = true;
+                                currentPrompt = ""; // 空 prompt，让 LLM 基于历史消息继续
                                 
                                 // 设置状态为 idle（工具执行完成）
                                 sessionState.setStreamState(com.aispring.entity.session.StreamState.idle());
                                 sessionStateService.saveState(sessionState);
                                 
-                                // 继续循环（参考 void-main：工具执行后自动继续）
-                                shouldSendAnotherMessage = true;
+                            } else {
+                                // 没有检测到工具调用，检查是否有纯文本响应
+                                if (plainText != null && !plainText.isEmpty()) {
+                                    // 纯文本响应，结束循环
+                                    log.debug("LLM 返回纯文本响应，结束 Agent 循环");
+                                }
+                            }
+                        } else {
+                            // 没有检测到工具调用，纯文本响应，结束循环
+                            log.debug("LLM 返回纯文本响应，结束 Agent 循环");
+                        }
+                    } catch (Exception e) {
+                        log.error("Error parsing agent response: {}", e.getMessage(), e);
+                        // 解析错误不影响继续，但不再继续循环
+                    }
+                    
+                    // 处理任务更新（保留兼容性）
+                    try {
+                        String jsonStr = extractJson(fullResponse);
+                        if (jsonStr != null) {
+                            JsonNode root = objectMapper.readTree(jsonStr);
+                            String type = root.has("type") ? root.get("type").asText() : "";
+                            
+                            if ("task_update".equals(type)) {
+                                // 任务状态更新
+                                String taskId = root.path("taskId").asText();
+                                String status = root.path("status").asText();
+                                String desc = root.path("desc").asText("");
                                 
+                                boolean taskFound = false;
+                                for (Map<String, Object> task : currentTasks) {
+                                    if (String.valueOf(task.get("id")).equals(taskId)) {
+                                        task.put("status", status);
+                                        desc = (String) task.get("desc");
+                                        taskFound = true;
+                                        break;
+                                    }
+                                }
+                                
+                                if (taskFound) {
+                                    shouldSendAnotherMessage = true;
+                                    currentPrompt = String.format("任务 %s (ID: %s) 状态已更新为 %s。请继续执行该任务的具体操作，或进行下一步。", desc, taskId, status);
+                                    currentSystemPrompt = updateSystemPromptWithTasks(currentSystemPrompt, currentTasks);
+                                }
                             } else if ("TASK_LIST".equals(type) || "task_list".equals(type)) {
                                 // 任务列表更新
                                 JsonNode tasksNode = root.path("tasks");
