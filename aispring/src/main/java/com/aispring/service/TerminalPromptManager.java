@@ -139,7 +139,7 @@ public class TerminalPromptManager {
 
     /**
      * 构建工具定义（参考 void-main 的 systemToolsXMLPrompt）
-     * 注意：我们使用 JSON 格式而不是 XML，因为后端已经使用 JSON 解析工具调用
+     * 使用 XML 格式（参考 void-main 的 toolCallDefinitionsXMLString）
      */
     private String buildToolDefinitions(ChatMode mode) {
         List<String> availableTools = getAvailableToolsForMode(mode);
@@ -150,7 +150,7 @@ public class TerminalPromptManager {
         StringBuilder sb = new StringBuilder();
         sb.append("Available tools:\n\n");
 
-        // 为每个工具生成定义（参考 void-main 的 toolCallDefinitionsXMLString）
+        // 为每个工具生成 XML 格式定义（参考 void-main 的 toolCallDefinitionsXMLString）
         for (int i = 0; i < availableTools.size(); i++) {
             String toolName = availableTools.get(i);
             if (toolsService == null) {
@@ -165,18 +165,17 @@ public class TerminalPromptManager {
             sb.append(String.format("%d. %s\n", i + 1, toolName));
             sb.append(String.format("   Description: %s\n", toolInfo.getDescription()));
             sb.append("   Format:\n");
-            sb.append("   {\"type\":\"TOOL_CALL\",\"action\":\"").append(toolName).append("\",\"params\":{");
+            sb.append("   <").append(toolName).append(">");
             
-            // 添加参数说明
+            // 添加参数说明（XML 格式）
             Map<String, String> params = toolInfo.getParams();
             if (!params.isEmpty()) {
-                List<String> paramLines = new ArrayList<>();
+                sb.append("\n");
                 for (Map.Entry<String, String> entry : params.entrySet()) {
-                    paramLines.add(String.format("\"%s\": %s", entry.getKey(), entry.getValue()));
+                    sb.append(String.format("   <%s>%s</%s>\n", entry.getKey(), entry.getValue(), entry.getKey()));
                 }
-                sb.append(String.join(", ", paramLines));
             }
-            sb.append("}}\n");
+            sb.append("   </").append(toolName).append(">");
             
             if (i < availableTools.size() - 1) {
                 sb.append("\n");
@@ -184,13 +183,13 @@ public class TerminalPromptManager {
         }
 
         sb.append("\n\nTool calling details:\n");
-        sb.append("- To call a tool, output a JSON object with type=\"TOOL_CALL\", action=<tool_name>, and params=<parameters>.\n");
+        sb.append("- To call a tool, write its name and parameters in the XML format specified above.\n");
         sb.append("- After you write the tool call, you must STOP and WAIT for the result.\n");
-        sb.append("- All required parameters must be provided.\n");
+        sb.append("- All parameters are REQUIRED unless noted otherwise.\n");
         sb.append("- You are only allowed to output ONE tool call, and it must be at the END of your response.\n");
         sb.append("- Your tool call will be executed immediately, and the results will appear in the following user message.\n");
-        sb.append("- Do NOT wrap the JSON in markdown code blocks (```json). Output raw JSON only.\n");
-        sb.append("- Do NOT add any explanatory text before or after the tool call JSON.\n");
+        sb.append("- Do NOT wrap the XML in markdown code blocks (```xml). Output raw XML only.\n");
+        sb.append("- Do NOT add any explanatory text before or after the tool call XML.\n");
 
         return sb.toString();
     }
