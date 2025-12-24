@@ -975,16 +975,33 @@ onMounted(async () => {
   }
   
   // 状态轮询（参考 void-main 的状态同步机制）
-  // 当 Agent 正在运行时，定期轮询状态以确保同步
-  const statePollInterval = setInterval(async () => {
-    if (currentSessionId.value && (agentStatus.value === 'RUNNING' || agentStatus.value === 'AWAITING_APPROVAL')) {
-      await loadSessionState()
+  // 注意：只在需要时轮询，避免频繁调用
+  // 工具调用完全由后端通过 SSE 事件处理，不需要前端轮询触发
+  let statePollInterval = null
+  
+  // 只在 Agent 运行时且没有活跃的 SSE 连接时轮询
+  watch([agentStatus, currentSessionId], ([status, sessionId]) => {
+    if (statePollInterval) {
+      clearInterval(statePollInterval)
+      statePollInterval = null
     }
-  }, 2000) // 每 2 秒轮询一次
+    
+    // 只在特定状态下轮询（避免在 SSE 流式传输时轮询）
+    if (sessionId && (status === 'AWAITING_APPROVAL' || status === 'IDLE')) {
+      statePollInterval = setInterval(async () => {
+        // 只在非流式传输状态下轮询
+        if (!isTyping.value && (agentStatus.value === 'AWAITING_APPROVAL' || agentStatus.value === 'IDLE')) {
+          await loadSessionState()
+        }
+      }, 5000) // 降低轮询频率到 5 秒
+    }
+  }, { immediate: true })
   
   // 清理定时器
   onUnmounted(() => {
-    clearInterval(statePollInterval)
+    if (statePollInterval) {
+      clearInterval(statePollInterval)
+    }
   })
   
   scrollToBottom()
@@ -1508,31 +1525,14 @@ const processAgentLoop = async (prompt, toolResult) => {
                 }
                 
                 // 处理回复内容 - 实时更新，不等待累积
+                // 注意：不再尝试解析或提取 JSON，直接显示 LLM 的文本响应
+                // 工具调用由后端通过 XML 解析识别，并通过 SSE 事件通知前端
                 if (json.content) {
                   fullContent += json.content
                   needsScroll = true
                   
-                  // 实时更新显示内容，提供更好的流式体验
-                  // 如果包含代码块标记，尝试提取前面的文本
-                  if (fullContent.includes('```json')) {
-                    const codeBlockStart = fullContent.indexOf('```json')
-                    if (codeBlockStart >= 0) {
-                      currentAiMsg.message = fullContent.substring(0, codeBlockStart).trim()
-                    } else {
-                      currentAiMsg.message = fullContent
-                    }
-                  } else if (fullContent.includes('{') && !fullContent.trim().startsWith('{')) {
-                    // 如果有 JSON 但不是以 { 开头，提取前面的文本
-                    const jsonStart = fullContent.indexOf('{')
-                    if (jsonStart >= 0) {
-                      currentAiMsg.message = fullContent.substring(0, jsonStart).trim()
-                    } else {
-                      currentAiMsg.message = fullContent
-                    }
-                  } else {
-                    // 直接显示全部内容
-                    currentAiMsg.message = fullContent
-                  }
+                  // 直接显示全部内容，不解析 JSON 或工具调用
+                  currentAiMsg.message = fullContent
                 }
             } else if (currentEvent === 'tool_result') {
                 // 处理工具执行结果（参考 void-main 的 tool result 处理）
@@ -1599,6 +1599,18 @@ const processAgentLoop = async (prompt, toolResult) => {
                 
                 // 更新状态
                 terminalStore.setAgentStatus('RUNNING')
+                
+            } else if (currentEvent === 'task_list') {
+                // 处理任务列表事件（后端发送的任务计划）
+                console.log('[TerminalView] Task list received:', json)
+                terminalStore.currentTasks = json.tasks || []
+                currentAiMsg.message = '任务计划已生成，即将开始执行...'
+                currentAiMsg.status = 'success'
+                
+                await saveMessage(JSON.stringify(json), 2)
+                
+                // 注意：不再自动触发执行，后端会自动继续循环
+                // 如果需要，后端会发送后续的工具调用事件
                 
             } else if (currentEvent === 'waiting_approval') {
                 // 处理等待批准事件（参考 void-main 的 approval 机制）
@@ -1687,119 +1699,14 @@ const processAgentLoop = async (prompt, toolResult) => {
 
     isTyping.value = false
     
-    // Parse Final JSON Content (Decision Envelope)
-    try {
-      // 尝试多种方式提取 JSON
-      let jsonStr = null
-      
-      // 方式1: 查找 ```json 代码块
-      const codeBlockMatch = fullContent.match(/```json\s*([\s\S]*?)```/)
-      if (codeBlockMatch) {
-        jsonStr = codeBlockMatch[1].trim()
-      }
-      
-      // 方式2: 查找第一个 { 到最后一个 }
-      if (!jsonStr) {
-        const jsonMatch = fullContent.match(/\{[\s\S]*\}/)
-        if (jsonMatch) {
-          jsonStr = jsonMatch[0]
-        }
-      }
-      
-      // 方式3: 如果整个内容看起来像 JSON
-      if (!jsonStr && fullContent.trim().startsWith('{')) {
-        jsonStr = fullContent.trim()
-      }
-      
-      if (!jsonStr) {
-        console.warn('No JSON found in response:', fullContent.substring(0, 200))
-        currentAiMsg.message = fullContent
-        await saveMessage(fullContent, 2)
-        return
-      }
-      
-      // 清理 JSON 字符串（移除可能的换行和多余空格）
-      jsonStr = jsonStr.trim()
-      
-      // 尝试解析 JSON
-      let decision
-      try {
-        decision = JSON.parse(jsonStr)
-      } catch (parseErr) {
-        console.error('JSON parse error:', parseErr, 'Content:', jsonStr.substring(0, 200))
-        // 如果解析失败，尝试修复常见的 JSON 问题
-        jsonStr = jsonStr.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']')
-        try {
-          decision = JSON.parse(jsonStr)
-        } catch (cleanupErr) {
-          console.error('JSON parse failed after cleanup:', cleanupErr)
-          currentAiMsg.message = fullContent
-          await saveMessage(fullContent, 2)
-          return
-        }
-      }
-
-      // 只处理任务列表（task_list），工具调用完全由后端通过 SSE 事件处理
-      if (decision.type === 'task_list' || decision.tasks) {
-        console.log('[TerminalView] Task list received:', decision.tasks)
-        terminalStore.currentTasks = decision.tasks || []
-        currentAiMsg.message = '任务计划已生成，即将开始执行...'
-        currentAiMsg.status = 'success'
-        
-        await saveMessage(JSON.stringify(decision), 2)
-        
-        // 自动触发第一步执行
-        setTimeout(async () => {
-            await processAgentLoop("开始执行任务", null)
-        }, 1000)
-        return
-      }
-      
-      // 其他类型的决策（如 TASK_COMPLETE、PAUSE）仍然处理
-      if (decision.decision_id && terminalStore.hasDecision(decision.decision_id)) {
-          console.warn('Duplicate decision ignored:', decision.decision_id)
-          return
-      }
-      if (decision.decision_id) {
-          decision.timestamp = decision.timestamp || Date.now()
-          terminalStore.addDecision(decision)
-      }
-
-      // 注意：不再处理 TOOL_CALL 类型的决策
-      // 工具调用完全由后端通过 XML 解析识别，并通过 SSE 事件（tool_result、waiting_approval）通知前端
-      // 前端只显示后端发送的工具调用信息
-      
-      if (decision.type === 'TASK_COMPLETE') {
-          currentAiMsg.message = "当前任务已完成"
-          currentAiMsg.status = 'success'
-          await saveMessage(JSON.stringify(decision), 2)
-      } else if (decision.type === 'PAUSE') {
-          terminalStore.setAgentStatus('PAUSED')
-          await saveMessage(JSON.stringify(decision), 2)
-      } else {
-          // 其他未知类型的决策，只保存不处理
-          console.debug('[TerminalView] Unknown decision type:', decision.type)
-          await saveMessage(JSON.stringify(decision), 2)
-      }
-      
-      // 解耦架构：保存身份信息（如果后端返回）
-      if (decision.identity) {
-          terminalStore.setIdentity(decision.identity)
-      }
-
-      // 解耦架构：保存状态切片（如果后端返回）
-      if (decision.state_slices) {
-          decision.state_slices.forEach(slice => {
-              terminalStore.addStateSlice(slice)
-          })
-      }
-
-  } catch (finalErr) {
-    // Fallback for non-JSON or partial content
-    console.debug('Final JSON process fallback:', finalErr)
+    // 注意：不再解析 JSON 决策
+    // 工具调用完全由后端通过 XML 解析识别，并通过 SSE 事件（tool_result、waiting_approval）通知前端
+    // 前端只显示 LLM 的文本响应，不解析任何工具调用
+    
+    // 只检查是否是任务列表（通过 SSE 事件中的 task_list 类型处理，不在这里解析）
+    // 如果 LLM 返回了纯文本，直接显示
     currentAiMsg.message = fullContent
     await saveMessage(fullContent, 2)
-  }
 
 } catch (outerErr) {
   console.error(outerErr)
