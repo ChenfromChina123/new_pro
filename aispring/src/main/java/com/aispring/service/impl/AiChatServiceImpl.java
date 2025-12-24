@@ -83,6 +83,11 @@ public class AiChatServiceImpl implements AiChatService {
     
     // 上下文最大消息数
     private static final int MAX_CONTEXT_MESSAGES = 10;
+    
+    // Agent 循环配置（参考 void-main）
+    private static final int CHAT_RETRIES = 3; // LLM 请求最大重试次数
+    private static final long RETRY_DELAY_MS = 1000; // 重试延迟（毫秒）
+    private static final int MAX_AGENT_LOOPS = 50; // Agent 循环最大次数
 
     public AiChatServiceImpl(ObjectProvider<ChatClient> chatClientProvider,
                              ObjectProvider<StreamingChatClient> streamingChatClientProvider,
@@ -216,65 +221,149 @@ public class AiChatServiceImpl implements AiChatService {
     }
 
 
+    /**
+     * Agent 流式问答核心实现（参考 void-main 的 _runChatAgent）
+     * 
+     * 改进点：
+     * 1. 更清晰的状态管理（idle -> LLM -> tool -> idle）
+     * 2. 重试机制（LLM 请求失败时自动重试）
+     * 3. 更好的错误处理
+     * 4. 统一的中断机制
+     */
     private SseEmitter askAgentStreamInternal(String initialPrompt, String sessionId, String model, String userId, String initialSystemPrompt, List<Map<String, Object>> initialTasks, Consumer<String> onResponse) {
-        // 创建SSE发射器，设置超时时间为3分钟
-        SseEmitter emitter = new SseEmitter(180_000L);
+        // 创建SSE发射器，设置超时时间为5分钟（Agent 循环可能需要更长时间）
+        SseEmitter emitter = new SseEmitter(300_000L);
         
-        System.out.println("=== askAgentStream Called ===");
-        System.out.println("Model: " + model);
+        log.info("=== askAgentStream Called ===");
+        log.info("Model: {}, SessionId: {}", model, sessionId);
         
-        // Phase 3: 生成循环 ID
+        // 生成循环 ID
         String loopId = java.util.UUID.randomUUID().toString();
         
         new Thread(() -> {
             try {
-                // Phase 3: 初始化会话状态
                 Long userIdLong = Long.valueOf(userId);
                 com.aispring.entity.session.SessionState sessionState = 
                         sessionStateService.getOrCreateState(sessionId, userIdLong);
+                
+                // 初始化状态
                 sessionState.setStatus(com.aispring.entity.agent.AgentStatus.RUNNING);
                 sessionState.setCurrentLoopId(loopId);
-                sessionState.setStreamState(com.aispring.entity.session.StreamState.streamingLLM());
+                sessionState.setStreamState(com.aispring.entity.session.StreamState.idle());
                 sessionStateService.saveState(sessionState);
                 
                 log.info("Agent 循环开始: sessionId={}, loopId={}", sessionId, loopId);
                 
+                // 循环变量
                 String currentPrompt = initialPrompt;
                 String currentSystemPrompt = initialSystemPrompt;
                 List<Map<String, Object>> currentTasks = initialTasks != null ? new ArrayList<>(initialTasks) : new ArrayList<>();
-                int loopCount = 0;
-                int maxLoops = 20; // 增加最大循环次数
-
-                while (loopCount < maxLoops) {
-                    loopCount++;
-                    System.out.println("Agent Loop: " + loopCount);
+                int nMessagesSent = 0;
+                boolean shouldSendAnotherMessage = true;
+                com.aispring.entity.agent.AgentStatus finalStatus = com.aispring.entity.agent.AgentStatus.COMPLETED;
+                
+                // 主循环（参考 void-main 的 while (shouldSendAnotherMessage)）
+                while (shouldSendAnotherMessage && nMessagesSent < MAX_AGENT_LOOPS) {
+                    shouldSendAnotherMessage = false;
+                    nMessagesSent++;
                     
-                    // Phase 3: 检查中断标志
+                    log.debug("Agent Loop iteration {}: sessionId={}", nMessagesSent, sessionId);
+                    
+                    // 检查中断标志（在 idle 状态检查）
                     if (sessionStateService.isInterruptRequested(sessionId)) {
-                        log.warn("Agent 循环被中断: sessionId={}, loopId={}, loopCount={}", 
-                                sessionId, loopId, loopCount);
+                        log.warn("Agent 循环被中断: sessionId={}, loopId={}, nMessagesSent={}", 
+                                sessionId, loopId, nMessagesSent);
+                        sessionState.setStreamState(com.aispring.entity.session.StreamState.idle());
+                        sessionStateService.saveState(sessionState);
                         emitter.send(SseEmitter.event()
                                 .name("interrupt")
                                 .data("{\"message\": \"Agent 循环已被用户中断\"}"));
                         break;
                     }
                     
-                    // 执行对话并获取完整回复
-                    String fullResponse = performBlockingChat(currentPrompt, sessionId, model, userId, currentSystemPrompt, emitter);
+                    // 设置状态为 idle（准备发送 LLM 请求）
+                    sessionState.setStreamState(com.aispring.entity.session.StreamState.idle());
+                    sessionStateService.saveState(sessionState);
                     
-                    // Hook for capturing response
-                    if (onResponse != null) {
+                    // LLM 请求重试循环（参考 void-main 的 while (shouldRetryLLM)）
+                    boolean shouldRetryLLM = true;
+                    int nAttempts = 0;
+                    String fullResponse = null;
+                    boolean llmSuccess = false;
+                    
+                    while (shouldRetryLLM && nAttempts < CHAT_RETRIES) {
+                        shouldRetryLLM = false;
+                        nAttempts++;
+                        
                         try {
-                            onResponse.accept(fullResponse);
+                            // 设置状态为 streaming LLM
+                            sessionState.setStreamState(com.aispring.entity.session.StreamState.streamingLLM());
+                            sessionStateService.saveState(sessionState);
+                            
+                            // 执行对话并获取完整回复
+                            fullResponse = performBlockingChat(currentPrompt, sessionId, model, userId, currentSystemPrompt, emitter);
+                            llmSuccess = true;
+                            
+                            // Hook for capturing response
+                            if (onResponse != null) {
+                                try {
+                                    onResponse.accept(fullResponse);
+                                } catch (Exception e) {
+                                    log.error("Error in onResponse hook: {}", e.getMessage(), e);
+                                }
+                            }
+                            
                         } catch (Exception e) {
-                            System.err.println("Error in onResponse hook: " + e.getMessage());
+                            log.error("LLM 请求失败 (attempt {}/{}): {}", nAttempts, CHAT_RETRIES, e.getMessage(), e);
+                            
+                            // 检查是否需要重试
+                            if (nAttempts < CHAT_RETRIES) {
+                                shouldRetryLLM = true;
+                                sessionState.setStreamState(com.aispring.entity.session.StreamState.idle());
+                                sessionStateService.saveState(sessionState);
+                                
+                                // 等待后重试
+                                try {
+                                    Thread.sleep(RETRY_DELAY_MS);
+                                } catch (InterruptedException ie) {
+                                    Thread.currentThread().interrupt();
+                                    break;
+                                }
+                                
+                                // 再次检查中断
+                                if (sessionStateService.isInterruptRequested(sessionId)) {
+                                    break;
+                                }
+                                continue;
+                            } else {
+                                // 重试次数用尽，发送错误消息
+                                String errorMsg = "LLM 请求失败，已重试 " + CHAT_RETRIES + " 次: " + e.getMessage();
+                                log.error(errorMsg);
+                                emitter.send(SseEmitter.event()
+                                        .name("error")
+                                        .data("{\"message\": \"" + errorMsg + "\"}"));
+                                
+                                sessionState.setStreamState(com.aispring.entity.session.StreamState.idle());
+                                sessionState.setStatus(com.aispring.entity.agent.AgentStatus.IDLE);
+                                sessionStateService.saveState(sessionState);
+                                
+                                finalStatus = com.aispring.entity.agent.AgentStatus.IDLE;
+                                break;
+                            }
                         }
                     }
-
+                    
+                    // 如果 LLM 请求失败，退出循环
+                    if (!llmSuccess || fullResponse == null) {
+                        break;
+                    }
+                    
+                    // 设置状态为 idle（LLM 响应完成）
+                    sessionState.setStreamState(com.aispring.entity.session.StreamState.idle());
+                    sessionStateService.saveState(sessionState);
+                    
                     // 解析回复，检查是否需要继续循环
-                    boolean shouldContinue = false;
                     try {
-                        // 简单提取 JSON
                         String jsonStr = extractJson(fullResponse);
                         
                         if (jsonStr != null) {
@@ -282,7 +371,7 @@ public class AiChatServiceImpl implements AiChatService {
                             String type = root.has("type") ? root.get("type").asText() : "";
                             
                             if ("task_update".equals(type)) {
-                                // ... existing task update logic ...
+                                // 任务状态更新
                                 String taskId = root.path("taskId").asText();
                                 String status = root.path("status").asText();
                                 String desc = root.path("desc").asText("");
@@ -298,23 +387,42 @@ public class AiChatServiceImpl implements AiChatService {
                                 }
                                 
                                 if (taskFound) {
-                                    shouldContinue = true;
+                                    shouldSendAnotherMessage = true;
                                     currentPrompt = String.format("任务 %s (ID: %s) 状态已更新为 %s。请继续执行该任务的具体操作，或进行下一步。", desc, taskId, status);
                                     currentSystemPrompt = updateSystemPromptWithTasks(currentSystemPrompt, currentTasks);
                                 }
                             } else if ("TOOL_CALL".equals(type) || "tool_call".equals(type)) {
-                                // === 后端工具执行逻辑 ===
+                                // 工具调用处理（参考 void-main 的 _runToolCall）
                                 String toolName = root.path("action").asText();
                                 String decisionId = root.path("decision_id").asText(java.util.UUID.randomUUID().toString());
                                 JsonNode paramsNode = root.path("params");
-                                Map<String, Object> params = objectMapper.convertValue(paramsNode, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
+                                Map<String, Object> unvalidatedParams = objectMapper.convertValue(paramsNode, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
                                 
                                 log.info("检测到工具调用: {}, decisionId={}", toolName, decisionId);
                                 
-                                // 1. 检查批准
-                                if (toolApprovalService.requiresApproval(userIdLong, toolName)) {
+                                // 1. 参数验证
+                                String validationError = toolsService.validateParams(toolName, unvalidatedParams);
+                                if (validationError != null) {
+                                    log.warn("工具参数验证失败: {}, error: {}", toolName, validationError);
+                                    emitter.send(SseEmitter.event()
+                                            .name("tool_error")
+                                            .data(objectMapper.writeValueAsString(Map.of(
+                                                    "tool", toolName,
+                                                    "error", validationError,
+                                                    "decision_id", decisionId
+                                            ))));
+                                    // 继续循环，让 LLM 知道参数错误
+                                    shouldSendAnotherMessage = true;
+                                    currentPrompt = String.format("工具 '%s' 参数验证失败: %s。请修正参数后重试。", toolName, validationError);
+                                    continue;
+                                }
+                                
+                                // 2. 检查批准（参考 void-main 的自动批准逻辑）
+                                boolean requiresApproval = toolApprovalService.requiresApproval(userIdLong, toolName);
+                                
+                                if (requiresApproval) {
                                     log.info("工具需要批准: {}", toolName);
-                                    toolApprovalService.createApprovalRequest(sessionId, userIdLong, toolName, params, decisionId);
+                                    toolApprovalService.createApprovalRequest(sessionId, userIdLong, toolName, unvalidatedParams, decisionId);
                                     
                                     // 发送等待批准事件
                                     emitter.send(SseEmitter.event()
@@ -322,38 +430,56 @@ public class AiChatServiceImpl implements AiChatService {
                                             .data(objectMapper.writeValueAsString(Map.of(
                                                     "decision_id", decisionId,
                                                     "tool", toolName,
-                                                    "params", params
+                                                    "params", unvalidatedParams
                                             ))));
                                     
                                     // 更新状态为等待批准
                                     sessionState.setStatus(com.aispring.entity.agent.AgentStatus.AWAITING_APPROVAL);
+                                    sessionState.setStreamState(com.aispring.entity.session.StreamState.awaitingUser(toolName, unvalidatedParams, decisionId));
                                     sessionStateService.saveState(sessionState);
                                     
-                                    // 暂停循环
-                                    shouldContinue = false; 
-                                    break; // 跳出循环，等待用户操作
+                                    finalStatus = com.aispring.entity.agent.AgentStatus.AWAITING_APPROVAL;
+                                    // 不继续循环，等待用户批准
+                                    break;
+                                } else {
+                                    log.info("工具自动批准: {}", toolName);
+                                    // 自动批准：创建批准记录但标记为已批准（用于审计）
+                                    toolApprovalService.createApprovalRequest(sessionId, userIdLong, toolName, unvalidatedParams, decisionId);
+                                    toolApprovalService.approveToolCall(decisionId, "自动批准（根据用户设置）");
                                 }
                                 
-                                // 2. 执行工具
+                                // 3. 执行工具
                                 log.info("执行工具: {}", toolName);
-                                ToolsService.ToolResult result = toolsService.callTool(toolName, params, userIdLong, sessionId);
                                 
-                                // 3. 发送工具结果给前端（用于展示）
+                                // 设置状态为 running tool
+                                sessionState.setStreamState(com.aispring.entity.session.StreamState.runningTool(toolName, unvalidatedParams, decisionId));
+                                sessionStateService.saveState(sessionState);
+                                
+                                ToolsService.ToolResult result = toolsService.callTool(toolName, unvalidatedParams, userIdLong, sessionId);
+                                
+                                // 4. 发送工具结果给前端
                                 emitter.send(SseEmitter.event()
                                         .name("tool_result")
                                         .data(objectMapper.writeValueAsString(result)));
                                 
-                                // 4. 构建下一次 Prompt
-                                currentPrompt = String.format("工具 '%s' 执行结果 (Exit Code: %s):\n%s\n%s\n请根据结果继续执行。", 
-                                        toolName, 
-                                        result.isSuccess() ? "0" : "-1",
-                                        result.getStringResult(),
-                                        result.getError() != null ? "Error: " + result.getError() : "");
+                                // 5. 构建下一次 Prompt（无论成功或失败都继续）
+                                if (result.isSuccess()) {
+                                    currentPrompt = String.format("工具 '%s' 执行成功:\n%s\n\n请根据结果继续执行。", 
+                                            toolName, result.getStringResult());
+                                } else {
+                                    currentPrompt = String.format("工具 '%s' 执行失败:\n%s\n\n请分析错误原因并修正。", 
+                                            toolName, result.getError() != null ? result.getError() : result.getStringResult());
+                                }
                                 
-                                shouldContinue = true;
+                                // 设置状态为 idle（工具执行完成）
+                                sessionState.setStreamState(com.aispring.entity.session.StreamState.idle());
+                                sessionStateService.saveState(sessionState);
+                                
+                                // 继续循环
+                                shouldSendAnotherMessage = true;
                                 
                             } else if ("TASK_LIST".equals(type) || "task_list".equals(type)) {
-                                // 任务列表更新，通常意味着开始
+                                // 任务列表更新
                                 JsonNode tasksNode = root.path("tasks");
                                 if (tasksNode.isArray()) {
                                     List<Map<String, Object>> newTasks = new ArrayList<>();
@@ -365,43 +491,41 @@ public class AiChatServiceImpl implements AiChatService {
                                     currentSystemPrompt = updateSystemPromptWithTasks(currentSystemPrompt, currentTasks);
                                     
                                     currentPrompt = "任务列表已接收。请开始执行第一个任务。";
-                                    shouldContinue = true;
+                                    shouldSendAnotherMessage = true;
                                 }
                             } else if ("TASK_COMPLETE".equals(type)) {
                                 currentPrompt = "当前任务已完成。请检查是否还有剩余任务，如果有则继续，没有则结束。";
-                                shouldContinue = true;
+                                shouldSendAnotherMessage = true;
                             }
+                        } else {
+                            // 没有 JSON，纯文本响应，结束循环
+                            log.debug("LLM 返回纯文本响应，结束 Agent 循环");
                         }
                     } catch (Exception e) {
-                        System.err.println("Error parsing agent response for loop: " + e.getMessage());
-                        e.printStackTrace();
-                    }
-                    
-                    if (!shouldContinue) {
-                        break;
+                        log.error("Error parsing agent response: {}", e.getMessage(), e);
+                        // 解析错误不影响继续，但不再继续循环
                     }
                 }
                 
-                // ... cleanup logic ...
-                // Only mark as COMPLETED if not PAUSED or AWAITING_APPROVAL
+                // 清理和结束
                 com.aispring.entity.session.SessionState finalState = sessionStateService.getState(sessionId).orElse(null);
-                if (finalState != null && finalState.getStatus() == com.aispring.entity.agent.AgentStatus.RUNNING) {
-                     finalState.setStatus(com.aispring.entity.agent.AgentStatus.COMPLETED);
-                     finalState.setCurrentLoopId(null);
-                     finalState.setStreamState(com.aispring.entity.session.StreamState.idle());
-                     sessionStateService.saveState(finalState);
-                     
-                     emitter.send(SseEmitter.event().data("[DONE]"));
-                     emitter.complete();
-                } else {
-                    // 如果是等待批准或暂停，不要发送 [DONE]，保持连接或者让前端知道是暂停状态
-                    // 但 SSE 连接通常在一次请求后结束，所以这里可能需要断开，前端根据状态决定是否重新发起
-                    emitter.send(SseEmitter.event().data("[DONE]")); // 结束本次 SSE 连接
-                    emitter.complete();
+                if (finalState != null) {
+                    if (finalState.getStatus() == com.aispring.entity.agent.AgentStatus.RUNNING) {
+                        finalState.setStatus(finalStatus);
+                    }
+                    finalState.setCurrentLoopId(null);
+                    finalState.setStreamState(com.aispring.entity.session.StreamState.idle());
+                    sessionStateService.saveState(finalState);
                 }
+                
+                log.info("Agent 循环结束: sessionId={}, nMessagesSent={}, finalStatus={}", 
+                        sessionId, nMessagesSent, finalStatus);
+                
+                emitter.send(SseEmitter.event().data("[DONE]"));
+                emitter.complete();
                 
             } catch (Exception e) {
-                // ... error handling ...
+                log.error("Agent 循环异常: sessionId={}", sessionId, e);
                 handleError(emitter, e);
             }
         }).start();
