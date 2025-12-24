@@ -131,23 +131,23 @@ watch(
 
 <style scoped>
 .input-area-wrapper {
-  padding: 20px;
+  padding: 12px 16px;
   background: #fff;
   border-top: 1px solid #f1f5f9;
   flex-shrink: 0;
 }
 
 .input-area {
-  max-width: 850px;
+  max-width: 800px;
   margin: 0 auto;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  padding: 10px 12px 8px;
+  border-radius: 12px;
+  padding: 8px 12px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  transition: all 0.2s;
+  gap: 6px;
+  transition: all 0.2s ease;
 }
 
 .input-area:focus-within {
@@ -157,7 +157,8 @@ watch(
 }
 
 .input-area.disabled {
-  opacity: 0.9;
+  opacity: 0.6;
+  background: #f1f5f9;
 }
 
 .input-toolbar {
@@ -170,63 +171,76 @@ watch(
 .toolbar-left {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
 }
 
 .toolbar-label {
   color: #64748b;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
 }
 
 .model-selector :deep(.custom-select) {
-  width: 180px;
+  width: 150px;
 }
 
 .model-selector :deep(.select-trigger) {
   background: transparent;
+  padding: 2px 8px;
+  height: 28px;
+  font-size: 0.8rem;
 }
 
 .input-row {
   display: flex;
   align-items: flex-end;
-  gap: 12px;
+  gap: 10px;
 }
 
 .input-textarea {
   flex: 1;
   border: none;
   background: transparent;
-  padding: 6px 0;
-  font-size: 1rem;
-  line-height: 1.5;
-  color: #1e293b;
   resize: none;
+  padding: 4px 0;
+  color: #1e293b;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  max-height: 150px;
   outline: none;
-  min-height: 24px;
-  max-height: 200px;
+}
+
+.input-textarea::placeholder {
+  color: #94a3b8;
 }
 
 .send-btn {
+  padding: 6px 16px;
   background: #3b82f6;
   color: white;
   border: none;
-  padding: 8px 16px;
-  height: 36px;
-  border-radius: 10px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-weight: 500;
-  margin-bottom: 2px;
-  flex-shrink: 0;
 }
 
 .send-btn:hover:not(:disabled) {
   background: #2563eb;
+  transform: translateY(-1px);
+}
+
+.send-btn:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .send-btn:disabled {

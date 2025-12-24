@@ -4,15 +4,6 @@
       <div class="terminal-layout">
         <!-- Left Panel: Chat -->
         <div class="chat-panel">
-          <TaskSidebar 
-            v-if="currentTasks && currentTasks.length > 0"
-            :tasks="currentTasks"
-            :active-task-id="activeTaskId"
-            :initial-width="sidebarWidth"
-            @update:width="sidebarWidth = $event"
-            @select-task="scrollToTask"
-          />
-
           <div class="chat-main-column">
             <div class="chat-header">
               <div class="header-left">
@@ -24,7 +15,10 @@
                   {{ agentStatus }}
                 </span>
                 <!-- 解耦架构：身份信息快捷显示 -->
-                <div v-if="identityInfo?.task?.goal" class="identity-quick-view">
+                <div 
+                  v-if="identityInfo?.task?.goal" 
+                  class="identity-quick-view"
+                >
                   <span class="quick-label">任务:</span>
                   <span class="quick-value">{{ identityInfo.task.goal }}</span>
                 </div>
@@ -37,7 +31,12 @@
                   @click="showCheckpointDialog = true"
                 >
                   ⏱️ 检查点
-                  <span v-if="checkpoints.length > 0" class="badge">{{ checkpoints.length }}</span>
+                  <span 
+                    v-if="checkpoints.length > 0" 
+                    class="badge"
+                  >
+                    {{ checkpoints.length }}
+                  </span>
                 </button>
                 
                 <!-- Phase 2: 批准按钮 -->
@@ -224,11 +223,15 @@
                                   class="tool-result"
                                 >
                                   <div v-if="item.data.toolResult.stdout">
-                                    <div class="result-title">输出 (stdout)</div>
+                                    <div class="result-title">
+                                      输出 (stdout)
+                                    </div>
                                     <pre class="result-block">{{ item.data.toolResult.stdout }}</pre>
                                   </div>
                                   <div v-if="item.data.toolResult.stderr">
-                                    <div class="result-title">错误 (stderr)</div>
+                                    <div class="result-title">
+                                      错误 (stderr)
+                                    </div>
                                     <pre class="result-block error">{{ item.data.toolResult.stderr }}</pre>
                                   </div>
                                 </div>
@@ -445,17 +448,25 @@
                 清除
               </button>
             </div>
-            <div v-if="identityInfo" class="identity-content">
+            <div 
+              v-if="identityInfo" 
+              class="identity-content"
+            >
               <!-- Core Identity -->
               <div class="identity-section">
-                <div class="section-title">核心身份</div>
+                <div class="section-title">
+                  核心身份
+                </div>
                 <div class="identity-item">
                   <span class="label">类型:</span>
                   <span class="value">{{ identityInfo.core?.type || 'N/A' }}</span>
                 </div>
                 <div class="identity-item">
                   <span class="label">权限:</span>
-                  <span class="badge" :class="identityInfo.core?.authority">
+                  <span 
+                    class="badge" 
+                    :class="identityInfo.core?.authority"
+                  >
                     {{ identityInfo.core?.authority || 'N/A' }}
                   </span>
                 </div>
@@ -466,8 +477,13 @@
               </div>
 
               <!-- Task Identity -->
-              <div v-if="identityInfo.task?.id" class="identity-section">
-                <div class="section-title">任务身份</div>
+              <div 
+                v-if="identityInfo.task?.id" 
+                class="identity-section"
+              >
+                <div class="section-title">
+                  任务身份
+                </div>
                 <div class="identity-item">
                   <span class="label">任务ID:</span>
                   <span class="value">{{ identityInfo.task.id }}</span>
@@ -483,17 +499,28 @@
               </div>
 
               <!-- Viewpoint Identity -->
-              <div v-if="identityInfo.viewpoint?.file" class="identity-section">
-                <div class="section-title">视角身份</div>
+              <div 
+                v-if="identityInfo.viewpoint?.file" 
+                class="identity-section"
+              >
+                <div class="section-title">
+                  视角身份
+                </div>
                 <div class="identity-item">
                   <span class="label">文件:</span>
                   <span class="value">{{ identityInfo.viewpoint.file }}</span>
                 </div>
-                <div v-if="identityInfo.viewpoint.symbol" class="identity-item">
+                <div 
+                  v-if="identityInfo.viewpoint.symbol" 
+                  class="identity-item"
+                >
                   <span class="label">符号:</span>
                   <span class="value">{{ identityInfo.viewpoint.symbol }}</span>
                 </div>
-                <div v-if="identityInfo.viewpoint.line" class="identity-item">
+                <div 
+                  v-if="identityInfo.viewpoint.line" 
+                  class="identity-item"
+                >
                   <span class="label">行号:</span>
                   <span class="value">{{ identityInfo.viewpoint.line }}</span>
                 </div>
@@ -592,7 +619,6 @@ import TerminalFileExplorer from '@/components/TerminalFileExplorer.vue'
 import TerminalNotebook from '@/components/TerminalNotebook.vue'
 import TerminalFileEditor from '@/components/TerminalFileEditor.vue'
 import TerminalChatInput from '@/components/terminal/TerminalChatInput.vue'
-import TaskSidebar from '@/components/terminal/TaskSidebar.vue'
 import CheckpointDialog from '@/components/terminal/CheckpointDialog.vue'
 import ToolApprovalDialog from '@/components/terminal/ToolApprovalDialog.vue'
 import CheckpointTimeline from '@/components/terminal/CheckpointTimeline.vue'
@@ -605,7 +631,7 @@ import { marked } from 'marked'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
 // Phase 2: 导入新的 Terminal API 服务
-import terminalService, { checkpointService, approvalService, sessionStateService } from '@/services/terminalService'
+import { checkpointService, approvalService, sessionStateService } from '@/services/terminalService'
 
 // Configure marked
 const renderer = new marked.Renderer()
@@ -639,7 +665,6 @@ const {
   activeTaskId,
   groupedMessages,
   agentStatus,
-  decisionHistory,
   decisionHistoryList,
   identityInfo,
   stateSlices,
@@ -647,7 +672,6 @@ const {
   visibleFunctions
 } = storeToRefs(terminalStore)
 
-const sidebarWidth = ref(250)
 const scrollerRef = ref(null)
 const searchText = ref('')
 const expandedTaskIds = ref(new Set())
@@ -707,19 +731,6 @@ watch(activeTaskId, (newId) => {
   }
 })
 
-const scrollToTask = (taskId) => {
-  if (!scrollerRef.value) return
-  if (taskId) {
-    expandedTaskIds.value.add(taskId)
-  }
-  nextTick(() => {
-    const index = flatViewItems.value.findIndex(item => item.taskId === taskId && item.type === 'header')
-    if (index !== -1) {
-      scrollerRef.value.scrollToItem(index)
-    }
-  })
-}
-
 // 工具卡片折叠/展开
 const isToolCollapsed = (key) => collapsedTools.value.has(key)
 const toggleToolCollapse = (key) => {
@@ -771,7 +782,6 @@ const currentModel = ref('deepseek-chat')
 const collapsedTools = ref(new Set()) // 默认折叠工具执行结果
 const isTyping = ref(false)
 const isExecuting = ref(false)
-const messagesRef = ref(null)
 const terminalRef = ref(null)
 const fileExplorer = ref(null)
 
@@ -800,13 +810,10 @@ watch(activeTab, () => {
 // Phase 2: 检查点相关状态
 const checkpoints = ref([])
 const showCheckpointDialog = ref(false)
-const selectedCheckpoint = ref(null)
 
 // Phase 2: 批准相关状态
 const pendingApprovals = ref([])
 const showApprovalDialog = ref(false)
-const approvalSettings = ref(null)
-const showApprovalSettings = ref(false)
 
 // Phase 2: 会话状态
 const sessionState = ref(null)
@@ -829,23 +836,20 @@ watch(rightPanelWidth, (val) => uiStore.saveState('rightPanelWidth', val))
 watch(activeTab, (val) => uiStore.saveState('activeTab', val))
 
 const completedCount = computed(() => currentTasks.value.filter(t => t.status === 'completed').length)
-const taskProgress = computed(() => {
-  if (currentTasks.value.length === 0) return 0
-  return Math.round((completedCount.value / currentTasks.value.length) * 100)
-})
 
 const tabMeta = {
   'terminal': { id: 'terminal', label: '终端输出' },
   'files': { id: 'files', label: '文件管理' },
-  'checkpoints': { id: 'checkpoints', label: '⏱️ 检查点' },
-  'approvals': { id: 'approvals', label: '⚠️ 工具批准' },
-  'session': { id: 'session', label: '📊 会话状态' },
-  'decisions': { id: 'decisions', label: '🧠 决策流程' },
+  'tasks': { id: 'tasks', label: '任务链' },
+  'checkpoints': { id: 'checkpoints', label: '检查点' },
+  'approvals': { id: 'approvals', label: '工具批准' },
+  'session': { id: 'session', label: '会话状态' },
+  'decisions': { id: 'decisions', label: '决策流程' },
   'identity': { id: 'identity', label: '身份信息' },
   'state': { id: 'state', label: '状态切片' }
 }
 // 确保所有标签都显示，包括新添加的
-const defaultTabOrder = ['terminal', 'files', 'checkpoints', 'approvals', 'session', 'decisions', 'identity', 'state']
+const defaultTabOrder = ['terminal', 'files', 'tasks', 'checkpoints', 'approvals', 'session', 'decisions', 'identity', 'state']
 const tabs = ref([])
 
 // 初始化标签页，确保包含所有默认标签
@@ -1469,7 +1473,7 @@ const processAgentLoop = async (prompt, toolResult) => {
                     }
                 })
             }
-          } catch (e) {
+          } catch (err) {
             // JSON 解析失败，可能是部分数据，继续累积
             console.debug('Partial JSON data:', dataStr.substring(0, 50))
           }
@@ -1532,14 +1536,14 @@ const processAgentLoop = async (prompt, toolResult) => {
       let decision
       try {
         decision = JSON.parse(jsonStr)
-      } catch (parseError) {
-        console.error('JSON parse error:', parseError, 'Content:', jsonStr.substring(0, 200))
+      } catch (parseErr) {
+        console.error('JSON parse error:', parseErr, 'Content:', jsonStr.substring(0, 200))
         // 如果解析失败，尝试修复常见的 JSON 问题
         jsonStr = jsonStr.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']')
         try {
           decision = JSON.parse(jsonStr)
-        } catch (e) {
-          console.error('JSON parse failed after cleanup:', e)
+        } catch (cleanupErr) {
+          console.error('JSON parse failed after cleanup:', cleanupErr)
           currentAiMsg.message = fullContent
           await saveMessage(fullContent, 2)
           return
@@ -1621,109 +1625,17 @@ const processAgentLoop = async (prompt, toolResult) => {
       
       await saveMessage(JSON.stringify(decision), 2)
 
-    } catch (e) {
-      // Fallback for non-JSON or partial content
-      currentAiMsg.message = fullContent
-      await saveMessage(fullContent, 2)
-    }
-
-  } catch (e) {
-    console.error(e)
-    isTyping.value = false
-    terminalStore.setAgentStatus('ERROR')
+  } catch (finalErr) {
+    // Fallback for non-JSON or partial content
+    currentAiMsg.message = fullContent
+    await saveMessage(fullContent, 2)
   }
-}
 
-// ... (Existing helper functions: extractContent, executeCommand, writeFile) ...
-const extractContent = (raw) => {
-  const start = raw.indexOf('<<<<AI_FILE_CONTENT_BEGIN>>>>')
-  const end = raw.indexOf('<<<<AI_FILE_CONTENT_END>>>>')
-  if (start !== -1 && end !== -1) {
-    return raw.slice(start + 29, end).trim()
-  }
-  return raw
+} catch (outerErr) {
+  console.error(outerErr)
+  isTyping.value = false
+  terminalStore.setAgentStatus('ERROR')
 }
-
-const executeCommand = async (cmd) => {
-  const res = await fetch(`${API_CONFIG.baseURL}/api/terminal/execute`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${authStore.token}`
-    },
-    body: JSON.stringify({ command: cmd, cwd: currentCwd.value, session_id: currentSessionId.value })
-  })
-  const data = await safeReadJson(res)
-  return data?.data || { exit_code: -1, stderr: 'Execution failed' }
-}
-
-const writeFile = async (path, content, overwrite) => {
-  const res = await fetch(`${API_CONFIG.baseURL}/api/terminal/write-file`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${authStore.token}`
-    },
-    body: JSON.stringify({ path, content, cwd: currentCwd.value, overwrite })
-  })
-  const data = await safeReadJson(res)
-  return data?.data || { exit_code: -1, stderr: 'Write failed' }
-}
-
-/**
- * 搜索文件内容
- */
-const searchFiles = async (params) => {
-  const res = await fetch(`${API_CONFIG.baseURL}/api/terminal/search-files?cwd=${encodeURIComponent(currentCwd.value)}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${authStore.token}`
-    },
-    body: JSON.stringify({
-      pattern: params.pattern,
-      file_pattern: params.file_pattern || '*',
-      case_sensitive: params.case_sensitive || false,
-      context_lines: params.context_lines || 20
-    })
-  })
-  const data = await safeReadJson(res)
-  return data?.data || { exit_code: -1, stderr: 'Search failed' }
-}
-
-/**
- * 批量读取文件上下文
- */
-const readFileContext = async (files) => {
-  const res = await fetch(`${API_CONFIG.baseURL}/api/terminal/read-file-context?cwd=${encodeURIComponent(currentCwd.value)}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${authStore.token}`
-    },
-    body: JSON.stringify({ files })
-  })
-  const data = await safeReadJson(res)
-  return data?.data || { exit_code: -1, stderr: 'Read context failed' }
-}
-
-/**
- * 精确修改文件
- */
-const modifyFile = async (params) => {
-  const res = await fetch(`${API_CONFIG.baseURL}/api/terminal/modify-file?cwd=${encodeURIComponent(currentCwd.value)}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${authStore.token}`
-    },
-    body: JSON.stringify({
-      path: params.path,
-      operations: params.operations
-    })
-  })
-  const data = await safeReadJson(res)
-  return data?.data || { exit_code: -1, stderr: 'Modify failed' }
 }
 
 // 解耦架构：格式化时间

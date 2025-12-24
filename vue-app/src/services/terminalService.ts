@@ -26,7 +26,7 @@ export const checkpointService = {
     sessionId: string
     messageOrder: number
     description?: string
-    fileSnapshots?: Record<string, any>
+    fileSnapshots?: Record<string, unknown>
   }) {
     const response = await request.post(API_ENDPOINTS.terminal.checkpoints.create, data)
     return response.data

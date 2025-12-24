@@ -7,8 +7,7 @@ import {
   TerminalMessage,
   ValidationPhase,
   ValidationResult,
-  ValidationContext,
-  ActionScope
+  ValidationContext
 } from '@/types/terminal-message'
 import permissionManager from './permission-manager'
 
@@ -21,7 +20,7 @@ export interface IntentRecognitionResult {
   /** 置信度 */
   confidence: number
   /** 提取的参数 */
-  params: Record<string, any>
+  params: Record<string, unknown>
 }
 
 /**
@@ -139,11 +138,11 @@ export class ValidationPipeline {
         passed: true,
         duration: Date.now() - startTime
       }
-    } catch (error: any) {
+    } catch (error) {
       return {
         phase: ValidationPhase.INTENT_RECOGNITION,
         passed: false,
-        reason: `意图识别失败: ${error.message}`,
+        reason: `意图识别失败: ${error instanceof Error ? error.message : String(error)}`,
         duration: Date.now() - startTime
       }
     }
@@ -364,7 +363,7 @@ export class ValidationPipeline {
   /**
    * 验证参数是否有效
    */
-  private areValidParams(method: string, params: Record<string, any>): boolean {
+  private areValidParams(method: string, params: Record<string, unknown>): boolean {
     // 根据不同方法验证必需参数
     const requiredParams: Record<string, string[]> = {
       'write_file': ['path', 'content'],
