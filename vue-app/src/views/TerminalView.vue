@@ -1607,9 +1607,9 @@ const processAgentLoop = async (prompt, toolResult) => {
                 
                 // 重新加载待批准列表并显示对话框（异步执行，不阻塞流式处理）
                 loadPendingApprovals().then(() => {
-                  if (pendingApprovals.value.length > 0) {
-                    showApprovalDialog.value = true
-                  }
+                    if (pendingApprovals.value.length > 0) {
+                        showApprovalDialog.value = true
+                    }
                 }).catch(err => {
                   console.error('Failed to load pending approvals:', err)
                 })

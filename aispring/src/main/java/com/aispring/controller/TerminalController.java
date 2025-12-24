@@ -257,30 +257,30 @@ public class TerminalController {
             }
         } else {
             // 兼容旧逻辑：根据任务状态或意图分类
-            if (state.getTaskState() != null && state.getTaskState().getPipelineId() != null) {
-                // Executor Mode - Already has a plan
+        if (state.getTaskState() != null && state.getTaskState().getPipelineId() != null) {
+            // Executor Mode - Already has a plan
+            state.setStatus(AgentStatus.RUNNING);
+            String context = agentPromptBuilder.buildPromptContext(state);
+            systemPrompt = promptManager.getExecutorPrompt(context);
+        } else {
+            // IDLE or No Plan - Classify Intent
+            String intent = aiChatService.ask(
+                promptManager.getIntentClassifierPrompt(request.getPrompt()),
+                null, request.getModel(), String.valueOf(userId)
+            ).trim().toUpperCase();
+            
+            if (intent.contains("PLAN")) {
+                state.setStatus(AgentStatus.PLANNING);
+                systemPrompt = promptManager.getPlannerPrompt(request.getPrompt());
+            } else if (intent.contains("EXECUTE")) {
                 state.setStatus(AgentStatus.RUNNING);
                 String context = agentPromptBuilder.buildPromptContext(state);
                 systemPrompt = promptManager.getExecutorPrompt(context);
             } else {
-                // IDLE or No Plan - Classify Intent
-                String intent = aiChatService.ask(
-                    promptManager.getIntentClassifierPrompt(request.getPrompt()),
-                    null, request.getModel(), String.valueOf(userId)
-                ).trim().toUpperCase();
-                
-                if (intent.contains("PLAN")) {
-                    state.setStatus(AgentStatus.PLANNING);
-                    systemPrompt = promptManager.getPlannerPrompt(request.getPrompt());
-                } else if (intent.contains("EXECUTE")) {
-                    state.setStatus(AgentStatus.RUNNING);
-                    String context = agentPromptBuilder.buildPromptContext(state);
-                    systemPrompt = promptManager.getExecutorPrompt(context);
-                } else {
-                    // Default to CHAT
-                    state.setStatus(AgentStatus.IDLE);
-                    String context = agentPromptBuilder.buildPromptContext(state);
-                    systemPrompt = promptManager.getChatPrompt(context);
+                // Default to CHAT
+                state.setStatus(AgentStatus.IDLE);
+                String context = agentPromptBuilder.buildPromptContext(state);
+                systemPrompt = promptManager.getChatPrompt(context);
                 }
             }
         }

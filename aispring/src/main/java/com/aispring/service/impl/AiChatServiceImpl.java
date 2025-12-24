@@ -313,24 +313,24 @@ public class AiChatServiceImpl implements AiChatService {
                             // 设置状态为 streaming LLM
                             sessionState.setStreamState(com.aispring.entity.session.StreamState.streamingLLM());
                             sessionStateService.saveState(sessionState);
-                            
-                            // 执行对话并获取完整回复
+                    
+                    // 执行对话并获取完整回复
                             log.info("准备调用 LLM: prompt length={}, systemPrompt length={}", 
                                 currentPrompt != null ? currentPrompt.length() : 0,
                                 currentSystemPrompt != null ? currentSystemPrompt.length() : 0);
                             fullResponse = performBlockingChat(currentPrompt, sessionId, model, userId, currentSystemPrompt, emitter);
                             log.info("LLM 响应完成: response length={}", fullResponse != null ? fullResponse.length() : 0);
                             llmSuccess = true;
-                            
-                            // Hook for capturing response
-                            if (onResponse != null) {
-                                try {
-                                    onResponse.accept(fullResponse);
-                                } catch (Exception e) {
+                    
+                    // Hook for capturing response
+                    if (onResponse != null) {
+                        try {
+                            onResponse.accept(fullResponse);
+                        } catch (Exception e) {
                                     log.error("Error in onResponse hook: {}", e.getMessage(), e);
-                                }
-                            }
-                            
+                        }
+                    }
+
                         } catch (Exception e) {
                             log.error("LLM 请求失败 (attempt {}/{}): {}", nAttempts, CHAT_RETRIES, e.getMessage(), e);
                             
@@ -366,9 +366,9 @@ public class AiChatServiceImpl implements AiChatService {
                                 sessionStateService.saveState(sessionState);
                                 
                                 finalStatus = com.aispring.entity.agent.AgentStatus.IDLE;
-                                break;
-                            }
-                        }
+                                        break;
+                                    }
+                                }
                     }
                     
                     // 如果 LLM 请求失败，退出循环
@@ -585,16 +585,16 @@ public class AiChatServiceImpl implements AiChatService {
                     if (finalState.getStatus() == com.aispring.entity.agent.AgentStatus.RUNNING) {
                         finalState.setStatus(finalStatus);
                     }
-                    finalState.setCurrentLoopId(null);
-                    finalState.setStreamState(com.aispring.entity.session.StreamState.idle());
-                    sessionStateService.saveState(finalState);
+                     finalState.setCurrentLoopId(null);
+                     finalState.setStreamState(com.aispring.entity.session.StreamState.idle());
+                     sessionStateService.saveState(finalState);
                 }
                 
                 log.info("Agent 循环结束: sessionId={}, nMessagesSent={}, finalStatus={}", 
                         sessionId, nMessagesSent, finalStatus);
-                
-                emitter.send(SseEmitter.event().data("[DONE]"));
-                emitter.complete();
+                     
+                     emitter.send(SseEmitter.event().data("[DONE]"));
+                     emitter.complete();
                 
             } catch (Exception e) {
                 log.error("Agent 循环异常: sessionId={}", sessionId, e);

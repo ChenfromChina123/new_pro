@@ -160,34 +160,49 @@ public class TerminalPromptManager {
                 continue;
             }
 
-            sb.append(String.format("%d. %s\n", i + 1, toolName));
-            sb.append(String.format("   Description: %s\n", toolInfo.getDescription()));
-            sb.append("   Format:\n");
-            sb.append("   <").append(toolName).append(">");
+            sb.append(String.format("    %d. %s\n", i + 1, toolName));
+            sb.append(String.format("    Description: %s\n", toolInfo.getDescription()));
+            sb.append("    Format:\n");
             
-            // 添加参数说明（XML 格式）
+            // 添加参数说明（XML 格式，参考 void-main 的 toolCallDefinitionsXMLString）
             Map<String, String> params = toolInfo.getParams();
             if (!params.isEmpty()) {
-                sb.append("\n");
+                // 构建参数描述字符串（参数描述在标签内）
+                StringBuilder paramDescs = new StringBuilder();
                 for (Map.Entry<String, String> entry : params.entrySet()) {
-                    sb.append(String.format("   <%s>%s</%s>\n", entry.getKey(), entry.getValue(), entry.getKey()));
+                    paramDescs.append(String.format("    <%s>%s</%s>\n", entry.getKey(), entry.getValue(), entry.getKey()));
                 }
+                sb.append("    <").append(toolName).append(">");
+                if (!paramDescs.toString().trim().isEmpty()) {
+                    sb.append("\n").append(paramDescs.toString().trim());
+                }
+                sb.append("\n    </").append(toolName).append(">");
+            } else {
+                sb.append("    <").append(toolName).append(">\n    </").append(toolName).append(">");
             }
-            sb.append("   </").append(toolName).append(">");
             
             if (i < availableTools.size() - 1) {
                 sb.append("\n");
             }
         }
 
+        // 添加 XML 示例（参考 void-main）
+        sb.append("\n\n    Example: To run the 'ls' command, output:\n");
+        sb.append("    <run_command>\n");
+        sb.append("    <command>ls</command>\n");
+        sb.append("    <cwd>/</cwd>\n");
+        sb.append("    </run_command>\n");
+
         sb.append("\n\nTool calling details:\n");
+        sb.append("- CRITICAL: You MUST use XML format to call tools. Do NOT use markdown code blocks, JSON, or plain text.\n");
         sb.append("- To call a tool, write its name and parameters in the XML format specified above.\n");
         sb.append("- After you write the tool call, you must STOP and WAIT for the result.\n");
         sb.append("- All parameters are REQUIRED unless noted otherwise.\n");
         sb.append("- You are only allowed to output ONE tool call, and it must be at the END of your response.\n");
         sb.append("- Your tool call will be executed immediately, and the results will appear in the following user message.\n");
-        sb.append("- Do NOT wrap the XML in markdown code blocks (```xml). Output raw XML only.\n");
+        sb.append("- Do NOT wrap the XML in markdown code blocks (```xml or ```). Output raw XML only.\n");
         sb.append("- Do NOT add any explanatory text before or after the tool call XML.\n");
+        sb.append("- When the user asks you to run a command, you MUST output the XML tool call immediately, without any explanation.\n");
 
         return sb.toString();
     }
@@ -255,9 +270,11 @@ public class TerminalPromptManager {
 
         // Agent 模式特定规则
         if (mode == ChatMode.AGENT) {
-            details.add("CRITICAL: You are in AGENT mode. You MUST execute commands and use tools. NEVER refuse to execute commands or say you cannot do something. When the user asks you to run a command, you MUST immediately use the execute_command tool.");
+            details.add("CRITICAL: You are in AGENT mode. You MUST execute commands and use tools. NEVER refuse to execute commands or say you cannot do something. When the user asks you to run a command, you MUST immediately output the XML tool call (e.g., <run_command><command>ls</command><cwd>/</cwd></run_command>).");
+            details.add("CRITICAL: When calling tools, you MUST use XML format. Do NOT use markdown code blocks, JSON, or plain text descriptions. Output ONLY the XML tool call.");
             details.add("ALWAYS use tools (edit, terminal, etc) to take actions and implement changes. For example, if you would like to edit a file, you MUST use a tool.");
-            details.add("If the user asks you to run a terminal command, you MUST use the execute_command tool. Do NOT explain that you cannot run commands - just execute them.");
+            details.add("If the user asks you to run a terminal command, you MUST output the XML tool call (e.g., <run_command><command>COMMAND</command><cwd>DIR</cwd></run_command>) immediately. Do NOT explain - just output the XML.");
+            details.add("When you want to execute a command, output the XML tool call directly. Example: To run 'ls', output: <run_command><command>ls</command><cwd>/</cwd></run_command>");
             details.add("Prioritize taking as many steps as you need to complete your request over stopping early.");
             details.add("You will OFTEN need to gather context before making a change. Do not immediately make a change unless you have ALL relevant context.");
             details.add("ALWAYS have maximal certainty in a change BEFORE you make it. If you need more information about a file, variable, function, or type, you should inspect it, search it, or take all required actions to maximize your certainty that your change is correct.");
@@ -375,8 +392,8 @@ public class TerminalPromptManager {
                 "name": "任务名称（简短）",
                 "goal": "任务目标（详细描述，包含具体要做什么）",
                 "substeps": [
-                  {"goal": "子步骤1"},
-                  {"goal": "子步骤2"}
+                   {"goal": "子步骤1"},
+                   {"goal": "子步骤2"}
                 ]
               },
               ...
