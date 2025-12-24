@@ -371,10 +371,19 @@ public class AiChatServiceImpl implements AiChatService {
                     try {
                         // 提取纯文本（移除工具调用部分）
                         List<String> availableTools = toolsService.getAvailableTools();
+                        log.debug("可用工具列表: {}", availableTools);
+                        log.debug("LLM 完整响应: {}", fullResponse);
+                        
                         String plainText = toolCallParser.extractPlainText(fullResponse, availableTools);
+                        log.debug("提取的纯文本: {}", plainText);
                         
                         // 尝试解析工具调用
                         ToolCallParser.ParsedToolCall parsedToolCall = toolCallParser.extractToolCall(fullResponse, availableTools);
+                        log.info("工具调用解析结果: {}", parsedToolCall != null ? 
+                            String.format("tool=%s, complete=%s, id=%s", 
+                                parsedToolCall.getToolName(), 
+                                parsedToolCall.isComplete(),
+                                parsedToolCall.getToolId()) : "null");
                         
                         if (parsedToolCall != null && parsedToolCall.isComplete()) {
                             // 工具调用处理（参考 void-main 的 _runToolCall）
