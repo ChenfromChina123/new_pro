@@ -173,7 +173,7 @@ public class ToolsServiceImpl implements ToolsService {
     private ToolResult executeReadFile(Map<String, Object> params, Long userId) {
         try {
             String path = params.get("path").toString();
-            String content = terminalService.readFile(userId, path, null);
+            String content = terminalService.readFile(userId, path);
             
             String result = String.format("文件内容 (%s):\n```\n%s\n```", path, content);
             return ToolResult.success(Map.of("path", path, "content", content), result);
@@ -226,7 +226,7 @@ public class ToolsServiceImpl implements ToolsService {
                 String result = String.format("成功创建文件夹: %s", path);
                 return ToolResult.success(Map.of("path", path, "type", "folder"), result);
             } else {
-                terminalService.writeFile(userId, path, "", null);
+                terminalService.writeFile(userId, path, "", null, true);
                 String result = String.format("成功创建文件: %s", path);
                 return ToolResult.success(Map.of("path", path, "type", "file"), result);
             }
@@ -258,7 +258,7 @@ public class ToolsServiceImpl implements ToolsService {
             String path = params.get("path").toString();
             String content = params.get("content").toString();
             
-            terminalService.writeFile(userId, path, content, null);
+            terminalService.writeFile(userId, path, content, null, true);
             
             String result = String.format("成功写入文件: %s (%d 字节)", path, content.length());
             return ToolResult.success(Map.of("path", path, "size", content.length()), result);
@@ -277,7 +277,7 @@ public class ToolsServiceImpl implements ToolsService {
             String newString = params.get("new_string").toString();
             
             // 读取文件
-            String content = terminalService.readFile(userId, path, null);
+            String content = terminalService.readFile(userId, path);
             
             // 执行替换
             if (!content.contains(oldString)) {
@@ -285,7 +285,7 @@ public class ToolsServiceImpl implements ToolsService {
             }
             
             String newContent = content.replace(oldString, newString);
-            terminalService.writeFile(userId, path, newContent, null);
+            terminalService.writeFile(userId, path, newContent, null, true);
             
             String result = String.format("成功编辑文件: %s (替换 %d 处)", path, 
                     (content.length() - content.replace(oldString, "").length()) / oldString.length());
@@ -303,7 +303,7 @@ public class ToolsServiceImpl implements ToolsService {
             String path = params.get("path").toString();
             String newContent = params.get("new_content").toString();
             
-            terminalService.writeFile(userId, path, newContent, null);
+            terminalService.writeFile(userId, path, newContent, null, true);
             
             String result = String.format("成功重写文件: %s (%d 字节)", path, newContent.length());
             return ToolResult.success(Map.of("path", path, "size", newContent.length()), result);
@@ -364,7 +364,7 @@ public class ToolsServiceImpl implements ToolsService {
             String path = params.get("path").toString();
             String pattern = params.get("pattern").toString();
             
-            String content = terminalService.readFile(userId, path, null);
+            String content = terminalService.readFile(userId, path);
             List<String> matchedLines = new ArrayList<>();
             
             String[] lines = content.split("\n");
@@ -390,10 +390,14 @@ public class ToolsServiceImpl implements ToolsService {
     private ToolResult executeRunCommand(Map<String, Object> params, Long userId) {
         try {
             String command = params.get("command").toString();
-            String output = terminalService.executeCommand(userId, command, null);
+            com.aispring.dto.response.TerminalCommandResponse response = 
+                    terminalService.executeCommand(userId, command, null);
             
-            String result = String.format("命令执行结果:\n```\n%s\n```", output);
-            return ToolResult.success(Map.of("command", command, "output", output), result);
+            String output = response.getStdout() + (response.getStderr().isEmpty() ? "" : "\n" + response.getStderr());
+            String result = String.format("命令执行结果 (退出码: %d):\n```\n%s\n```", 
+                    response.getExitCode(), output);
+            return ToolResult.success(Map.of("command", command, "output", output, 
+                    "exitCode", response.getExitCode()), result);
         } catch (Exception e) {
             return ToolResult.error("执行命令失败: " + e.getMessage());
         }

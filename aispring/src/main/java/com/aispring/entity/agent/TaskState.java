@@ -39,42 +39,9 @@ public class TaskState implements Serializable {
     private String currentTaskId;
     
     /**
-     * 任务列表
+     * 任务列表（使用独立的 Task 类）
      */
     private List<Task> tasks;
-    
-    /**
-     * 任务项
-     */
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class Task implements Serializable {
-        
-        private static final long serialVersionUID = 1L;
-        
-        /**
-         * 任务ID
-         */
-        private String taskId;
-        
-        /**
-         * 任务描述
-         */
-        private String description;
-        
-        /**
-         * 任务状态
-         */
-        @Builder.Default
-        private TaskStatus status = TaskStatus.PENDING;
-        
-        /**
-         * 任务结果
-         */
-        private String result;
-    }
     
     /**
      * 任务状态枚举

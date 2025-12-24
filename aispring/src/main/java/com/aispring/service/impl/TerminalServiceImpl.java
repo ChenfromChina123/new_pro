@@ -536,4 +536,221 @@ public class TerminalServiceImpl implements TerminalService {
             return new TerminalCommandResponse("", "Modification failed: " + e.getMessage(), -1, getRelativePath(rootPath, cwdPath));
         }
     }
+    
+    // Phase 4: ToolsService 需要的辅助方法实现
+    
+    @Override
+    public List<String> listDirectory(Long userId, String relativePath, String relativeCwd) {
+        String userRoot = getUserTerminalRoot(userId);
+        Path rootPath = Paths.get(userRoot);
+        Path targetPath = resolvePath(rootPath, relativeCwd != null ? relativeCwd : "/");
+        
+        if (relativePath != null && !relativePath.isEmpty()) {
+            String safePath = relativePath.replace("..", "");
+            if (safePath.startsWith("/") || safePath.startsWith("\\")) {
+                safePath = safePath.substring(1);
+            }
+            targetPath = targetPath.resolve(safePath).normalize();
+        }
+        
+        if (!Files.exists(targetPath) || !Files.isDirectory(targetPath)) {
+            throw new RuntimeException("Directory not found: " + relativePath);
+        }
+        
+        List<String> files = new ArrayList<>();
+        try {
+            Files.list(targetPath).forEach(path -> {
+                files.add(path.getFileName().toString());
+            });
+        } catch (IOException e) {
+            log.error("Error listing directory", e);
+            throw new RuntimeException("Could not list directory: " + e.getMessage());
+        }
+        return files;
+    }
+    
+    @Override
+    public String getDirectoryTree(Long userId, String relativePath, String relativeCwd) {
+        String userRoot = getUserTerminalRoot(userId);
+        Path rootPath = Paths.get(userRoot);
+        Path targetPath = resolvePath(rootPath, relativeCwd != null ? relativeCwd : "/");
+        
+        if (relativePath != null && !relativePath.isEmpty()) {
+            String safePath = relativePath.replace("..", "");
+            if (safePath.startsWith("/") || safePath.startsWith("\\")) {
+                safePath = safePath.substring(1);
+            }
+            targetPath = targetPath.resolve(safePath).normalize();
+        }
+        
+        if (!Files.exists(targetPath) || !Files.isDirectory(targetPath)) {
+            throw new RuntimeException("Directory not found: " + relativePath);
+        }
+        
+        StringBuilder tree = new StringBuilder();
+        try {
+            buildTree(targetPath, rootPath, tree, "", true);
+        } catch (IOException e) {
+            log.error("Error building directory tree", e);
+            throw new RuntimeException("Could not build directory tree: " + e.getMessage());
+        }
+        return tree.toString();
+    }
+    
+    private void buildTree(Path dir, Path rootPath, StringBuilder tree, String prefix, boolean isLast) throws IOException {
+        String name = dir.getFileName() != null ? dir.getFileName().toString() : dir.toString();
+        tree.append(prefix).append(isLast ? "└── " : "├── ").append(name).append("\n");
+        
+        String newPrefix = prefix + (isLast ? "    " : "│   ");
+        if (Files.isDirectory(dir)) {
+            List<Path> children = Files.list(dir).sorted().collect(java.util.stream.Collectors.toList());
+            for (int i = 0; i < children.size(); i++) {
+                boolean last = (i == children.size() - 1);
+                buildTree(children.get(i), rootPath, tree, newPrefix, last);
+            }
+        }
+    }
+    
+    @Override
+    public void createDirectory(Long userId, String relativePath, String relativeCwd) {
+        String userRoot = getUserTerminalRoot(userId);
+        Path rootPath = Paths.get(userRoot);
+        Path cwdPath = resolvePath(rootPath, relativeCwd != null ? relativeCwd : "/");
+        
+        String safePath = relativePath.replace("..", "");
+        if (safePath.startsWith("/") || safePath.startsWith("\\")) {
+            safePath = safePath.substring(1);
+        }
+        
+        Path target = cwdPath.resolve(safePath).normalize();
+        if (!target.startsWith(rootPath)) {
+            throw new RuntimeException("Invalid path (out of sandbox)");
+        }
+        
+        try {
+            checkDepth(rootPath, target);
+            Files.createDirectories(target);
+        } catch (IOException e) {
+            log.error("Error creating directory", e);
+            throw new RuntimeException("Could not create directory: " + e.getMessage());
+        }
+    }
+    
+    @Override
+    public void deleteFileOrFolder(Long userId, String relativePath, String relativeCwd) {
+        String userRoot = getUserTerminalRoot(userId);
+        Path rootPath = Paths.get(userRoot);
+        Path cwdPath = resolvePath(rootPath, relativeCwd != null ? relativeCwd : "/");
+        
+        String safePath = relativePath.replace("..", "");
+        if (safePath.startsWith("/") || safePath.startsWith("\\")) {
+            safePath = safePath.substring(1);
+        }
+        
+        Path target = cwdPath.resolve(safePath).normalize();
+        if (!target.startsWith(rootPath)) {
+            throw new RuntimeException("Invalid path (out of sandbox)");
+        }
+        
+        if (!Files.exists(target)) {
+            throw new RuntimeException("File or folder not found: " + relativePath);
+        }
+        
+        try {
+            if (Files.isDirectory(target)) {
+                deleteDirectory(target);
+            } else {
+                Files.delete(target);
+            }
+        } catch (IOException e) {
+            log.error("Error deleting file/folder", e);
+            throw new RuntimeException("Could not delete: " + e.getMessage());
+        }
+    }
+    
+    private void deleteDirectory(Path dir) throws IOException {
+        if (Files.isDirectory(dir)) {
+            try (Stream<Path> entries = Files.list(dir)) {
+                entries.forEach(path -> {
+                    try {
+                        if (Files.isDirectory(path)) {
+                            deleteDirectory(path);
+                        } else {
+                            Files.delete(path);
+                        }
+                    } catch (IOException e) {
+                        log.error("Error deleting path: " + path, e);
+                    }
+                });
+            }
+        }
+        Files.delete(dir);
+    }
+    
+    @Override
+    public List<String> searchFileNames(Long userId, String pattern, String relativeCwd) {
+        String userRoot = getUserTerminalRoot(userId);
+        Path rootPath = Paths.get(userRoot);
+        Path cwdPath = resolvePath(rootPath, relativeCwd != null ? relativeCwd : "/");
+        
+        List<String> results = new ArrayList<>();
+        Pattern regex = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE);
+        
+        try {
+            Files.walk(cwdPath)
+                .filter(Files::isRegularFile)
+                .forEach(path -> {
+                    String fileName = path.getFileName().toString();
+                    if (regex.matcher(fileName).find()) {
+                        String relative = rootPath.relativize(path).toString().replace("\\", "/");
+                        results.add("/" + relative);
+                    }
+                });
+        } catch (IOException e) {
+            log.error("Error searching file names", e);
+            throw new RuntimeException("Could not search file names: " + e.getMessage());
+        }
+        
+        return results;
+    }
+    
+    @Override
+    public java.util.Map<String, List<String>> searchInFiles(Long userId, String pattern, String relativeCwd) {
+        String userRoot = getUserTerminalRoot(userId);
+        Path rootPath = Paths.get(userRoot);
+        Path cwdPath = resolvePath(rootPath, relativeCwd != null ? relativeCwd : "/");
+        
+        java.util.Map<String, List<String>> results = new java.util.HashMap<>();
+        Pattern regex = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE);
+        
+        try {
+            Files.walk(cwdPath)
+                .filter(Files::isRegularFile)
+                .forEach(path -> {
+                    try {
+                        String content = Files.readString(path, StandardCharsets.UTF_8);
+                        String[] lines = content.split("\n");
+                        List<String> matchedLines = new ArrayList<>();
+                        
+                        for (int i = 0; i < lines.length; i++) {
+                            if (regex.matcher(lines[i]).find()) {
+                                matchedLines.add(String.format("Line %d: %s", i + 1, lines[i]));
+                            }
+                        }
+                        
+                        if (!matchedLines.isEmpty()) {
+                            String relative = rootPath.relativize(path).toString().replace("\\", "/");
+                            results.put("/" + relative, matchedLines);
+                        }
+                    } catch (IOException e) {
+                        log.error("Error reading file: " + path, e);
+                    }
+                });
+        } catch (IOException e) {
+            log.error("Error searching in files", e);
+            throw new RuntimeException("Could not search in files: " + e.getMessage());
+        }
+        
+        return results;
+    }
 }

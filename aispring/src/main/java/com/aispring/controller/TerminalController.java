@@ -242,7 +242,7 @@ public class TerminalController {
                         currentState.setTaskState(taskState);
                         if (taskState.getTasks() != null && !taskState.getTasks().isEmpty()) {
                             currentState.getTaskState().setCurrentTaskId(taskState.getTasks().get(0).getId());
-                            taskState.getTasks().get(0).setStatus(TaskStatus.IN_PROGRESS);
+                            taskState.getTasks().get(0).setStatus(com.aispring.entity.agent.TaskStatus.IN_PROGRESS);
                         }
                         currentState.setStatus(AgentStatus.RUNNING);
                         agentStateService.saveAgentState(currentState);
