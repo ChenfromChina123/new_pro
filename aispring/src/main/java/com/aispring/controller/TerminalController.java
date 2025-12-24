@@ -60,6 +60,7 @@ public class TerminalController {
         private String prompt;
         private String session_id;
         private String model;
+        private String feature; // 功能特性：CHAT, CODEX, AUTOCOMPLETE, APPLY, SCM
         private String chat_mode; // 聊天模式：AGENT, GATHER, NORMAL
         private List<Map<String, Object>> tasks; // Legacy support
         private ToolResult tool_result; // For feedback loop
@@ -194,12 +195,10 @@ public class TerminalController {
             }
         }
         
-        ChatMode mode = ChatMode.AGENT;
-        if (request.getChat_mode() != null) {
-            mode = request.getChat_mode();
-        } else if (request.getChat_mode() != null && !request.getChat_mode().toString().isEmpty()) {
+        com.aispring.entity.ai.ChatMode mode = com.aispring.entity.ai.ChatMode.AGENT;
+        if (request.getChat_mode() != null && !request.getChat_mode().isEmpty()) {
             try {
-                mode = ChatMode.fromCode(request.getChat_mode().toString());
+                mode = com.aispring.entity.ai.ChatMode.fromCode(request.getChat_mode());
             } catch (Exception e) {
                 log.warn("Invalid chat_mode: {}, defaulting to AGENT", request.getChat_mode());
             }
@@ -241,9 +240,9 @@ public class TerminalController {
             );
             
             // 更新 Agent 状态
-            if (mode == ChatMode.AGENT) {
+            if (mode == com.aispring.entity.ai.ChatMode.AGENT) {
                 state.setStatus(AgentStatus.RUNNING);
-            } else if (mode == ChatMode.GATHER) {
+            } else if (mode == com.aispring.entity.ai.ChatMode.GATHER) {
                 state.setStatus(AgentStatus.RUNNING);
             } else {
                 state.setStatus(AgentStatus.IDLE);
