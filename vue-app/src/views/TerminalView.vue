@@ -955,6 +955,31 @@ const safeReadJson = async (res) => {
   try { return await res.json() } catch { return null }
 }
 
+/**
+ * 加载用户批准设置
+ */
+const loadUserApprovalSettings = async () => {
+  try {
+    const result = await approvalService.getSettings()
+    if (result?.data) {
+      // 将后端设置转换为前端规则格式
+      autoApprovalRules.value = convertBackendSettingsToRules(result.data)
+      console.log('[TerminalView] User approval settings loaded:', autoApprovalRules.value)
+    }
+  } catch (error) {
+    console.error('加载用户批准设置失败:', error)
+    // 使用默认设置
+    autoApprovalRules.value = {
+      read_file: true,
+      search_files: true,
+      execute_command: false,
+      write_file: false,
+      modify_file: false,
+      delete_file: false
+    }
+  }
+}
+
 onMounted(async () => {
   await terminalStore.fetchSessions()
   if (sessions.value.length > 0) {
@@ -966,6 +991,9 @@ onMounted(async () => {
     terminalStore.clearStateSlices()
     terminalStore.clearScope()
   }
+  
+  // 加载用户批准设置
+  await loadUserApprovalSettings()
   
   // Phase 3: 初始化 Agent 循环管理器
   if (currentSessionId.value) {
@@ -1650,14 +1678,35 @@ const processAgentLoop = async (prompt, toolResult) => {
                 // 更新 Agent 状态
                 terminalStore.setAgentStatus('AWAITING_APPROVAL')
                 
-                // 重新加载待批准列表并显示对话框（异步执行，不阻塞流式处理）
-                loadPendingApprovals().then(() => {
+                // 如果事件中包含待批准列表，直接使用（避免API调用延迟）
+                if (json.pendingApprovals && Array.isArray(json.pendingApprovals)) {
+                    console.log('[TerminalView] 使用事件中的待批准列表，数量:', json.pendingApprovals.length)
+                    // 转换数据格式以匹配前端期望的格式
+                    pendingApprovals.value = json.pendingApprovals.map(approval => ({
+                        id: approval.decisionId || approval.id,
+                        decisionId: approval.decisionId || approval.id,
+                        toolName: approval.toolName,
+                        params: approval.params,
+                        timestamp: approval.createdAt,
+                        approvalStatus: 'PENDING'
+                    }))
+                    
                     if (pendingApprovals.value.length > 0) {
                         showApprovalDialog.value = true
+                        console.log('[TerminalView] 已显示批准对话框，待批准数量:', pendingApprovals.value.length)
                     }
-                }).catch(err => {
-                  console.error('Failed to load pending approvals:', err)
-                })
+                } else {
+                    // 如果没有包含列表，则调用API加载
+                    console.log('[TerminalView] 事件中无待批准列表，调用API加载')
+                    loadPendingApprovals().then(() => {
+                        if (pendingApprovals.value.length > 0) {
+                            showApprovalDialog.value = true
+                            console.log('[TerminalView] 已显示批准对话框，待批准数量:', pendingApprovals.value.length)
+                        }
+                    }).catch(err => {
+                        console.error('[TerminalView] 加载待批准列表失败:', err)
+                    })
+                }
                 
             } else if (currentEvent === 'interrupt') {
                 // 处理中断事件
@@ -1740,9 +1789,37 @@ const formatTime = (timestamp) => {
 // Phase 3: 新增方法
 
 /**
+ * 将前端的工具规则转换为后端设置格式
+ */
+function convertRulesToBackendSettings(rules) {
+  return {
+    autoApproveReadFile: rules.read_file || false,
+    autoApproveFileEdits: rules.write_file || rules.modify_file || false,
+    autoApproveDangerousTools: rules.execute_command || rules.delete_file || false,
+    autoApproveMcpTools: false,
+    includeToolLintErrors: true,
+    maxCheckpointsPerSession: 50
+  }
+}
+
+/**
+ * 将后端设置转换为前端工具规则格式
+ */
+function convertBackendSettingsToRules(settings) {
+  return {
+    read_file: settings.autoApproveReadFile || false,
+    search_files: settings.autoApproveReadFile || false,
+    write_file: settings.autoApproveFileEdits || false,
+    modify_file: settings.autoApproveFileEdits || false,
+    execute_command: settings.autoApproveDangerousTools || false,
+    delete_file: settings.autoApproveDangerousTools || false
+  }
+}
+
+/**
  * 更新自动批准规则
  */
-function updateAutoApprovalRules(payload) {
+async function updateAutoApprovalRules(payload) {
   if (typeof payload === 'object' && !payload.toolName) {
     // 批量更新
     autoApprovalRules.value = { ...autoApprovalRules.value, ...payload }
@@ -1751,12 +1828,16 @@ function updateAutoApprovalRules(payload) {
     autoApprovalRules.value[payload.toolName] = payload.enabled
   }
   
-  // 同步到 AgentLoopManager
-  // if (agentLoopManager.value) {
-  //   Object.entries(autoApprovalRules.value).forEach(([toolName, enabled]) => {
-  //     agentLoopManager.value.updateAutoApprovalRule(toolName, enabled)
-  //   })
-  // }
+  // 保存到后端
+  try {
+    const backendSettings = convertRulesToBackendSettings(autoApprovalRules.value)
+    await approvalService.updateSettings(backendSettings)
+    uiStore.showToast('设置已保存')
+    console.log('[TerminalView] Approval settings saved:', backendSettings)
+  } catch (error) {
+    console.error('保存批准设置失败:', error)
+    uiStore.showToast('保存设置失败: ' + error.message)
+  }
 }
 
 /**
