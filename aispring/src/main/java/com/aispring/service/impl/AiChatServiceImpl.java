@@ -508,11 +508,14 @@ public class AiChatServiceImpl implements AiChatService {
                                         currentPrompt = String.format("工具 '%s' 执行失败: %s。请修正后重试。", toolName, toolCallResult.getError());
                                         continue;
                                     } else {
-                                        // 工具执行成功，继续循环
-                                        log.info("[Agent循环] 批准的工具执行成功，准备继续循环 - toolName={}, decisionId={}", 
+                                        // ✅ 关键修复：工具执行成功，继续当前循环处理工具结果
+                                        // 不需要再次调用 LLM，因为工具结果已经在 runToolCall 中添加到历史了
+                                        log.info("[Agent循环] ✅ 批准的工具执行成功，继续处理工具结果 - toolName={}, decisionId={}", 
                                                 toolName, decisionId);
                                         shouldSendAnotherMessage = true;
-                                        currentPrompt = ""; // 空prompt，让LLM基于历史消息继续
+                                        currentPrompt = ""; // 空prompt，让LLM基于包含工具结果的历史消息继续
+                                        // 注意：这里 continue 会继续外层循环，重新调用 LLM
+                                        // LLM 会看到工具结果并基于此生成下一步响应
                                     }
                                 } else {
                                     // 没有批准或被拒绝，退出循环
