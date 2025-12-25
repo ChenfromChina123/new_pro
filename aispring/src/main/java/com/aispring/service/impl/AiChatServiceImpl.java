@@ -433,14 +433,21 @@ public class AiChatServiceImpl implements AiChatService {
                             }
                             
                             // 工具执行成功，继续循环
+                            log.info("[Agent循环] 工具执行成功，准备继续循环 - toolName={}, decisionId={}, nMessagesSent={}", 
+                                    toolName, decisionId, nMessagesSent);
                             shouldSendAnotherMessage = true;
-                            currentPrompt = "";
+                            currentPrompt = ""; // 空prompt，让LLM基于历史消息继续
+                            log.info("[Agent循环] 已设置 shouldSendAnotherMessage=true，将在下一轮继续");
                                 
                         } else {
                             // 没有检测到工具调用，检查是否有纯文本响应
                             if (plainText != null && !plainText.isEmpty()) {
                                 // 纯文本响应，结束循环
-                                log.debug("LLM 返回纯文本响应，结束 Agent 循环");
+                                log.info("[Agent循环] LLM 返回纯文本响应，结束循环 - plainTextLength={}", plainText.length());
+                                shouldSendAnotherMessage = false;
+                            } else {
+                                log.info("[Agent循环] 未检测到工具调用和纯文本，结束循环");
+                                shouldSendAnotherMessage = false;
                             }
                         }
                     } catch (Exception e) {
@@ -506,21 +513,28 @@ public class AiChatServiceImpl implements AiChatService {
                 }
                 
                 // 清理和结束
+                log.info("[Agent循环] 循环结束，开始清理 - sessionId={}, nMessagesSent={}, finalStatus={}, shouldSendAnotherMessage={}", 
+                        sessionId, nMessagesSent, finalStatus, shouldSendAnotherMessage);
+                
                 com.aispring.entity.session.SessionState finalState = sessionStateService.getState(sessionId).orElse(null);
                 if (finalState != null) {
                     if (finalState.getStatus() == com.aispring.entity.agent.AgentStatus.RUNNING) {
                         finalState.setStatus(finalStatus);
                     }
-                     finalState.setCurrentLoopId(null);
-                     finalState.setStreamState(com.aispring.entity.session.StreamState.idle());
-                     sessionStateService.saveState(finalState);
+                    finalState.setCurrentLoopId(null);
+                    finalState.setStreamState(com.aispring.entity.session.StreamState.idle());
+                    sessionStateService.saveState(finalState);
+                    log.info("[Agent循环] 最终状态已保存 - sessionId={}, finalStatus={}", sessionId, finalStatus);
                 }
                 
-                log.info("Agent 循环结束: sessionId={}, nMessagesSent={}, finalStatus={}", 
-                        sessionId, nMessagesSent, finalStatus);
-                     
-                     emitter.send(SseEmitter.event().data("[DONE]"));
-                     emitter.complete();
+                log.info("[Agent循环] 发送完成事件 - sessionId={}", sessionId);
+                try {
+                    emitter.send(SseEmitter.event().data("[DONE]"));
+                    emitter.complete();
+                    log.info("[Agent循环] 完成事件已发送 - sessionId={}", sessionId);
+                } catch (Exception e) {
+                    log.error("[Agent循环] 发送完成事件失败 - sessionId={}", sessionId, e);
+                }
                 
             } catch (Exception e) {
                 log.error("Agent 循环异常: sessionId={}", sessionId, e);
@@ -1407,10 +1421,14 @@ public class AiChatServiceImpl implements AiChatService {
                 log.error("[工具调用] 保存历史失败 - toolName={}", toolName, e);
             }
             
-            // 步骤 7: 更新状态
+            // 步骤 7: 更新状态为idle（工具执行完成）
+            log.info("[工具调用] 更新状态为idle - toolName={}, toolId={}", toolName, toolId);
             sessionState.setStreamState(com.aispring.entity.session.StreamState.idle());
             sessionStateService.saveState(sessionState);
+            log.info("[工具调用] 状态已更新为idle - toolName={}, toolId={}", toolName, toolId);
             
+            log.info("[工具调用] 工具调用完成，返回成功 - toolName={}, toolId={}, success={}", 
+                    toolName, toolId, toolResult.isSuccess());
             return ToolCallResult.success();
             
         } catch (Exception e) {
