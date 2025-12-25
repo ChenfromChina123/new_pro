@@ -1212,13 +1212,14 @@ const approveTool = async (payload) => {
     // 检查是否还有待批准的工具
     if (pendingApprovals.value.length === 0) {
       showApprovalDialog.value = false
-      // 更新状态为运行中（后端会自动继续循环）
+      // 更新状态为运行中
       terminalStore.setAgentStatus('RUNNING')
+      isTyping.value = true
       
-      // 轮询状态以确保同步（后端可能正在执行工具）
-      setTimeout(async () => {
-        await loadSessionState()
-      }, 500)
+      // 关键修复：批准后需要重新触发 Agent 循环继续执行
+      // 发送空 prompt 让 Agent 继续执行被批准的工具
+      console.log('[TerminalView] Resuming Agent loop after approval')
+      await processAgentLoop('', null)
     }
     
     uiStore.showToast('工具调用已批准')
