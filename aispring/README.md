@@ -106,11 +106,13 @@ java -jar target/ai-tutor-1.0.0.jar
 - **模式选择器**: 移除了前端终端中的模式选择器 UI，统一使用功能选择器和模型选择器。
 - **样式统一**: 确保所有选择器组件（功能、模型）在终端输入栏中样式一致。
 
-### AI 工具调用修复
-- **类型对齐**: 将 `user_id` 从 `String` 统一修改为 `Long`，以解决数据库外键约束冲突和工具调用时的类型转换问题。
-- **状态管理**: 优化了基于 Redis 的 Session 状态管理，并增加了本地缓存作为 Redis 连接失败时的回退机制。
-- **深度思考支持**: 增加了对 `DeepSeek Reasoner` 模型深度思考内容的支持和保存。
-- **Agent 循环优化**: 改进了 Agent 工具调用的自动批准和执行逻辑，增强了系统稳定性。
+### AI 工具调用与类型对齐
+- **统一 UserId 类型**: 将 `ChatSession`、`ChatRecord` 实体类以及所有相关 Controller、Service 和 Repository 中的 `user_id` 从 `String` 统一修改为 `Long`。
+- **解决外键约束错误**: 修复了由于 `user_id` 类型不一致导致的数据库外键约束冲突问题。
+- **Linter 错误修复**: 解决了 16 处由于 `user_id` 类型变更引起的 Java 编译错误。
+- **工具调用稳定性**: 确保 AI 在调用本地工具（如文件读写、代码执行）时，用户 ID 能够正确传递并匹配数据库记录。
+- **Git 冲突处理**: 解决了 `git revert` 过程中在 `VocabularyService.java` 中产生的 PDF 字体注册逻辑冲突，保留了反射加载机制以增强环境兼容性。
+- **代码清理**: 移除了 `ToolCallParser.java` 等文件中的未使用导入和字段。
 
 ### 聊天记录 (ChatRecordController)
 
