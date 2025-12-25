@@ -41,7 +41,7 @@ public class ChatSession {
     private String suggestions; // 存储为 JSON 字符串
     
     @Column(name = "session_type", length = 20)
-    private String sessionType; // chat, terminal
+    private String sessionType; // chat, note, etc.
 
     @Column(name = "current_cwd", length = 500)
     private String currentCwd;
