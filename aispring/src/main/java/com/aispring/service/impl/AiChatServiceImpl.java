@@ -256,7 +256,6 @@ public class AiChatServiceImpl implements AiChatService {
                 List<Map<String, Object>> currentTasks = initialTasks != null ? new ArrayList<>(initialTasks) : new ArrayList<>();
                 int nMessagesSent = 0;
                 boolean shouldSendAnotherMessage = true;
-                com.aispring.entity.agent.AgentStatus finalStatus = com.aispring.entity.agent.AgentStatus.COMPLETED;
                 
                 // 主循环（参考 void-main 的 while (shouldSendAnotherMessage)）
                 while (shouldSendAnotherMessage && nMessagesSent < MAX_AGENT_LOOPS) {
@@ -315,8 +314,6 @@ public class AiChatServiceImpl implements AiChatService {
                                 emitter.send(SseEmitter.event()
                                         .name("error")
                                         .data("{\"message\": \"" + errorMsg + "\"}"));
-                                
-                                finalStatus = com.aispring.entity.agent.AgentStatus.IDLE;
                                         break;
                                     }
                                 }
@@ -463,8 +460,8 @@ public class AiChatServiceImpl implements AiChatService {
                 }
                 
                 // 清理和结束
-                log.info("[Agent循环] 循环结束 - sessionId={}, nMessagesSent={}, finalStatus={}", 
-                        sessionId, nMessagesSent, finalStatus);
+                log.info("[Agent循环] 循环结束 - sessionId={}, nMessagesSent={}", 
+                        sessionId, nMessagesSent);
                 
                 // 发送完成事件
                 log.info("[Agent循环] 发送完成事件 - sessionId={}", sessionId);

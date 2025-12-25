@@ -1,6 +1,5 @@
 package com.aispring.config;
 
-import com.aispring.entity.session.SessionState;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -23,29 +22,6 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 @Configuration
 @EnableCaching
 public class RedisConfig {
-    
-    /**
-     * 配置 RedisTemplate for SessionState
-     * 使用 JSON 序列化存储会话状态
-     */
-    @Bean
-    public RedisTemplate<String, SessionState> sessionStateRedisTemplate(RedisConnectionFactory connectionFactory) {
-        RedisTemplate<String, SessionState> template = new RedisTemplate<>();
-        template.setConnectionFactory(connectionFactory);
-        
-        // 使用 String 序列化器作为 key 序列化器
-        StringRedisSerializer stringSerializer = new StringRedisSerializer();
-        template.setKeySerializer(stringSerializer);
-        template.setHashKeySerializer(stringSerializer);
-        
-        // 使用 JSON 序列化器作为 value 序列化器
-        GenericJackson2JsonRedisSerializer jsonSerializer = new GenericJackson2JsonRedisSerializer(objectMapper());
-        template.setValueSerializer(jsonSerializer);
-        template.setHashValueSerializer(jsonSerializer);
-        
-        template.afterPropertiesSet();
-        return template;
-    }
     
     /**
      * 通用 RedisTemplate 配置
