@@ -16,7 +16,7 @@ public interface AiChatService {
      * @param userId 用户ID
      * @return SSE发射器，用于流式响应
      */
-    SseEmitter askStream(String prompt, String sessionId, String model, String userId);
+    SseEmitter askStream(String prompt, String sessionId, String model, Long userId);
     
     /**
      * AI非流式问答
@@ -26,11 +26,11 @@ public interface AiChatService {
      * @param userId 用户ID
      * @return 非流式响应
      */
-    String ask(String prompt, String sessionId, String model, String userId);
+    String ask(String prompt, String sessionId, String model, Long userId);
 
     /**
      * AI Agent流式问答 (支持自定义System Prompt和任务链上下文)
      */
-    SseEmitter askAgentStream(String prompt, String sessionId, String model, String userId, String systemPromptTemplate, java.util.List<java.util.Map<String, Object>> tasks, java.util.function.Consumer<String> onResponse);
+    SseEmitter askAgentStream(String prompt, String sessionId, String model, Long userId, String systemPromptTemplate, java.util.List<java.util.Map<String, Object>> tasks, java.util.function.Consumer<String> onResponse);
 
 }

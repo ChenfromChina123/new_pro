@@ -36,7 +36,7 @@ public class ChatRecord {
     private Long id;
     
     @Column(name = "user_id", nullable = false)
-    private String userId;
+    private Long userId;
     
     @Column(name = "session_id", nullable = false, length = 255)
     private String sessionId;

@@ -45,7 +45,7 @@ public class AiChatController {
             @Valid @RequestBody AskRequest request,
             @AuthenticationPrincipal CustomUserDetails customUserDetails) {
         
-        String userId = customUserDetails.getUser().getId().toString();
+        Long userId = customUserDetails.getUser().getId();
         
         // 调用AI流式聊天服务
         return aiChatService.askStream(
@@ -64,7 +64,7 @@ public class AiChatController {
             @Valid @RequestBody AskRequest request,
             @AuthenticationPrincipal CustomUserDetails customUserDetails) {
         
-        String userId = customUserDetails.getUser().getId().toString();
+        Long userId = customUserDetails.getUser().getId();
         String answer = aiChatService.ask(
                 request.getPrompt(),
                 request.getSession_id(),

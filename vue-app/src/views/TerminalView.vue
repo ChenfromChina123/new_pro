@@ -1537,7 +1537,14 @@ const processAgentLoop = async (prompt, toolResult) => {
             } else if (currentEvent === 'tool_result') {
                 // 处理工具执行结果（参考 void-main 的 tool result 处理）
                 // 这是后端执行工具后发送的结果，前端只负责显示
-                console.log('[TerminalView] Received tool result:', json)
+                console.log('[TerminalView] Received tool result event:', json)
+                console.log('[TerminalView] Tool result details:', {
+                  toolName: json.toolName || json.tool,
+                  success: json.success,
+                  hasResult: !!json.stringResult,
+                  hasError: !!json.error,
+                  decisionId: json.decisionId || json.decision_id
+                })
                 
                 // 更新消息状态
                 currentAiMsg.toolResult = json
@@ -1599,6 +1606,10 @@ const processAgentLoop = async (prompt, toolResult) => {
                 
                 // 更新状态
                 terminalStore.setAgentStatus('RUNNING')
+                isTyping.value = false
+                isExecuting.value = false
+                
+                console.log('[TerminalView] Tool result processed, status updated to RUNNING')
                 
             } else if (currentEvent === 'task_list') {
                 // 处理任务列表事件（后端发送的任务计划）

@@ -71,7 +71,7 @@ public class ChatRecordController {
             @AuthenticationPrincipal CustomUserDetails customUserDetails) {
         
         // 获取当前用户ID
-        String userId = customUserDetails.getUser().getId().toString();
+        Long userId = customUserDetails.getUser().getId();
         
         String session = request.getSession_id() != null ? request.getSession_id() : request.getSessionId();
         String model = request.getModel();
@@ -84,8 +84,7 @@ public class ChatRecordController {
                 userId,
                 session,
                 model,
-                "completed",
-                null  // 用户消息没有 reasoning_content
+                "completed"
             );
             // 保存 AI 消息，包含 reasoning_content
             chatRecordService.createChatRecord(
@@ -95,6 +94,7 @@ public class ChatRecordController {
                 session,
                 model,
                 "completed",
+                "chat",
                 request.getAi_reasoning()  // 传递深度思考内容
             );
         } else {
@@ -108,6 +108,7 @@ public class ChatRecordController {
                 session,
                 model,
                 "completed",
+                "chat",
                 reasoningContent
             );
         }
@@ -126,7 +127,7 @@ public class ChatRecordController {
     public ResponseEntity<Map<String, Object>> getChatSessions(
             @AuthenticationPrincipal CustomUserDetails customUserDetails) {
         
-        String userId = customUserDetails.getUser().getId().toString();
+        Long userId = customUserDetails.getUser().getId();
         List<Map<String, Object>> sessions = chatRecordService.getUserSessions(userId);
         
         Map<String, Object> response = new HashMap<>();
@@ -144,7 +145,7 @@ public class ChatRecordController {
             @PathVariable String sessionId,
             @AuthenticationPrincipal CustomUserDetails customUserDetails) {
         
-        String userId = customUserDetails.getUser().getId().toString();
+        Long userId = customUserDetails.getUser().getId();
         List<ChatRecord> messages = chatRecordService.getSessionMessages(userId, sessionId);
         
         Map<String, Object> response = new HashMap<>();
@@ -168,7 +169,7 @@ public class ChatRecordController {
             @PathVariable String sessionId,
             @AuthenticationPrincipal CustomUserDetails customUserDetails) {
         
-        String userId = customUserDetails.getUser().getId().toString();
+        Long userId = customUserDetails.getUser().getId();
         chatRecordService.deleteSession(userId, sessionId);
         
         return ResponseEntity.ok(
@@ -186,7 +187,7 @@ public class ChatRecordController {
     public ResponseEntity<Map<String, String>> createNewSession(
             @AuthenticationPrincipal CustomUserDetails customUserDetails) {
         
-        String userId = customUserDetails.getUser().getId().toString();
+        Long userId = customUserDetails.getUser().getId();
         ChatSession session = chatRecordService.createChatSession(userId, "chat");
         
         Map<String, String> response = new HashMap<>();
@@ -203,7 +204,7 @@ public class ChatRecordController {
     public ResponseEntity<Map<String, Object>> getAllSessions(
             @RequestParam(defaultValue = "0") Integer skip,
             @RequestParam(defaultValue = "20") Integer limit,
-            @RequestParam(required = false) String userId,
+            @RequestParam(required = false) Long userId,
             @AuthenticationPrincipal UserDetails userDetails) {
         
         // TODO: 添加管理员权限验证
@@ -222,7 +223,7 @@ public class ChatRecordController {
      */
     @GetMapping("/admin/user/{userId}/session/{sessionId}")
     public ResponseEntity<Map<String, Object>> getUserSessionMessages(
-            @PathVariable String userId,
+            @PathVariable Long userId,
             @PathVariable String sessionId,
             @AuthenticationPrincipal UserDetails userDetails) {
         
@@ -242,21 +243,17 @@ public class ChatRecordController {
      */
     @DeleteMapping("/admin/user/{userId}/session/{sessionId}")
     public ResponseEntity<MessageResponse> deleteUserSession(
-            @PathVariable String userId,
+            @PathVariable Long userId,
             @PathVariable String sessionId,
             @AuthenticationPrincipal UserDetails userDetails) {
         
         // TODO: 添加管理员权限验证
         
-        int deletedCount = chatRecordService.deleteUserSession(userId, sessionId);
-        
-        if (deletedCount == 0) {
-            return ResponseEntity.notFound().build();
-        }
+        chatRecordService.deleteSession(userId, sessionId);
         
         return ResponseEntity.ok(
             MessageResponse.builder()
-                .message("成功删除" + deletedCount + "条消息")
+                .message("成功删除会话")
                 .build()
         );
     }
