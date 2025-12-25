@@ -885,6 +885,13 @@
                 <button
                   class="ai-download-item"
                   type="button"
+                  @click="downloadArticle('study')"
+                >
+                  下载（学习版）
+                </button>
+                <button
+                  class="ai-download-item"
+                  type="button"
                   @click="downloadArticle('pdf')"
                 >
                   下载 PDF（学习版）
@@ -1695,11 +1702,11 @@ const buildHtmlForStudyDownload = (article) => {
     <meta charset="UTF-8" />
     <title>${escapeHtml(title)}</title>
     <style>
-      body { font-family: "SimHei", "Microsoft YaHei", Arial, sans-serif; max-width: 980px; margin: 0 auto; padding: 32px; line-height: 1.7; color: #0f172a; }
-      h1 { margin: 0 0 22px 0; font-size: 28px; text-align: center; font-family: "SimHei", "Microsoft YaHei", sans-serif; }
+      body { font-family: "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; max-width: 980px; margin: 0 auto; padding: 32px; line-height: 1.7; color: #0f172a; }
+      h1 { margin: 0 0 22px 0; font-size: 28px; text-align: center; }
       .para { margin: 14px 0; padding: 14px 16px; border: 1px solid #e2e8f0; border-radius: 10px; background: #ffffff; page-break-inside: avoid; }
-      .en { margin: 0; font-size: 16px; white-space: pre-wrap; font-family: Arial, sans-serif; }
-      .zh { margin-top: 10px; color: #334155; white-space: pre-wrap; font-family: "SimHei", "Microsoft YaHei", sans-serif; }
+      .en { margin: 0; font-size: 16px; white-space: pre-wrap; }
+      .zh { margin-top: 10px; color: #334155; white-space: pre-wrap; }
       .vocab-chip { display: inline-block; padding: 0 6px; border-radius: 6px; background: #fef3c7; color: #1d4ed8; font-weight: 700; }
       .word-title { margin: 28px 0 0 0; font-size: 18px; font-weight: 700; }
       table { width: 100%; border-collapse: collapse; margin-top: 10px; }
@@ -1891,6 +1898,12 @@ const downloadArticle = async (type) => {
   if (!activeArticle.value) return
   showDownloadMenu.value = false
   const title = activeArticle.value.topic || '未命名文章'
+  if (type === 'study') {
+    await nextTick()
+    const html = buildHtmlForStudyDownload(activeArticle.value)
+    downloadBlob(`${title}-学习版.html`, html, 'text/html;charset=utf-8')
+    return
+  }
   if (type === 'pdf') {
     await nextTick()
     const html = buildHtmlForStudyDownload(activeArticle.value)
