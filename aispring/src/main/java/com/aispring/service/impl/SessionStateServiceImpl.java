@@ -42,6 +42,15 @@ public class SessionStateServiceImpl implements SessionStateService {
     private final Map<String, SessionState> localCache = new ConcurrentHashMap<>();
     private final Map<String, Instant> localInterruptFlags = new ConcurrentHashMap<>();
     
+    // Redis连接状态标记（避免重复日志）
+    private volatile boolean redisAvailable = true;
+    private volatile long lastRedisErrorLogTime = 0;
+    private static final long REDIS_ERROR_LOG_INTERVAL = 60000; // 1分钟只记录一次Redis错误
+    
+    // 数据库持久化防抖：记录上次持久化时间
+    private final Map<String, Long> lastPersistTime = new ConcurrentHashMap<>();
+    private static final long PERSIST_DEBOUNCE_MS = 2000; // 2秒内只持久化一次
+    
     @Value("${spring.redis.session-state.ttl:86400}")
     private long sessionStateTtl;  // 默认 24 小时
     
@@ -69,8 +78,15 @@ public class SessionStateServiceImpl implements SessionStateService {
         
         try {
             state = sessionStateRedisTemplate.opsForValue().get(key);
+            redisAvailable = true; // 连接成功，重置标记
         } catch (Exception e) {
-            log.error("Redis 连接失败，使用本地缓存: {}", e.getMessage());
+            redisAvailable = false;
+            long now = System.currentTimeMillis();
+            // 只在第一次失败或超过间隔时间后记录日志
+            if (now - lastRedisErrorLogTime > REDIS_ERROR_LOG_INTERVAL) {
+                log.warn("Redis 连接失败，使用本地缓存: {}", e.getMessage());
+                lastRedisErrorLogTime = now;
+            }
             state = localCache.get(sessionId);
         }
         
@@ -100,10 +116,17 @@ public class SessionStateServiceImpl implements SessionStateService {
         try {
             SessionState state = sessionStateRedisTemplate.opsForValue().get(key);
             if (state != null) {
+                redisAvailable = true;
                 return Optional.of(state);
             }
+            redisAvailable = true;
         } catch (Exception e) {
-            log.error("Redis 获取状态失败: {}", e.getMessage());
+            redisAvailable = false;
+            long now = System.currentTimeMillis();
+            if (now - lastRedisErrorLogTime > REDIS_ERROR_LOG_INTERVAL) {
+                log.warn("Redis 获取状态失败: {}", e.getMessage());
+                lastRedisErrorLogTime = now;
+            }
         }
         
         // 2. 尝试从本地缓存获取
@@ -139,13 +162,31 @@ public class SessionStateServiceImpl implements SessionStateService {
         try {
             long ttl = (state.getStatus() == AgentStatus.IDLE) ? inactiveSessionTtl : sessionStateTtl;
             sessionStateRedisTemplate.opsForValue().set(key, state, Duration.ofSeconds(ttl));
+            redisAvailable = true; // 连接成功，重置标记
         } catch (Exception e) {
-            log.warn("保存会话状态到 Redis 失败: {}", e.getMessage());
+            redisAvailable = false;
+            long now = System.currentTimeMillis();
+            // 只在第一次失败或超过间隔时间后记录日志
+            if (now - lastRedisErrorLogTime > REDIS_ERROR_LOG_INTERVAL) {
+                log.warn("保存会话状态到 Redis 失败: {}", e.getMessage());
+                lastRedisErrorLogTime = now;
+            }
         }
         
-        // 3. 定期或在关键状态时持久化到数据库
-        // 这里简单处理，每次保存都异步持久化到数据库
-        persistStateToDatabase(sessionId);
+        // 3. 防抖持久化到数据库（避免过于频繁的数据库操作）
+        long now = System.currentTimeMillis();
+        Long lastPersist = lastPersistTime.get(sessionId);
+        // 只在关键状态变化或超过防抖时间时持久化
+        boolean shouldPersist = lastPersist == null || 
+                                (now - lastPersist > PERSIST_DEBOUNCE_MS) ||
+                                state.getStatus() == AgentStatus.AWAITING_APPROVAL ||
+                                state.getStatus() == AgentStatus.COMPLETED;
+        
+        if (shouldPersist) {
+            lastPersistTime.put(sessionId, now);
+            // 异步持久化，避免阻塞
+            persistStateToDatabaseAsync(sessionId);
+        }
     }
     
     @Override
@@ -206,8 +247,14 @@ public class SessionStateServiceImpl implements SessionStateService {
             sessionStateRedisTemplate.opsForValue().set(interruptKey, 
                     SessionState.builder().sessionId(sessionId).build(), 
                     Duration.ofMinutes(5));
+            redisAvailable = true;
         } catch (Exception e) {
-            log.warn("设置 Redis 中断标志失败: {}", e.getMessage());
+            redisAvailable = false;
+            long now = System.currentTimeMillis();
+            if (now - lastRedisErrorLogTime > REDIS_ERROR_LOG_INTERVAL) {
+                log.warn("设置 Redis 中断标志失败: {}", e.getMessage());
+                lastRedisErrorLogTime = now;
+            }
         }
         
         // 更新状态中的中断标志
@@ -238,11 +285,13 @@ public class SessionStateServiceImpl implements SessionStateService {
         try {
             String interruptKey = getInterruptKey(sessionId);
             Boolean hasKey = sessionStateRedisTemplate.hasKey(interruptKey);
+            redisAvailable = true;
             if (Boolean.TRUE.equals(hasKey)) {
                 return true;
             }
         } catch (Exception e) {
-            log.warn("检查 Redis 中断标志失败: {}", e.getMessage());
+            redisAvailable = false;
+            // Redis错误时不记录日志，避免日志过多
         }
         
         // 3. 检查状态中的标志
@@ -266,8 +315,10 @@ public class SessionStateServiceImpl implements SessionStateService {
         try {
             String interruptKey = getInterruptKey(sessionId);
             sessionStateRedisTemplate.delete(interruptKey);
+            redisAvailable = true;
         } catch (Exception e) {
-            log.warn("清除 Redis 中断标志失败: {}", e.getMessage());
+            redisAvailable = false;
+            // Redis错误时不记录日志，避免日志过多
         }
         
         // 3. 清除状态中的标志
@@ -290,13 +341,16 @@ public class SessionStateServiceImpl implements SessionStateService {
         // 1. 清除本地缓存
         localCache.remove(sessionId);
         localInterruptFlags.remove(sessionId);
+        lastPersistTime.remove(sessionId);
         
         // 2. 清除 Redis 缓存
         try {
             sessionStateRedisTemplate.delete(key);
             sessionStateRedisTemplate.delete(interruptKey);
+            redisAvailable = true;
         } catch (Exception e) {
-            log.warn("删除 Redis 会话状态失败: {}", e.getMessage());
+            redisAvailable = false;
+            // Redis错误时不记录日志，避免日志过多
         }
         
         // 3. 清除数据库状态
@@ -312,9 +366,15 @@ public class SessionStateServiceImpl implements SessionStateService {
     @Override
     @Transactional
     public void persistStateToDatabase(String sessionId) {
+        persistStateToDatabaseSync(sessionId);
+    }
+    
+    /**
+     * 同步持久化到数据库（用于关键操作）
+     */
+    private void persistStateToDatabaseSync(String sessionId) {
         SessionState state = localCache.get(sessionId);
         if (state == null) {
-            // 如果本地没有，尝试从 Redis 获取
             state = getState(sessionId).orElse(null);
         }
         
@@ -323,7 +383,6 @@ public class SessionStateServiceImpl implements SessionStateService {
                 SessionStateEntity entity = sessionStateRepository.findBySessionId(sessionId)
                         .orElse(new SessionStateEntity());
                 
-                // 更新实体字段
                 entity.setSessionId(state.getSessionId());
                 entity.setUserId(state.getUserId());
                 entity.setAgentStatus(state.getStatus());
@@ -338,9 +397,23 @@ public class SessionStateServiceImpl implements SessionStateService {
                 sessionStateRepository.save(entity);
                 log.debug("持久化会话状态到数据库成功: sessionId={}", sessionId);
             } catch (Exception e) {
-                log.error("持久化会话状态到数据库失败: {}", e.getMessage());
+                log.error("持久化会话状态到数据库失败: sessionId={}, error={}", sessionId, e.getMessage());
             }
         }
+    }
+    
+    /**
+     * 异步持久化到数据库（用于非关键操作，避免阻塞）
+     */
+    private void persistStateToDatabaseAsync(String sessionId) {
+        // 使用简单的异步执行，避免阻塞主线程
+        new Thread(() -> {
+            try {
+                persistStateToDatabaseSync(sessionId);
+            } catch (Exception e) {
+                log.error("异步持久化会话状态失败: sessionId={}", sessionId, e);
+            }
+        }, "StatePersist-" + sessionId).start();
     }
     
     @Override
@@ -360,4 +433,5 @@ public class SessionStateServiceImpl implements SessionStateService {
         return false;
     }
 }
+
 
