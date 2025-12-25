@@ -103,8 +103,8 @@ java -jar target/ai-tutor-1.0.0.jar
 ## 🔄 最新修改
 
 ### UI 优化
-- **模式选择器**: 移除了前端终端中的模式选择器 UI，统一使用功能选择器和模型选择器。
-- **样式统一**: 确保所有选择器组件（功能、模型）在终端输入栏中样式一致。
+- **模式选择器**: 移除了前端页面中的模式选择器 UI，统一使用功能选择器和模型选择器。
+- **样式统一**: 确保所有选择器组件（功能、模型）在输入栏中样式一致。
 
 ### AI 工具调用与类型对齐
 - **统一 UserId 类型**: 将 `ChatSession`、`ChatRecord` 实体类以及所有相关 Controller、Service 和 Repository 中的 `user_id` 从 `String` 统一修改为 `Long`。
@@ -178,7 +178,8 @@ aispring/
 │   │   ├── SecurityConfig.java
 │   │   ├── CorsConfig.java
 │   │   ├── JwtConfig.java
-│   │   └── FileConfig.java
+│   │   ├── FileConfig.java
+│   │   └── ...
 │   ├── security/                     # 安全相关
 │   │   ├── JwtAuthenticationFilter.java
 │   │   ├── JwtTokenProvider.java
@@ -193,101 +194,11 @@ aispring/
 │       └── CustomException.java
 ├── src/main/resources/
 │   ├── application.yml               # 主配置文件
-│   └── application-dev.yml           # 开发环境配置
+│   ├── application-dev.yml           # 开发环境配置
+│   └── application-prod.yml          # 生产环境配置
 ├── pom.xml                          # Maven配置
 └── README.md                        # 本文件
 ```
-
-## 🤖 AI Agent 系统改进（参考 void-main）
-
-### 改进概述
-
-参考 void-main 项目的 AI Agent 实现，对 aispring 项目的 Agent 系统进行了深入改进：
-
-#### 1. Agent 循环结构优化
-- **清晰的状态管理**：实现了 idle → LLM → tool → idle 的状态流转
-- **重试机制**：LLM 请求失败时自动重试（最多 3 次）
-- **循环控制**：使用 `shouldSendAnotherMessage` 标志控制循环，更符合 void-main 的设计
-- **最大循环次数**：从 20 次增加到 50 次，支持更复杂的任务
-
-#### 2. 工具批准机制增强
-- **自动批准**：根据用户设置自动批准工具调用（参考 void-main 的 `autoApprove` 配置）
-- **批准审计**：即使自动批准也会创建批准记录，用于审计
-- **工具分类**：支持危险工具、读文件工具、文件编辑工具、MCP 工具的分类管理
-
-#### 3. 错误处理和重试机制
-- **LLM 请求重试**：失败时自动重试，延迟 1 秒
-- **错误消息**：重试失败后发送清晰的错误消息给前端
-- **状态恢复**：错误后正确恢复状态，避免状态不一致
-
-#### 4. 状态管理改进
-- **StreamState 增强**：支持 idle、streamingLLM、runningTool、awaitingUser 四种状态
-- **状态持久化**：每次状态变更都保存到数据库
-- **中断机制**：统一的中断检查点，支持各状态下的中断
-
-#### 5. 工具调用流程优化（参考 void-main 的 _runToolCall）
-- **参数验证**：在工具执行前验证参数，失败时返回错误信息
-- **工具结果处理**：无论成功或失败都继续循环，让 LLM 根据结果决定下一步
-- **状态更新**：工具执行过程中正确更新 StreamState
-- **详细日志**：每个步骤都有详细的日志记录，便于调试和监控
-- **错误处理**：完善的异常捕获和错误恢复机制
-- **结果字符串化**：工具结果自动格式化为字符串，供 LLM 使用
-
-### 关键改进点对比
-
-| 特性 | 改进前 | 改进后（参考 void-main） |
-|------|--------|------------------------|
-| 循环结构 | 简单的 while 循环 | 嵌套循环（主循环 + 重试循环） |
-| 状态管理 | 基础状态 | 完整的 StreamState 状态机 |
-| 错误处理 | 简单异常捕获 | 重试机制 + 错误恢复 |
-| 工具批准 | 仅手动批准 | 自动批准 + 手动批准 |
-| 中断机制 | 基础中断检查 | 统一中断接口，各状态支持 |
-
-#### 6. 工具调用方法重构（2025-01-XX）
-
-参考 void-main 的 `_runToolCall` 方法，对工具调用流程进行了全面重构：
-
-**重构内容：**
-- **提取独立方法**：将工具调用逻辑提取为 `runToolCall` 方法，提高代码可维护性
-- **详细日志记录**：每个步骤都有详细的日志，包括：
-  - 工具调用开始/结束
-  - 参数验证过程
-  - 批准检查结果
-  - 工具执行状态
-  - 结果处理过程
-  - 状态更新记录
-- **工具执行增强**：`ToolsServiceImpl.callTool` 方法添加了详细的执行日志，包括：
-  - 工具分发过程
-  - 执行时间统计
-  - 成功/失败状态记录
-- **错误处理优化**：完善的异常捕获和错误恢复，确保工具调用失败时不影响整个 Agent 循环
-
-**日志格式：**
-- `[工具调用]` 前缀：标识工具调用相关日志
-- `[ToolsService]` 前缀：标识工具服务相关日志
-- 包含关键信息：toolName、toolId、sessionId、userId、duration 等
-
-**工具调用流程（7个步骤）：**
-1. 参数验证：验证工具参数的有效性
-2. 检查批准：检查是否需要用户批准
-3. 执行工具：调用工具并设置运行状态
-4. 字符串化结果：将工具结果转换为字符串
-5. 发送结果事件：向前端发送工具执行结果
-6. 保存到历史：将工具结果保存到消息历史
-7. 更新状态：将状态更新为 idle
-
-### 配置说明
-
-Agent 循环相关配置（在代码中定义）：
-- `CHAT_RETRIES = 3`：LLM 请求最大重试次数
-- `RETRY_DELAY_MS = 1000`：重试延迟（毫秒）
-- `MAX_AGENT_LOOPS = 50`：Agent 循环最大次数
-
-工具批准配置（通过 API 配置）：
-- `autoApproveDangerousTools`：自动批准危险工具
-- `autoApproveReadFile`：自动批准读文件工具
-- `autoApproveFileEdits`：自动批准文件编辑工具
-- `autoApproveMcpTools`：自动批准 MCP 工具
 
 ## 🔑 核心功能实现
 
@@ -312,7 +223,7 @@ public class JwtUtil {
 系统实现了智能文件读取逻辑，能够自动识别多种编码格式，解决跨平台（Windows/Linux）文件读取乱码问题：
 - **BOM检测**: 支持 UTF-8、UTF-16LE、UTF-16BE 的 BOM 头识别。
 - **多编码尝试**: 依次尝试 UTF-8 -> GBK -> UTF-16LE -> 强制 UTF-8 降级读取。
-- **服务对齐**: `CloudDiskService` 与 `TerminalService` 共享相同的编码识别逻辑，确保全系统文件查看一致性。
+- **服务对齐**: `CloudDiskService` 内部共享相同的编码识别逻辑，确保全系统文件查看一致性。
 
 ### 3. 管理员高级权限
 
@@ -321,22 +232,7 @@ public class JwtUtil {
 - `updateFileContentAdmin(Long fileId, String content)`: 允许管理员直接编辑并同步更新用户文件。
 - **安全性**: 所有管理员接口均受 `@PreAuthorize("hasRole('ADMIN')")` 保护。
 
-### 4. 终端助手 UI 优化
-
-系统对终端助手（Terminal Assistant）进行了全面的 UI 升级，使其与其他 AI 组件保持高度一致：
-- **布局一致性**: 统一了聊天面板头部（Header）样式，与右侧任务面板完美对齐。
-- **视觉体验升级**: 
-  - 重新设计了聊天气泡，采用更柔和的圆角和阴影效果。
-  - 区分了用户和 AI 的气泡风格，增强了对话的可读性。
-  - 优化了思考过程（Thought Block）和工具调用（Tool Call）的展示样式。
-- **交互细节**:
-  - 改进了底部输入区域，增加了悬浮阴影和聚焦动画。
-  - **组件整合**: 移除了复杂的模式选择器，改为保留核心的**功能选择器**（如聊天、代码编辑等）与**模型选择器**并排显示，简化了操作路径并提升了界面的清爽度。
-  - 统一了模型选择器和发送按钮的视觉风格。
-  - 响应式适配，确保在不同屏幕尺寸下均有良好的操作体验。
-- **代码规范**: 同步修复了 Vue 组件中的所有 Linter 警告，移除了冗余代码，增强了类型安全。
-
-### 2. 文件上传
+### 4. 文件上传
 
 ```java
 // FileService.java
@@ -351,7 +247,7 @@ public class FileService {
 }
 ```
 
-### 3. 流式AI回复
+### 5. 流式AI回复
 
 ```java
 // ChatService.java
@@ -484,5 +380,4 @@ MIT License
 
 **开发团队**: AI Spring Team
 **版本**: 1.0.0
-**最后更新**: 2024年12月
-
+**最后更新**: 2025年12月

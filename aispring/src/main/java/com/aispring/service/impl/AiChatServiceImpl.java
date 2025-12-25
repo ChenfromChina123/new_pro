@@ -56,9 +56,6 @@ public class AiChatServiceImpl implements AiChatService {
     private final com.aispring.service.ChatRecordService chatRecordService; // 注入 ChatRecordService
     private final OkHttpClient okHttpClient;
     
-    // Phase 2 新增服务
-    private final com.aispring.service.SessionStateService sessionStateService;
-    private final com.aispring.service.ToolApprovalService toolApprovalService;
     private final com.aispring.service.ToolsService toolsService;
     private final com.aispring.service.ToolCallParser toolCallParser;
     
@@ -95,8 +92,6 @@ public class AiChatServiceImpl implements AiChatService {
                              ObjectProvider<StreamingChatClient> streamingChatClientProvider,
                              ChatRecordRepository chatRecordRepository,
                              com.aispring.service.ChatRecordService chatRecordService, // 添加到构造函数
-                             com.aispring.service.SessionStateService sessionStateService,
-                             com.aispring.service.ToolApprovalService toolApprovalService,
                              com.aispring.service.ToolsService toolsService,
                              com.aispring.service.ToolCallParser toolCallParser,
                              @Value("${ai.doubao.api-key:}") String doubaoApiKey,
@@ -107,8 +102,6 @@ public class AiChatServiceImpl implements AiChatService {
         this.streamingChatClientProvider = streamingChatClientProvider;
         this.chatRecordRepository = chatRecordRepository;
         this.chatRecordService = chatRecordService; // 初始化
-        this.sessionStateService = sessionStateService;
-        this.toolApprovalService = toolApprovalService;
         this.toolsService = toolsService;
         this.toolCallParser = toolCallParser;
         
@@ -253,63 +246,9 @@ public class AiChatServiceImpl implements AiChatService {
         new Thread(() -> {
             try {
                 log.info("=== Agent Loop Thread Started ===");
-                com.aispring.entity.session.SessionState sessionState = 
-                        sessionStateService.getOrCreateState(sessionId, userId);
-                
-                log.info("SessionState retrieved: status={}, sessionId={}", sessionState.getStatus(), sessionId);
-                
-                // 初始化状态
-                sessionState.setStatus(com.aispring.entity.agent.AgentStatus.RUNNING);
-                sessionState.setCurrentLoopId(loopId);
-                sessionState.setStreamState(com.aispring.entity.session.StreamState.idle());
-                sessionStateService.saveState(sessionState);
                 
                 log.info("Agent 循环开始: sessionId={}, loopId={}, systemPrompt length={}", 
                     sessionId, loopId, initialSystemPrompt != null ? initialSystemPrompt.length() : 0);
-                
-                // 🔥 关键重构：检查是否有已批准但未执行的工具（批准后重启循环的场景）
-                List<com.aispring.entity.approval.ToolApproval> approvedTools = 
-                        toolApprovalService.getApprovedPendingExecution(sessionId);
-                
-                if (!approvedTools.isEmpty()) {
-                    log.info("[Agent循环] 🔍 检测到 {} 个已批准但未执行的工具，优先执行", approvedTools.size());
-                    
-                    for (com.aispring.entity.approval.ToolApproval approvedTool : approvedTools) {
-                        log.info("[Agent循环] 🚀 执行已批准工具 - toolName={}, decisionId={}", 
-                                approvedTool.getToolName(), approvedTool.getDecisionId());
-                        
-                        try {
-                            ToolCallResult result = runToolCall(
-                                    approvedTool.getToolName(),
-                                    approvedTool.getDecisionId(),
-                                    approvedTool.getToolParams(),
-                                    sessionId,
-                                    userId,
-                                    model,
-                                    sessionState,
-                                    emitter,
-                                    true  // preapproved = true
-                            );
-                            
-                            if (result.hasError()) {
-                                log.error("[Agent循环] ❌ 已批准工具执行失败 - toolName={}, error={}", 
-                                        approvedTool.getToolName(), result.getError());
-                            } else {
-                                log.info("[Agent循环] ✅ 已批准工具执行成功 - toolName={}", approvedTool.getToolName());
-                            }
-                            
-                            // 🔥 关键：执行完成后删除批准记录，避免重复执行
-                            toolApprovalService.deleteApprovalRecord(approvedTool.getDecisionId());
-                            log.info("[Agent循环] 🗑️ 已删除批准记录 - decisionId={}", approvedTool.getDecisionId());
-                        } catch (Exception e) {
-                            log.error("[Agent循环] ⚠️ 执行已批准工具异常 - toolName={}", approvedTool.getToolName(), e);
-                        }
-                    }
-                    
-                    // 🔥 关键：执行完已批准工具后，继续 Agent 循环
-                    // LLM 会看到工具结果（已保存到历史）并基于此继续对话
-                    log.info("[Agent循环] 📝 已批准工具执行完成，继续 Agent 循环让 LLM 处理工具结果");
-                }
                 
                 // 循环变量
                 String currentPrompt = initialPrompt;
@@ -326,22 +265,6 @@ public class AiChatServiceImpl implements AiChatService {
                     
                     log.debug("Agent Loop iteration {}: sessionId={}", nMessagesSent, sessionId);
                     
-                    // 检查中断标志（在 idle 状态检查）
-                    if (sessionStateService.isInterruptRequested(sessionId)) {
-                        log.warn("Agent 循环被中断: sessionId={}, loopId={}, nMessagesSent={}", 
-                                sessionId, loopId, nMessagesSent);
-                        sessionState.setStreamState(com.aispring.entity.session.StreamState.idle());
-                        sessionStateService.saveState(sessionState);
-                        emitter.send(SseEmitter.event()
-                                .name("interrupt")
-                                .data("{\"message\": \"Agent 循环已被用户中断\"}"));
-                        break;
-                    }
-                    
-                    // 设置状态为 idle（准备发送 LLM 请求）
-                    sessionState.setStreamState(com.aispring.entity.session.StreamState.idle());
-                    sessionStateService.saveState(sessionState);
-                    
                     // LLM 请求重试循环（参考 void-main 的 while (shouldRetryLLM)）
                     boolean shouldRetryLLM = true;
                     int nAttempts = 0;
@@ -353,10 +276,6 @@ public class AiChatServiceImpl implements AiChatService {
                         nAttempts++;
                         
                         try {
-                            // 设置状态为 streaming LLM
-                            sessionState.setStreamState(com.aispring.entity.session.StreamState.streamingLLM());
-                            sessionStateService.saveState(sessionState);
-                    
                     // 执行对话并获取完整回复
                             log.info("准备调用 LLM: prompt length={}, systemPrompt length={}", 
                                 currentPrompt != null ? currentPrompt.length() : 0,
@@ -380,19 +299,12 @@ public class AiChatServiceImpl implements AiChatService {
                             // 检查是否需要重试
                             if (nAttempts < CHAT_RETRIES) {
                                 shouldRetryLLM = true;
-                                sessionState.setStreamState(com.aispring.entity.session.StreamState.idle());
-                                sessionStateService.saveState(sessionState);
                                 
                                 // 等待后重试
                                 try {
                                     Thread.sleep(RETRY_DELAY_MS);
                                 } catch (InterruptedException ie) {
                                     Thread.currentThread().interrupt();
-                                    break;
-                                }
-                                
-                                // 再次检查中断
-                                if (sessionStateService.isInterruptRequested(sessionId)) {
                                     break;
                                 }
                                 continue;
@@ -404,10 +316,6 @@ public class AiChatServiceImpl implements AiChatService {
                                         .name("error")
                                         .data("{\"message\": \"" + errorMsg + "\"}"));
                                 
-                                sessionState.setStreamState(com.aispring.entity.session.StreamState.idle());
-                                sessionState.setStatus(com.aispring.entity.agent.AgentStatus.IDLE);
-                                sessionStateService.saveState(sessionState);
-                                
                                 finalStatus = com.aispring.entity.agent.AgentStatus.IDLE;
                                         break;
                                     }
@@ -418,10 +326,6 @@ public class AiChatServiceImpl implements AiChatService {
                     if (!llmSuccess || fullResponse == null) {
                         break;
                     }
-                    
-                    // 设置状态为 idle（LLM 响应完成）
-                    sessionState.setStreamState(com.aispring.entity.session.StreamState.idle());
-                    sessionStateService.saveState(sessionState);
                     
                     // 解析回复，检查是否需要继续循环
                     // 使用 XML 格式解析工具调用（参考 void-main 的 extractXMLToolsWrapper）
@@ -460,45 +364,13 @@ public class AiChatServiceImpl implements AiChatService {
                                     sessionId, 
                                     userId, 
                                     model, 
-                                    sessionState, 
                                     emitter, 
                                     false // preapproved
                             );
                             
                             log.info("[Agent循环] 📞 工具调用完成 - toolName={}, decisionId={}, result={}", 
                                     toolName, decisionId, 
-                                    toolCallResult.isAwaitingApproval() ? "awaiting_approval" : 
-                                    (toolCallResult.hasError() ? "error" : "success"));
-                            
-                            if (toolCallResult.isAwaitingApproval()) {
-                                log.info("[Agent循环] 🛑 工具需要用户批准，结束SSE连接 - toolName={}, decisionId={}", 
-                                        toolName, decisionId);
-                                finalStatus = com.aispring.entity.agent.AgentStatus.AWAITING_APPROVAL;
-                                
-                                // 发送等待批准完成事件，通知前端
-                                try {
-                                    Map<String, Object> approvalCompleteData = new HashMap<>();
-                                    approvalCompleteData.put("decisionId", decisionId);
-                                    approvalCompleteData.put("decision_id", decisionId);
-                                    approvalCompleteData.put("toolName", toolName);
-                                    approvalCompleteData.put("tool", toolName);
-                                    approvalCompleteData.put("status", "awaiting_approval");
-                                    approvalCompleteData.put("message", String.format("工具 '%s' 等待用户批准", toolName));
-                                    
-                                    emitter.send(SseEmitter.event()
-                                            .name("approval_required")
-                                            .data(objectMapper.writeValueAsString(approvalCompleteData)));
-                                    log.info("[Agent循环] ✅ 已发送等待批准事件，将结束SSE连接 - toolName={}, decisionId={}", toolName, decisionId);
-                                } catch (Exception e) {
-                                    log.error("[Agent循环] 发送等待批准事件失败 - toolName={}", toolName, e);
-                                }
-                                
-                                // 🔥 关键重构：不再轮询等待，直接退出循环
-                                // 前端批准后会重新发起Agent循环，后端检测到已批准记录并执行工具
-                                log.info("[Agent循环] 💤 退出循环等待批准，前端批准后会重新发起请求");
-                                shouldSendAnotherMessage = false;
-                                break;
-                            }
+                                    toolCallResult.hasError() ? "error" : "success");
                             
                             if (toolCallResult.isInterrupted()) {
                                 break;
@@ -591,40 +463,17 @@ public class AiChatServiceImpl implements AiChatService {
                 }
                 
                 // 清理和结束
-                log.info("[Agent循环] 循环结束，开始清理 - sessionId={}, nMessagesSent={}, finalStatus={}, shouldSendAnotherMessage={}", 
-                        sessionId, nMessagesSent, finalStatus, shouldSendAnotherMessage);
+                log.info("[Agent循环] 循环结束 - sessionId={}, nMessagesSent={}, finalStatus={}", 
+                        sessionId, nMessagesSent, finalStatus);
                 
-                com.aispring.entity.session.SessionState finalState = sessionStateService.getState(sessionId).orElse(null);
-                if (finalState != null) {
-                    // 如果状态是等待批准，保持状态不变，不清理loopId
-                    if (finalStatus == com.aispring.entity.agent.AgentStatus.AWAITING_APPROVAL) {
-                        log.info("[Agent循环] 保持等待批准状态，不清理 - sessionId={}", sessionId);
-                        // 保持状态，等待用户批准
-                    } else {
-                        // 其他状态，正常清理
-                        if (finalState.getStatus() == com.aispring.entity.agent.AgentStatus.RUNNING) {
-                            finalState.setStatus(finalStatus);
-                        }
-                        finalState.setCurrentLoopId(null);
-                        finalState.setStreamState(com.aispring.entity.session.StreamState.idle());
-                        sessionStateService.saveState(finalState);
-                        log.info("[Agent循环] 最终状态已保存 - sessionId={}, finalStatus={}", sessionId, finalStatus);
-                    }
-                }
-                
-                // 只有在非等待批准状态时才发送完成事件
-                if (finalStatus != com.aispring.entity.agent.AgentStatus.AWAITING_APPROVAL) {
-                    log.info("[Agent循环] 发送完成事件 - sessionId={}", sessionId);
-                    try {
-                        emitter.send(SseEmitter.event().data("[DONE]"));
-                        emitter.complete();
-                        log.info("[Agent循环] 完成事件已发送 - sessionId={}", sessionId);
-                    } catch (Exception e) {
-                        log.error("[Agent循环] 发送完成事件失败 - sessionId={}", sessionId, e);
-                    }
-                } else {
-                    log.info("[Agent循环] 等待批准中，不发送完成事件，保持连接 - sessionId={}", sessionId);
-                    // 保持SSE连接打开，等待用户批准
+                // 发送完成事件
+                log.info("[Agent循环] 发送完成事件 - sessionId={}", sessionId);
+                try {
+                    emitter.send(SseEmitter.event().data("[DONE]"));
+                    emitter.complete();
+                    log.info("[Agent循环] 完成事件已发送 - sessionId={}", sessionId);
+                } catch (Exception e) {
+                    log.error("[Agent循环] 发送完成事件失败 - sessionId={}", sessionId, e);
                 }
                 
             } catch (Exception e) {
@@ -1291,34 +1140,24 @@ public class AiChatServiceImpl implements AiChatService {
      * 工具调用结果类（参考 void-main 的 _runToolCall 返回值）
      */
     private static class ToolCallResult {
-        private final boolean awaitingApproval;
         private final boolean interrupted;
         private final String error;
         
-        private ToolCallResult(boolean awaitingApproval, boolean interrupted, String error) {
-            this.awaitingApproval = awaitingApproval;
+        private ToolCallResult(boolean interrupted, String error) {
             this.interrupted = interrupted;
             this.error = error;
         }
         
         public static ToolCallResult success() {
-            return new ToolCallResult(false, false, null);
-        }
-        
-        public static ToolCallResult awaitingApproval() {
-            return new ToolCallResult(true, false, null);
+            return new ToolCallResult(false, null);
         }
         
         public static ToolCallResult interrupted() {
-            return new ToolCallResult(false, true, null);
+            return new ToolCallResult(true, null);
         }
         
         public static ToolCallResult error(String error) {
-            return new ToolCallResult(false, false, error);
-        }
-        
-        public boolean isAwaitingApproval() {
-            return awaitingApproval;
+            return new ToolCallResult(false, error);
         }
         
         public boolean isInterrupted() {
@@ -1335,14 +1174,13 @@ public class AiChatServiceImpl implements AiChatService {
     }
     
     /**
-     * 执行工具调用（参考 void-main 的 _runToolCall 方法）
+     * 执行工具调用
      * 
      * 流程：
      * 1. 参数验证
-     * 2. 检查是否需要批准
-     * 3. 执行工具（设置状态为 running）
-     * 4. 处理结果并字符串化
-     * 5. 添加到消息历史
+     * 2. 执行工具
+     * 3. 处理结果并字符串化
+     * 4. 添加到消息历史
      * 
      * @param toolName 工具名称
      * @param toolId 工具调用ID（decisionId）
@@ -1350,13 +1188,9 @@ public class AiChatServiceImpl implements AiChatService {
      * @param sessionId 会话ID
      * @param userId 用户ID
      * @param model 模型名称
-     * @param sessionState 会话状态
      * @param emitter SSE发射器
      * @param preapproved 是否已预批准
      * @return 工具调用结果
-     */
-    /**
-     * 执行工具调用（参考 void-main 的 _runToolCall 方法，简化日志）
      */
     private ToolCallResult runToolCall(
             String toolName,
@@ -1365,7 +1199,6 @@ public class AiChatServiceImpl implements AiChatService {
             String sessionId,
             Long userId,
             String model,
-            com.aispring.entity.session.SessionState sessionState,
             SseEmitter emitter,
             boolean preapproved
     ) {
@@ -1402,111 +1235,7 @@ public class AiChatServiceImpl implements AiChatService {
                 validatedParams = unvalidatedParams;
             }
             
-            // 步骤 2: 检查批准
-            boolean requiresApproval = toolApprovalService.requiresApproval(userId, toolName);
-            log.info("[工具调用] 批准检查 - toolName={}, toolId={}, requiresApproval={}, preapproved={}", 
-                    toolName, toolId, requiresApproval, preapproved);
-            
-            if (requiresApproval && !preapproved) {
-                // 关键修复：检查该工具是否已经被批准（批准后重新启动Agent循环的情况）
-                Optional<com.aispring.entity.approval.ToolApproval> existingApproval = 
-                        toolApprovalService.getApproval(toolId);
-                
-                log.info("[工具调用] 查询批准记录 - toolId={}, exists={}, status={}", 
-                        toolId, 
-                        existingApproval.isPresent(),
-                        existingApproval.isPresent() ? existingApproval.get().getApprovalStatus() : "N/A");
-                
-                if (existingApproval.isPresent()) {
-                    com.aispring.entity.approval.ToolApproval approval = existingApproval.get();
-                    
-                    if (approval.getApprovalStatus() == com.aispring.entity.approval.ApprovalStatus.APPROVED) {
-                        log.info("[工具调用] ✅ 工具已被批准，跳过批准流程直接执行 - toolName={}, toolId={}", toolName, toolId);
-                        // 工具已被批准，不做任何事，继续执行步骤3
-                        
-                    } else if (approval.getApprovalStatus() == com.aispring.entity.approval.ApprovalStatus.PENDING) {
-                        // 已经创建批准请求但还在等待，直接返回awaiting状态
-                        log.info("[工具调用] 工具批准请求已存在，继续等待 - toolName={}, toolId={}", toolName, toolId);
-                        sessionState.setStatus(com.aispring.entity.agent.AgentStatus.AWAITING_APPROVAL);
-                        sessionState.setStreamState(com.aispring.entity.session.StreamState.awaitingUser(toolName, unvalidatedParams, toolId));
-                        sessionStateService.saveState(sessionState);
-                        return ToolCallResult.awaitingApproval();
-                        
-                    } else if (approval.getApprovalStatus() == com.aispring.entity.approval.ApprovalStatus.REJECTED) {
-                        log.info("[工具调用] 工具已被拒绝 - toolName={}, toolId={}", toolName, toolId);
-                        return ToolCallResult.error("工具调用已被用户拒绝");
-                    }
-                } else {
-                    // 不存在批准记录，需要创建新的批准请求
-                    log.info("[工具调用] 需要用户批准，创建批准请求 - toolName={}, toolId={}", toolName, toolId);
-                    
-                    // 先创建批准请求（确保数据库已保存）
-                    Long approvalId = toolApprovalService.createApprovalRequest(sessionId, userId, toolName, unvalidatedParams, toolId);
-                    log.info("[工具调用] 批准请求已创建 - approvalId={}, toolName={}, toolId={}", approvalId, toolName, toolId);
-                    
-                    // 获取待批准列表（确保数据已保存）
-                    List<com.aispring.entity.approval.ToolApproval> pendingApprovals = 
-                            toolApprovalService.getPendingApprovals(sessionId);
-                    log.info("[工具调用] 当前待批准数量: {}", pendingApprovals.size());
-                
-                    // 发送等待批准事件（包含完整的待批准列表数据）
-                    try {
-                        Map<String, Object> approvalData = new HashMap<>();
-                        approvalData.put("decision_id", toolId);
-                        approvalData.put("decisionId", toolId);
-                        approvalData.put("tool", toolName);
-                        approvalData.put("toolName", toolName);
-                        approvalData.put("params", unvalidatedParams);
-                        approvalData.put("type", "tool_request");
-                        approvalData.put("sessionId", sessionId);
-                        approvalData.put("message", String.format("工具 '%s' 需要您的批准", toolName));
-                        approvalData.put("approvalId", approvalId);
-                        
-                        // 包含待批准列表（前端可以直接使用，无需再次调用API）
-                        List<Map<String, Object>> pendingList = new ArrayList<>();
-                        for (com.aispring.entity.approval.ToolApproval pendingApproval : pendingApprovals) {
-                            Map<String, Object> approvalMap = new HashMap<>();
-                            approvalMap.put("id", pendingApproval.getDecisionId());
-                            approvalMap.put("decisionId", pendingApproval.getDecisionId());
-                            approvalMap.put("toolName", pendingApproval.getToolName());
-                            approvalMap.put("params", pendingApproval.getToolParams());
-                            approvalMap.put("createdAt", pendingApproval.getCreatedAt().toString());
-                            pendingList.add(approvalMap);
-                        }
-                        approvalData.put("pendingApprovals", pendingList);
-                        
-                        String approvalJson = objectMapper.writeValueAsString(approvalData);
-                        log.info("[工具调用] 发送等待批准事件 - toolName={}, toolId={}, jsonLength={}, pendingCount={}", 
-                                toolName, toolId, approvalJson.length(), pendingList.size());
-                        
-                        emitter.send(SseEmitter.event()
-                                .name("waiting_approval")
-                                .data(approvalJson));
-                        
-                        log.info("[工具调用] 等待批准事件已发送 - toolName={}, toolId={}", toolName, toolId);
-                    } catch (Exception e) {
-                        log.error("[工具调用] 发送批准事件失败 - toolName={}, toolId={}, error={}", 
-                                toolName, toolId, e.getMessage(), e);
-                    }
-                    
-                    // 更新状态为等待批准
-                    sessionState.setStatus(com.aispring.entity.agent.AgentStatus.AWAITING_APPROVAL);
-                    sessionState.setStreamState(com.aispring.entity.session.StreamState.awaitingUser(toolName, unvalidatedParams, toolId));
-                    sessionStateService.saveState(sessionState);
-                    log.info("[工具调用] 状态已更新为等待批准 - toolName={}, toolId={}", toolName, toolId);
-                    
-                    return ToolCallResult.awaitingApproval();
-                }
-            }
-            // 🔥 关键修复：移除错误的自动批准逻辑
-            // 如果不需要批准（requiresApproval = false）或已预批准（preapproved = true），直接执行步骤3
-            log.info("[工具调用] 跳过批准检查，直接执行 - requiresApproval={}, preapproved={}", 
-                    requiresApproval, preapproved);
-            
-            // 步骤 3: 执行工具
-            sessionState.setStreamState(com.aispring.entity.session.StreamState.runningTool(toolName, validatedParams, toolId));
-            sessionStateService.saveState(sessionState);
-            
+            // 步骤 2: 执行工具
             // 发送工具运行中事件（前端需要这个事件来显示"执行中"状态）
             try {
                 Map<String, Object> runningData = new HashMap<>();
@@ -1535,12 +1264,12 @@ public class AiChatServiceImpl implements AiChatService {
                 toolResult = ToolsService.ToolResult.error("工具执行异常: " + e.getMessage());
             }
             
-            // 步骤 4: 字符串化结果
+            // 步骤 3: 字符串化结果
             toolResultStr = toolResult.isSuccess() 
                     ? toolResult.getStringResult() 
                     : (toolResult.getError() != null ? toolResult.getError() : toolResult.getStringResult());
             
-            // 步骤 5: 发送工具结果给前端
+            // 步骤 4: 发送工具结果给前端
             log.info("[工具调用] 准备发送结果事件 - toolName={}, toolId={}, success={}", 
                     toolName, toolId, toolResult.isSuccess());
             try {
@@ -1571,13 +1300,13 @@ public class AiChatServiceImpl implements AiChatService {
                         toolName, toolId, e.getMessage(), e);
             }
             
-            // 步骤 6: 保存到消息历史
+            // 步骤 5: 保存到消息历史
             String toolResultMessage = toolCallParser.formatToolResult(toolName, toolResultStr);
             try {
                 // ✅ 关键修复：使用 senderType=3（工具结果/系统反馈）而不是 1（用户消息）
                 chatRecordService.createChatRecord(
                         toolResultMessage, 3, userId, sessionId, model,
-                        "completed", "terminal", null,
+                        "completed", "chat", null,
                         toolResult.isSuccess() ? 0 : -1,
                         toolResult.getStringResult(),
                         toolResult.getError()
@@ -1587,24 +1316,12 @@ public class AiChatServiceImpl implements AiChatService {
                 log.error("[工具调用] 保存历史失败 - toolName={}, toolId={}", toolName, toolId, e);
             }
             
-            // 步骤 7: 更新状态为idle（工具执行完成）
-            log.info("[工具调用] 更新状态为idle - toolName={}, toolId={}", toolName, toolId);
-            sessionState.setStreamState(com.aispring.entity.session.StreamState.idle());
-            sessionStateService.saveState(sessionState);
-            log.info("[工具调用] 状态已更新为idle - toolName={}, toolId={}", toolName, toolId);
-            
             log.info("[工具调用] 工具调用完成，返回成功 - toolName={}, toolId={}, success={}", 
                     toolName, toolId, toolResult.isSuccess());
             return ToolCallResult.success();
             
         } catch (Exception e) {
             log.error("[工具调用] 异常 - toolName={}, error={}", toolName, e.getMessage(), e);
-            try {
-                sessionState.setStreamState(com.aispring.entity.session.StreamState.idle());
-                sessionStateService.saveState(sessionState);
-            } catch (Exception stateError) {
-                log.error("[工具调用] 更新状态失败 - toolName={}", toolName, stateError);
-            }
             return ToolCallResult.error("工具调用异常: " + e.getMessage());
         }
     }

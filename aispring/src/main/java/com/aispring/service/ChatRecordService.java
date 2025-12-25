@@ -219,13 +219,6 @@ public class ChatRecordService {
     }
 
     /**
-     * 获取用户的所有终端会话
-     */
-    public List<ChatSession> getTerminalSessions(Long userId) {
-        return chatSessionRepository.findByUserIdAndSessionTypeOrderByCreatedAtDesc(userId, "terminal");
-    }
-
-    /**
      * 删除特定会话
      */
     @Transactional
@@ -238,18 +231,6 @@ public class ChatRecordService {
         });
     }
     
-    @Transactional
-    public ChatSession createTerminalSession(Long userId) {
-        String sessionId = createNewSession();
-        ChatSession session = ChatSession.builder()
-            .sessionId(sessionId)
-            .userId(userId)
-            .title("未命名会话")
-            .sessionType("terminal")
-            .build();
-        return chatSessionRepository.save(session);
-    }
-
     /**
      * 创建新会话
      */
