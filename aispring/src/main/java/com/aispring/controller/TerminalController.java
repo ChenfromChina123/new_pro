@@ -153,7 +153,7 @@ public class TerminalController {
                      continuationPrompt,
                      sessionId,
                      request.getModel(),
-                     String.valueOf(userId),
+                     userId,
                      systemPrompt,
                      null,
                      (fullResponse) -> handleAgentResponse(fullResponse, sessionId, userId)
@@ -174,7 +174,7 @@ public class TerminalController {
                      continuationPrompt,
                      sessionId,
                      request.getModel(),
-                     String.valueOf(userId),
+                     userId,
                      systemPrompt,
                      null,
                      (fullResponse) -> handleAgentResponse(fullResponse, sessionId, userId)
@@ -214,7 +214,7 @@ public class TerminalController {
             
             // 获取工作区信息
             String workspaceRoot = terminalService.getUserTerminalRoot(userId);
-            String currentDirectory = chatRecordService.getSessionCwd(sessionId, String.valueOf(userId));
+            String currentDirectory = chatRecordService.getSessionCwd(sessionId, userId);
             if (currentDirectory == null || currentDirectory.isEmpty()) {
                 currentDirectory = "/";
             }
@@ -266,7 +266,7 @@ public class TerminalController {
             // IDLE or No Plan - Classify Intent
             String intent = aiChatService.ask(
                 promptManager.getIntentClassifierPrompt(request.getPrompt()),
-                null, request.getModel(), String.valueOf(userId)
+                null, request.getModel(), userId
             ).trim().toUpperCase();
             
             if (intent.contains("PLAN")) {
@@ -291,7 +291,7 @@ public class TerminalController {
                 request.getPrompt(),
                 sessionId,
                 request.getModel(),
-                String.valueOf(userId),
+                userId,
                 systemPrompt,
                 null,
                 (fullResponse) -> handleAgentResponse(fullResponse, sessionId, userId)
@@ -351,7 +351,7 @@ public class TerminalController {
                         
                         String taskListJson = objectMapper.writeValueAsString(taskListMessage);
                         chatRecordService.createChatRecord(
-                            taskListJson, 2, String.valueOf(userId), sessionId, 
+                            taskListJson, 2, userId, sessionId, 
                             "system", "completed", "terminal"
                         );
                         log.info("Task list message saved to chat records");
@@ -570,7 +570,7 @@ public class TerminalController {
                                                                @RequestBody TerminalCommandRequest request) {
         TerminalCommandResponse response = terminalService.executeCommand(currentUser.getUser().getId(), request.getCommand(), request.getCwd());
         if (request.getSessionId() != null && response.getCwd() != null) {
-            chatRecordService.updateSessionCwd(request.getSessionId(), response.getCwd(), currentUser.getUser().getId().toString());
+            chatRecordService.updateSessionCwd(request.getSessionId(), response.getCwd(), currentUser.getUser().getId());
         }
         return ApiResponse.success(response);
     }
@@ -653,7 +653,7 @@ public class TerminalController {
     @PostMapping("/new-session")
     @PreAuthorize("isAuthenticated()")
     public ApiResponse<ChatSession> createNewSession(@AuthenticationPrincipal CustomUserDetails currentUser) {
-        ChatSession session = chatRecordService.createTerminalSession(currentUser.getUser().getId().toString());
+        ChatSession session = chatRecordService.createTerminalSession(currentUser.getUser().getId());
         agentStateService.initializeAgentState(session.getSessionId(), currentUser.getUser().getId());
         return ApiResponse.success(session);
     }
@@ -661,7 +661,7 @@ public class TerminalController {
     @GetMapping("/sessions")
     @PreAuthorize("isAuthenticated()")
     public ApiResponse<List<ChatSession>> getSessions(@AuthenticationPrincipal CustomUserDetails currentUser) {
-        List<ChatSession> sessions = chatRecordService.getTerminalSessions(currentUser.getUser().getId().toString());
+        List<ChatSession> sessions = chatRecordService.getTerminalSessions(currentUser.getUser().getId());
         return ApiResponse.success(sessions);
     }
 
@@ -669,7 +669,7 @@ public class TerminalController {
     @PreAuthorize("isAuthenticated()")
     public ApiResponse<List<ChatRecord>> getHistory(@AuthenticationPrincipal CustomUserDetails currentUser,
                                                   @PathVariable String sessionId) {
-        List<ChatRecord> history = chatRecordService.getSessionMessages(currentUser.getUser().getId().toString(), sessionId);
+        List<ChatRecord> history = chatRecordService.getSessionMessages(currentUser.getUser().getId(), sessionId);
         return ApiResponse.success(history);
     }
 
@@ -692,7 +692,7 @@ public class TerminalController {
         chatRecordService.createChatRecord(
             content,
             senderType,
-            currentUser.getUser().getId().toString(),
+            currentUser.getUser().getId(),
             sessionId,
             model,
             "completed",
@@ -709,7 +709,7 @@ public class TerminalController {
     @PreAuthorize("isAuthenticated()")
     public ApiResponse<Void> deleteSession(@AuthenticationPrincipal CustomUserDetails currentUser,
                                          @PathVariable String sessionId) {
-        chatRecordService.deleteSession(currentUser.getUser().getId().toString(), sessionId);
+        chatRecordService.deleteSession(currentUser.getUser().getId(), sessionId);
         return ApiResponse.success(null);
     }
     

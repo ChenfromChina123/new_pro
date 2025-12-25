@@ -404,148 +404,37 @@ public class AiChatServiceImpl implements AiChatService {
                             String decisionId = parsedToolCall.getToolId();
                             Map<String, Object> unvalidatedParams = parsedToolCall.getRawParams();
                             
-                            log.info("检测到 XML 工具调用: {}, decisionId={}, params={}", toolName, decisionId, unvalidatedParams);
-                                
-                                // 1. 参数验证
-                                String validationError = toolsService.validateParams(toolName, unvalidatedParams);
-                                if (validationError != null) {
-                                    log.warn("工具参数验证失败: {}, error: {}", toolName, validationError);
-                                    emitter.send(SseEmitter.event()
-                                            .name("tool_error")
-                                            .data(objectMapper.writeValueAsString(Map.of(
-                                                    "tool", toolName,
-                                                    "error", validationError,
-                                                    "decision_id", decisionId
-                                            ))));
-                                    // 继续循环，让 LLM 知道参数错误
-                                    shouldSendAnotherMessage = true;
-                                    currentPrompt = String.format("工具 '%s' 参数验证失败: %s。请修正参数后重试。", toolName, validationError);
-                                    continue;
-                                }
-                                
-                                // 2. 检查批准（参考 void-main 的自动批准逻辑）
-                                boolean requiresApproval = toolApprovalService.requiresApproval(userId, toolName);
-                                
-                                if (requiresApproval) {
-                                    log.info("工具需要批准: {}", toolName);
-                                    toolApprovalService.createApprovalRequest(sessionId, userId, toolName, unvalidatedParams, decisionId);
-                                    
-                                    // 发送等待批准事件（包含完整的工具信息）
-                                    Map<String, Object> approvalData = new HashMap<>();
-                                    approvalData.put("decision_id", decisionId);
-                                    approvalData.put("decisionId", decisionId); // 兼容字段
-                                    approvalData.put("tool", toolName);
-                                    approvalData.put("toolName", toolName); // 兼容字段
-                                    approvalData.put("params", unvalidatedParams);
-                                    
-                                    emitter.send(SseEmitter.event()
-                                            .name("waiting_approval")
-                                            .data(objectMapper.writeValueAsString(approvalData)));
-                                    
-                                    // 更新状态为等待批准
-                                    sessionState.setStatus(com.aispring.entity.agent.AgentStatus.AWAITING_APPROVAL);
-                                    sessionState.setStreamState(com.aispring.entity.session.StreamState.awaitingUser(toolName, unvalidatedParams, decisionId));
-                                    sessionStateService.saveState(sessionState);
-                                    
-                                    finalStatus = com.aispring.entity.agent.AgentStatus.AWAITING_APPROVAL;
-                                    // 不继续循环，等待用户批准
-                                    break;
-                                } else {
-                                    log.info("工具自动批准: {}", toolName);
-                                    // 自动批准：创建批准记录但标记为已批准（用于审计）
-                                    toolApprovalService.createApprovalRequest(sessionId, userId, toolName, unvalidatedParams, decisionId);
-                                    toolApprovalService.approveToolCall(decisionId, "自动批准（根据用户设置）");
-                                }
-                                
-                                // 3. 执行工具
-                                log.info("执行工具: toolName={}, decisionId={}, params={}", toolName, decisionId, unvalidatedParams);
-                                
-                                // 设置状态为 running tool
-                                sessionState.setStreamState(com.aispring.entity.session.StreamState.runningTool(toolName, unvalidatedParams, decisionId));
-                                sessionStateService.saveState(sessionState);
-                                
-                                ToolsService.ToolResult result;
-                                try {
-                                    result = toolsService.callTool(toolName, unvalidatedParams, userId, sessionId);
-                                    log.info("工具执行完成: toolName={}, success={}, resultLength={}", 
-                                            toolName, result.isSuccess(), 
-                                            result.getStringResult() != null ? result.getStringResult().length() : 0);
-                                } catch (Exception e) {
-                                    log.error("工具执行异常: toolName={}, error={}", toolName, e.getMessage(), e);
-                                    result = ToolsService.ToolResult.error("工具执行异常: " + e.getMessage());
-                                }
-                                
-                                // 4. 发送工具结果给前端（包含工具名称和参数信息）
-                                try {
-                                    Map<String, Object> toolResultData = new HashMap<>();
-                                    toolResultData.put("toolName", toolName);
-                                    toolResultData.put("tool", toolName); // 兼容字段
-                                    toolResultData.put("params", unvalidatedParams);
-                                    toolResultData.put("decisionId", decisionId);
-                                    toolResultData.put("decision_id", decisionId); // 兼容字段
-                                    toolResultData.put("success", result.isSuccess());
-                                    toolResultData.put("stringResult", result.getStringResult());
-                                    toolResultData.put("result", result.getStringResult()); // 兼容字段
-                                    toolResultData.put("error", result.getError());
-                                    toolResultData.put("data", result.getData());
-                                    
-                                    String toolResultJson = objectMapper.writeValueAsString(toolResultData);
-                                    log.info("发送工具结果事件: toolName={}, decisionId={}, jsonLength={}", 
-                                            toolName, decisionId, toolResultJson.length());
-                                    
-                                    emitter.send(SseEmitter.event()
-                                            .name("tool_result")
-                                            .data(toolResultJson));
-                                    
-                                    log.info("工具结果事件已发送: toolName={}, decisionId={}", toolName, decisionId);
-                                } catch (Exception e) {
-                                    log.error("发送工具结果事件失败: toolName={}, error={}", toolName, e.getMessage(), e);
-                                    // 即使发送失败，也继续执行，避免卡住
-                                }
-                                
-                                // 5. 将工具结果保存到消息历史（参考 void-main 的机制）
-                                // void-main 中，工具结果格式化为 XML 并作为用户消息添加到历史
-                                // 格式：<toolName_result>...</toolName_result>
-                                String toolResultContent = result.isSuccess() 
-                                    ? result.getStringResult() 
-                                    : (result.getError() != null ? result.getError() : result.getStringResult());
-                                
-                                // 使用 XML 格式（参考 void-main 的 formatToolResult）
-                                String toolResultMessage = toolCallParser.formatToolResult(toolName, toolResultContent);
-                                
-                                // 保存工具结果到消息历史（作为用户消息，参考 void-main 的 prepareMessages_XML_tools）
-                                // void-main 中，工具结果被添加到用户消息中
-                                try {
-                                    chatRecordService.createChatRecord(
-                                        toolResultMessage,
-                                        1, // User message (工具结果作为用户消息反馈给 LLM)
-                                        userId,
-                                        sessionId,
-                                        model,
-                                        "completed",
-                                        "terminal",
-                                        null, // reasoning_content
-                                        result.isSuccess() ? 0 : -1, // exit_code
-                                        result.getStringResult(), // stdout
-                                        result.getError() // stderr
-                                    );
-                                    log.info("工具结果已保存到消息历史（XML格式）: tool={}, success={}", toolName, result.isSuccess());
-                                } catch (Exception e) {
-                                    log.error("保存工具结果到消息历史失败: {}", e.getMessage(), e);
-                                }
-                                
-                                // 6. 继续循环（参考 void-main：工具结果已在历史中，LLM 自动看到）
-                                // void-main 中，工具结果作为用户消息，LLM 会自动处理
-                                // 不需要额外的 prompt，直接继续循环
-                                log.info("工具执行完成，准备继续 Agent 循环: toolName={}, decisionId={}", toolName, decisionId);
+                            // 调用重构后的工具调用方法
+                            ToolCallResult toolCallResult = runToolCall(
+                                    toolName, 
+                                    decisionId, 
+                                    unvalidatedParams, 
+                                    sessionId, 
+                                    userId, 
+                                    model, 
+                                    sessionState, 
+                                    emitter, 
+                                    false // preapproved
+                            );
+                            
+                            if (toolCallResult.isAwaitingApproval()) {
+                                finalStatus = com.aispring.entity.agent.AgentStatus.AWAITING_APPROVAL;
+                                break;
+                            }
+                            
+                            if (toolCallResult.isInterrupted()) {
+                                break;
+                            }
+                            
+                            if (toolCallResult.hasError()) {
                                 shouldSendAnotherMessage = true;
-                                currentPrompt = ""; // 空 prompt，让 LLM 基于历史消息继续
-                                
-                                // 设置状态为 idle（工具执行完成）
-                                sessionState.setStreamState(com.aispring.entity.session.StreamState.idle());
-                                sessionStateService.saveState(sessionState);
-                                
-                                log.info("状态已更新为 idle，继续 Agent 循环");
+                                currentPrompt = String.format("工具 '%s' 执行失败: %s。请修正后重试。", toolName, toolCallResult.getError());
+                                continue;
+                            }
+                            
+                            // 工具执行成功，继续循环
+                            shouldSendAnotherMessage = true;
+                            currentPrompt = "";
                                 
                         } else {
                             // 没有检测到工具调用，检查是否有纯文本响应
@@ -1290,6 +1179,222 @@ public class AiChatServiceImpl implements AiChatService {
             return builder.build();
         } catch (Exception e) {
             throw new RuntimeException(e);
+        }
+    }
+    
+    /**
+     * 工具调用结果类（参考 void-main 的 _runToolCall 返回值）
+     */
+    private static class ToolCallResult {
+        private final boolean awaitingApproval;
+        private final boolean interrupted;
+        private final String error;
+        
+        private ToolCallResult(boolean awaitingApproval, boolean interrupted, String error) {
+            this.awaitingApproval = awaitingApproval;
+            this.interrupted = interrupted;
+            this.error = error;
+        }
+        
+        public static ToolCallResult success() {
+            return new ToolCallResult(false, false, null);
+        }
+        
+        public static ToolCallResult awaitingApproval() {
+            return new ToolCallResult(true, false, null);
+        }
+        
+        public static ToolCallResult interrupted() {
+            return new ToolCallResult(false, true, null);
+        }
+        
+        public static ToolCallResult error(String error) {
+            return new ToolCallResult(false, false, error);
+        }
+        
+        public boolean isAwaitingApproval() {
+            return awaitingApproval;
+        }
+        
+        public boolean isInterrupted() {
+            return interrupted;
+        }
+        
+        public boolean hasError() {
+            return error != null;
+        }
+        
+        public String getError() {
+            return error;
+        }
+    }
+    
+    /**
+     * 执行工具调用（参考 void-main 的 _runToolCall 方法）
+     * 
+     * 流程：
+     * 1. 参数验证
+     * 2. 检查是否需要批准
+     * 3. 执行工具（设置状态为 running）
+     * 4. 处理结果并字符串化
+     * 5. 添加到消息历史
+     * 
+     * @param toolName 工具名称
+     * @param toolId 工具调用ID（decisionId）
+     * @param unvalidatedParams 未验证的参数
+     * @param sessionId 会话ID
+     * @param userId 用户ID
+     * @param model 模型名称
+     * @param sessionState 会话状态
+     * @param emitter SSE发射器
+     * @param preapproved 是否已预批准
+     * @return 工具调用结果
+     */
+    /**
+     * 执行工具调用（参考 void-main 的 _runToolCall 方法，简化日志）
+     */
+    private ToolCallResult runToolCall(
+            String toolName,
+            String toolId,
+            Map<String, Object> unvalidatedParams,
+            String sessionId,
+            Long userId,
+            String model,
+            com.aispring.entity.session.SessionState sessionState,
+            SseEmitter emitter,
+            boolean preapproved
+    ) {
+        log.info("[工具调用] 开始 - toolName={}, toolId={}, sessionId={}", toolName, toolId, sessionId);
+        
+        Map<String, Object> validatedParams;
+        ToolsService.ToolResult toolResult;
+        String toolResultStr;
+        
+        try {
+            // 步骤 1: 参数验证
+            if (!preapproved) {
+                String validationError = toolsService.validateParams(toolName, unvalidatedParams);
+                if (validationError != null) {
+                    log.warn("[工具调用] 参数验证失败 - toolName={}, error={}", toolName, validationError);
+                    try {
+                        Map<String, Object> errorData = new HashMap<>();
+                        errorData.put("tool", toolName);
+                        errorData.put("toolName", toolName);
+                        errorData.put("error", validationError);
+                        errorData.put("decision_id", toolId);
+                        errorData.put("decisionId", toolId);
+                        errorData.put("type", "invalid_params");
+                        emitter.send(SseEmitter.event()
+                                .name("tool_error")
+                                .data(objectMapper.writeValueAsString(errorData)));
+                    } catch (Exception e) {
+                        log.error("[工具调用] 发送错误事件失败 - toolName={}", toolName, e);
+                    }
+                    return ToolCallResult.error(validationError);
+                }
+                validatedParams = unvalidatedParams;
+            } else {
+                validatedParams = unvalidatedParams;
+            }
+            
+            // 步骤 2: 检查批准
+            boolean requiresApproval = toolApprovalService.requiresApproval(userId, toolName);
+            if (requiresApproval && !preapproved) {
+                log.info("[工具调用] 需要用户批准 - toolName={}", toolName);
+                toolApprovalService.createApprovalRequest(sessionId, userId, toolName, unvalidatedParams, toolId);
+                try {
+                    Map<String, Object> approvalData = new HashMap<>();
+                    approvalData.put("decision_id", toolId);
+                    approvalData.put("decisionId", toolId);
+                    approvalData.put("tool", toolName);
+                    approvalData.put("toolName", toolName);
+                    approvalData.put("params", unvalidatedParams);
+                    approvalData.put("type", "tool_request");
+                    emitter.send(SseEmitter.event()
+                            .name("waiting_approval")
+                            .data(objectMapper.writeValueAsString(approvalData)));
+                } catch (Exception e) {
+                    log.error("[工具调用] 发送批准事件失败 - toolName={}", toolName, e);
+                }
+                sessionState.setStatus(com.aispring.entity.agent.AgentStatus.AWAITING_APPROVAL);
+                sessionState.setStreamState(com.aispring.entity.session.StreamState.awaitingUser(toolName, unvalidatedParams, toolId));
+                sessionStateService.saveState(sessionState);
+                return ToolCallResult.awaitingApproval();
+            } else if (!preapproved) {
+                toolApprovalService.createApprovalRequest(sessionId, userId, toolName, unvalidatedParams, toolId);
+                toolApprovalService.approveToolCall(toolId, "自动批准（根据用户设置）");
+            }
+            
+            // 步骤 3: 执行工具
+            sessionState.setStreamState(com.aispring.entity.session.StreamState.runningTool(toolName, validatedParams, toolId));
+            sessionStateService.saveState(sessionState);
+            
+            long startTime = System.currentTimeMillis();
+            try {
+                toolResult = toolsService.callTool(toolName, validatedParams, userId, sessionId);
+                long duration = System.currentTimeMillis() - startTime;
+                log.info("[工具调用] 执行完成 - toolName={}, success={}, duration={}ms", 
+                        toolName, toolResult.isSuccess(), duration);
+            } catch (Exception e) {
+                log.error("[工具调用] 执行异常 - toolName={}, error={}", toolName, e.getMessage(), e);
+                toolResult = ToolsService.ToolResult.error("工具执行异常: " + e.getMessage());
+            }
+            
+            // 步骤 4: 字符串化结果
+            toolResultStr = toolResult.isSuccess() 
+                    ? toolResult.getStringResult() 
+                    : (toolResult.getError() != null ? toolResult.getError() : toolResult.getStringResult());
+            
+            // 步骤 5: 发送工具结果给前端
+            try {
+                Map<String, Object> toolResultData = new HashMap<>();
+                toolResultData.put("toolName", toolName);
+                toolResultData.put("tool", toolName);
+                toolResultData.put("params", validatedParams);
+                toolResultData.put("decisionId", toolId);
+                toolResultData.put("decision_id", toolId);
+                toolResultData.put("success", toolResult.isSuccess());
+                toolResultData.put("stringResult", toolResultStr);
+                toolResultData.put("result", toolResultStr);
+                toolResultData.put("error", toolResult.getError());
+                toolResultData.put("data", toolResult.getData());
+                toolResultData.put("type", toolResult.isSuccess() ? "success" : "tool_error");
+                emitter.send(SseEmitter.event()
+                        .name("tool_result")
+                        .data(objectMapper.writeValueAsString(toolResultData)));
+            } catch (Exception e) {
+                log.error("[工具调用] 发送结果事件失败 - toolName={}", toolName, e);
+            }
+            
+            // 步骤 6: 保存到消息历史
+            String toolResultMessage = toolCallParser.formatToolResult(toolName, toolResultStr);
+            try {
+                chatRecordService.createChatRecord(
+                        toolResultMessage, 1, userId, sessionId, model,
+                        "completed", "terminal", null,
+                        toolResult.isSuccess() ? 0 : -1,
+                        toolResult.getStringResult(),
+                        toolResult.getError()
+                );
+            } catch (Exception e) {
+                log.error("[工具调用] 保存历史失败 - toolName={}", toolName, e);
+            }
+            
+            // 步骤 7: 更新状态
+            sessionState.setStreamState(com.aispring.entity.session.StreamState.idle());
+            sessionStateService.saveState(sessionState);
+            
+            return ToolCallResult.success();
+            
+        } catch (Exception e) {
+            log.error("[工具调用] 异常 - toolName={}, error={}", toolName, e.getMessage(), e);
+            try {
+                sessionState.setStreamState(com.aispring.entity.session.StreamState.idle());
+                sessionStateService.saveState(sessionState);
+            } catch (Exception stateError) {
+                log.error("[工具调用] 更新状态失败 - toolName={}", toolName, stateError);
+            }
+            return ToolCallResult.error("工具调用异常: " + e.getMessage());
         }
     }
 }
