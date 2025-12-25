@@ -392,17 +392,21 @@ public class AiChatServiceImpl implements AiChatService {
                         
                         // 尝试解析工具调用
                         ToolCallParser.ParsedToolCall parsedToolCall = toolCallParser.extractToolCall(fullResponse, availableTools);
-                        log.info("工具调用解析结果: {}", parsedToolCall != null ? 
-                            String.format("tool=%s, complete=%s, id=%s", 
+                        log.info("[Agent循环] 🔧 工具调用解析结果: {}", parsedToolCall != null ? 
+                            String.format("tool=%s, complete=%s, id=%s, params=%s", 
                                 parsedToolCall.getToolName(), 
                                 parsedToolCall.isComplete(),
-                                parsedToolCall.getToolId()) : "null");
+                                parsedToolCall.getToolId(),
+                                parsedToolCall.getRawParams()) : "null");
                         
                         if (parsedToolCall != null && parsedToolCall.isComplete()) {
                             // 工具调用处理（参考 void-main 的 _runToolCall）
                             String toolName = parsedToolCall.getToolName();
                             String decisionId = parsedToolCall.getToolId();
                             Map<String, Object> unvalidatedParams = parsedToolCall.getRawParams();
+                            
+                            log.info("[Agent循环] 📞 准备调用工具 - toolName={}, decisionId={}, iteration={}", 
+                                    toolName, decisionId, nMessagesSent);
                             
                             // 调用重构后的工具调用方法
                             ToolCallResult toolCallResult = runToolCall(
@@ -416,6 +420,11 @@ public class AiChatServiceImpl implements AiChatService {
                                     emitter, 
                                     false // preapproved
                             );
+                            
+                            log.info("[Agent循环] 📞 工具调用完成 - toolName={}, decisionId={}, result={}", 
+                                    toolName, decisionId, 
+                                    toolCallResult.isAwaitingApproval() ? "awaiting_approval" : 
+                                    (toolCallResult.hasError() ? "error" : "success"));
                             
                             if (toolCallResult.isAwaitingApproval()) {
                                 log.info("[Agent循环] 工具需要用户批准，等待批准 - toolName={}, decisionId={}", 
@@ -464,11 +473,14 @@ public class AiChatServiceImpl implements AiChatService {
                                         
                                         if (approvalOpt.isPresent()) {
                                             com.aispring.entity.approval.ToolApproval approval = approvalOpt.get();
+                                            log.info("[Agent循环] ⏳ 轮询检查批准状态 - toolName={}, decisionId={}, status={}, waited={}s", 
+                                                    toolName, decisionId, approval.getApprovalStatus(), waitedSeconds);
+                                            
                                             if (approval.getApprovalStatus() == com.aispring.entity.approval.ApprovalStatus.APPROVED) {
-                                                log.info("[Agent循环] 工具已被批准，继续执行 - toolName={}, decisionId={}, waited={}s", 
+                                                log.info("[Agent循环] ✅ 工具已被批准，继续执行 - toolName={}, decisionId={}, waited={}s", 
                                                         toolName, decisionId, waitedSeconds);
                                                 approved = true;
-                                                // 重新调用工具（这次会检测到已批准并跳过批准流程）
+                                                // 关键修复：传递 preapproved=true 以跳过批准检查
                                                 toolCallResult = runToolCall(
                                                         toolName,
                                                         decisionId,
@@ -478,15 +490,17 @@ public class AiChatServiceImpl implements AiChatService {
                                                         model,
                                                         sessionState,
                                                         emitter,
-                                                        false
+                                                        true  // 改为 true，表示已批准
                                                 );
                                                 break;
                                             } else if (approval.getApprovalStatus() == com.aispring.entity.approval.ApprovalStatus.REJECTED) {
-                                                log.info("[Agent循环] 工具被拒绝 - toolName={}, decisionId={}", toolName, decisionId);
+                                                log.info("[Agent循环] ❌ 工具被拒绝 - toolName={}, decisionId={}", toolName, decisionId);
                                                 finalStatus = com.aispring.entity.agent.AgentStatus.IDLE;
                                                 shouldSendAnotherMessage = false;
                                                 break;
                                             }
+                                        } else {
+                                            log.warn("[Agent循环] ⚠️ 批准记录不存在！- decisionId={}, waited={}s", decisionId, waitedSeconds);
                                         }
                                     } catch (InterruptedException e) {
                                         log.warn("[Agent循环] 等待批准被中断 - sessionId={}", sessionId);
