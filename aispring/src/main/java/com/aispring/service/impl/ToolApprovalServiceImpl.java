@@ -113,17 +113,31 @@ public class ToolApprovalServiceImpl implements ToolApprovalService {
     @Override
     @Transactional
     public boolean approveToolCall(String decisionId, String reason) {
+        log.info("🔍 [批准] 开始批准工具 - decisionId={}, reason={}", decisionId, reason);
+        
         Optional<ToolApproval> approvalOpt = approvalRepository.findByDecisionId(decisionId);
         
         if (approvalOpt.isEmpty()) {
-            log.warn("批准记录不存在: decisionId={}", decisionId);
+            log.error("❌ [批准失败] 批准记录不存在 - decisionId={}", decisionId);
+            // 打印所有待批准记录以便调试
+            List<ToolApproval> allPending = approvalRepository.findAll().stream()
+                    .filter(a -> a.getApprovalStatus() == ApprovalStatus.PENDING)
+                    .collect(java.util.stream.Collectors.toList());
+            log.error("📋 [调试] 当前所有待批准记录: count={}", allPending.size());
+            for (ToolApproval a : allPending) {
+                log.error("  - decisionId={}, toolName={}, sessionId={}", 
+                        a.getDecisionId(), a.getToolName(), a.getSessionId());
+            }
             return false;
         }
         
         ToolApproval approval = approvalOpt.get();
+        log.info("✅ [批准] 找到批准记录 - toolName={}, status={}, sessionId={}", 
+                approval.getToolName(), approval.getApprovalStatus(), approval.getSessionId());
         
         if (approval.getApprovalStatus() != ApprovalStatus.PENDING) {
-            log.warn("批准记录已处理: decisionId={}, status={}", decisionId, approval.getApprovalStatus());
+            log.error("❌ [批准失败] 批准记录已处理 - decisionId={}, currentStatus={}", 
+                    decisionId, approval.getApprovalStatus());
             return false;
         }
         
@@ -133,7 +147,7 @@ public class ToolApprovalServiceImpl implements ToolApprovalService {
         
         approvalRepository.save(approval);
         
-        log.info("批准工具调用: decisionId={}, tool={}", decisionId, approval.getToolName());
+        log.info("✅ [批准成功] 工具已批准 - decisionId={}, tool={}", decisionId, approval.getToolName());
         return true;
     }
     
