@@ -1208,28 +1208,42 @@ const approveTool = async (payload) => {
 
   try {
     console.log('[TerminalView] 🚀 Approving tool call:', decisionId)
-    await approvalService.approveToolCall(decisionId, reason)
     
-    // 重新加载待批准列表
-    await loadPendingApprovals()
+    // 🔥 关键修复：立即从列表中移除该项，防止重复批准
+    pendingApprovals.value = pendingApprovals.value.filter(a => a.decisionId !== decisionId)
     
-    // 检查是否还有待批准的工具
+    // 如果没有待批准项了，立即关闭对话框
     if (pendingApprovals.value.length === 0) {
       showApprovalDialog.value = false
-      // 更新状态为运行中
-      terminalStore.setAgentStatus('RUNNING')
-      isTyping.value = true
-      
-      // 🔥 关键重构：批准后重新发起Agent循环
-      // 后端会检测到已批准记录并执行工具
-      console.log('[TerminalView] ✅ Tool approved, restarting Agent loop...')
-      await processAgentLoop('', null)  // 空消息，继续上次的流程
     }
+    
+    const result = await approvalService.approveToolCall(decisionId, reason)
+    
+    if (result?.data === false) {
+      console.error('[TerminalView] ❌ 批准失败，可能已被处理')
+      uiStore.showToast('批准失败: 该工具可能已被处理')
+      // 重新加载列表
+      await loadPendingApprovals()
+      return
+    }
+    
+    console.log('[TerminalView] ✅ 批准成功，准备重启 Agent 循环')
+    
+    // 更新状态为运行中
+    terminalStore.setAgentStatus('RUNNING')
+    isTyping.value = true
+    
+    // 🔥 关键重构：批准后重新发起Agent循环
+    // 后端会检测到已批准记录并执行工具
+    console.log('[TerminalView] ♻️ Restarting Agent loop...')
+    await processAgentLoop('', null)  // 空消息，继续上次的流程
     
     uiStore.showToast('工具调用已批准')
   } catch (error) {
     console.error('批准工具调用失败:', error)
     uiStore.showToast('批准失败: ' + error.message)
+    // 出错时重新加载列表
+    await loadPendingApprovals()
   }
 }
 
