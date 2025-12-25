@@ -1598,15 +1598,17 @@ public class AiChatServiceImpl implements AiChatService {
             // 步骤 6: 保存到消息历史
             String toolResultMessage = toolCallParser.formatToolResult(toolName, toolResultStr);
             try {
+                // ✅ 关键修复：使用 senderType=3（工具结果/系统反馈）而不是 1（用户消息）
                 chatRecordService.createChatRecord(
-                        toolResultMessage, 1, userId, sessionId, model,
+                        toolResultMessage, 3, userId, sessionId, model,
                         "completed", "terminal", null,
                         toolResult.isSuccess() ? 0 : -1,
                         toolResult.getStringResult(),
                         toolResult.getError()
                 );
+                log.info("[工具调用] 工具结果已保存到历史 - toolName={}, toolId={}, senderType=3", toolName, toolId);
             } catch (Exception e) {
-                log.error("[工具调用] 保存历史失败 - toolName={}", toolName, e);
+                log.error("[工具调用] 保存历史失败 - toolName={}, toolId={}", toolName, toolId, e);
             }
             
             // 步骤 7: 更新状态为idle（工具执行完成）
