@@ -468,13 +468,14 @@ public class AiChatServiceImpl implements AiChatService {
                                                 log.info("[Agent循环] 工具已被批准，继续执行 - toolName={}, decisionId={}, waited={}s", 
                                                         toolName, decisionId, waitedSeconds);
                                                 approved = true;
-                                                // 重新调用工具（这次会跳过批准检查）
-                                                toolCallResult = callTool(
+                                                // 重新调用工具（这次会检测到已批准并跳过批准流程）
+                                                toolCallResult = runToolCall(
                                                         toolName,
-                                                        validatedParams,
-                                                        toolId,
+                                                        decisionId,
+                                                        unvalidatedParams,
                                                         sessionId,
                                                         userId,
+                                                        model,
                                                         sessionState,
                                                         emitter,
                                                         false
