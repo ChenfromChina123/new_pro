@@ -86,27 +86,43 @@ public class ToolApprovalServiceImpl implements ToolApprovalService {
     public boolean requiresApproval(Long userId, String toolName) {
         UserApprovalSettings settings = getUserSettings(userId);
         
+        log.info("🔍 [批准检查] toolName={}, userId={}", toolName, userId);
+        log.info("📋 [用户设置] autoApproveDangerousTools={}, autoApproveReadFile={}, autoApproveFileEdits={}, autoApproveMcpTools={}", 
+                settings.getAutoApproveDangerousTools(), 
+                settings.getAutoApproveReadFile(), 
+                settings.getAutoApproveFileEdits(), 
+                settings.getAutoApproveMcpTools());
+        
         // 检查危险工具
         if (DANGEROUS_TOOLS.contains(toolName)) {
-            return !settings.getAutoApproveDangerousTools();
+            boolean requiresApproval = !settings.getAutoApproveDangerousTools();
+            log.info("🔴 [危险工具] toolName={}, requiresApproval={}", toolName, requiresApproval);
+            return requiresApproval;
         }
         
         // 检查读文件工具
         if (READ_FILE_TOOLS.contains(toolName)) {
-            return !settings.getAutoApproveReadFile();
+            boolean requiresApproval = !settings.getAutoApproveReadFile();
+            log.info("📖 [读文件工具] toolName={}, requiresApproval={}", toolName, requiresApproval);
+            return requiresApproval;
         }
         
         // 检查文件编辑工具
         if (FILE_EDIT_TOOLS.contains(toolName)) {
-            return !settings.getAutoApproveFileEdits();
+            boolean requiresApproval = !settings.getAutoApproveFileEdits();
+            log.info("✏️ [文件编辑工具] toolName={}, requiresApproval={}", toolName, requiresApproval);
+            return requiresApproval;
         }
         
         // MCP 工具（以 "mcp_" 开头）
         if (toolName.startsWith("mcp_")) {
-            return !settings.getAutoApproveMcpTools();
+            boolean requiresApproval = !settings.getAutoApproveMcpTools();
+            log.info("🔌 [MCP工具] toolName={}, requiresApproval={}", toolName, requiresApproval);
+            return requiresApproval;
         }
         
         // 默认不需要批准（未知工具）
+        log.warn("⚠️ [未知工具] toolName={}, 默认不需要批准", toolName);
         return false;
     }
     
@@ -135,8 +151,18 @@ public class ToolApprovalServiceImpl implements ToolApprovalService {
         log.info("✅ [批准] 找到批准记录 - toolName={}, status={}, sessionId={}", 
                 approval.getToolName(), approval.getApprovalStatus(), approval.getSessionId());
         
+        if (approval.getApprovalStatus() == ApprovalStatus.APPROVED) {
+            log.warn("⚠️ [批准] 记录已是批准状态，返回成功（幂等性） - decisionId={}", decisionId);
+            return true;  // 已批准，返回成功（幂等操作）
+        }
+        
+        if (approval.getApprovalStatus() == ApprovalStatus.REJECTED) {
+            log.error("❌ [批准失败] 记录已被拒绝，无法批准 - decisionId={}", decisionId);
+            return false;
+        }
+        
         if (approval.getApprovalStatus() != ApprovalStatus.PENDING) {
-            log.error("❌ [批准失败] 批准记录已处理 - decisionId={}, currentStatus={}", 
+            log.error("❌ [批准失败] 记录状态异常 - decisionId={}, currentStatus={}", 
                     decisionId, approval.getApprovalStatus());
             return false;
         }

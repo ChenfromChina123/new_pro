@@ -273,6 +273,7 @@ public class AiChatServiceImpl implements AiChatService {
                 
                 if (!approvedTools.isEmpty()) {
                     log.info("[Agent循环] 🔍 检测到 {} 个已批准但未执行的工具，优先执行", approvedTools.size());
+                    
                     for (com.aispring.entity.approval.ToolApproval approvedTool : approvedTools) {
                         log.info("[Agent循环] 🚀 执行已批准工具 - toolName={}, decisionId={}", 
                                 approvedTool.getToolName(), approvedTool.getDecisionId());
@@ -304,6 +305,10 @@ public class AiChatServiceImpl implements AiChatService {
                             log.error("[Agent循环] ⚠️ 执行已批准工具异常 - toolName={}", approvedTool.getToolName(), e);
                         }
                     }
+                    
+                    // 🔥 关键：执行完已批准工具后，继续 Agent 循环
+                    // LLM 会看到工具结果（已保存到历史）并基于此继续对话
+                    log.info("[Agent循环] 📝 已批准工具执行完成，继续 Agent 循环让 LLM 处理工具结果");
                 }
                 
                 // 循环变量
@@ -1492,12 +1497,11 @@ public class AiChatServiceImpl implements AiChatService {
                     
                     return ToolCallResult.awaitingApproval();
                 }
-            } else if (!preapproved) {
-                // 需要批准但已自动批准的情况（根据用户设置）
-                log.info("[工具调用] 工具需要批准但根据设置自动批准 - toolName={}, toolId={}", toolName, toolId);
-                toolApprovalService.createApprovalRequest(sessionId, userId, toolName, unvalidatedParams, toolId);
-                toolApprovalService.approveToolCall(toolId, "自动批准（根据用户设置）");
             }
+            // 🔥 关键修复：移除错误的自动批准逻辑
+            // 如果不需要批准（requiresApproval = false）或已预批准（preapproved = true），直接执行步骤3
+            log.info("[工具调用] 跳过批准检查，直接执行 - requiresApproval={}, preapproved={}", 
+                    requiresApproval, preapproved);
             
             // 步骤 3: 执行工具
             sessionState.setStreamState(com.aispring.entity.session.StreamState.runningTool(toolName, validatedParams, toolId));

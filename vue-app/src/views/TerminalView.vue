@@ -1227,18 +1227,17 @@ const approveTool = async (payload) => {
       return
     }
     
-    console.log('[TerminalView] ✅ 批准成功，准备重启 Agent 循环')
+    console.log('[TerminalView] ✅ 批准成功')
     
-    // 更新状态为运行中
+    // 🔥 新设计：前端只负责批准，后端会自动继续执行
+    // 不需要前端重启Agent循环，所有AI逻辑都在后端
+    console.log('[TerminalView] 💤 等待后端自动继续执行...')
+    
+    // 更新UI状态
     terminalStore.setAgentStatus('RUNNING')
     isTyping.value = true
     
-    // 🔥 关键重构：批准后重新发起Agent循环
-    // 后端会检测到已批准记录并执行工具
-    console.log('[TerminalView] ♻️ Restarting Agent loop...')
-    await processAgentLoop('', null)  // 空消息，继续上次的流程
-    
-    uiStore.showToast('工具调用已批准')
+    uiStore.showToast('工具已批准，等待执行...')
   } catch (error) {
     console.error('批准工具调用失败:', error)
     uiStore.showToast('批准失败: ' + error.message)
