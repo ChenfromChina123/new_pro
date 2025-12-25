@@ -418,12 +418,9 @@ public class AiChatServiceImpl implements AiChatService {
                             );
                             
                             if (toolCallResult.isAwaitingApproval()) {
-                                log.info("[Agent循环] 工具需要用户批准，暂停循环等待 - toolName={}, decisionId={}", 
+                                log.info("[Agent循环] 工具需要用户批准，等待批准 - toolName={}, decisionId={}", 
                                         toolName, decisionId);
                                 finalStatus = com.aispring.entity.agent.AgentStatus.AWAITING_APPROVAL;
-                                // 不设置 shouldSendAnotherMessage，保持循环暂停
-                                // 等待用户批准后，前端会检测到状态变化并重新启动Agent循环
-                                shouldSendAnotherMessage = false;
                                 
                                 // 发送等待批准完成事件，通知前端
                                 try {
@@ -443,7 +440,83 @@ public class AiChatServiceImpl implements AiChatService {
                                     log.error("[Agent循环] 发送等待批准事件失败 - toolName={}", toolName, e);
                                 }
                                 
-                                break;
+                                // 关键修复：不退出循环，而是轮询等待批准
+                                // 每秒检查一次批准状态，最多等待5分钟
+                                int maxWaitSeconds = 300; // 5分钟超时
+                                int waitedSeconds = 0;
+                                boolean approved = false;
+                                
+                                while (waitedSeconds < maxWaitSeconds) {
+                                    try {
+                                        Thread.sleep(1000); // 等待1秒
+                                        waitedSeconds++;
+                                        
+                                        // 检查是否被中断
+                                        if (sessionStateService.isInterruptRequested(sessionId)) {
+                                            log.info("[Agent循环] 等待批准时被中断 - sessionId={}", sessionId);
+                                            finalStatus = com.aispring.entity.agent.AgentStatus.INTERRUPTED;
+                                            break;
+                                        }
+                                        
+                                        // 检查批准状态
+                                        Optional<com.aispring.entity.approval.ToolApproval> approvalOpt = 
+                                                toolApprovalService.getApproval(decisionId);
+                                        
+                                        if (approvalOpt.isPresent()) {
+                                            com.aispring.entity.approval.ToolApproval approval = approvalOpt.get();
+                                            if (approval.getApprovalStatus() == com.aispring.entity.approval.ApprovalStatus.APPROVED) {
+                                                log.info("[Agent循环] 工具已被批准，继续执行 - toolName={}, decisionId={}, waited={}s", 
+                                                        toolName, decisionId, waitedSeconds);
+                                                approved = true;
+                                                // 重新调用工具（这次会跳过批准检查）
+                                                toolCallResult = callTool(
+                                                        toolName,
+                                                        validatedParams,
+                                                        toolId,
+                                                        sessionId,
+                                                        userId,
+                                                        sessionState,
+                                                        emitter,
+                                                        false
+                                                );
+                                                break;
+                                            } else if (approval.getApprovalStatus() == com.aispring.entity.approval.ApprovalStatus.REJECTED) {
+                                                log.info("[Agent循环] 工具被拒绝 - toolName={}, decisionId={}", toolName, decisionId);
+                                                finalStatus = com.aispring.entity.agent.AgentStatus.IDLE;
+                                                shouldSendAnotherMessage = false;
+                                                break;
+                                            }
+                                        }
+                                    } catch (InterruptedException e) {
+                                        log.warn("[Agent循环] 等待批准被中断 - sessionId={}", sessionId);
+                                        Thread.currentThread().interrupt();
+                                        break;
+                                    }
+                                }
+                                
+                                if (!approved && waitedSeconds >= maxWaitSeconds) {
+                                    log.warn("[Agent循环] 等待批准超时 - toolName={}, decisionId={}", toolName, decisionId);
+                                    finalStatus = com.aispring.entity.agent.AgentStatus.IDLE;
+                                    shouldSendAnotherMessage = false;
+                                }
+                                
+                                // 如果被批准并成功执行，检查结果
+                                if (approved) {
+                                    if (toolCallResult.hasError()) {
+                                        shouldSendAnotherMessage = true;
+                                        currentPrompt = String.format("工具 '%s' 执行失败: %s。请修正后重试。", toolName, toolCallResult.getError());
+                                        continue;
+                                    } else {
+                                        // 工具执行成功，继续循环
+                                        log.info("[Agent循环] 批准的工具执行成功，准备继续循环 - toolName={}, decisionId={}", 
+                                                toolName, decisionId);
+                                        shouldSendAnotherMessage = true;
+                                        currentPrompt = ""; // 空prompt，让LLM基于历史消息继续
+                                    }
+                                } else {
+                                    // 没有批准或被拒绝，退出循环
+                                    break;
+                                }
                             }
                             
                             if (toolCallResult.isInterrupted()) {
