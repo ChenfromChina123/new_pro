@@ -78,6 +78,21 @@ public interface ToolApprovalService {
     List<ToolApproval> getPendingApprovals(String sessionId);
     
     /**
+     * 获取会话的已批准待执行列表
+     * 
+     * @param sessionId 会话ID
+     * @return 已批准待执行列表
+     */
+    List<ToolApproval> getApprovedPendingExecution(String sessionId);
+    
+    /**
+     * 删除批准记录
+     * 
+     * @param decisionId 决策ID
+     */
+    void deleteApprovalRecord(String decisionId);
+    
+    /**
      * 获取用户的批准设置
      * 
      * @param userId 用户ID

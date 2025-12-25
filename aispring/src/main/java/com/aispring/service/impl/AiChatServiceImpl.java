@@ -267,6 +267,45 @@ public class AiChatServiceImpl implements AiChatService {
                 log.info("Agent 循环开始: sessionId={}, loopId={}, systemPrompt length={}", 
                     sessionId, loopId, initialSystemPrompt != null ? initialSystemPrompt.length() : 0);
                 
+                // 🔥 关键重构：检查是否有已批准但未执行的工具（批准后重启循环的场景）
+                List<com.aispring.entity.approval.ToolApproval> approvedTools = 
+                        toolApprovalService.getApprovedPendingExecution(sessionId);
+                
+                if (!approvedTools.isEmpty()) {
+                    log.info("[Agent循环] 🔍 检测到 {} 个已批准但未执行的工具，优先执行", approvedTools.size());
+                    for (com.aispring.entity.approval.ToolApproval approvedTool : approvedTools) {
+                        log.info("[Agent循环] 🚀 执行已批准工具 - toolName={}, decisionId={}", 
+                                approvedTool.getToolName(), approvedTool.getDecisionId());
+                        
+                        try {
+                            ToolCallResult result = runToolCall(
+                                    approvedTool.getToolName(),
+                                    approvedTool.getDecisionId(),
+                                    approvedTool.getToolParams(),
+                                    sessionId,
+                                    userId,
+                                    model,
+                                    sessionState,
+                                    emitter,
+                                    true  // preapproved = true
+                            );
+                            
+                            if (result.hasError()) {
+                                log.error("[Agent循环] ❌ 已批准工具执行失败 - toolName={}, error={}", 
+                                        approvedTool.getToolName(), result.getError());
+                            } else {
+                                log.info("[Agent循环] ✅ 已批准工具执行成功 - toolName={}", approvedTool.getToolName());
+                            }
+                            
+                            // 🔥 关键：执行完成后删除批准记录，避免重复执行
+                            toolApprovalService.deleteApprovalRecord(approvedTool.getDecisionId());
+                            log.info("[Agent循环] 🗑️ 已删除批准记录 - decisionId={}", approvedTool.getDecisionId());
+                        } catch (Exception e) {
+                            log.error("[Agent循环] ⚠️ 执行已批准工具异常 - toolName={}", approvedTool.getToolName(), e);
+                        }
+                    }
+                }
+                
                 // 循环变量
                 String currentPrompt = initialPrompt;
                 String currentSystemPrompt = initialSystemPrompt;
@@ -427,7 +466,7 @@ public class AiChatServiceImpl implements AiChatService {
                                     (toolCallResult.hasError() ? "error" : "success"));
                             
                             if (toolCallResult.isAwaitingApproval()) {
-                                log.info("[Agent循环] 工具需要用户批准，等待批准 - toolName={}, decisionId={}", 
+                                log.info("[Agent循环] 🛑 工具需要用户批准，结束SSE连接 - toolName={}, decisionId={}", 
                                         toolName, decisionId);
                                 finalStatus = com.aispring.entity.agent.AgentStatus.AWAITING_APPROVAL;
                                 
@@ -444,97 +483,16 @@ public class AiChatServiceImpl implements AiChatService {
                                     emitter.send(SseEmitter.event()
                                             .name("approval_required")
                                             .data(objectMapper.writeValueAsString(approvalCompleteData)));
-                                    log.info("[Agent循环] 已发送等待批准事件 - toolName={}, decisionId={}", toolName, decisionId);
+                                    log.info("[Agent循环] ✅ 已发送等待批准事件，将结束SSE连接 - toolName={}, decisionId={}", toolName, decisionId);
                                 } catch (Exception e) {
                                     log.error("[Agent循环] 发送等待批准事件失败 - toolName={}", toolName, e);
                                 }
                                 
-                                // 关键修复：不退出循环，而是轮询等待批准
-                                // 每秒检查一次批准状态，最多等待5分钟
-                                int maxWaitSeconds = 300; // 5分钟超时
-                                int waitedSeconds = 0;
-                                boolean approved = false;
-                                
-                                while (waitedSeconds < maxWaitSeconds) {
-                                    try {
-                                        Thread.sleep(1000); // 等待1秒
-                                        waitedSeconds++;
-                                        
-                                        // 检查是否被中断
-                                        if (sessionStateService.isInterruptRequested(sessionId)) {
-                                            log.info("[Agent循环] 等待批准时被中断 - sessionId={}", sessionId);
-                                            finalStatus = com.aispring.entity.agent.AgentStatus.PAUSED;
-                                            break;
-                                        }
-                                        
-                                        // 检查批准状态
-                                        Optional<com.aispring.entity.approval.ToolApproval> approvalOpt = 
-                                                toolApprovalService.getApproval(decisionId);
-                                        
-                                        if (approvalOpt.isPresent()) {
-                                            com.aispring.entity.approval.ToolApproval approval = approvalOpt.get();
-                                            log.info("[Agent循环] ⏳ 轮询检查批准状态 - toolName={}, decisionId={}, status={}, waited={}s", 
-                                                    toolName, decisionId, approval.getApprovalStatus(), waitedSeconds);
-                                            
-                                            if (approval.getApprovalStatus() == com.aispring.entity.approval.ApprovalStatus.APPROVED) {
-                                                log.info("[Agent循环] ✅ 工具已被批准，继续执行 - toolName={}, decisionId={}, waited={}s", 
-                                                        toolName, decisionId, waitedSeconds);
-                                                approved = true;
-                                                // 关键修复：传递 preapproved=true 以跳过批准检查
-                                                toolCallResult = runToolCall(
-                                                        toolName,
-                                                        decisionId,
-                                                        unvalidatedParams,
-                                                        sessionId,
-                                                        userId,
-                                                        model,
-                                                        sessionState,
-                                                        emitter,
-                                                        true  // 改为 true，表示已批准
-                                                );
-                                                break;
-                                            } else if (approval.getApprovalStatus() == com.aispring.entity.approval.ApprovalStatus.REJECTED) {
-                                                log.info("[Agent循环] ❌ 工具被拒绝 - toolName={}, decisionId={}", toolName, decisionId);
-                                                finalStatus = com.aispring.entity.agent.AgentStatus.IDLE;
-                                                shouldSendAnotherMessage = false;
-                                                break;
-                                            }
-                                        } else {
-                                            log.warn("[Agent循环] ⚠️ 批准记录不存在！- decisionId={}, waited={}s", decisionId, waitedSeconds);
-                                        }
-                                    } catch (InterruptedException e) {
-                                        log.warn("[Agent循环] 等待批准被中断 - sessionId={}", sessionId);
-                                        Thread.currentThread().interrupt();
-                                        break;
-                                    }
-                                }
-                                
-                                if (!approved && waitedSeconds >= maxWaitSeconds) {
-                                    log.warn("[Agent循环] 等待批准超时 - toolName={}, decisionId={}", toolName, decisionId);
-                                    finalStatus = com.aispring.entity.agent.AgentStatus.IDLE;
-                                    shouldSendAnotherMessage = false;
-                                }
-                                
-                                // 如果被批准并成功执行，检查结果
-                                if (approved) {
-                                    if (toolCallResult.hasError()) {
-                                        shouldSendAnotherMessage = true;
-                                        currentPrompt = String.format("工具 '%s' 执行失败: %s。请修正后重试。", toolName, toolCallResult.getError());
-                                        continue;
-                                    } else {
-                                        // ✅ 关键修复：工具执行成功，继续当前循环处理工具结果
-                                        // 不需要再次调用 LLM，因为工具结果已经在 runToolCall 中添加到历史了
-                                        log.info("[Agent循环] ✅ 批准的工具执行成功，继续处理工具结果 - toolName={}, decisionId={}", 
-                                                toolName, decisionId);
-                                        shouldSendAnotherMessage = true;
-                                        currentPrompt = ""; // 空prompt，让LLM基于包含工具结果的历史消息继续
-                                        // 注意：这里 continue 会继续外层循环，重新调用 LLM
-                                        // LLM 会看到工具结果并基于此生成下一步响应
-                                    }
-                                } else {
-                                    // 没有批准或被拒绝，退出循环
-                                    break;
-                                }
+                                // 🔥 关键重构：不再轮询等待，直接退出循环
+                                // 前端批准后会重新发起Agent循环，后端检测到已批准记录并执行工具
+                                log.info("[Agent循环] 💤 退出循环等待批准，前端批准后会重新发起请求");
+                                shouldSendAnotherMessage = false;
+                                break;
                             }
                             
                             if (toolCallResult.isInterrupted()) {

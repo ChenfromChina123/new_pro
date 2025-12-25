@@ -176,6 +176,21 @@ public class ToolApprovalServiceImpl implements ToolApprovalService {
     }
     
     @Override
+    public List<ToolApproval> getApprovedPendingExecution(String sessionId) {
+        return approvalRepository.findBySessionIdAndApprovalStatus(sessionId, ApprovalStatus.APPROVED);
+    }
+    
+    @Override
+    @Transactional
+    public void deleteApprovalRecord(String decisionId) {
+        Optional<ToolApproval> approvalOpt = approvalRepository.findByDecisionId(decisionId);
+        if (approvalOpt.isPresent()) {
+            approvalRepository.delete(approvalOpt.get());
+            log.info("删除批准记录: decisionId={}", decisionId);
+        }
+    }
+    
+    @Override
     public UserApprovalSettings getUserSettings(Long userId) {
         return settingsRepository.findByUserId(userId)
                 .orElseGet(() -> createDefaultSettings(userId));
