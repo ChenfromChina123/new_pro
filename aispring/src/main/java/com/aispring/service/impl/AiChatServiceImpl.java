@@ -1424,16 +1424,24 @@ public class AiChatServiceImpl implements AiChatService {
             
             // 步骤 2: 检查批准
             boolean requiresApproval = toolApprovalService.requiresApproval(userId, toolName);
+            log.info("[工具调用] 批准检查 - toolName={}, toolId={}, requiresApproval={}, preapproved={}", 
+                    toolName, toolId, requiresApproval, preapproved);
+            
             if (requiresApproval && !preapproved) {
                 // 关键修复：检查该工具是否已经被批准（批准后重新启动Agent循环的情况）
                 Optional<com.aispring.entity.approval.ToolApproval> existingApproval = 
                         toolApprovalService.getApproval(toolId);
                 
+                log.info("[工具调用] 查询批准记录 - toolId={}, exists={}, status={}", 
+                        toolId, 
+                        existingApproval.isPresent(),
+                        existingApproval.isPresent() ? existingApproval.get().getApprovalStatus() : "N/A");
+                
                 if (existingApproval.isPresent()) {
                     com.aispring.entity.approval.ToolApproval approval = existingApproval.get();
                     
                     if (approval.getApprovalStatus() == com.aispring.entity.approval.ApprovalStatus.APPROVED) {
-                        log.info("[工具调用] 工具已被批准，跳过批准流程直接执行 - toolName={}, toolId={}", toolName, toolId);
+                        log.info("[工具调用] ✅ 工具已被批准，跳过批准流程直接执行 - toolName={}, toolId={}", toolName, toolId);
                         // 工具已被批准，不做任何事，继续执行步骤3
                         
                     } else if (approval.getApprovalStatus() == com.aispring.entity.approval.ApprovalStatus.PENDING) {
