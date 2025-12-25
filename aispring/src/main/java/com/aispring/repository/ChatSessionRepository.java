@@ -10,5 +10,5 @@ import java.util.Optional;
 public interface ChatSessionRepository extends JpaRepository<ChatSession, Long> {
     Optional<ChatSession> findBySessionId(String sessionId);
     void deleteBySessionId(String sessionId);
-    java.util.List<ChatSession> findByUserIdAndSessionTypeOrderByCreatedAtDesc(String userId, String sessionType);
+    java.util.List<ChatSession> findByUserIdAndSessionTypeOrderByCreatedAtDesc(Long userId, String sessionType);
 }

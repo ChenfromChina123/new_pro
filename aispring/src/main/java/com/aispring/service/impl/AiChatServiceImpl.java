@@ -215,12 +215,12 @@ public class AiChatServiceImpl implements AiChatService {
     }
 
     @Override
-    public SseEmitter askStream(String prompt, String sessionId, String model, String userId) {
+    public SseEmitter askStream(String prompt, String sessionId, String model, Long userId) {
         return askAgentStream(prompt, sessionId, model, userId, null, null, null);
     }
 
     @Override
-    public SseEmitter askAgentStream(String prompt, String sessionId, String model, String userId, String systemPrompt, List<Map<String, Object>> tasks, Consumer<String> onResponse) {
+    public SseEmitter askAgentStream(String prompt, String sessionId, String model, Long userId, String systemPrompt, List<Map<String, Object>> tasks, Consumer<String> onResponse) {
         return askAgentStreamInternal(prompt, sessionId, model, userId, systemPrompt, tasks, onResponse);
     }
 
@@ -234,7 +234,7 @@ public class AiChatServiceImpl implements AiChatService {
      * 3. 更好的错误处理
      * 4. 统一的中断机制
      */
-    private SseEmitter askAgentStreamInternal(String initialPrompt, String sessionId, String model, String userId, String initialSystemPrompt, List<Map<String, Object>> initialTasks, Consumer<String> onResponse) {
+    private SseEmitter askAgentStreamInternal(String initialPrompt, String sessionId, String model, Long userId, String initialSystemPrompt, List<Map<String, Object>> initialTasks, Consumer<String> onResponse) {
         // 创建SSE发射器，设置超时时间为5分钟（Agent 循环可能需要更长时间）
         SseEmitter emitter = new SseEmitter(300_000L);
         
@@ -253,9 +253,8 @@ public class AiChatServiceImpl implements AiChatService {
         new Thread(() -> {
             try {
                 log.info("=== Agent Loop Thread Started ===");
-                Long userIdLong = Long.valueOf(userId);
                 com.aispring.entity.session.SessionState sessionState = 
-                        sessionStateService.getOrCreateState(sessionId, userIdLong);
+                        sessionStateService.getOrCreateState(sessionId, userId);
                 
                 log.info("SessionState retrieved: status={}, sessionId={}", sessionState.getStatus(), sessionId);
                 
@@ -425,11 +424,11 @@ public class AiChatServiceImpl implements AiChatService {
                                 }
                                 
                                 // 2. 检查批准（参考 void-main 的自动批准逻辑）
-                                boolean requiresApproval = toolApprovalService.requiresApproval(userIdLong, toolName);
+                                boolean requiresApproval = toolApprovalService.requiresApproval(userId, toolName);
                                 
                                 if (requiresApproval) {
                                     log.info("工具需要批准: {}", toolName);
-                                    toolApprovalService.createApprovalRequest(sessionId, userIdLong, toolName, unvalidatedParams, decisionId);
+                                    toolApprovalService.createApprovalRequest(sessionId, userId, toolName, unvalidatedParams, decisionId);
                                     
                                     // 发送等待批准事件（包含完整的工具信息）
                                     Map<String, Object> approvalData = new HashMap<>();
@@ -454,7 +453,7 @@ public class AiChatServiceImpl implements AiChatService {
                                 } else {
                                     log.info("工具自动批准: {}", toolName);
                                     // 自动批准：创建批准记录但标记为已批准（用于审计）
-                                    toolApprovalService.createApprovalRequest(sessionId, userIdLong, toolName, unvalidatedParams, decisionId);
+                                    toolApprovalService.createApprovalRequest(sessionId, userId, toolName, unvalidatedParams, decisionId);
                                     toolApprovalService.approveToolCall(decisionId, "自动批准（根据用户设置）");
                                 }
                                 
@@ -467,7 +466,7 @@ public class AiChatServiceImpl implements AiChatService {
                                 
                                 ToolsService.ToolResult result;
                                 try {
-                                    result = toolsService.callTool(toolName, unvalidatedParams, userIdLong, sessionId);
+                                    result = toolsService.callTool(toolName, unvalidatedParams, userId, sessionId);
                                     log.info("工具执行完成: toolName={}, success={}, resultLength={}", 
                                             toolName, result.isSuccess(), 
                                             result.getStringResult() != null ? result.getStringResult().length() : 0);
@@ -477,21 +476,32 @@ public class AiChatServiceImpl implements AiChatService {
                                 }
                                 
                                 // 4. 发送工具结果给前端（包含工具名称和参数信息）
-                                Map<String, Object> toolResultData = new HashMap<>();
-                                toolResultData.put("toolName", toolName);
-                                toolResultData.put("tool", toolName); // 兼容字段
-                                toolResultData.put("params", unvalidatedParams);
-                                toolResultData.put("decisionId", decisionId);
-                                toolResultData.put("decision_id", decisionId); // 兼容字段
-                                toolResultData.put("success", result.isSuccess());
-                                toolResultData.put("stringResult", result.getStringResult());
-                                toolResultData.put("result", result.getStringResult()); // 兼容字段
-                                toolResultData.put("error", result.getError());
-                                toolResultData.put("data", result.getData());
-                                
-                                emitter.send(SseEmitter.event()
-                                        .name("tool_result")
-                                        .data(objectMapper.writeValueAsString(toolResultData)));
+                                try {
+                                    Map<String, Object> toolResultData = new HashMap<>();
+                                    toolResultData.put("toolName", toolName);
+                                    toolResultData.put("tool", toolName); // 兼容字段
+                                    toolResultData.put("params", unvalidatedParams);
+                                    toolResultData.put("decisionId", decisionId);
+                                    toolResultData.put("decision_id", decisionId); // 兼容字段
+                                    toolResultData.put("success", result.isSuccess());
+                                    toolResultData.put("stringResult", result.getStringResult());
+                                    toolResultData.put("result", result.getStringResult()); // 兼容字段
+                                    toolResultData.put("error", result.getError());
+                                    toolResultData.put("data", result.getData());
+                                    
+                                    String toolResultJson = objectMapper.writeValueAsString(toolResultData);
+                                    log.info("发送工具结果事件: toolName={}, decisionId={}, jsonLength={}", 
+                                            toolName, decisionId, toolResultJson.length());
+                                    
+                                    emitter.send(SseEmitter.event()
+                                            .name("tool_result")
+                                            .data(toolResultJson));
+                                    
+                                    log.info("工具结果事件已发送: toolName={}, decisionId={}", toolName, decisionId);
+                                } catch (Exception e) {
+                                    log.error("发送工具结果事件失败: toolName={}, error={}", toolName, e.getMessage(), e);
+                                    // 即使发送失败，也继续执行，避免卡住
+                                }
                                 
                                 // 5. 将工具结果保存到消息历史（参考 void-main 的机制）
                                 // void-main 中，工具结果格式化为 XML 并作为用户消息添加到历史
@@ -527,12 +537,15 @@ public class AiChatServiceImpl implements AiChatService {
                                 // 6. 继续循环（参考 void-main：工具结果已在历史中，LLM 自动看到）
                                 // void-main 中，工具结果作为用户消息，LLM 会自动处理
                                 // 不需要额外的 prompt，直接继续循环
+                                log.info("工具执行完成，准备继续 Agent 循环: toolName={}, decisionId={}", toolName, decisionId);
                                 shouldSendAnotherMessage = true;
                                 currentPrompt = ""; // 空 prompt，让 LLM 基于历史消息继续
                                 
                                 // 设置状态为 idle（工具执行完成）
                                 sessionState.setStreamState(com.aispring.entity.session.StreamState.idle());
                                 sessionStateService.saveState(sessionState);
+                                
+                                log.info("状态已更新为 idle，继续 Agent 循环");
                                 
                         } else {
                             // 没有检测到工具调用，检查是否有纯文本响应
@@ -763,7 +776,7 @@ public class AiChatServiceImpl implements AiChatService {
         return systemPrompt;
     }
 
-    private String performBlockingChat(String prompt, String sessionId, String model, String userId, String systemPrompt, SseEmitter emitter) throws IOException {
+    private String performBlockingChat(String prompt, String sessionId, String model, Long userId, String systemPrompt, SseEmitter emitter) throws IOException {
         StringBuilder fullContent = new StringBuilder();
         
         // 检查是否为推理模型
@@ -778,7 +791,7 @@ public class AiChatServiceImpl implements AiChatService {
         return fullContent.toString();
     }
     
-    private void performBlockingSpringAiChat(String prompt, String sessionId, String model, String userId, String systemPrompt, SseEmitter emitter, StringBuilder fullContent) {
+    private void performBlockingSpringAiChat(String prompt, String sessionId, String model, Long userId, String systemPrompt, SseEmitter emitter, StringBuilder fullContent) {
         // Determine client
         StreamingChatClient clientToUse = streamingChatClientProvider.getIfAvailable();
         if ("doubao".equals(model) && doubaoStreamingChatClient != null) clientToUse = doubaoStreamingChatClient;
@@ -818,7 +831,7 @@ public class AiChatServiceImpl implements AiChatService {
             .blockLast();
     }
 
-    private void performBlockingOkHttpChat(String prompt, String sessionId, String model, String userId, String systemPrompt, SseEmitter emitter, StringBuilder fullContent) throws IOException {
+    private void performBlockingOkHttpChat(String prompt, String sessionId, String model, Long userId, String systemPrompt, SseEmitter emitter, StringBuilder fullContent) throws IOException {
          generateTitleAndSuggestionsAsync(prompt, sessionId, userId, emitter);
          
          String apiKey = "";
@@ -923,7 +936,7 @@ public class AiChatServiceImpl implements AiChatService {
     /**
      * 异步生成会话标题和建议问题
      */
-    private void generateTitleAndSuggestionsAsync(String userPrompt, String sessionId, String userId, SseEmitter emitter) {
+    private void generateTitleAndSuggestionsAsync(String userPrompt, String sessionId, Long userId, SseEmitter emitter) {
         new Thread(() -> {
             try {
                 if (deepseekChatClient == null) return;
@@ -1034,16 +1047,16 @@ public class AiChatServiceImpl implements AiChatService {
     /**
      * 构建用于“标题+引导问题”生成的用户输入：以当前询问为主，历史询问仅作参考，并限制长度。
      */
-    private String buildTitleAndSuggestionsUserPrompt(String userPrompt, String sessionId, String userId) {
+    private String buildTitleAndSuggestionsUserPrompt(String userPrompt, String sessionId, Long userId) {
         final int maxHistoryQuestions = 6;
         final int maxEachQuestionChars = 180;
         final int maxHistoryTotalChars = 1200;
-
+        
         String current = userPrompt == null ? "" : userPrompt.trim();
         if (current.isEmpty()) current = "(空)";
         String currentForCompare = current.replaceAll("\\s+", " ").trim();
-
-        if (sessionId == null || sessionId.isEmpty() || userId == null || userId.isEmpty()) {
+        
+        if (sessionId == null || sessionId.isEmpty() || userId == null) {
             return "【当前用户询问（最重要）】\n" + current + "\n";
         }
 
@@ -1084,11 +1097,11 @@ public class AiChatServiceImpl implements AiChatService {
         return sb.toString();
     }
 
-    private Prompt buildPrompt(String promptText, String sessionId, String userId, OpenAiChatOptions options) {
+    private Prompt buildPrompt(String promptText, String sessionId, Long userId, OpenAiChatOptions options) {
         return buildPrompt(promptText, sessionId, userId, options, null);
     }
 
-    private Prompt buildPrompt(String promptText, String sessionId, String userId, OpenAiChatOptions options, String systemPrompt) {
+    private Prompt buildPrompt(String promptText, String sessionId, Long userId, OpenAiChatOptions options, String systemPrompt) {
         List<Message> messages = new ArrayList<>();
         
         // Add System Prompt if exists
@@ -1157,7 +1170,7 @@ public class AiChatServiceImpl implements AiChatService {
     }
     
     @Override
-    public String ask(String prompt, String sessionId, String model, String userId) {
+    public String ask(String prompt, String sessionId, String model, Long userId) {
         try {
             // 异步生成标题（仅限第一条消息）和建议问题（每条消息）
             generateTitleAndSuggestionsAsync(prompt, sessionId, userId, null);

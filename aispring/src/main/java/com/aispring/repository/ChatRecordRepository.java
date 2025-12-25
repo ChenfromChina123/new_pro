@@ -18,29 +18,29 @@ public interface ChatRecordRepository extends JpaRepository<ChatRecord, Long> {
     /**
      * 根据用户ID查找所有聊天记录
      */
-    List<ChatRecord> findByUserIdOrderByMessageOrderAsc(String userId);
+    List<ChatRecord> findByUserIdOrderByMessageOrderAsc(Long userId);
     
     /**
      * 根据用户ID和会话ID查找聊天记录
      */
-    List<ChatRecord> findByUserIdAndSessionIdOrderByMessageOrderAsc(String userId, String sessionId);
+    List<ChatRecord> findByUserIdAndSessionIdOrderByMessageOrderAsc(Long userId, String sessionId);
     
     /**
      * 根据会话ID和用户ID删除聊天记录
      */
-    void deleteByUserIdAndSessionId(String userId, String sessionId);
+    void deleteByUserIdAndSessionId(Long userId, String sessionId);
     
     /**
      * 查询用户的所有会话ID（去重）
      */
     @Query("SELECT DISTINCT c.sessionId FROM ChatRecord c WHERE c.userId = :userId ORDER BY MAX(c.sendTime) DESC")
-    List<String> findDistinctSessionIdsByUserId(@Param("userId") String userId);
+    List<String> findDistinctSessionIdsByUserId(@Param("userId") Long userId);
     
     /**
      * 获取会话的最新消息顺序号
      */
     @Query("SELECT COALESCE(MAX(c.messageOrder), 0) FROM ChatRecord c WHERE c.sessionId = :sessionId AND c.userId = :userId")
-    Integer findMaxMessageOrderBySessionIdAndUserId(@Param("sessionId") String sessionId, @Param("userId") String userId);
+    Integer findMaxMessageOrderBySessionIdAndUserId(@Param("sessionId") String sessionId, @Param("userId") Long userId);
     
     /**
      * 获取用户所有会话的基本信息，过滤会话类型
@@ -53,7 +53,7 @@ public interface ChatRecordRepository extends JpaRepository<ChatRecord, Long> {
            "LEFT JOIN chat_sessions s ON c.session_id COLLATE utf8mb4_unicode_ci = s.session_id COLLATE utf8mb4_unicode_ci " +
            "WHERE c.user_id = :userId AND (s.session_type COLLATE utf8mb4_unicode_ci = :sessionType COLLATE utf8mb4_unicode_ci OR (s.session_type IS NULL AND :sessionType = 'chat')) " +
            "GROUP BY c.session_id ORDER BY last_message_time DESC", nativeQuery = true)
-    List<Object[]> findSessionInfoByUserIdAndType(@Param("userId") String userId, @Param("sessionType") String sessionType);
+    List<Object[]> findSessionInfoByUserIdAndType(@Param("userId") Long userId, @Param("sessionType") String sessionType);
 
     /**
      * 获取用户所有会话的基本信息
@@ -63,7 +63,7 @@ public interface ChatRecordRepository extends JpaRepository<ChatRecord, Long> {
            "ORDER BY c2.send_time DESC LIMIT 1) AS last_message " +
            "FROM chat_records c WHERE c.user_id = :userId " +
            "GROUP BY c.session_id ORDER BY last_message_time DESC", nativeQuery = true)
-    List<Object[]> findSessionInfoByUserId(@Param("userId") String userId);
+    List<Object[]> findSessionInfoByUserId(@Param("userId") Long userId);
     
     /**
      * 管理员：获取所有会话信息（带分页）
@@ -84,7 +84,7 @@ public interface ChatRecordRepository extends JpaRepository<ChatRecord, Long> {
            "ORDER BY c2.send_time DESC LIMIT 1) AS last_message " +
            "FROM chat_records c WHERE c.user_id = :userId " +
            "GROUP BY c.session_id, c.user_id ORDER BY last_message_time DESC", nativeQuery = true)
-    List<Object[]> findSessionsInfoByUserId(@Param("userId") String userId);
+    List<Object[]> findSessionsInfoByUserId(@Param("userId") Long userId);
     
     /**
      * 统计总消息数

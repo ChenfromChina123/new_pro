@@ -33,13 +33,13 @@ public class ChatRecordService {
      * 创建聊天记录
      */
     @Transactional
-    public ChatRecord createChatRecord(String content, Integer senderType, String userId, 
+    public ChatRecord createChatRecord(String content, Integer senderType, Long userId, 
                                       String sessionId, String aiModel, String status) {
         return createChatRecord(content, senderType, userId, sessionId, aiModel, status, "chat", null);
     }
 
     @Transactional
-    public ChatRecord createChatRecord(String content, Integer senderType, String userId, 
+    public ChatRecord createChatRecord(String content, Integer senderType, Long userId, 
                                       String sessionId, String aiModel, String status, String sessionType) {
         return createChatRecord(content, senderType, userId, sessionId, aiModel, status, sessionType, null);
     }
@@ -48,7 +48,7 @@ public class ChatRecordService {
      * 创建聊天记录（包含深度思考内容）
      */
     @Transactional
-    public ChatRecord createChatRecord(String content, Integer senderType, String userId, 
+    public ChatRecord createChatRecord(String content, Integer senderType, Long userId, 
                                       String sessionId, String aiModel, String status, String sessionType, String reasoningContent) {
         return createChatRecord(content, senderType, userId, sessionId, aiModel, status, sessionType, reasoningContent, null, null, null);
     }
@@ -57,7 +57,7 @@ public class ChatRecordService {
      * 创建聊天记录（包含所有字段，包括工具执行结果）
      */
     @Transactional
-    public ChatRecord createChatRecord(String content, Integer senderType, String userId, 
+    public ChatRecord createChatRecord(String content, Integer senderType, Long userId, 
                                       String sessionId, String aiModel, String status, String sessionType, 
                                       String reasoningContent, Integer exitCode, String stdout, String stderr) {
         // 如果没有会话ID，生成新的
@@ -112,14 +112,14 @@ public class ChatRecordService {
     /**
      * 获取用户的所有会话列表
      */
-    public List<Map<String, Object>> getUserSessions(String userId) {
+    public List<Map<String, Object>> getUserSessions(Long userId) {
         return getUserSessions(userId, "chat");
     }
 
     /**
      * 获取用户指定类型的会话列表
      */
-    public List<Map<String, Object>> getUserSessions(String userId, String sessionType) {
+    public List<Map<String, Object>> getUserSessions(Long userId, String sessionType) {
         // 1. 获取该用户在 chat_records 中的所有唯一会话 ID 和最后一条消息信息
         // 使用自定义查询，支持 session_type 过滤且兼容旧数据（旧数据默认为 'chat'）
         List<Object[]> results = chatRecordRepository.findSessionInfoByUserIdAndType(userId, sessionType);
@@ -165,7 +165,7 @@ public class ChatRecordService {
     /**
      * 获取特定会话的所有消息
      */
-    public List<ChatRecord> getSessionMessages(String userId, String sessionId) {
+    public List<ChatRecord> getSessionMessages(Long userId, String sessionId) {
         return chatRecordRepository.findByUserIdAndSessionIdOrderByMessageOrderAsc(userId, sessionId);
     }
 
@@ -180,7 +180,7 @@ public class ChatRecordService {
      * 更新或创建会话标题和建议
      */
     @Transactional
-    public void updateSessionTitleAndSuggestions(String sessionId, String title, String suggestions, String userId) {
+    public void updateSessionTitleAndSuggestions(String sessionId, String title, String suggestions, Long userId) {
         ChatSession session = chatSessionRepository.findBySessionId(sessionId).orElseGet(() -> {
             return ChatSession.builder()
                 .sessionId(sessionId)
@@ -199,7 +199,7 @@ public class ChatRecordService {
     }
     
     @Transactional
-    public void updateSessionCwd(String sessionId, String cwd, String userId) {
+    public void updateSessionCwd(String sessionId, String cwd, Long userId) {
         chatSessionRepository.findBySessionId(sessionId).ifPresent(session -> {
             if (Objects.equals(session.getUserId(), userId)) {
                 session.setCurrentCwd(cwd);
@@ -211,7 +211,7 @@ public class ChatRecordService {
     /**
      * 获取会话的当前工作目录
      */
-    public String getSessionCwd(String sessionId, String userId) {
+    public String getSessionCwd(String sessionId, Long userId) {
         return chatSessionRepository.findBySessionId(sessionId)
             .filter(session -> Objects.equals(session.getUserId(), userId))
             .map(ChatSession::getCurrentCwd)
@@ -221,7 +221,7 @@ public class ChatRecordService {
     /**
      * 获取用户的所有终端会话
      */
-    public List<ChatSession> getTerminalSessions(String userId) {
+    public List<ChatSession> getTerminalSessions(Long userId) {
         return chatSessionRepository.findByUserIdAndSessionTypeOrderByCreatedAtDesc(userId, "terminal");
     }
 
@@ -229,7 +229,7 @@ public class ChatRecordService {
      * 删除特定会话
      */
     @Transactional
-    public void deleteSession(String userId, String sessionId) {
+    public void deleteSession(Long userId, String sessionId) {
         chatRecordRepository.deleteByUserIdAndSessionId(userId, sessionId);
         chatSessionRepository.findBySessionId(sessionId).ifPresent(session -> {
             if (Objects.equals(session.getUserId(), userId)) {
@@ -239,7 +239,7 @@ public class ChatRecordService {
     }
     
     @Transactional
-    public ChatSession createTerminalSession(String userId) {
+    public ChatSession createTerminalSession(Long userId) {
         String sessionId = createNewSession();
         ChatSession session = ChatSession.builder()
             .sessionId(sessionId)
@@ -261,7 +261,7 @@ public class ChatRecordService {
      * 创建并保存新会话
      */
     @Transactional
-    public ChatSession createChatSession(String userId, String sessionType) {
+    public ChatSession createChatSession(Long userId, String sessionType) {
         String sessionId = createNewSession();
         ChatSession session = ChatSession.builder()
             .sessionId(sessionId)
@@ -275,10 +275,10 @@ public class ChatRecordService {
     /**
      * 管理员：获取所有用户的会话列表
      */
-    public List<Map<String, Object>> getAllSessions(Integer skip, Integer limit, String userIdFilter) {
+    public List<Map<String, Object>> getAllSessions(Integer skip, Integer limit, Long userIdFilter) {
         List<Object[]> results;
         
-        if (userIdFilter != null && !userIdFilter.isEmpty()) {
+        if (userIdFilter != null) {
             results = chatRecordRepository.findSessionsInfoByUserId(userIdFilter);
         } else {
             results = chatRecordRepository.findAllSessionsInfo();
@@ -310,9 +310,9 @@ public class ChatRecordService {
             session.put("last_message", lastMessage);
             
             // 获取用户名
-            String userId = (String) row[1];
+            Long userId = (Long) row[1];
             if (userId != null) {
-                userRepository.findById(Long.parseLong(userId))
+                userRepository.findById(userId)
                     .ifPresent(user -> session.put("username", user.getUsername()));
             }
             
@@ -323,13 +323,13 @@ public class ChatRecordService {
     /**
      * 管理员：获取指定用户特定会话的消息
      */
-    public List<Map<String, Object>> getUserSessionMessages(String userId, String sessionId) {
+    public List<Map<String, Object>> getUserSessionMessages(Long userId, String sessionId) {
         List<ChatRecord> messages = chatRecordRepository
             .findByUserIdAndSessionIdOrderByMessageOrderAsc(userId, sessionId);
         
         // 获取用户名
         String username = null;
-        Optional<User> user = userRepository.findById(Long.parseLong(userId));
+        Optional<User> user = userRepository.findById(userId);
         if (user.isPresent()) {
             username = user.get().getUsername();
         }
