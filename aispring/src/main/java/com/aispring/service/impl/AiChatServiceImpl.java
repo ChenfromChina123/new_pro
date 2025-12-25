@@ -1329,6 +1329,23 @@ public class AiChatServiceImpl implements AiChatService {
             sessionState.setStreamState(com.aispring.entity.session.StreamState.runningTool(toolName, validatedParams, toolId));
             sessionStateService.saveState(sessionState);
             
+            // 发送工具运行中事件（前端需要这个事件来显示"执行中"状态）
+            try {
+                Map<String, Object> runningData = new HashMap<>();
+                runningData.put("toolName", toolName);
+                runningData.put("tool", toolName);
+                runningData.put("params", validatedParams);
+                runningData.put("decisionId", toolId);
+                runningData.put("decision_id", toolId);
+                runningData.put("type", "running_now");
+                runningData.put("content", "(执行中...)");
+                emitter.send(SseEmitter.event()
+                        .name("tool_running")
+                        .data(objectMapper.writeValueAsString(runningData)));
+            } catch (Exception e) {
+                log.warn("[工具调用] 发送运行中事件失败（非关键） - toolName={}", toolName);
+            }
+            
             long startTime = System.currentTimeMillis();
             try {
                 toolResult = toolsService.callTool(toolName, validatedParams, userId, sessionId);
@@ -1346,6 +1363,8 @@ public class AiChatServiceImpl implements AiChatService {
                     : (toolResult.getError() != null ? toolResult.getError() : toolResult.getStringResult());
             
             // 步骤 5: 发送工具结果给前端
+            log.info("[工具调用] 准备发送结果事件 - toolName={}, toolId={}, success={}", 
+                    toolName, toolId, toolResult.isSuccess());
             try {
                 Map<String, Object> toolResultData = new HashMap<>();
                 toolResultData.put("toolName", toolName);
@@ -1359,11 +1378,19 @@ public class AiChatServiceImpl implements AiChatService {
                 toolResultData.put("error", toolResult.getError());
                 toolResultData.put("data", toolResult.getData());
                 toolResultData.put("type", toolResult.isSuccess() ? "success" : "tool_error");
+                
+                String resultJson = objectMapper.writeValueAsString(toolResultData);
+                log.info("[工具调用] 发送结果事件 - toolName={}, toolId={}, jsonLength={}", 
+                        toolName, toolId, resultJson.length());
+                
                 emitter.send(SseEmitter.event()
                         .name("tool_result")
-                        .data(objectMapper.writeValueAsString(toolResultData)));
+                        .data(resultJson));
+                
+                log.info("[工具调用] 结果事件已发送 - toolName={}, toolId={}", toolName, toolId);
             } catch (Exception e) {
-                log.error("[工具调用] 发送结果事件失败 - toolName={}", toolName, e);
+                log.error("[工具调用] 发送结果事件失败 - toolName={}, toolId={}, error={}", 
+                        toolName, toolId, e.getMessage(), e);
             }
             
             // 步骤 6: 保存到消息历史
