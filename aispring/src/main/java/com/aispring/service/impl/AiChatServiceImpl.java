@@ -542,22 +542,35 @@ public class AiChatServiceImpl implements AiChatService {
                 
                 com.aispring.entity.session.SessionState finalState = sessionStateService.getState(sessionId).orElse(null);
                 if (finalState != null) {
-                    if (finalState.getStatus() == com.aispring.entity.agent.AgentStatus.RUNNING) {
-                        finalState.setStatus(finalStatus);
+                    // 如果状态是等待批准，保持状态不变，不清理loopId
+                    if (finalStatus == com.aispring.entity.agent.AgentStatus.AWAITING_APPROVAL) {
+                        log.info("[Agent循环] 保持等待批准状态，不清理 - sessionId={}", sessionId);
+                        // 保持状态，等待用户批准
+                    } else {
+                        // 其他状态，正常清理
+                        if (finalState.getStatus() == com.aispring.entity.agent.AgentStatus.RUNNING) {
+                            finalState.setStatus(finalStatus);
+                        }
+                        finalState.setCurrentLoopId(null);
+                        finalState.setStreamState(com.aispring.entity.session.StreamState.idle());
+                        sessionStateService.saveState(finalState);
+                        log.info("[Agent循环] 最终状态已保存 - sessionId={}, finalStatus={}", sessionId, finalStatus);
                     }
-                     finalState.setCurrentLoopId(null);
-                     finalState.setStreamState(com.aispring.entity.session.StreamState.idle());
-                     sessionStateService.saveState(finalState);
-                    log.info("[Agent循环] 最终状态已保存 - sessionId={}, finalStatus={}", sessionId, finalStatus);
                 }
                 
-                log.info("[Agent循环] 发送完成事件 - sessionId={}", sessionId);
-                try {
-                     emitter.send(SseEmitter.event().data("[DONE]"));
-                     emitter.complete();
-                    log.info("[Agent循环] 完成事件已发送 - sessionId={}", sessionId);
-                } catch (Exception e) {
-                    log.error("[Agent循环] 发送完成事件失败 - sessionId={}", sessionId, e);
+                // 只有在非等待批准状态时才发送完成事件
+                if (finalStatus != com.aispring.entity.agent.AgentStatus.AWAITING_APPROVAL) {
+                    log.info("[Agent循环] 发送完成事件 - sessionId={}", sessionId);
+                    try {
+                        emitter.send(SseEmitter.event().data("[DONE]"));
+                        emitter.complete();
+                        log.info("[Agent循环] 完成事件已发送 - sessionId={}", sessionId);
+                    } catch (Exception e) {
+                        log.error("[Agent循环] 发送完成事件失败 - sessionId={}", sessionId, e);
+                    }
+                } else {
+                    log.info("[Agent循环] 等待批准中，不发送完成事件，保持连接 - sessionId={}", sessionId);
+                    // 保持SSE连接打开，等待用户批准
                 }
                 
             } catch (Exception e) {
