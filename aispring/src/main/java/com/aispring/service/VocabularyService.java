@@ -6,6 +6,7 @@ import com.aispring.repository.*;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -30,6 +31,7 @@ import java.util.regex.Pattern;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class VocabularyService {
     
     private final VocabularyListRepository vocabularyListRepository;
@@ -470,9 +472,14 @@ public class VocabularyService {
     private void registerPdfFonts(Object builder, Class<?> builderClass) {
         // 优先使用 SimHei (黑体)，因为它是标准的 ttf 文件，兼容性最好
         tryUseFont(builder, builderClass, "C:/Windows/Fonts/simhei.ttf", "SimHei");
-        // 备选方案
+        // 备选方案：微软雅黑系列
+        tryUseFont(builder, builderClass, "C:/Windows/Fonts/msyh.ttf", "Microsoft YaHei");
         tryUseFont(builder, builderClass, "C:/Windows/Fonts/msyh.ttc", "Microsoft YaHei");
+        tryUseFont(builder, builderClass, "C:/Windows/Fonts/msyhbd.ttf", "Microsoft YaHei");
+        tryUseFont(builder, builderClass, "C:/Windows/Fonts/msyhbd.ttc", "Microsoft YaHei");
+        // 备选方案：宋体
         tryUseFont(builder, builderClass, "C:/Windows/Fonts/simsun.ttc", "SimSun");
+        // 备选方案：Arial Unicode MS
         tryUseFont(builder, builderClass, "C:/Windows/Fonts/arialuni.ttf", "Arial Unicode MS");
     }
 
@@ -480,14 +487,13 @@ public class VocabularyService {
         try {
             File fontFile = new File(fontPath);
             if (!fontFile.exists() || !fontFile.isFile()) {
-                System.out.println("PDF Font not found: " + fontPath);
                 return;
             }
-            // openhtmltopdf 对 ttc 的支持可能有限，如果是 ttc，尝试直接加载
+            // 使用反射调用以增强兼容性 (针对 openhtmltopdf)
             invokeMethod(builder, builderClass, "useFont", File.class, String.class, fontFile, fontFamily);
-            System.out.println("Successfully registered PDF font: " + fontFamily + " from " + fontPath);
+            log.info("Successfully registered PDF font: {} from {}", fontFamily, fontPath);
         } catch (Exception e) {
-            System.err.println("Failed to register PDF font " + fontFamily + ": " + e.getMessage());
+            log.warn("Failed to register PDF font {}: {}", fontFamily, e.getMessage());
         }
     }
 
