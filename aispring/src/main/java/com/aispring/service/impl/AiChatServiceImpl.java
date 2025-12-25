@@ -1352,9 +1352,17 @@ public class AiChatServiceImpl implements AiChatService {
             boolean requiresApproval = toolApprovalService.requiresApproval(userId, toolName);
             if (requiresApproval && !preapproved) {
                 log.info("[工具调用] 需要用户批准 - toolName={}, toolId={}", toolName, toolId);
-                toolApprovalService.createApprovalRequest(sessionId, userId, toolName, unvalidatedParams, toolId);
                 
-                // 发送等待批准事件（确保前端能收到并显示）
+                // 先创建批准请求（确保数据库已保存）
+                Long approvalId = toolApprovalService.createApprovalRequest(sessionId, userId, toolName, unvalidatedParams, toolId);
+                log.info("[工具调用] 批准请求已创建 - approvalId={}, toolName={}, toolId={}", approvalId, toolName, toolId);
+                
+                // 获取待批准列表（确保数据已保存）
+                List<com.aispring.entity.approval.ToolApproval> pendingApprovals = 
+                        toolApprovalService.getPendingApprovals(sessionId);
+                log.info("[工具调用] 当前待批准数量: {}", pendingApprovals.size());
+                
+                // 发送等待批准事件（包含完整的待批准列表数据）
                 try {
                     Map<String, Object> approvalData = new HashMap<>();
                     approvalData.put("decision_id", toolId);
@@ -1365,10 +1373,24 @@ public class AiChatServiceImpl implements AiChatService {
                     approvalData.put("type", "tool_request");
                     approvalData.put("sessionId", sessionId);
                     approvalData.put("message", String.format("工具 '%s' 需要您的批准", toolName));
+                    approvalData.put("approvalId", approvalId);
+                    
+                    // 包含待批准列表（前端可以直接使用，无需再次调用API）
+                    List<Map<String, Object>> pendingList = new ArrayList<>();
+                    for (com.aispring.entity.approval.ToolApproval approval : pendingApprovals) {
+                        Map<String, Object> approvalMap = new HashMap<>();
+                        approvalMap.put("id", approval.getDecisionId());
+                        approvalMap.put("decisionId", approval.getDecisionId());
+                        approvalMap.put("toolName", approval.getToolName());
+                        approvalMap.put("params", approval.getToolParams());
+                        approvalMap.put("createdAt", approval.getCreatedAt().toString());
+                        pendingList.add(approvalMap);
+                    }
+                    approvalData.put("pendingApprovals", pendingList);
                     
                     String approvalJson = objectMapper.writeValueAsString(approvalData);
-                    log.info("[工具调用] 发送等待批准事件 - toolName={}, toolId={}, jsonLength={}", 
-                            toolName, toolId, approvalJson.length());
+                    log.info("[工具调用] 发送等待批准事件 - toolName={}, toolId={}, jsonLength={}, pendingCount={}", 
+                            toolName, toolId, approvalJson.length(), pendingList.size());
                     
                     emitter.send(SseEmitter.event()
                             .name("waiting_approval")
