@@ -808,7 +808,7 @@ public class TerminalController {
     }
     
     /**
-     * 批准工具调用
+     * 批准工具调用（批准后继续执行工具并恢复Agent循环）
      */
     @PostMapping("/approvals/{decisionId}/approve")
     @PreAuthorize("isAuthenticated()")
@@ -818,6 +818,34 @@ public class TerminalController {
             @RequestBody(required = false) Map<String, String> request) {
         String reason = request != null ? request.get("reason") : null;
         boolean success = toolApprovalService.approveToolCall(decisionId, reason);
+        
+        if (success) {
+            // 获取批准记录
+            Optional<com.aispring.entity.approval.ToolApproval> approvalOpt = 
+                    toolApprovalService.getApproval(decisionId);
+            
+            if (approvalOpt.isPresent()) {
+                com.aispring.entity.approval.ToolApproval approval = approvalOpt.get();
+                String sessionId = approval.getSessionId();
+                Long userId = approval.getUserId();
+                
+                log.info("[批准] 工具已批准，准备继续执行 - decisionId={}, toolName={}, sessionId={}", 
+                        decisionId, approval.getToolName(), sessionId);
+                
+                // 更新状态为运行中，准备继续Agent循环
+                com.aispring.entity.session.SessionState sessionState = 
+                        sessionStateService.getState(sessionId).orElse(null);
+                
+                if (sessionState != null && 
+                    sessionState.getStatus() == com.aispring.entity.agent.AgentStatus.AWAITING_APPROVAL) {
+                    // 更新状态为运行中，前端会检测到状态变化并继续Agent循环
+                    sessionState.setStatus(com.aispring.entity.agent.AgentStatus.RUNNING);
+                    sessionStateService.saveState(sessionState);
+                    log.info("[批准] 状态已更新为RUNNING，前端应继续Agent循环 - sessionId={}", sessionId);
+                }
+            }
+        }
+        
         return ApiResponse.success(success);
     }
     
