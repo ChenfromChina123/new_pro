@@ -454,7 +454,7 @@ public class AiChatServiceImpl implements AiChatService {
                                         // 检查是否被中断
                                         if (sessionStateService.isInterruptRequested(sessionId)) {
                                             log.info("[Agent循环] 等待批准时被中断 - sessionId={}", sessionId);
-                                            finalStatus = com.aispring.entity.agent.AgentStatus.INTERRUPTED;
+                                            finalStatus = com.aispring.entity.agent.AgentStatus.PAUSED;
                                             break;
                                         }
                                         
