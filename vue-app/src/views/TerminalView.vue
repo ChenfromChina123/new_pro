@@ -1007,23 +1007,25 @@ onMounted(async () => {
   // 工具调用完全由后端通过 SSE 事件处理，不需要前端轮询触发
   let statePollInterval = null
   
-  // 只在 Agent 运行时且没有活跃的 SSE 连接时轮询
-  watch([agentStatus, currentSessionId], ([status, sessionId]) => {
-    if (statePollInterval) {
-      clearInterval(statePollInterval)
-      statePollInterval = null
-    }
-    
-    // 只在特定状态下轮询（避免在 SSE 流式传输时轮询）
-    if (sessionId && (status === 'AWAITING_APPROVAL' || status === 'IDLE')) {
-      statePollInterval = setInterval(async () => {
-        // 只在非流式传输状态下轮询
-        if (!isTyping.value && (agentStatus.value === 'AWAITING_APPROVAL' || agentStatus.value === 'IDLE')) {
-          await loadSessionState()
-        }
-      }, 5000) // 降低轮询频率到 5 秒
-    }
-  }, { immediate: true })
+  // ✅ 关键修复：禁用状态轮询，完全依赖 SSE 事件
+  // 状态轮询会导致死循环：loadSessionState() -> 更新 agentStatus -> 触发 watch -> 再次调用 loadSessionState()
+  // 正确的设计：后端通过 SSE 主动推送状态变化，前端被动接收
+  // 只在初始化和特殊情况下才手动调用 loadSessionState()
+  
+  // 如果确实需要轮询（比如网络不稳定时），可以这样实现：
+  // watch([agentStatus, currentSessionId], ([status, sessionId]) => {
+  //   if (statePollInterval) {
+  //     clearInterval(statePollInterval)
+  //     statePollInterval = null
+  //   }
+  //   
+  //   // 只在特定状态下轮询
+  //   if (sessionId && status === 'AWAITING_APPROVAL') {
+  //     statePollInterval = setInterval(async () => {
+  //       await loadSessionState()
+  //     }, 5000)
+  //   }
+  // }, { immediate: false }) // 注意：不要 immediate，避免初始化时触发
   
   // 清理定时器
   onUnmounted(() => {
@@ -1086,7 +1088,9 @@ const loadSessionState = async () => {
       sessionState.value = result.data
       
       // 同步 AgentStatus（参考 void-main 的状态管理）
-      if (result.data.status) {
+      // ✅ 关键修复：只在状态真正改变时才更新，避免触发 watch 死循环
+      if (result.data.status && result.data.status !== agentStatus.value) {
+        console.log('[TerminalView] Agent status changed:', agentStatus.value, '->', result.data.status)
         terminalStore.setAgentStatus(result.data.status)
         agentStatus.value = result.data.status
       }
