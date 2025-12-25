@@ -1351,64 +1351,83 @@ public class AiChatServiceImpl implements AiChatService {
             // 步骤 2: 检查批准
             boolean requiresApproval = toolApprovalService.requiresApproval(userId, toolName);
             if (requiresApproval && !preapproved) {
-                log.info("[工具调用] 需要用户批准 - toolName={}, toolId={}", toolName, toolId);
+                // 关键修复：检查该工具是否已经被批准（批准后重新启动Agent循环的情况）
+                Optional<com.aispring.entity.approval.ToolApproval> existingApproval = 
+                        toolApprovalService.getApproval(toolId);
                 
-                // 先创建批准请求（确保数据库已保存）
-                Long approvalId = toolApprovalService.createApprovalRequest(sessionId, userId, toolName, unvalidatedParams, toolId);
-                log.info("[工具调用] 批准请求已创建 - approvalId={}, toolName={}, toolId={}", approvalId, toolName, toolId);
-                
-                // 获取待批准列表（确保数据已保存）
-                List<com.aispring.entity.approval.ToolApproval> pendingApprovals = 
-                        toolApprovalService.getPendingApprovals(sessionId);
-                log.info("[工具调用] 当前待批准数量: {}", pendingApprovals.size());
-                
-                // 发送等待批准事件（包含完整的待批准列表数据）
-                try {
-                    Map<String, Object> approvalData = new HashMap<>();
-                    approvalData.put("decision_id", toolId);
-                    approvalData.put("decisionId", toolId);
-                    approvalData.put("tool", toolName);
-                    approvalData.put("toolName", toolName);
-                    approvalData.put("params", unvalidatedParams);
-                    approvalData.put("type", "tool_request");
-                    approvalData.put("sessionId", sessionId);
-                    approvalData.put("message", String.format("工具 '%s' 需要您的批准", toolName));
-                    approvalData.put("approvalId", approvalId);
+                if (existingApproval.isPresent() && 
+                    existingApproval.get().getApprovalStatus() == com.aispring.entity.approval.ApprovalStatus.APPROVED) {
+                    log.info("[工具调用] 工具已被批准，继续执行 - toolName={}, toolId={}", toolName, toolId);
+                    // 工具已被批准，跳过批准流程，直接执行
+                } else if (existingApproval.isPresent() && 
+                           existingApproval.get().getApprovalStatus() == com.aispring.entity.approval.ApprovalStatus.PENDING) {
+                    // 已经创建批准请求但还在等待，直接返回awaiting状态
+                    log.info("[工具调用] 工具批准请求已存在，继续等待 - toolName={}, toolId={}", toolName, toolId);
+                    sessionState.setStatus(com.aispring.entity.agent.AgentStatus.AWAITING_APPROVAL);
+                    sessionState.setStreamState(com.aispring.entity.session.StreamState.awaitingUser(toolName, unvalidatedParams, toolId));
+                    sessionStateService.saveState(sessionState);
+                    return ToolCallResult.awaitingApproval();
+                } else {
+                    // 需要创建新的批准请求
+                    log.info("[工具调用] 需要用户批准 - toolName={}, toolId={}", toolName, toolId);
                     
-                    // 包含待批准列表（前端可以直接使用，无需再次调用API）
-                    List<Map<String, Object>> pendingList = new ArrayList<>();
-                    for (com.aispring.entity.approval.ToolApproval approval : pendingApprovals) {
-                        Map<String, Object> approvalMap = new HashMap<>();
-                        approvalMap.put("id", approval.getDecisionId());
-                        approvalMap.put("decisionId", approval.getDecisionId());
-                        approvalMap.put("toolName", approval.getToolName());
-                        approvalMap.put("params", approval.getToolParams());
-                        approvalMap.put("createdAt", approval.getCreatedAt().toString());
-                        pendingList.add(approvalMap);
+                    // 先创建批准请求（确保数据库已保存）
+                    Long approvalId = toolApprovalService.createApprovalRequest(sessionId, userId, toolName, unvalidatedParams, toolId);
+                    log.info("[工具调用] 批准请求已创建 - approvalId={}, toolName={}, toolId={}", approvalId, toolName, toolId);
+                    
+                    // 获取待批准列表（确保数据已保存）
+                    List<com.aispring.entity.approval.ToolApproval> pendingApprovals = 
+                            toolApprovalService.getPendingApprovals(sessionId);
+                    log.info("[工具调用] 当前待批准数量: {}", pendingApprovals.size());
+                
+                    // 发送等待批准事件（包含完整的待批准列表数据）
+                    try {
+                        Map<String, Object> approvalData = new HashMap<>();
+                        approvalData.put("decision_id", toolId);
+                        approvalData.put("decisionId", toolId);
+                        approvalData.put("tool", toolName);
+                        approvalData.put("toolName", toolName);
+                        approvalData.put("params", unvalidatedParams);
+                        approvalData.put("type", "tool_request");
+                        approvalData.put("sessionId", sessionId);
+                        approvalData.put("message", String.format("工具 '%s' 需要您的批准", toolName));
+                        approvalData.put("approvalId", approvalId);
+                        
+                        // 包含待批准列表（前端可以直接使用，无需再次调用API）
+                        List<Map<String, Object>> pendingList = new ArrayList<>();
+                        for (com.aispring.entity.approval.ToolApproval approval : pendingApprovals) {
+                            Map<String, Object> approvalMap = new HashMap<>();
+                            approvalMap.put("id", approval.getDecisionId());
+                            approvalMap.put("decisionId", approval.getDecisionId());
+                            approvalMap.put("toolName", approval.getToolName());
+                            approvalMap.put("params", approval.getToolParams());
+                            approvalMap.put("createdAt", approval.getCreatedAt().toString());
+                            pendingList.add(approvalMap);
+                        }
+                        approvalData.put("pendingApprovals", pendingList);
+                        
+                        String approvalJson = objectMapper.writeValueAsString(approvalData);
+                        log.info("[工具调用] 发送等待批准事件 - toolName={}, toolId={}, jsonLength={}, pendingCount={}", 
+                                toolName, toolId, approvalJson.length(), pendingList.size());
+                        
+                        emitter.send(SseEmitter.event()
+                                .name("waiting_approval")
+                                .data(approvalJson));
+                        
+                        log.info("[工具调用] 等待批准事件已发送 - toolName={}, toolId={}", toolName, toolId);
+                    } catch (Exception e) {
+                        log.error("[工具调用] 发送批准事件失败 - toolName={}, toolId={}, error={}", 
+                                toolName, toolId, e.getMessage(), e);
                     }
-                    approvalData.put("pendingApprovals", pendingList);
                     
-                    String approvalJson = objectMapper.writeValueAsString(approvalData);
-                    log.info("[工具调用] 发送等待批准事件 - toolName={}, toolId={}, jsonLength={}, pendingCount={}", 
-                            toolName, toolId, approvalJson.length(), pendingList.size());
+                    // 更新状态为等待批准
+                    sessionState.setStatus(com.aispring.entity.agent.AgentStatus.AWAITING_APPROVAL);
+                    sessionState.setStreamState(com.aispring.entity.session.StreamState.awaitingUser(toolName, unvalidatedParams, toolId));
+                    sessionStateService.saveState(sessionState);
+                    log.info("[工具调用] 状态已更新为等待批准 - toolName={}, toolId={}", toolName, toolId);
                     
-                    emitter.send(SseEmitter.event()
-                            .name("waiting_approval")
-                            .data(approvalJson));
-                    
-                    log.info("[工具调用] 等待批准事件已发送 - toolName={}, toolId={}", toolName, toolId);
-                } catch (Exception e) {
-                    log.error("[工具调用] 发送批准事件失败 - toolName={}, toolId={}, error={}", 
-                            toolName, toolId, e.getMessage(), e);
+                    return ToolCallResult.awaitingApproval();
                 }
-                
-                // 更新状态为等待批准
-                sessionState.setStatus(com.aispring.entity.agent.AgentStatus.AWAITING_APPROVAL);
-                sessionState.setStreamState(com.aispring.entity.session.StreamState.awaitingUser(toolName, unvalidatedParams, toolId));
-                sessionStateService.saveState(sessionState);
-                log.info("[工具调用] 状态已更新为等待批准 - toolName={}, toolId={}", toolName, toolId);
-                
-                return ToolCallResult.awaitingApproval();
             } else if (!preapproved) {
                 toolApprovalService.createApprovalRequest(sessionId, userId, toolName, unvalidatedParams, toolId);
                 toolApprovalService.approveToolCall(toolId, "自动批准（根据用户设置）");
