@@ -346,7 +346,7 @@ public class ChatRecordService {
      * 管理员：删除指定用户的会话
      */
     @Transactional
-    public int deleteUserSession(String userId, String sessionId) {
+    public int deleteUserSession(Long userId, String sessionId) {
         List<ChatRecord> records = chatRecordRepository
             .findByUserIdAndSessionIdOrderByMessageOrderAsc(userId, sessionId);
         int count = records.size();

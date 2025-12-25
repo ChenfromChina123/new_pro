@@ -116,64 +116,87 @@ public class ToolsServiceImpl implements ToolsService {
         return null; // 验证通过
     }
     
+    /**
+     * 执行工具（参考 void-main 的工具调用实现，添加详细日志）
+     * 
+     * @param toolName 工具名称
+     * @param params 工具参数（已验证）
+     * @param userId 用户ID
+     * @param sessionId 会话ID
+     * @return 工具执行结果
+     */
     @Override
     public ToolResult callTool(String toolName, Map<String, Object> params, Long userId, String sessionId) {
+        long startTime = System.currentTimeMillis();
+        log.info("[ToolsService] 执行工具 - toolName={}", toolName);
+        
         try {
-            // 验证参数
-            String validationError = validateParams(toolName, params);
-            if (validationError != null) {
-                return ToolResult.error(validationError);
-            }
-            
-            log.info("执行工具: tool={}, userId={}, sessionId={}", toolName, userId, sessionId);
-            
-            // 根据工具名称分发执行
+            ToolResult result;
             switch (toolName) {
-                // 文件操作工具
                 case "read_file":
-                    return executeReadFile(params, userId);
+                    result = executeReadFile(params, userId);
+                    break;
                 case "ls_dir":
-                    return executeLsDir(params, userId);
+                    result = executeLsDir(params, userId);
+                    break;
                 case "get_dir_tree":
-                    return executeGetDirTree(params, userId);
+                    result = executeGetDirTree(params, userId);
+                    break;
                 case "create_file_or_folder":
-                    return executeCreateFileOrFolder(params, userId);
+                    result = executeCreateFileOrFolder(params, userId);
+                    break;
                 case "delete_file_or_folder":
-                    return executeDeleteFileOrFolder(params, userId);
+                    result = executeDeleteFileOrFolder(params, userId);
+                    break;
                 case "write_file":
-                    return executeWriteFile(params, userId);
+                    result = executeWriteFile(params, userId);
+                    break;
                 case "edit_file":
-                    return executeEditFile(params, userId);
+                    result = executeEditFile(params, userId);
+                    break;
                 case "rewrite_file":
-                    return executeRewriteFile(params, userId);
-                
-                // 搜索工具
+                    result = executeRewriteFile(params, userId);
+                    break;
                 case "search_pathnames_only":
-                    return executeSearchPathnamesOnly(params, userId);
+                    result = executeSearchPathnamesOnly(params, userId);
+                    break;
                 case "search_for_files":
-                    return executeSearchForFiles(params, userId);
+                    result = executeSearchForFiles(params, userId);
+                    break;
                 case "search_in_file":
-                    return executeSearchInFile(params, userId);
-                
-                // 终端工具
+                    result = executeSearchInFile(params, userId);
+                    break;
                 case "run_command":
-                    return executeRunCommand(params, userId);
+                    result = executeRunCommand(params, userId);
+                    break;
                 case "run_persistent_command":
-                    return executeRunPersistentCommand(params, userId);
+                    result = executeRunPersistentCommand(params, userId);
+                    break;
                 case "open_persistent_terminal":
-                    return executeOpenPersistentTerminal(params, userId);
+                    result = executeOpenPersistentTerminal(params, userId);
+                    break;
                 case "kill_persistent_terminal":
-                    return executeKillPersistentTerminal(params, userId);
-                
-                // 其他工具
+                    result = executeKillPersistentTerminal(params, userId);
+                    break;
                 case "read_lint_errors":
-                    return executeReadLintErrors(params, userId);
-                
+                    result = executeReadLintErrors(params, userId);
+                    break;
                 default:
-                    return ToolResult.error("未实现的工具: " + toolName);
+                    log.warn("[ToolsService] 未实现的工具 - toolName={}", toolName);
+                    result = ToolResult.error("未实现的工具: " + toolName);
+                    break;
             }
+            
+            long duration = System.currentTimeMillis() - startTime;
+            if (result.isSuccess()) {
+                log.info("[ToolsService] 完成 - toolName={}, duration={}ms", toolName, duration);
+            } else {
+                log.warn("[ToolsService] 失败 - toolName={}, duration={}ms, error={}", toolName, duration, result.getError());
+            }
+            return result;
+            
         } catch (Exception e) {
-            log.error("工具执行失败: tool={}, error={}", toolName, e.getMessage(), e);
+            log.error("[ToolsService] 异常 - toolName={}, error={}", toolName, e.getMessage(), e);
             return ToolResult.error("工具执行失败: " + e.getMessage());
         }
     }
