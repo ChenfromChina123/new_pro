@@ -214,6 +214,59 @@ PATH SEPARATOR: {sep}
                     results.append(os.path.join(root, name))
         return results[:50] # Limit results
 
+    def _generateTreeStructure(self, paths: List[str]) -> str:
+        if not paths:
+            return ""
+        
+        # Sort paths to ensure tree structure is correct
+        paths.sort()
+        
+        # Determine the common root directory
+        if len(paths) == 1:
+            commonRoot = os.path.dirname(paths[0])
+        else:
+            commonRoot = os.path.commonpath(paths)
+            if not os.path.isdir(commonRoot):
+                commonRoot = os.path.dirname(commonRoot)
+        
+        # If commonRoot is empty or just a drive letter, default to CWD
+        if not commonRoot or commonRoot == os.path.splitdrive(os.getcwd())[0]:
+             commonRoot = os.getcwd()
+
+        treeLines = [f"{commonRoot}/"]
+        
+        # Helper to print tree
+        class Node:
+            def __init__(self, name):
+                self.name = name
+                self.children = {}
+        
+        rootNode = Node("")
+        
+        for path in paths:
+            relPath = os.path.relpath(path, commonRoot)
+            parts = relPath.split(os.sep)
+            curr = rootNode
+            for part in parts:
+                if part not in curr.children:
+                    curr.children[part] = Node(part)
+                curr = curr.children[part]
+        
+        def buildTreeString(node, prefix="", isLast=True):
+            lines = []
+            if node.name:
+                connector = "└── " if isLast else "├── "
+                lines.append(f"{prefix}{connector}{node.name}")
+                prefix += "    " if isLast else "│   "
+            
+            children = list(node.children.values())
+            for i, child in enumerate(children):
+                lines.extend(buildTreeString(child, prefix, i == len(children) - 1))
+            return lines
+
+        treeLines.extend(buildTreeString(rootNode))
+        return "\n".join(treeLines)
+
     def logRequest(self, messages: List[Dict[str, str]]):
         logDir = "logs"
         os.makedirs(logDir, exist_ok=True)
