@@ -399,7 +399,9 @@ PATH SEPARATOR: {sep}
                     try:
                         results = self.searchFiles(pattern)
                         if results:
-                            observations.append(f"SUCCESS: Found {len(results)} files:\n" + "\n".join(results))
+                            # Void Enhancement: Display results as a tree
+                            treeOutput = self._generateTreeStructure(results)
+                            observations.append(f"SUCCESS: Found {len(results)} files:\n{treeOutput}")
                         else:
                             observations.append(f"SUCCESS: No files found matching {pattern}")
                     except Exception as e:
