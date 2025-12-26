@@ -22,7 +22,7 @@
           class="icon-btn" 
           title="切换主题" 
           aria-label="切换主题"
-          @click="handleToggleDarkMode"
+          @click.stop="handleToggleDarkMode"
         >
           <i
             v-if="themeStore.isDarkMode"

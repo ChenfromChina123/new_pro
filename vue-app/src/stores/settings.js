@@ -35,12 +35,8 @@ export const useSettingsStore = defineStore('settings', () => {
           emailNotifications: response.emailNotifications !== undefined ? response.emailNotifications : false
         }
         
-        // 【重构】仅在初始化加载时同步一次主题，之后主题状态由 themeStore 独立控制
-        const themeStore = useThemeStore()
-        const isDark = settings.value.theme === 'dark'
-        if (themeStore.isDarkMode !== isDark) {
-          themeStore.setDarkMode(isDark)
-        }
+        // 移除这里的自动主题同步，防止进入设置页面时强制回滚主题
+        // 主题初始化应该在应用启动时由 themeStore 处理
       }
       
       return { success: true, data: settings.value }
