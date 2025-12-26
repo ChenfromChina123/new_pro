@@ -5,6 +5,8 @@ import requests
 import glob
 import fnmatch
 import locale
+import json
+import datetime
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Any, Tuple
 from colorama import init, Fore, Style
@@ -17,6 +19,8 @@ class Config:
     baseUrl: str
     modelName: str
     maxCycles: int = 30
+    whitelistedTools: List[str] = field(default_factory=lambda: ["search_files", "read_file"])
+    whitelistedCommands: List[str] = field(default_factory=lambda: ["ls", "dir", "pwd", "whoami", "echo", "cat", "type"])
 
 class VoidAgent:
     def __init__(self, config: Config):
@@ -36,11 +40,26 @@ class VoidAgent:
         cwd = os.getcwd()
         sep = os.sep
         osName = platform.system()
+        
+        # Load user rules from .voidrules (Void Feature: Customization)
+        contentOfRules = ""
+        pathOfRules = os.path.join(cwd, ".voidrules")
+        if os.path.exists(pathOfRules):
+            try:
+                with open(pathOfRules, "r", encoding="utf-8") as f:
+                    contentOfRules = f.read().strip()
+            except Exception:
+                pass
+        
+        sectionUserRules = ""
+        if contentOfRules:
+            sectionUserRules = f"\n## 👤 USER RULES (FROM .voidrules)\n{contentOfRules}\n"
+
         return f"""# VOID AGENT - STRICT LOGIC & PASSIVE VALIDATION
 OPERATING SYSTEM: {osName}
 CURRENT DIRECTORY: {cwd}
 PATH SEPARATOR: {sep}
-
+{sectionUserRules}
 ## 🔴 VOID RULES (STRICT ADHERENCE REQUIRED)
 1. **PASSIVE VALIDATION**: Do NOT execute commands blindly. You must PROPOSE actions. The user acts as the validator.
 2. **SEARCH FIRST**: You must SEARCH the codebase before modifying it to ensure you have the full context.
@@ -195,6 +214,30 @@ PATH SEPARATOR: {sep}
                     results.append(os.path.join(root, name))
         return results[:50] # Limit results
 
+    def logRequest(self, messages: List[Dict[str, str]]):
+        logDir = "logs"
+        os.makedirs(logDir, exist_ok=True)
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        logFile = os.path.join(logDir, f"void_chat_{timestamp}.json")
+        
+        # Create a copy and split lines for better readability
+        messagesToLog = []
+        for msg in messages:
+            msgCopy = msg.copy()
+            if "content" in msgCopy and isinstance(msgCopy["content"], str):
+                # Void Enhancement: Add newlines to long system prompts in logs for readability
+                if msgCopy["role"] == "system":
+                     msgCopy["content"] = msgCopy["content"].replace("\\n", "\n").splitlines()
+                else:
+                    msgCopy["content"] = msgCopy["content"].splitlines()
+            messagesToLog.append(msgCopy)
+
+        try:
+            with open(logFile, "w", encoding="utf-8") as f:
+                json.dump(messagesToLog, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"{Fore.RED}[Log Error] Could not save log: {str(e)}{Style.RESET_ALL}")
+
     def chat(self, inputOfUser: str):
         msgSystem = {"role": "system", "content": self.getContextOfSystem()}
         if inputOfUser:
@@ -209,6 +252,9 @@ PATH SEPARATOR: {sep}
                 messages = [msgSystem] + self.historyOfMessages[-10:]
                 estimateTokens = self.estimateTokensOfMessages(messages)
                 print(f"{Fore.MAGENTA}[Token Estimate] ~{estimateTokens} tokens{Style.RESET_ALL}")
+
+                # Log the full request (Void Feature: Auditing)
+                self.logRequest(messages)
 
                 headers = {
                     "Authorization": f"Bearer {self.config.apiKey}",
@@ -265,7 +311,27 @@ PATH SEPARATOR: {sep}
                         break
 
                 print(f"{Fore.YELLOW}[Pending Task] {tasks[0]}{Style.RESET_ALL}")
-                confirm = input(f"{Style.BRIGHT}Execute this task? (y/n): ")
+                
+                # Check whitelist logic (Void Optimization)
+                t = tasks[0]
+                isWhitelisted = False
+                
+                if t["type"] in self.config.whitelistedTools:
+                    isWhitelisted = True
+                elif t["type"] == "run_command":
+                    cmd = t["command"].strip()
+                    # Simple check: command starts with whitelisted command
+                    # (In a real scenario, this should be more robust)
+                    baseCmd = cmd.split()[0] if cmd else ""
+                    if baseCmd in self.config.whitelistedCommands:
+                        isWhitelisted = True
+                
+                if isWhitelisted:
+                    print(f"{Fore.GREEN}>> Auto-approved whitelisted task.{Style.RESET_ALL}")
+                    confirm = "y"
+                else:
+                    confirm = input(f"{Style.BRIGHT}Execute this task? (y/n): ")
+                
                 if confirm.lower() != "y":
                     print(f"{Fore.BLUE}User cancelled execution{Style.RESET_ALL}")
                     self.historyOfMessages.append({"role": "user", "content": "User cancelled execution"})
