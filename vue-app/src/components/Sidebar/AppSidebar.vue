@@ -19,18 +19,17 @@
       </div>
       
       <div class="sidebar-actions">
-        <button 
-          type="button"
-          class="sidebar-icon-btn" 
+        <div 
+          class="sidebar-icon-btn theme-toggle-wrapper" 
           :title="themeStore.isDarkMode ? '切换到浅色模式' : '切换到深色模式'" 
           @click.stop="handleToggleDarkMode"
         >
           <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" />
-        </button>
+        </div>
         
         <router-link 
           to="/settings" 
-          class="sidebar-icon-btn"
+          class="sidebar-icon-btn settings-link"
           title="设置"
           @click.stop
         >
@@ -598,9 +597,10 @@ onMounted(() => {
 .user-profile {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   flex: 1;
   min-width: 0;
+  margin-right: 8px;
 }
 
 .user-avatar-wrapper {
@@ -638,7 +638,8 @@ onMounted(() => {
 .sidebar-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  flex-shrink: 0;
 }
 
 .sidebar-icon-btn {
@@ -654,6 +655,8 @@ onMounted(() => {
   justify-content: center;
   position: relative;
   z-index: 1;
+  width: 36px;
+  height: 36px;
 }
 
 .sidebar-icon-btn:hover {
