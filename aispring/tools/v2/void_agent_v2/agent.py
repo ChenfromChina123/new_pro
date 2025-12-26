@@ -41,30 +41,8 @@ class VoidAgent:
         return int(totalChars / 3)
 
     def getContextOfSystem(self) -> str:
-        sep = os.sep
-        osName = platform.system()
-
-        contentOfRules = ""
-        cwd = os.getcwd()
-        pathOfRules = os.path.join(cwd, ".voidrules")
-        if os.path.exists(pathOfRules):
-            try:
-                with open(pathOfRules, "r", encoding="utf-8") as f:
-                    contentOfRules = f.read().strip()
-            except Exception:
-                pass
-
-        sectionUserRules = ""
-        if contentOfRules:
-            sectionUserRules = f"\n## 👤 USER RULES (FROM .voidrules)\n{contentOfRules}\n"
-
-        treeOfCwd = ""
-        try:
-            treeOfCwd = generate_dir_tree(cwd, max_depth=3, max_entries=300)
-        except Exception:
-            treeOfCwd = f"{cwd}/"
-
-        return f"""# VOID AGENT - STRICT LOGIC & PASSIVE VALIDATION
+        """返回绝对静态的 System Prompt（不包含项目树/环境/动态规则）。"""
+        return """# VOID AGENT - STRICT LOGIC & PASSIVE VALIDATION
 ## 🔴 VOID RULES (STRICT ADHERENCE REQUIRED)
 1. **PASSIVE VALIDATION**: Do NOT execute commands blindly. You must PROPOSE actions. The user acts as the validator.
 2. **SEARCH FIRST (REGEX FIRST)**: When looking for problem code, prefer REGEX searching in file contents.
@@ -121,14 +99,45 @@ class VoidAgent:
 ## 🚫 FORBIDDEN
 - Unclosed tags
 - Dangerous commands (rm -rf, etc.) without explicit user request
-{sectionUserRules}
-## 🧩 ENV
-OPERATING SYSTEM: {osName}
-PATH SEPARATOR: {sep}
-CURRENT DIRECTORY: {cwd}
-## 📁 PROJECT TREE (CWD)
-{treeOfCwd}
 """
+
+    def getContextOfCurrentUser(self, inputOfUser: str) -> str:
+        """构造当前轮的 user 动态上下文（项目树/规则/环境）并拼接用户问题。"""
+        sep = os.sep
+        osName = platform.system()
+        cwd = os.getcwd()
+
+        contentOfRules = ""
+        pathOfRules = os.path.join(cwd, ".voidrules")
+        if os.path.exists(pathOfRules):
+            try:
+                with open(pathOfRules, "r", encoding="utf-8") as f:
+                    contentOfRules = f.read().strip()
+            except Exception:
+                pass
+
+        treeOfCwd = ""
+        try:
+            treeOfCwd = generate_dir_tree(cwd, max_depth=3, max_entries=300)
+        except Exception:
+            treeOfCwd = f"{cwd}/"
+
+        sectionUserRules = ""
+        if contentOfRules:
+            sectionUserRules = f"\n## 👤 USER RULES (FROM .voidrules)\n{contentOfRules}\n"
+
+        return (
+            "## 🧩 CURRENT CONTEXT\n"
+            f"OPERATING SYSTEM: {osName}\n"
+            f"PATH SEPARATOR: {sep}\n"
+            f"CURRENT DIRECTORY: {cwd}\n"
+            f"{sectionUserRules}"
+            "## 📁 PROJECT TREE (CWD)\n"
+            f"{treeOfCwd}\n"
+            "\n"
+            "## ❓ USER QUESTION\n"
+            f"{inputOfUser}"
+        )
 
     def getSystemMessage(self) -> Dict[str, str]:
         if self.cacheOfSystemMessage is None:
@@ -181,8 +190,12 @@ CURRENT DIRECTORY: {cwd}
 
     def chat(self, inputOfUser: str):
         msgSystem = self.getSystemMessage()
+        baseHistoryLen = len(self.historyOfMessages)
+        historyWorking: List[Dict[str, str]] = list(self.historyOfMessages)
+        insertedUserContext = False
         if inputOfUser:
-            self.historyOfMessages.append({"role": "user", "content": inputOfUser})
+            historyWorking.append({"role": "user", "content": self.getContextOfCurrentUser(inputOfUser)})
+            insertedUserContext = True
 
         countCycle = 0
         while countCycle < self.config.maxCycles:
@@ -190,11 +203,11 @@ CURRENT DIRECTORY: {cwd}
                 countCycle += 1
                 print(f"{Fore.YELLOW}[Cycle {countCycle}/{self.config.maxCycles}] Processing...{Style.RESET_ALL}")
 
-                messages = [msgSystem] + self.historyOfMessages
+                messages = [msgSystem] + historyWorking
                 estimateTokens = self.estimateTokensOfMessages(messages)
-                if estimateTokens > 115000 and len(self.historyOfMessages) > 60:
-                    head = self.historyOfMessages[:6]
-                    tail = self.historyOfMessages[-54:]
+                if estimateTokens > 115000 and len(historyWorking) > 60:
+                    head = historyWorking[:6]
+                    tail = historyWorking[-54:]
                     messages = [msgSystem] + head + tail
                     estimateTokens = self.estimateTokensOfMessages(messages)
                 print(f"{Fore.MAGENTA}[Token Estimate] ~{estimateTokens} tokens{Style.RESET_ALL}")
@@ -282,7 +295,7 @@ CURRENT DIRECTORY: {cwd}
                         except Exception:
                             pass
 
-                self.historyOfMessages.append({"role": "assistant", "content": replyFull})
+                historyWorking.append({"role": "assistant", "content": replyFull})
                 tasks = parse_stack_of_tags(replyFull)
 
                 if not tasks:
@@ -303,7 +316,7 @@ CURRENT DIRECTORY: {cwd}
                     ]
                     if any(tok in replyLower for tok in suspiciousTagTokens):
                         feedbackError = "ERROR: Invalid Format! Use one or more closed tags. No tag if no task."
-                        self.historyOfMessages.append({"role": "user", "content": feedbackError})
+                        historyWorking.append({"role": "user", "content": feedbackError})
                     else:
                         break
 
@@ -330,7 +343,7 @@ CURRENT DIRECTORY: {cwd}
 
                     if confirm.lower() != "y":
                         print(f"{Fore.BLUE}User cancelled execution{Style.RESET_ALL}")
-                        self.historyOfMessages.append({"role": "user", "content": "User cancelled execution"})
+                        historyWorking.append({"role": "user", "content": "User cancelled execution"})
                         isCancelled = True
                         break
                     didExecuteAnyTask = True
@@ -496,7 +509,7 @@ CURRENT DIRECTORY: {cwd}
                                     observations.append(f"FAILURE: {str(e)}")
 
                 if observations:
-                    self.historyOfMessages.append({"role": "user", "content": "\n".join(observations)})
+                    historyWorking.append({"role": "user", "content": "\n".join(observations)})
                 if isCancelled:
                     break
                 if didExecuteAnyTask and self.config.stopAfterFirstToolExecution:
@@ -504,10 +517,14 @@ CURRENT DIRECTORY: {cwd}
 
             except Exception as e:
                 print(f"{Fore.RED}[Cycle Error] {str(e)}{Style.RESET_ALL}")
-                self.historyOfMessages.append({"role": "user", "content": f"ERROR: Agent crashed with error: {str(e)}"})
+                historyWorking.append({"role": "user", "content": f"ERROR: Agent crashed with error: {str(e)}"})
                 break
 
         if countCycle >= self.config.maxCycles:
             print(f"{Fore.RED}[Tip] Max cycles reached.{Style.RESET_ALL}")
+
+        self.historyOfMessages = historyWorking
+        if insertedUserContext and baseHistoryLen < len(self.historyOfMessages):
+            self.historyOfMessages[baseHistoryLen] = {"role": "user", "content": inputOfUser}
 
         self.printStatsOfModification()
