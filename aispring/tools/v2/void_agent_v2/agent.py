@@ -145,6 +145,13 @@ class VoidAgent:
         self.cacheOfProjectTree = treeOfCwd
         return self.cacheOfProjectTree
 
+    def printToolResult(self, text: str, maxChars: int = 8000) -> None:
+        """将工具执行结果直接打印到控制台，避免因停止下一轮导致用户看不到输出。"""
+        shown = text
+        if len(shown) > maxChars:
+            shown = shown[:maxChars] + "\n... (truncated)"
+        print(f"{Fore.WHITE}{shown}{Style.RESET_ALL}")
+
     def getContextOfCurrentUser(self, inputOfUser: str) -> str:
         """构造当前轮的 user 动态上下文（项目树/规则/环境）并拼接用户问题。"""
         sep = os.sep
@@ -392,11 +399,17 @@ class VoidAgent:
                             results = search_files(pattern, os.getcwd())
                             if results:
                                 treeOutput = generate_tree_structure(results, os.getcwd())
-                                observations.append(f"SUCCESS: Found {len(results)} files:\n{treeOutput}")
+                                obs = f"SUCCESS: Found {len(results)} files:\n{treeOutput}"
+                                observations.append(obs)
+                                self.printToolResult(obs)
                             else:
-                                observations.append(f"SUCCESS: No files found matching {pattern}")
+                                obs = f"SUCCESS: No files found matching {pattern}"
+                                observations.append(obs)
+                                self.printToolResult(obs)
                         except Exception as e:
-                            observations.append(f"FAILURE: {str(e)}")
+                            obs = f"FAILURE: {str(e)}"
+                            observations.append(obs)
+                            self.printToolResult(obs)
 
                     elif t["type"] == "search_in_files":
                         regex = t["regex"]
@@ -412,26 +425,34 @@ class VoidAgent:
                                 max_matches=max_matches,
                             )
                             if error:
-                                observations.append(f"FAILURE: Invalid regex: {error}")
+                                obs = f"FAILURE: Invalid regex: {error}"
+                                observations.append(obs)
+                                self.printToolResult(obs)
                             elif matches_by_path:
                                 treeOutput = generate_match_tree(matches_by_path, root)
                                 totalMatches = sum(len(v) for v in matches_by_path.values())
-                                observations.append(
+                                obs = (
                                     "SUCCESS: Regex matches found\n"
                                     f"Regex: {regex}\n"
                                     f"Glob: {glob_pattern}\n"
                                     f"Matches: {totalMatches} (files: {len(matches_by_path)})\n"
                                     f"{treeOutput}"
                                 )
+                                observations.append(obs)
+                                self.printToolResult(obs)
                             else:
-                                observations.append(
+                                obs = (
                                     "SUCCESS: No regex matches found\n"
                                     f"Regex: {regex}\n"
                                     f"Glob: {glob_pattern}\n"
                                     f"Root: {root}"
                                 )
+                                observations.append(obs)
+                                self.printToolResult(obs)
                         except Exception as e:
-                            observations.append(f"FAILURE: {str(e)}")
+                            obs = f"FAILURE: {str(e)}"
+                            observations.append(obs)
+                            self.printToolResult(obs)
 
                     elif t["type"] == "write_file":
                         path = os.path.abspath(t["path"])
@@ -455,9 +476,13 @@ class VoidAgent:
                             self.invalidateProjectTreeCache()
                             if os.path.basename(path).lower() == ".voidrules":
                                 self.invalidateUserRulesCache()
-                            observations.append(f"SUCCESS: Saved to {path} | +{added} | -{deleted}")
+                            obs = f"SUCCESS: Saved to {path} | +{added} | -{deleted}"
+                            observations.append(obs)
+                            self.printToolResult(obs)
                         except Exception as e:
-                            observations.append(f"FAILURE: {str(e)}")
+                            obs = f"FAILURE: {str(e)}"
+                            observations.append(obs)
+                            self.printToolResult(obs)
 
                     elif t["type"] == "edit_lines":
                         path = os.path.abspath(t["path"])
@@ -495,9 +520,13 @@ class VoidAgent:
                             self.invalidateProjectTreeCache()
                             if os.path.basename(path).lower() == ".voidrules":
                                 self.invalidateUserRulesCache()
-                            observations.append(f"SUCCESS: Edited {path} | +{added} | -{deleted}")
+                            obs = f"SUCCESS: Edited {path} | +{added} | -{deleted}"
+                            observations.append(obs)
+                            self.printToolResult(obs)
                         except Exception as e:
-                            observations.append(f"FAILURE: {str(e)}")
+                            obs = f"FAILURE: {str(e)}"
+                            observations.append(obs)
+                            self.printToolResult(obs)
 
                     elif t["type"] == "read_file":
                         path = os.path.abspath(t["path"])
@@ -506,24 +535,32 @@ class VoidAgent:
                         print(f"{Fore.CYAN}[Exec] Reading file: {path}")
                         try:
                             totalLines, actualEnd, content = read_range_numbered(path, startLine, endLine)
-                            observations.append(
+                            obs = (
                                 f"SUCCESS: Read {path}\n"
                                 f"Lines: {totalLines} | Range: {startLine}-{actualEnd}\n"
                                 f"Content:\n{content}"
                             )
+                            observations.append(obs)
+                            self.printToolResult(obs)
                         except Exception as e:
-                            observations.append(f"FAILURE: {str(e)}")
+                            obs = f"FAILURE: {str(e)}"
+                            observations.append(obs)
+                            self.printToolResult(obs)
 
                     elif t["type"] == "run_command":
                         cmd_text = str(t["command"])
                         commands = [c.strip() for c in cmd_text.splitlines() if c.strip()]
                         if not commands:
-                            observations.append("FAILURE: Empty command")
+                            obs = "FAILURE: Empty command"
+                            observations.append(obs)
+                            self.printToolResult(obs)
                         else:
                             for cmd in commands:
                                 dangerousCmds = ["rm -rf", "format", "del /f/s/q", "mkfs"]
                                 if any(d in cmd.lower() for d in dangerousCmds):
-                                    observations.append(f"FAILURE: Dangerous command blocked: {cmd}")
+                                    obs = f"FAILURE: Dangerous command blocked: {cmd}"
+                                    observations.append(obs)
+                                    self.printToolResult(obs)
                                     continue
                                 print(f"{Fore.CYAN}[Exec] Running command: {cmd}")
                                 try:
@@ -543,9 +580,13 @@ class VoidAgent:
                                     stdoutStr = decodeBytes(result.stdout)
                                     stderrStr = decodeBytes(result.stderr)
                                     output = f"Stdout:\n{stdoutStr}\nStderr:\n{stderrStr}"
-                                    observations.append(f"SUCCESS: Command executed: {cmd}\n{output}")
+                                    obs = f"SUCCESS: Command executed: {cmd}\n{output}"
+                                    observations.append(obs)
+                                    self.printToolResult(obs)
                                 except Exception as e:
-                                    observations.append(f"FAILURE: {str(e)}")
+                                    obs = f"FAILURE: {str(e)}"
+                                    observations.append(obs)
+                                    self.printToolResult(obs)
 
                 if observations:
                     historyWorking.append({"role": "user", "content": "\n".join(observations)})
