@@ -1,0 +1,4 @@
+这是一个小文件示例。
+创建时间：2024年
+内容：Hello, World!
+这是AI Terminal Agent创建的文件。
