@@ -16,7 +16,7 @@ class Config:
     apiKey: str
     baseUrl: str
     modelName: str
-    maxCycles: int = 5
+    maxCycles: int = 30
 
 class VoidAgent:
     def __init__(self, config: Config):
