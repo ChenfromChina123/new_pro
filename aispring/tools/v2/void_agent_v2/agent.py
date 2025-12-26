@@ -33,6 +33,8 @@ class VoidAgent:
         self.cacheOfBackups: Dict[str, str] = {}
         self.cacheOfSystemMessage: Optional[Dict[str, str]] = None
         self.statsOfCache = CacheStats()
+        self.cacheOfProjectTree: Optional[str] = None
+        self.cacheOfUserRules: Optional[str] = None
 
     def estimateTokensOfMessages(self, messages: List[Dict[str, str]]) -> int:
         totalChars = 0
@@ -103,28 +105,53 @@ class VoidAgent:
 - Dangerous commands (rm -rf, etc.) without explicit user request
 """
 
-    def getContextOfCurrentUser(self, inputOfUser: str) -> str:
-        """构造当前轮的 user 动态上下文（项目树/规则/环境）并拼接用户问题。"""
-        sep = os.sep
-        osName = platform.system()
-        cwd = os.getcwd()
+    def invalidateProjectTreeCache(self) -> None:
+        """使项目树缓存失效（下次构造 user 上下文时会重新生成）。"""
+        self.cacheOfProjectTree = None
+
+    def invalidateUserRulesCache(self) -> None:
+        """使 .voidrules 缓存失效（下次构造 user 上下文时会重新读取）。"""
+        self.cacheOfUserRules = None
+
+    def getUserRulesCached(self) -> str:
+        """读取并缓存 .voidrules 内容；仅在缓存失效后才重新读取。"""
+        if self.cacheOfUserRules is not None:
+            return self.cacheOfUserRules
 
         contentOfRules = ""
+        cwd = os.getcwd()
         pathOfRules = os.path.join(cwd, ".voidrules")
         if os.path.exists(pathOfRules):
             try:
                 with open(pathOfRules, "r", encoding="utf-8") as f:
                     contentOfRules = f.read().strip()
             except Exception:
-                pass
+                contentOfRules = ""
+        self.cacheOfUserRules = contentOfRules
+        return self.cacheOfUserRules
 
+    def getProjectTreeCached(self) -> str:
+        """生成并缓存项目树；仅在缓存失效（例如写入/编辑文件）后才重新生成。"""
+        if self.cacheOfProjectTree is not None:
+            return self.cacheOfProjectTree
+
+        cwd = os.getcwd()
         treeOfCwd = ""
         try:
             treeOfCwd = generate_dir_tree(cwd, max_depth=3, max_entries=300)
         except Exception:
             treeOfCwd = f"{cwd}/"
 
-        rulesBlock = contentOfRules or ""
+        self.cacheOfProjectTree = treeOfCwd
+        return self.cacheOfProjectTree
+
+    def getContextOfCurrentUser(self, inputOfUser: str) -> str:
+        """构造当前轮的 user 动态上下文（项目树/规则/环境）并拼接用户问题。"""
+        sep = os.sep
+        osName = platform.system()
+        cwd = os.getcwd()
+        rulesBlock = self.getUserRulesCached() or ""
+        treeOfCwd = self.getProjectTreeCached()
 
         return (
             "IMPORTANT: The following CONTEXT is input-only. Do NOT quote, repeat, or summarize it unless the user asks.\n"
@@ -425,8 +452,9 @@ class VoidAgent:
                                 after_content=content,
                                 meta={"type": "write_file"},
                             )
-                            if not existedBefore or os.path.basename(path).lower() == ".voidrules":
-                                self.invalidateSystemMessageCache()
+                            self.invalidateProjectTreeCache()
+                            if os.path.basename(path).lower() == ".voidrules":
+                                self.invalidateUserRulesCache()
                             observations.append(f"SUCCESS: Saved to {path} | +{added} | -{deleted}")
                         except Exception as e:
                             observations.append(f"FAILURE: {str(e)}")
@@ -464,8 +492,9 @@ class VoidAgent:
                                     "insert_at": insert_at,
                                 },
                             )
-                            if not existedBefore or os.path.basename(path).lower() == ".voidrules":
-                                self.invalidateSystemMessageCache()
+                            self.invalidateProjectTreeCache()
+                            if os.path.basename(path).lower() == ".voidrules":
+                                self.invalidateUserRulesCache()
                             observations.append(f"SUCCESS: Edited {path} | +{added} | -{deleted}")
                         except Exception as e:
                             observations.append(f"FAILURE: {str(e)}")
