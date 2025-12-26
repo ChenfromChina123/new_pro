@@ -228,8 +228,22 @@ PATH SEPARATOR: {sep}
                 tasks = parse_stack_of_tags(replyFull)
 
                 if not tasks:
-                    keywordsTool = ["write", "read", "run", "command", "file", "search"]
-                    if any(kw in replyFull.lower() for kw in keywordsTool):
+                    replyLower = replyFull.lower()
+                    suspiciousTagTokens = [
+                        "<write_file",
+                        "<read_file",
+                        "<run_command",
+                        "<search_files",
+                        "<search_in_files",
+                        "<edit_lines",
+                        "</write_file",
+                        "</read_file",
+                        "</run_command",
+                        "</search_files",
+                        "</search_in_files",
+                        "</edit_lines",
+                    ]
+                    if any(tok in replyLower for tok in suspiciousTagTokens):
                         feedbackError = "ERROR: Invalid Format! Use one or more closed tags. No tag if no task."
                         self.historyOfMessages.append({"role": "user", "content": feedbackError})
                     else:
