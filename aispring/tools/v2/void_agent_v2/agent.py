@@ -19,7 +19,8 @@ from .files import (
     search_files,
     search_in_files,
 )
-from .logs import append_edit_history, log_request, rollback_last_edit
+from .logs import append_edit_history, append_usage_history, log_request, rollback_last_edit
+from .metrics import CacheStats
 from .tags import parse_stack_of_tags
 
 
@@ -31,6 +32,7 @@ class VoidAgent:
         self.historyOfOperations: List[Tuple[str, int, int]] = []
         self.cacheOfBackups: Dict[str, str] = {}
         self.cacheOfSystemMessage: Optional[Dict[str, str]] = None
+        self.statsOfCache = CacheStats()
 
     def estimateTokensOfMessages(self, messages: List[Dict[str, str]]) -> int:
         totalChars = 0
@@ -70,6 +72,9 @@ class VoidAgent:
 4. **NO TASK = NO TAGS**: Reply with natural language only if no action is needed.
 5. **NAMING CONVENTION**: Variable names in your code should follow 'bOfA' pattern (e.g., contentOfFile).
 6. **EDIT EXISTING CODE BY LINE**: If a file already exists, prefer editing by lines instead of rewriting the whole file.
+7. **FOCUS FIRST**: The user's current request has the highest priority. Only do what the user explicitly asked.
+8. **NO OVER-EXECUTION**: Do NOT search/read extra files, do NOT propose unrelated improvements, and do NOT create README unless asked.
+9. **STOP AFTER TASK**: After completing the requested task(s), respond briefly and do NOT continue with additional tasks.
 
 ## 📋 TAG SYNTAX (EXACTLY AS SHOWN)
 
@@ -205,10 +210,12 @@ CURRENT DIRECTORY: {cwd}
                     "messages": messages,
                     "temperature": 0.1,
                     "stream": True,
+                    "stream_options": {"include_usage": True},
                     "max_tokens": 8000,
                 }
 
                 replyFull = ""
+                usageOfRequest: Optional[Dict[str, Any]] = None
                 print(f"{Fore.GREEN}[VoidAgent]: ", end="")
                 try:
                     response = requests.post(
@@ -227,10 +234,15 @@ CURRENT DIRECTORY: {cwd}
                         import json
 
                         dataChunk = json.loads(line)
-                        token = dataChunk["choices"][0]["delta"].get("content", "")
-                        if token:
-                            replyFull += token
-                            print(token, end="", flush=True)
+                        if isinstance(dataChunk, dict) and "usage" in dataChunk and isinstance(dataChunk.get("usage"), dict):
+                            usageOfRequest = dataChunk.get("usage")
+                        choices = dataChunk.get("choices") if isinstance(dataChunk, dict) else None
+                        if isinstance(choices, list) and choices:
+                            delta = choices[0].get("delta") if isinstance(choices[0], dict) else None
+                            token = delta.get("content", "") if isinstance(delta, dict) else ""
+                            if token:
+                                replyFull += token
+                                print(token, end="", flush=True)
                 except requests.exceptions.RequestException as e:
                     msgError = f"{Fore.RED}[Request Error] {str(e)}{Style.RESET_ALL}"
                     print(msgError)
@@ -238,6 +250,37 @@ CURRENT DIRECTORY: {cwd}
                     break
                 finally:
                     print("\n" + "-" * 40)
+                    if usageOfRequest:
+                        self.statsOfCache.updateFromUsage(usageOfRequest)
+                        hit = int(usageOfRequest.get("prompt_cache_hit_tokens") or 0)
+                        miss = int(usageOfRequest.get("prompt_cache_miss_tokens") or 0)
+                        rateReq = CacheStats.getHitRateOfUsage(usageOfRequest)
+                        rateSession = self.statsOfCache.getSessionHitRate()
+                        rateReqStr = f"{rateReq*100:.1f}%" if rateReq is not None else "N/A"
+                        rateSessionStr = f"{rateSession*100:.1f}%" if rateSession is not None else "N/A"
+                        print(
+                            f"{Fore.CYAN}[Cache] hit={hit} miss={miss} rate={rateReqStr} | session_rate={rateSessionStr}{Style.RESET_ALL}"
+                        )
+                        try:
+                            append_usage_history(
+                                usage=usageOfRequest,
+                                cache={
+                                    "hit": hit,
+                                    "miss": miss,
+                                    "rate_request": rateReq,
+                                    "rate_session": rateSession,
+                                    "session": {
+                                        "counted_requests": self.statsOfCache.countedRequests,
+                                        "hit_tokens": self.statsOfCache.promptCacheHitTokens,
+                                        "miss_tokens": self.statsOfCache.promptCacheMissTokens,
+                                        "prompt_tokens": self.statsOfCache.promptTokens,
+                                        "completion_tokens": self.statsOfCache.completionTokens,
+                                        "total_tokens": self.statsOfCache.totalTokens,
+                                    },
+                                },
+                            )
+                        except Exception:
+                            pass
 
                 self.historyOfMessages.append({"role": "assistant", "content": replyFull})
                 tasks = parse_stack_of_tags(replyFull)
@@ -266,6 +309,7 @@ CURRENT DIRECTORY: {cwd}
 
                 observations: List[str] = []
                 isCancelled = False
+                didExecuteAnyTask = False
                 for t in tasks:
                     print(f"{Fore.YELLOW}[Pending Task] {t}{Style.RESET_ALL}")
 
@@ -289,6 +333,7 @@ CURRENT DIRECTORY: {cwd}
                         self.historyOfMessages.append({"role": "user", "content": "User cancelled execution"})
                         isCancelled = True
                         break
+                    didExecuteAnyTask = True
 
                     if t["type"] == "search_files":
                         pattern = t["pattern"]
@@ -453,6 +498,8 @@ CURRENT DIRECTORY: {cwd}
                 if observations:
                     self.historyOfMessages.append({"role": "user", "content": "\n".join(observations)})
                 if isCancelled:
+                    break
+                if didExecuteAnyTask and self.config.stopAfterFirstToolExecution:
                     break
 
             except Exception as e:

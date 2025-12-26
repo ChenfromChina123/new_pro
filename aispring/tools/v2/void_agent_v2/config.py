@@ -8,5 +8,6 @@ class Config:
     baseUrl: str
     modelName: str
     maxCycles: int = 30
+    stopAfterFirstToolExecution: bool = True
     whitelistedTools: List[str] = field(default_factory=lambda: ["search_files", "search_in_files", "read_file"])
     whitelistedCommands: List[str] = field(default_factory=lambda: ["ls", "dir", "pwd", "whoami", "echo", "cat", "type"])
