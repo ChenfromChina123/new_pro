@@ -26,6 +26,24 @@ def log_request(messages: List[Dict[str, str]], log_dir: str = "logs") -> None:
         json.dump(messages_to_log, f, ensure_ascii=False, indent=2)
 
 
+def append_usage_history(
+    usage: Dict[str, Any],
+    cache: Optional[Dict[str, Any]] = None,
+    history_file: str = os.path.join("logs", "void_usage_history.jsonl"),
+) -> None:
+    """将模型返回的 usage（以及可选缓存统计）按行追加写入日志文件。"""
+    os.makedirs(os.path.dirname(history_file), exist_ok=True)
+    record: Dict[str, Any] = {
+        "ts": datetime.datetime.now().isoformat(timespec="seconds"),
+        "cwd": os.getcwd(),
+        "usage": usage,
+    }
+    if cache is not None:
+        record["cache"] = cache
+    with open(history_file, "a", encoding="utf-8") as f:
+        f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+
 def _sha256_text(content: str) -> str:
     return hashlib.sha256(content.encode("utf-8")).hexdigest()
 
