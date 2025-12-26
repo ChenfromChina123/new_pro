@@ -202,156 +202,175 @@ PATH SEPARATOR: {sep}
         
         countCycle = 0
         while countCycle < self.config.maxCycles:
-            countCycle += 1
-            print(f"{Fore.YELLOW}[Cycle {countCycle}/{self.config.maxCycles}] Processing...{Style.RESET_ALL}")
-            
-            messages = [msgSystem] + self.historyOfMessages[-10:]
-            estimateTokens = self.estimateTokensOfMessages(messages)
-            print(f"{Fore.MAGENTA}[Token Estimate] ~{estimateTokens} tokens{Style.RESET_ALL}")
-
-            headers = {
-                "Authorization": f"Bearer {self.config.apiKey}",
-                "Content-Type": "application/json"
-            }
-            payload = {
-                "model": self.config.modelName,
-                "messages": messages,
-                "temperature": 0.1,
-                "stream": True,
-                "max_tokens": 8000
-            }
-
-            replyFull = ""
-            print(f"{Fore.GREEN}[VoidAgent]: ", end="")
             try:
-                response = requests.post(
-                    self.endpointOfChat,
-                    headers=headers,
-                    json=payload,
-                    stream=True,
-                    timeout=30
-                )
-                response.raise_for_status()
+                countCycle += 1
+                print(f"{Fore.YELLOW}[Cycle {countCycle}/{self.config.maxCycles}] Processing...{Style.RESET_ALL}")
+                
+                messages = [msgSystem] + self.historyOfMessages[-10:]
+                estimateTokens = self.estimateTokensOfMessages(messages)
+                print(f"{Fore.MAGENTA}[Token Estimate] ~{estimateTokens} tokens{Style.RESET_ALL}")
 
-                for line in response.iter_lines():
-                    if not line: continue
-                    line = line.decode("utf-8").strip()
-                    if line.startswith("data: "): line = line[6:]
-                    if line in ("", "[DONE]"): continue
-                    import json
-                    dataChunk = json.loads(line)
-                    token = dataChunk["choices"][0]["delta"].get("content", "")
-                    if token:
-                        replyFull += token
-                        print(token, end="", flush=True)
-            except requests.exceptions.RequestException as e:
-                msgError = f"{Fore.RED}[Request Error] {str(e)}{Style.RESET_ALL}"
-                print(msgError)
-                replyFull = msgError
-                break
-            finally:
-                print("\n" + "-"*40)
+                headers = {
+                    "Authorization": f"Bearer {self.config.apiKey}",
+                    "Content-Type": "application/json"
+                }
+                payload = {
+                    "model": self.config.modelName,
+                    "messages": messages,
+                    "temperature": 0.1,
+                    "stream": True,
+                    "max_tokens": 8000
+                }
 
-            self.historyOfMessages.append({"role": "assistant", "content": replyFull})
-            tasks = self.parseStackOfTags(replyFull)
+                replyFull = ""
+                print(f"{Fore.GREEN}[VoidAgent]: ", end="")
+                try:
+                    response = requests.post(
+                        self.endpointOfChat,
+                        headers=headers,
+                        json=payload,
+                        stream=True,
+                        timeout=30
+                    )
+                    response.raise_for_status()
 
-            if not tasks:
-                keywordsTool = ["write", "read", "run", "command", "file", "search"]
-                if any(kw in replyFull.lower() for kw in keywordsTool):
-                    feedbackError = "ERROR: Invalid Format! Output MAX 1 closed tag. No tag if no task."
-                    self.historyOfMessages.append({"role": "user", "content": feedbackError})
-                else:
+                    for line in response.iter_lines():
+                        if not line: continue
+                        line = line.decode("utf-8").strip()
+                        if line.startswith("data: "): line = line[6:]
+                        if line in ("", "[DONE]"): continue
+                        import json
+                        dataChunk = json.loads(line)
+                        token = dataChunk["choices"][0]["delta"].get("content", "")
+                        if token:
+                            replyFull += token
+                            print(token, end="", flush=True)
+                except requests.exceptions.RequestException as e:
+                    msgError = f"{Fore.RED}[Request Error] {str(e)}{Style.RESET_ALL}"
+                    print(msgError)
+                    replyFull = msgError
+                    break
+                finally:
+                    print("\n" + "-"*40)
+
+                self.historyOfMessages.append({"role": "assistant", "content": replyFull})
+                tasks = self.parseStackOfTags(replyFull)
+
+                if not tasks:
+                    keywordsTool = ["write", "read", "run", "command", "file", "search"]
+                    if any(kw in replyFull.lower() for kw in keywordsTool):
+                        feedbackError = "ERROR: Invalid Format! Output MAX 1 closed tag. No tag if no task."
+                        self.historyOfMessages.append({"role": "user", "content": feedbackError})
+                    else:
+                        break
+
+                print(f"{Fore.YELLOW}[Pending Task] {tasks[0]}{Style.RESET_ALL}")
+                confirm = input(f"{Style.BRIGHT}Execute this task? (y/n): ")
+                if confirm.lower() != "y":
+                    print(f"{Fore.BLUE}User cancelled execution{Style.RESET_ALL}")
+                    self.historyOfMessages.append({"role": "user", "content": "User cancelled execution"})
                     break
 
-            print(f"{Fore.YELLOW}[Pending Task] {tasks[0]}{Style.RESET_ALL}")
-            confirm = input(f"{Style.BRIGHT}Execute this task? (y/n): ")
-            if confirm.lower() != "y":
-                print(f"{Fore.BLUE}User cancelled execution{Style.RESET_ALL}")
-                self.historyOfMessages.append({"role": "user", "content": "User cancelled execution"})
-                break
-
-            observations = []
-            t = tasks[0]
-            
-            if t["type"] == "search_files":
-                pattern = t["pattern"]
-                print(f"{Fore.CYAN}[Exec] Searching files: {pattern}")
-                try:
-                    results = self.searchFiles(pattern)
-                    if results:
-                        observations.append(f"SUCCESS: Found {len(results)} files:\n" + "\n".join(results))
-                    else:
-                        observations.append(f"SUCCESS: No files found matching {pattern}")
-                except Exception as e:
-                    observations.append(f"FAILURE: {str(e)}")
-
-            elif t["type"] == "write_file":
-                path = os.path.abspath(t["path"])
-                content = t["content"]
-                print(f"{Fore.CYAN}[Exec] Writing file: {path}")
-                try:
-                    self.backupFile(path)
-                    os.makedirs(os.path.dirname(path), exist_ok=True)
-                    added, deleted = self.calculateDiffOfLines(path, content)
-                    with open(path, 'w', encoding='utf-8') as f:
-                        f.write(content)
-                    self.historyOfOperations.append((path, added, deleted))
-                    observations.append(f"SUCCESS: Saved to {path} | +{added} | -{deleted}")
-                except Exception as e:
-                    observations.append(f"FAILURE: {str(e)}")
-
-            elif t["type"] == "read_file":
-                path = os.path.abspath(t["path"])
-                startLine = t.get("start_line", 1)
-                endLine = t.get("end_line")
-                print(f"{Fore.CYAN}[Exec] Reading file: {path}")
-                try:
-                    with open(path, 'r', encoding='utf-8') as f:
-                        linesAll = [line.rstrip('\n') for line in f.readlines()]
-                    totalLines = len(linesAll)
-                    actualEnd = endLine if endLine and endLine <= totalLines else totalLines
-                    linesTarget = linesAll[startLine-1 : actualEnd]
-                    content = "\n".join(linesTarget)
-                    observations.append(
-                        f"SUCCESS: Read {path}\n"
-                        f"Lines: {totalLines} | Range: {startLine}-{actualEnd}\n"
-                        f"Content:\n{content}"
-                    )
-                except Exception as e:
-                    observations.append(f"FAILURE: {str(e)}")
-
-            elif t["type"] == "run_command":
-                cmd = t["command"]
-                dangerousCmds = ["rm -rf", "format", "del /f/s/q", "mkfs"]
-                if any(d in cmd.lower() for d in dangerousCmds):
-                    observations.append(f"FAILURE: Dangerous command blocked: {cmd}")
-                else:
-                    print(f"{Fore.CYAN}[Exec] Running command: {cmd}")
+                observations = []
+                t = tasks[0]
+                
+                if t["type"] == "search_files":
+                    pattern = t["pattern"]
+                    print(f"{Fore.CYAN}[Exec] Searching files: {pattern}")
                     try:
-                        # Capture bytes to handle potential encoding issues (Void Logic: Robustness)
-                        result = subprocess.run(
-                            cmd, shell=True, capture_output=True, text=False
-                        )
-                        
-                        def decodeBytes(b: bytes) -> str:
-                            try:
-                                return b.decode('utf-8')
-                            except UnicodeDecodeError:
-                                try:
-                                    return b.decode(locale.getpreferredencoding())
-                                except Exception:
-                                    return b.decode('utf-8', errors='replace')
-                        
-                        stdoutStr = decodeBytes(result.stdout)
-                        stderrStr = decodeBytes(result.stderr)
-                        
-                        output = f"Stdout:\n{stdoutStr}\nStderr:\n{stderrStr}"
-                        observations.append(f"SUCCESS: Command executed\n{output}")
+                        results = self.searchFiles(pattern)
+                        if results:
+                            observations.append(f"SUCCESS: Found {len(results)} files:\n" + "\n".join(results))
+                        else:
+                            observations.append(f"SUCCESS: No files found matching {pattern}")
                     except Exception as e:
                         observations.append(f"FAILURE: {str(e)}")
 
-            if observations:
-                self.historyOfMessages.append({"role": "user", "content": "\n".join(observations)})
+                elif t["type"] == "write_file":
+                    path = os.path.abspath(t["path"])
+                    content = t["content"]
+                    print(f"{Fore.CYAN}[Exec] Writing file: {path}")
+                    try:
+                        self.backupFile(path)
+                        os.makedirs(os.path.dirname(path), exist_ok=True)
+                        # Use utf-8 for writing, which is standard for code
+                        added, deleted = self.calculateDiffOfLines(path, content)
+                        with open(path, 'w', encoding='utf-8') as f:
+                            f.write(content)
+                        self.historyOfOperations.append((path, added, deleted))
+                        observations.append(f"SUCCESS: Saved to {path} | +{added} | -{deleted}")
+                    except Exception as e:
+                        observations.append(f"FAILURE: {str(e)}")
+
+                elif t["type"] == "read_file":
+                    path = os.path.abspath(t["path"])
+                    startLine = t.get("start_line", 1)
+                    endLine = t.get("end_line")
+                    print(f"{Fore.CYAN}[Exec] Reading file: {path}")
+                    try:
+                        contentRaw = ""
+                        try:
+                            with open(path, 'r', encoding='utf-8') as f:
+                                linesAll = [line.rstrip('\n') for line in f.readlines()]
+                        except UnicodeDecodeError:
+                            # Fallback to system encoding or binary
+                            try:
+                                with open(path, 'r', encoding=locale.getpreferredencoding()) as f:
+                                    linesAll = [line.rstrip('\n') for line in f.readlines()]
+                            except Exception:
+                                # Final fallback: read as binary and replace errors
+                                with open(path, 'r', encoding='utf-8', errors='replace') as f:
+                                    linesAll = [line.rstrip('\n') for line in f.readlines()]
+                                    
+                        totalLines = len(linesAll)
+                        actualEnd = endLine if endLine and endLine <= totalLines else totalLines
+                        linesTarget = linesAll[startLine-1 : actualEnd]
+                        content = "\n".join(linesTarget)
+                        observations.append(
+                            f"SUCCESS: Read {path}\n"
+                            f"Lines: {totalLines} | Range: {startLine}-{actualEnd}\n"
+                            f"Content:\n{content}"
+                        )
+                    except Exception as e:
+                        observations.append(f"FAILURE: {str(e)}")
+
+                elif t["type"] == "run_command":
+                    cmd = t["command"]
+                    dangerousCmds = ["rm -rf", "format", "del /f/s/q", "mkfs"]
+                    if any(d in cmd.lower() for d in dangerousCmds):
+                        observations.append(f"FAILURE: Dangerous command blocked: {cmd}")
+                    else:
+                        print(f"{Fore.CYAN}[Exec] Running command: {cmd}")
+                        try:
+                            # Capture bytes to handle potential encoding issues (Void Logic: Robustness)
+                            result = subprocess.run(
+                                cmd, shell=True, capture_output=True, text=False
+                            )
+                            
+                            def decodeBytes(b: bytes) -> str:
+                                try:
+                                    return b.decode('utf-8')
+                                except UnicodeDecodeError:
+                                    try:
+                                        return b.decode(locale.getpreferredencoding())
+                                    except Exception:
+                                        return b.decode('utf-8', errors='replace')
+                            
+                            stdoutStr = decodeBytes(result.stdout)
+                            stderrStr = decodeBytes(result.stderr)
+                            
+                            output = f"Stdout:\n{stdoutStr}\nStderr:\n{stderrStr}"
+                            observations.append(f"SUCCESS: Command executed\n{output}")
+                        except Exception as e:
+                            observations.append(f"FAILURE: {str(e)}")
+
+                if observations:
+                    self.historyOfMessages.append({"role": "user", "content": "\n".join(observations)})
+            
+            except Exception as e:
+                print(f"{Fore.RED}[Cycle Error] {str(e)}{Style.RESET_ALL}")
+                self.historyOfMessages.append({"role": "user", "content": f"ERROR: Agent crashed with error: {str(e)}"})
+                break
         
         if countCycle >= self.config.maxCycles:
             print(f"{Fore.RED}[Tip] Max cycles reached.{Style.RESET_ALL}")
