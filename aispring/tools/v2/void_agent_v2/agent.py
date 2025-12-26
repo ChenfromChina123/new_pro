@@ -53,6 +53,8 @@ class VoidAgent:
 7. **FOCUS FIRST**: The user's current request has the highest priority. Only do what the user explicitly asked.
 8. **NO OVER-EXECUTION**: Do NOT search/read extra files, do NOT propose unrelated improvements, and do NOT create README unless asked.
 9. **STOP AFTER TASK**: After completing the requested task(s), respond briefly and do NOT continue with additional tasks.
+10. **NO REPETITION**: Do NOT repeat or paraphrase the user's rules, project tree, or any provided context unless explicitly asked.
+11. **NO BOILERPLATE**: Do NOT output greetings, capability lists, or generic prompts. Answer directly.
 
 ## 📋 TAG SYNTAX (EXACTLY AS SHOWN)
 
@@ -122,20 +124,28 @@ class VoidAgent:
         except Exception:
             treeOfCwd = f"{cwd}/"
 
-        sectionUserRules = ""
-        if contentOfRules:
-            sectionUserRules = f"\n## 👤 USER RULES (FROM .voidrules)\n{contentOfRules}\n"
+        rulesBlock = contentOfRules or ""
 
         return (
-            "## 🧩 CURRENT CONTEXT\n"
+            "IMPORTANT: The following CONTEXT is input-only. Do NOT quote, repeat, or summarize it unless the user asks.\n"
+            "IMPORTANT: Answer only the user's question. No greetings. No capability lists.\n"
+            "\n"
+            "BEGIN_CONTEXT\n"
             f"OPERATING SYSTEM: {osName}\n"
             f"PATH SEPARATOR: {sep}\n"
             f"CURRENT DIRECTORY: {cwd}\n"
-            f"{sectionUserRules}"
-            "## 📁 PROJECT TREE (CWD)\n"
-            f"{treeOfCwd}\n"
             "\n"
-            "## ❓ USER QUESTION\n"
+            "USER_RULES_FROM_DOT_VOIDRULES:\n"
+            "```text\n"
+            f"{rulesBlock}\n"
+            "```\n"
+            "\n"
+            "PROJECT_TREE:\n"
+            "```text\n"
+            f"{treeOfCwd}\n"
+            "```\n"
+            "END_CONTEXT\n"
+            "\n"
             f"{inputOfUser}"
         )
 
