@@ -4,6 +4,7 @@ import subprocess
 import requests
 import glob
 import fnmatch
+import locale
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Any, Tuple
 from colorama import init, Fore, Style
@@ -327,10 +328,24 @@ PATH SEPARATOR: {sep}
                 else:
                     print(f"{Fore.CYAN}[Exec] Running command: {cmd}")
                     try:
+                        # Capture bytes to handle potential encoding issues (Void Logic: Robustness)
                         result = subprocess.run(
-                            cmd, shell=True, capture_output=True, text=True, encoding='utf-8'
+                            cmd, shell=True, capture_output=True, text=False
                         )
-                        output = f"Stdout:\n{result.stdout}\nStderr:\n{result.stderr}"
+                        
+                        def decodeBytes(b: bytes) -> str:
+                            try:
+                                return b.decode('utf-8')
+                            except UnicodeDecodeError:
+                                try:
+                                    return b.decode(locale.getpreferredencoding())
+                                except Exception:
+                                    return b.decode('utf-8', errors='replace')
+                        
+                        stdoutStr = decodeBytes(result.stdout)
+                        stderrStr = decodeBytes(result.stderr)
+                        
+                        output = f"Stdout:\n{stdoutStr}\nStderr:\n{stderrStr}"
                         observations.append(f"SUCCESS: Command executed\n{output}")
                     except Exception as e:
                         observations.append(f"FAILURE: {str(e)}")
