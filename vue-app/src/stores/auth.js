@@ -68,6 +68,16 @@ export const useAuthStore = defineStore('auth', () => {
         const chatStore = useChatStore()
         await chatStore.fetchSessions()
         
+        // 【新增】登录成功后获取设置并同步一次主题
+        const { useSettingsStore } = await import('./settings')
+        const settingsStore = useSettingsStore()
+        const settingsResult = await settingsStore.fetchSettings()
+        if (settingsResult.success) {
+          const { useThemeStore } = await import('./theme')
+          const themeStore = useThemeStore()
+          themeStore.setDarkMode(settingsStore.settings.theme === 'dark')
+        }
+        
         return { success: true }
       }
       return { success: false, message: '登录失败' }

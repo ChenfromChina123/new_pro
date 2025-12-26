@@ -22,18 +22,18 @@
         <div 
           class="sidebar-action-btn theme-toggle" 
           :title="themeStore.isDarkMode ? '切换到浅色模式' : '切换到深色模式'" 
-          @click="handleToggleDarkMode"
+          @click.stop="handleToggleDarkMode"
         >
           <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" />
         </div>
         
-        <router-link 
-          to="/settings" 
-          class="sidebar-action-btn settings-link"
+        <div 
+          class="sidebar-action-btn settings-btn"
           title="设置"
+          @click.stop="router.push('/settings')"
         >
           <i class="fas fa-cog" />
-        </router-link>
+        </div>
       </div>
     </div>
 
@@ -637,8 +637,9 @@ onMounted(() => {
 .sidebar-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   flex-shrink: 0;
+  margin-left: 8px;
 }
 
 .sidebar-action-btn {
