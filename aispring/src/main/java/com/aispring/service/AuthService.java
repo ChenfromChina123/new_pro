@@ -39,7 +39,7 @@ public class AuthService {
     private final UserDetailsService userDetailsService;
     private final UserService userService;
     
-    @Value("${verification.code-expire-minutes}")
+    @Value("${app.auth.verification-code-expire-minutes:5}")
     private Integer codeExpireMinutes;
     
     /**

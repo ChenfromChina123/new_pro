@@ -40,10 +40,6 @@ spring:
           min-idle: 5
           max-wait: 2000ms
         shutdown-timeout: 200ms
-    # Session状态TTL配置
-    session-state:
-      ttl: 86400  # 24小时（秒）
-      inactive-ttl: 3600  # 非活跃会话1小时后过期（秒）
   
   # 文件上传配置
   servlet:
@@ -117,17 +113,6 @@ ai:
     api-url: ${DOUBAO_BASEURL:https://ark.cn-beijing.volces.com}
   max-tokens: ${MAX_TOKEN:8192}
 
-# 文件存储配置
-file:
-  upload-dir: ${FILE_UPLOAD_DIR:uploads}
-  cloud-disk-dir: ${CLOUD_DISK_DIR:cloud_disk}
-  max-file-size: ${MAX_FILE_SIZE:524288000}  # 500MB
-  allowed-extensions: jpg,jpeg,png,gif,bmp,svg,webp,txt,md,csv,json,xml,html,css,js,doc,docx,pdf,rtf,xls,xlsx,ppt,pptx,mp4,avi,mov,wmv,flv,mkv,zip,rar,7z,tar,gz
-
-# 验证码配置
-verification:
-  code-expire-minutes: 5
-
 # 日志配置
 logging:
   level:
@@ -157,6 +142,8 @@ app:
   name: AI智能学习导师
   version: 1.0.0
   description: 基于Spring Boot的AI智能学习助手
+  auth:
+    verification-code-expire-minutes: 5
   storage:
     root-dir: ${APP_STORAGE_ROOT:./}
     cloud-disk-dir: ${CLOUD_DISK_DIR:cloud_disk}

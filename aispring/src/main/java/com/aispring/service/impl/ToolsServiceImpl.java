@@ -26,10 +26,6 @@ public class ToolsServiceImpl implements ToolsService {
         // 目前没有注册任何工具，因为 AI 终端模块已被移除
     }
     
-    private static void registerTool(String name, String description, Map<String, String> params) {
-        TOOL_REGISTRY.put(name, new ToolDefinition(name, description, params));
-    }
-    
     @Override
     public String validateParams(String toolName, Map<String, Object> params) {
         ToolDefinition tool = TOOL_REGISTRY.get(toolName);
@@ -93,9 +89,7 @@ public class ToolsServiceImpl implements ToolsService {
      * 工具 definition
      */
     private static class ToolDefinition {
-        @SuppressWarnings("unused")
         final String name;
-        @SuppressWarnings("unused")
         final String description;
         final Map<String, String> params; // 参数名 -> 参数描述
         
