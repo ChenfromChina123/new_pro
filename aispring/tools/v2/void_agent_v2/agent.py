@@ -9,12 +9,16 @@ from .config import Config
 from .console import Fore, Style
 from .files import (
     calculate_diff_of_lines,
+    edit_lines,
     ensure_parent_dir,
+    generate_dir_tree,
     generate_tree_structure,
+    generate_match_tree,
     read_range,
     search_files,
+    search_in_files,
 )
-from .logs import log_request
+from .logs import append_edit_history, log_request, rollback_last_edit
 from .tags import parse_stack_of_tags
 
 
@@ -37,6 +41,12 @@ class VoidAgent:
         sep = os.sep
         osName = platform.system()
 
+        treeOfCwd = ""
+        try:
+            treeOfCwd = generate_dir_tree(cwd, max_depth=3, max_entries=300)
+        except Exception:
+            treeOfCwd = f"{cwd}/"
+
         contentOfRules = ""
         pathOfRules = os.path.join(cwd, ".voidrules")
         if os.path.exists(pathOfRules):
@@ -54,13 +64,16 @@ class VoidAgent:
 OPERATING SYSTEM: {osName}
 CURRENT DIRECTORY: {cwd}
 PATH SEPARATOR: {sep}
+## 📁 PROJECT TREE (CWD)
+{treeOfCwd}
 {sectionUserRules}
 ## 🔴 VOID RULES (STRICT ADHERENCE REQUIRED)
 1. **PASSIVE VALIDATION**: Do NOT execute commands blindly. You must PROPOSE actions. The user acts as the validator.
-2. **SEARCH FIRST**: You must SEARCH the codebase before modifying it to ensure you have the full context.
-3. **ONE TASK = ONE TAG**: Output MAX 1 closed XML tag per reply.
+2. **SEARCH FIRST (REGEX FIRST)**: When looking for problem code, prefer REGEX searching in file contents.
+3. **MULTI TASKS ALLOWED**: You may output multiple closed tags per reply; they will be executed in order.
 4. **NO TASK = NO TAGS**: Reply with natural language only if no action is needed.
 5. **NAMING CONVENTION**: Variable names in your code should follow 'bOfA' pattern (e.g., contentOfFile).
+6. **EDIT EXISTING CODE BY LINE**: If a file already exists, prefer editing by lines instead of rewriting the whole file.
 
 ## 📋 TAG SYNTAX (EXACTLY AS SHOWN)
 
@@ -69,11 +82,28 @@ PATH SEPARATOR: {sep}
   <pattern>**/*.py</pattern>
 </search_files>
 
+### 1b. Search In Files (regex + glob + root)
+<search_in_files>
+  <regex>VoidAgent\\b</regex>
+  <glob>**/*.py</glob>
+  <root>.</root>
+  <max_matches>200</max_matches>
+</search_in_files>
+
 ### 2. Write File (path + content required)
 <write_file>
   <path>path/to/file</path>
   <content>file_content</content>
 </write_file>
+
+### 2b. Edit Lines (delete range, then insert at line)
+<edit_lines>
+  <path>path/to/file.py</path>
+  <delete_start>10</delete_start>
+  <delete_end>20</delete_end>
+  <insert_at>10</insert_at>
+  <content>new lines...</content>
+</edit_lines>
 
 ### 3. Read File (path required, start_line/end_line optional)
 <read_file>
@@ -88,7 +118,6 @@ PATH SEPARATOR: {sep}
 </run_command>
 
 ## 🚫 FORBIDDEN
-- Multiple tags in one reply
 - Unclosed tags
 - Dangerous commands (rm -rf, etc.) without explicit user request
 """
@@ -99,6 +128,13 @@ PATH SEPARATOR: {sep}
                 self.cacheOfBackups[pathOfFile] = f.read()
 
     def rollbackLastOperation(self):
+        ok, msg = rollback_last_edit()
+        if ok:
+            print(f"{Fore.GREEN}{msg}{Style.RESET_ALL}")
+            if self.historyOfOperations:
+                self.historyOfOperations.pop()
+            return
+
         if not self.historyOfOperations:
             print(f"{Fore.RED}No operation to rollback{Style.RESET_ALL}")
             return
@@ -193,112 +229,195 @@ PATH SEPARATOR: {sep}
                 if not tasks:
                     keywordsTool = ["write", "read", "run", "command", "file", "search"]
                     if any(kw in replyFull.lower() for kw in keywordsTool):
-                        feedbackError = "ERROR: Invalid Format! Output MAX 1 closed tag. No tag if no task."
+                        feedbackError = "ERROR: Invalid Format! Use one or more closed tags. No tag if no task."
                         self.historyOfMessages.append({"role": "user", "content": feedbackError})
                     else:
                         break
 
-                print(f"{Fore.YELLOW}[Pending Task] {tasks[0]}{Style.RESET_ALL}")
-
-                t = tasks[0]
-                isWhitelisted = False
-
-                if t["type"] in self.config.whitelistedTools:
-                    isWhitelisted = True
-                elif t["type"] == "run_command":
-                    cmd = t["command"].strip()
-                    baseCmd = cmd.split()[0] if cmd else ""
-                    if baseCmd in self.config.whitelistedCommands:
-                        isWhitelisted = True
-
-                if isWhitelisted:
-                    print(f"{Fore.GREEN}>> Auto-approved whitelisted task.{Style.RESET_ALL}")
-                    confirm = "y"
-                else:
-                    confirm = input(f"{Style.BRIGHT}Execute this task? (y/n): ")
-
-                if confirm.lower() != "y":
-                    print(f"{Fore.BLUE}User cancelled execution{Style.RESET_ALL}")
-                    self.historyOfMessages.append({"role": "user", "content": "User cancelled execution"})
-                    break
-
                 observations: List[str] = []
-                t = tasks[0]
+                isCancelled = False
+                for t in tasks:
+                    print(f"{Fore.YELLOW}[Pending Task] {t}{Style.RESET_ALL}")
 
-                if t["type"] == "search_files":
-                    pattern = t["pattern"]
-                    print(f"{Fore.CYAN}[Exec] Searching files: {pattern}")
-                    try:
-                        results = search_files(pattern, os.getcwd())
-                        if results:
-                            treeOutput = generate_tree_structure(results, os.getcwd())
-                            observations.append(f"SUCCESS: Found {len(results)} files:\n{treeOutput}")
-                        else:
-                            observations.append(f"SUCCESS: No files found matching {pattern}")
-                    except Exception as e:
-                        observations.append(f"FAILURE: {str(e)}")
+                    isWhitelisted = False
+                    if t["type"] in self.config.whitelistedTools:
+                        isWhitelisted = True
+                    elif t["type"] == "run_command":
+                        cmd_first = str(t.get("command", "")).strip().splitlines()[:1]
+                        baseCmd = cmd_first[0].split()[0] if cmd_first and cmd_first[0] else ""
+                        if baseCmd in self.config.whitelistedCommands:
+                            isWhitelisted = True
 
-                elif t["type"] == "write_file":
-                    path = os.path.abspath(t["path"])
-                    content = t["content"]
-                    print(f"{Fore.CYAN}[Exec] Writing file: {path}")
-                    try:
-                        self.backupFile(path)
-                        ensure_parent_dir(path)
-                        added, deleted = calculate_diff_of_lines(path, content)
-                        with open(path, "w", encoding="utf-8") as f:
-                            f.write(content)
-                        self.historyOfOperations.append((path, added, deleted))
-                        observations.append(f"SUCCESS: Saved to {path} | +{added} | -{deleted}")
-                    except Exception as e:
-                        observations.append(f"FAILURE: {str(e)}")
-
-                elif t["type"] == "read_file":
-                    path = os.path.abspath(t["path"])
-                    startLine = t.get("start_line", 1)
-                    endLine = t.get("end_line")
-                    print(f"{Fore.CYAN}[Exec] Reading file: {path}")
-                    try:
-                        totalLines, actualEnd, content = read_range(path, startLine, endLine)
-                        observations.append(
-                            f"SUCCESS: Read {path}\n"
-                            f"Lines: {totalLines} | Range: {startLine}-{actualEnd}\n"
-                            f"Content:\n{content}"
-                        )
-                    except Exception as e:
-                        observations.append(f"FAILURE: {str(e)}")
-
-                elif t["type"] == "run_command":
-                    cmd = t["command"]
-                    dangerousCmds = ["rm -rf", "format", "del /f/s/q", "mkfs"]
-                    if any(d in cmd.lower() for d in dangerousCmds):
-                        observations.append(f"FAILURE: Dangerous command blocked: {cmd}")
+                    if isWhitelisted:
+                        print(f"{Fore.GREEN}>> Auto-approved whitelisted task.{Style.RESET_ALL}")
+                        confirm = "y"
                     else:
-                        print(f"{Fore.CYAN}[Exec] Running command: {cmd}")
+                        confirm = input(f"{Style.BRIGHT}Execute this task? (y/n): ")
+
+                    if confirm.lower() != "y":
+                        print(f"{Fore.BLUE}User cancelled execution{Style.RESET_ALL}")
+                        self.historyOfMessages.append({"role": "user", "content": "User cancelled execution"})
+                        isCancelled = True
+                        break
+
+                    if t["type"] == "search_files":
+                        pattern = t["pattern"]
+                        print(f"{Fore.CYAN}[Exec] Searching files: {pattern}")
                         try:
-                            result = subprocess.run(cmd, shell=True, capture_output=True, text=False)
-
-                            def decodeBytes(b: bytes) -> str:
-                                try:
-                                    return b.decode("utf-8")
-                                except UnicodeDecodeError:
-                                    try:
-                                        import locale
-
-                                        return b.decode(locale.getpreferredencoding())
-                                    except Exception:
-                                        return b.decode("utf-8", errors="replace")
-
-                            stdoutStr = decodeBytes(result.stdout)
-                            stderrStr = decodeBytes(result.stderr)
-
-                            output = f"Stdout:\n{stdoutStr}\nStderr:\n{stderrStr}"
-                            observations.append(f"SUCCESS: Command executed\n{output}")
+                            results = search_files(pattern, os.getcwd())
+                            if results:
+                                treeOutput = generate_tree_structure(results, os.getcwd())
+                                observations.append(f"SUCCESS: Found {len(results)} files:\n{treeOutput}")
+                            else:
+                                observations.append(f"SUCCESS: No files found matching {pattern}")
                         except Exception as e:
                             observations.append(f"FAILURE: {str(e)}")
 
+                    elif t["type"] == "search_in_files":
+                        regex = t["regex"]
+                        glob_pattern = t.get("glob") or "**/*"
+                        root = os.path.abspath(t.get("root") or ".")
+                        max_matches = int(t.get("max_matches") or 200)
+                        print(f"{Fore.CYAN}[Exec] Searching in files (regex): {regex}")
+                        try:
+                            matches_by_path, error = search_in_files(
+                                regex=regex,
+                                root_dir=root,
+                                glob_pattern=glob_pattern,
+                                max_matches=max_matches,
+                            )
+                            if error:
+                                observations.append(f"FAILURE: Invalid regex: {error}")
+                            elif matches_by_path:
+                                treeOutput = generate_match_tree(matches_by_path, root)
+                                totalMatches = sum(len(v) for v in matches_by_path.values())
+                                observations.append(
+                                    "SUCCESS: Regex matches found\n"
+                                    f"Regex: {regex}\n"
+                                    f"Glob: {glob_pattern}\n"
+                                    f"Matches: {totalMatches} (files: {len(matches_by_path)})\n"
+                                    f"{treeOutput}"
+                                )
+                            else:
+                                observations.append(
+                                    "SUCCESS: No regex matches found\n"
+                                    f"Regex: {regex}\n"
+                                    f"Glob: {glob_pattern}\n"
+                                    f"Root: {root}"
+                                )
+                        except Exception as e:
+                            observations.append(f"FAILURE: {str(e)}")
+
+                    elif t["type"] == "write_file":
+                        path = os.path.abspath(t["path"])
+                        content = t["content"]
+                        print(f"{Fore.CYAN}[Exec] Writing file: {path}")
+                        try:
+                            self.backupFile(path)
+                            ensure_parent_dir(path)
+                            before_content = self.cacheOfBackups.get(path, "")
+                            added, deleted = calculate_diff_of_lines(path, content)
+                            with open(path, "w", encoding="utf-8") as f:
+                                f.write(content)
+                            self.historyOfOperations.append((path, added, deleted))
+                            append_edit_history(
+                                path_of_file=path,
+                                before_content=before_content,
+                                after_content=content,
+                                meta={"type": "write_file"},
+                            )
+                            observations.append(f"SUCCESS: Saved to {path} | +{added} | -{deleted}")
+                        except Exception as e:
+                            observations.append(f"FAILURE: {str(e)}")
+
+                    elif t["type"] == "edit_lines":
+                        path = os.path.abspath(t["path"])
+                        delete_start = t.get("delete_start")
+                        delete_end = t.get("delete_end")
+                        insert_at = t.get("insert_at")
+                        content = t.get("content", "")
+                        print(f"{Fore.CYAN}[Exec] Editing lines: {path}")
+                        try:
+                            self.backupFile(path)
+                            ensure_parent_dir(path)
+                            before_content, after_content = edit_lines(
+                                path_of_file=path,
+                                delete_start=delete_start,
+                                delete_end=delete_end,
+                                insert_at=insert_at,
+                                content=content,
+                            )
+                            added, deleted = calculate_diff_of_lines(path, after_content)
+                            with open(path, "w", encoding="utf-8") as f:
+                                f.write(after_content)
+                            self.historyOfOperations.append((path, added, deleted))
+                            append_edit_history(
+                                path_of_file=path,
+                                before_content=before_content,
+                                after_content=after_content,
+                                meta={
+                                    "type": "edit_lines",
+                                    "delete_start": delete_start,
+                                    "delete_end": delete_end,
+                                    "insert_at": insert_at,
+                                },
+                            )
+                            observations.append(f"SUCCESS: Edited {path} | +{added} | -{deleted}")
+                        except Exception as e:
+                            observations.append(f"FAILURE: {str(e)}")
+
+                    elif t["type"] == "read_file":
+                        path = os.path.abspath(t["path"])
+                        startLine = t.get("start_line", 1)
+                        endLine = t.get("end_line")
+                        print(f"{Fore.CYAN}[Exec] Reading file: {path}")
+                        try:
+                            totalLines, actualEnd, content = read_range(path, startLine, endLine)
+                            observations.append(
+                                f"SUCCESS: Read {path}\n"
+                                f"Lines: {totalLines} | Range: {startLine}-{actualEnd}\n"
+                                f"Content:\n{content}"
+                            )
+                        except Exception as e:
+                            observations.append(f"FAILURE: {str(e)}")
+
+                    elif t["type"] == "run_command":
+                        cmd_text = str(t["command"])
+                        commands = [c.strip() for c in cmd_text.splitlines() if c.strip()]
+                        if not commands:
+                            observations.append("FAILURE: Empty command")
+                        else:
+                            for cmd in commands:
+                                dangerousCmds = ["rm -rf", "format", "del /f/s/q", "mkfs"]
+                                if any(d in cmd.lower() for d in dangerousCmds):
+                                    observations.append(f"FAILURE: Dangerous command blocked: {cmd}")
+                                    continue
+                                print(f"{Fore.CYAN}[Exec] Running command: {cmd}")
+                                try:
+                                    result = subprocess.run(cmd, shell=True, capture_output=True, text=False)
+
+                                    def decodeBytes(b: bytes) -> str:
+                                        try:
+                                            return b.decode("utf-8")
+                                        except UnicodeDecodeError:
+                                            try:
+                                                import locale
+
+                                                return b.decode(locale.getpreferredencoding())
+                                            except Exception:
+                                                return b.decode("utf-8", errors="replace")
+
+                                    stdoutStr = decodeBytes(result.stdout)
+                                    stderrStr = decodeBytes(result.stderr)
+                                    output = f"Stdout:\n{stdoutStr}\nStderr:\n{stderrStr}"
+                                    observations.append(f"SUCCESS: Command executed: {cmd}\n{output}")
+                                except Exception as e:
+                                    observations.append(f"FAILURE: {str(e)}")
+
                 if observations:
                     self.historyOfMessages.append({"role": "user", "content": "\n".join(observations)})
+                if isCancelled:
+                    break
 
             except Exception as e:
                 print(f"{Fore.RED}[Cycle Error] {str(e)}{Style.RESET_ALL}")
@@ -309,4 +428,3 @@ PATH SEPARATOR: {sep}
             print(f"{Fore.RED}[Tip] Max cycles reached.{Style.RESET_ALL}")
 
         self.printStatsOfModification()
-

@@ -436,6 +436,7 @@ public class AiChatServiceImpl implements AiChatService {
                                 if (tasksNode.isArray()) {
                                     List<Map<String, Object>> newTasks = new ArrayList<>();
                                     for (JsonNode t : tasksNode) {
+                                        @SuppressWarnings("unchecked")
                                         Map<String, Object> taskMap = objectMapper.convertValue(t, Map.class);
                                         newTasks.add(taskMap);
                                     }
@@ -740,6 +741,8 @@ public class AiChatServiceImpl implements AiChatService {
 
          try (Response response = okHttpClient.newCall(request).execute()) {
              if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
+             
+             if (response.body() == null) throw new IOException("Response body is null");
              
                     InputStream is = response.body().byteStream();
                     // 使用更小的缓冲区，减少延迟
