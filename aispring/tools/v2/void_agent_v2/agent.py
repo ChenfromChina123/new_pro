@@ -1,7 +1,7 @@
 import os
 import platform
 import subprocess
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 
@@ -30,6 +30,7 @@ class VoidAgent:
         self.endpointOfChat = f"{self.config.baseUrl.rstrip('/')}/chat/completions"
         self.historyOfOperations: List[Tuple[str, int, int]] = []
         self.cacheOfBackups: Dict[str, str] = {}
+        self.cacheOfSystemMessage: Optional[Dict[str, str]] = None
 
     def estimateTokensOfMessages(self, messages: List[Dict[str, str]]) -> int:
         totalChars = 0
@@ -120,8 +121,13 @@ PATH SEPARATOR: {sep}
 
 ## 🚫 FORBIDDEN
 - Unclosed tags
-- Dangerous commands (rm -rf, etc.) without explicit user request
+        - Dangerous commands (rm -rf, etc.) without explicit user request
 """
+
+    def getSystemMessage(self) -> Dict[str, str]:
+        if self.cacheOfSystemMessage is None:
+            self.cacheOfSystemMessage = {"role": "system", "content": self.getContextOfSystem()}
+        return self.cacheOfSystemMessage
 
     def backupFile(self, pathOfFile: str):
         if os.path.exists(pathOfFile):
@@ -165,7 +171,7 @@ PATH SEPARATOR: {sep}
         print(f"{Style.BRIGHT}==================================={Style.RESET_ALL}")
 
     def chat(self, inputOfUser: str):
-        msgSystem = {"role": "system", "content": self.getContextOfSystem()}
+        msgSystem = self.getSystemMessage()
         if inputOfUser:
             self.historyOfMessages.append({"role": "user", "content": inputOfUser})
 
@@ -175,8 +181,13 @@ PATH SEPARATOR: {sep}
                 countCycle += 1
                 print(f"{Fore.YELLOW}[Cycle {countCycle}/{self.config.maxCycles}] Processing...{Style.RESET_ALL}")
 
-                messages = [msgSystem] + self.historyOfMessages[-10:]
+                messages = [msgSystem] + self.historyOfMessages
                 estimateTokens = self.estimateTokensOfMessages(messages)
+                if estimateTokens > 115000 and len(self.historyOfMessages) > 60:
+                    head = self.historyOfMessages[:6]
+                    tail = self.historyOfMessages[-54:]
+                    messages = [msgSystem] + head + tail
+                    estimateTokens = self.estimateTokensOfMessages(messages)
                 print(f"{Fore.MAGENTA}[Token Estimate] ~{estimateTokens} tokens{Style.RESET_ALL}")
 
                 try:
