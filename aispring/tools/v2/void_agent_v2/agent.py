@@ -39,17 +39,11 @@ class VoidAgent:
         return int(totalChars / 3)
 
     def getContextOfSystem(self) -> str:
-        cwd = os.getcwd()
         sep = os.sep
         osName = platform.system()
 
-        treeOfCwd = ""
-        try:
-            treeOfCwd = generate_dir_tree(cwd, max_depth=3, max_entries=300)
-        except Exception:
-            treeOfCwd = f"{cwd}/"
-
         contentOfRules = ""
+        cwd = os.getcwd()
         pathOfRules = os.path.join(cwd, ".voidrules")
         if os.path.exists(pathOfRules):
             try:
@@ -62,13 +56,13 @@ class VoidAgent:
         if contentOfRules:
             sectionUserRules = f"\n## 👤 USER RULES (FROM .voidrules)\n{contentOfRules}\n"
 
+        treeOfCwd = ""
+        try:
+            treeOfCwd = generate_dir_tree(cwd, max_depth=3, max_entries=300)
+        except Exception:
+            treeOfCwd = f"{cwd}/"
+
         return f"""# VOID AGENT - STRICT LOGIC & PASSIVE VALIDATION
-OPERATING SYSTEM: {osName}
-CURRENT DIRECTORY: {cwd}
-PATH SEPARATOR: {sep}
-## 📁 PROJECT TREE (CWD)
-{treeOfCwd}
-{sectionUserRules}
 ## 🔴 VOID RULES (STRICT ADHERENCE REQUIRED)
 1. **PASSIVE VALIDATION**: Do NOT execute commands blindly. You must PROPOSE actions. The user acts as the validator.
 2. **SEARCH FIRST (REGEX FIRST)**: When looking for problem code, prefer REGEX searching in file contents.
@@ -121,13 +115,23 @@ PATH SEPARATOR: {sep}
 
 ## 🚫 FORBIDDEN
 - Unclosed tags
-        - Dangerous commands (rm -rf, etc.) without explicit user request
+- Dangerous commands (rm -rf, etc.) without explicit user request
+{sectionUserRules}
+## 🧩 ENV
+OPERATING SYSTEM: {osName}
+PATH SEPARATOR: {sep}
+CURRENT DIRECTORY: {cwd}
+## 📁 PROJECT TREE (CWD)
+{treeOfCwd}
 """
 
     def getSystemMessage(self) -> Dict[str, str]:
         if self.cacheOfSystemMessage is None:
             self.cacheOfSystemMessage = {"role": "system", "content": self.getContextOfSystem()}
         return self.cacheOfSystemMessage
+
+    def invalidateSystemMessageCache(self) -> None:
+        self.cacheOfSystemMessage = None
 
     def backupFile(self, pathOfFile: str):
         if os.path.exists(pathOfFile):
@@ -339,6 +343,7 @@ PATH SEPARATOR: {sep}
                         content = t["content"]
                         print(f"{Fore.CYAN}[Exec] Writing file: {path}")
                         try:
+                            existedBefore = os.path.exists(path)
                             self.backupFile(path)
                             ensure_parent_dir(path)
                             before_content = self.cacheOfBackups.get(path, "")
@@ -352,6 +357,8 @@ PATH SEPARATOR: {sep}
                                 after_content=content,
                                 meta={"type": "write_file"},
                             )
+                            if not existedBefore or os.path.basename(path).lower() == ".voidrules":
+                                self.invalidateSystemMessageCache()
                             observations.append(f"SUCCESS: Saved to {path} | +{added} | -{deleted}")
                         except Exception as e:
                             observations.append(f"FAILURE: {str(e)}")
@@ -364,6 +371,7 @@ PATH SEPARATOR: {sep}
                         content = t.get("content", "")
                         print(f"{Fore.CYAN}[Exec] Editing lines: {path}")
                         try:
+                            existedBefore = os.path.exists(path)
                             self.backupFile(path)
                             ensure_parent_dir(path)
                             before_content, after_content = edit_lines(
@@ -388,6 +396,8 @@ PATH SEPARATOR: {sep}
                                     "insert_at": insert_at,
                                 },
                             )
+                            if not existedBefore or os.path.basename(path).lower() == ".voidrules":
+                                self.invalidateSystemMessageCache()
                             observations.append(f"SUCCESS: Edited {path} | +{added} | -{deleted}")
                         except Exception as e:
                             observations.append(f"FAILURE: {str(e)}")
