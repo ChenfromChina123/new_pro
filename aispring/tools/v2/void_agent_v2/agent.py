@@ -15,6 +15,7 @@ from .files import (
     generate_tree_structure,
     generate_match_tree,
     read_range,
+    read_range_numbered,
     search_files,
     search_in_files,
 )
@@ -372,7 +373,7 @@ PATH SEPARATOR: {sep}
                         endLine = t.get("end_line")
                         print(f"{Fore.CYAN}[Exec] Reading file: {path}")
                         try:
-                            totalLines, actualEnd, content = read_range(path, startLine, endLine)
+                            totalLines, actualEnd, content = read_range_numbered(path, startLine, endLine)
                             observations.append(
                                 f"SUCCESS: Read {path}\n"
                                 f"Lines: {totalLines} | Range: {startLine}-{actualEnd}\n"

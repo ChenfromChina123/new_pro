@@ -1,18 +1,57 @@
-from typing import Any, Dict, List
+import textwrap
+from typing import Any, Dict, List, Optional, Tuple
 
 
-def find_substring(source: str, sub: str) -> str:
-    s, e = f"<{sub}>", f"</{sub}>"
+def _find_tag_span(source: str, tag: str) -> Optional[Tuple[int, int]]:
+    """返回指定tag在source中对应的(inner_start, inner_end)区间，大小写不敏感。"""
+    s = f"<{tag}>"
+    e = f"</{tag}>"
     si = source.find(s)
-    ei = source.find(e)
-    if si != -1 and ei != -1:
-        return source[si + len(s) : ei].strip()
-    s_lower, e_lower = f"<{sub.lower()}>", f"</{sub.lower()}>"
-    si_lower = source.lower().find(s_lower)
-    ei_lower = source.lower().find(e_lower)
-    if si_lower != -1 and ei_lower != -1:
-        return source[si_lower + len(s_lower) : ei_lower].strip()
-    return ""
+    if si != -1:
+        ei = source.find(e, si + len(s))
+        if ei != -1:
+            return si + len(s), ei
+
+    source_lower = source.lower()
+    s_lower = f"<{tag.lower()}>"
+    e_lower = f"</{tag.lower()}>"
+    si_lower = source_lower.find(s_lower)
+    if si_lower != -1:
+        ei_lower = source_lower.find(e_lower, si_lower + len(s_lower))
+        if ei_lower != -1:
+            return si_lower + len(s_lower), ei_lower
+
+    return None
+
+
+def _normalize_block_text(raw: str) -> str:
+    """去除标签缩进带来的公共前导空白，保留相对缩进。"""
+    if raw.startswith("\r\n"):
+        raw = raw[2:]
+    elif raw.startswith("\n"):
+        raw = raw[1:]
+
+    if raw.endswith("\r\n"):
+        raw = raw[:-2]
+    elif raw.endswith("\n"):
+        raw = raw[:-1]
+
+    return textwrap.dedent(raw)
+
+
+def find_substring(source: str, sub: str, *, keep_indentation: bool = False) -> str:
+    """提取子标签内容。
+
+    - keep_indentation=False：默认行为，去掉首尾空白。
+    - keep_indentation=True：用于<content>类多行块，保留相对缩进并去除标签缩进影响。
+    """
+    span = _find_tag_span(source, sub)
+    if span is None:
+        return ""
+    inner = source[span[0] : span[1]]
+    if keep_indentation:
+        return _normalize_block_text(inner)
+    return inner.strip()
 
 
 def parse_stack_of_tags(text: str) -> List[Dict[str, Any]]:
@@ -52,7 +91,7 @@ def parse_stack_of_tags(text: str) -> List[Dict[str, Any]]:
 
         if next_tag == "write_file":
             task["path"] = find_substring(inner, "path")
-            task["content"] = find_substring(inner, "content")
+            task["content"] = find_substring(inner, "content", keep_indentation=True)
             if not task["path"] or not task["content"]:
                 idx = e_idx + len(end_tag)
                 continue
@@ -89,7 +128,7 @@ def parse_stack_of_tags(text: str) -> List[Dict[str, Any]]:
             task["delete_start"] = int(delete_start_str) if delete_start_str.strip() else None
             task["delete_end"] = int(delete_end_str) if delete_end_str.strip() else None
             task["insert_at"] = int(insert_at_str) if insert_at_str.strip() else None
-            task["content"] = find_substring(inner, "content")
+            task["content"] = find_substring(inner, "content", keep_indentation=True)
             if not task["path"]:
                 idx = e_idx + len(end_tag)
                 continue
