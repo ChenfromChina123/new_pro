@@ -22,7 +22,7 @@
           class="icon-btn" 
           title="切换主题" 
           aria-label="切换主题"
-          @click="themeStore.toggleDarkMode()"
+          @click="handleToggleDarkMode"
         >
           <i
             v-if="themeStore.isDarkMode"
@@ -87,12 +87,28 @@ import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
+import { useSettingsStore } from '@/stores/settings'
 import { API_CONFIG } from '@/config/api'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const themeStore = useThemeStore()
+const settingsStore = useSettingsStore()
 const avatarUrl = ref(null)
+
+/**
+ * 处理主题切换并同步到后端
+ */
+const handleToggleDarkMode = async () => {
+  themeStore.toggleDarkMode()
+  
+  // 同步到后端设置 (如果已登录)
+  if (authStore.isLoggedIn) {
+    await settingsStore.updateSettings({ 
+      theme: themeStore.isDarkMode ? 'dark' : 'light' 
+    })
+  }
+}
 
 // 移动端菜单状态
 const isMobileMenuOpen = ref(false)

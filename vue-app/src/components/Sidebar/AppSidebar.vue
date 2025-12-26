@@ -23,7 +23,7 @@
           type="button"
           class="sidebar-icon-btn" 
           :title="themeStore.isDarkMode ? '切换到浅色模式' : '切换到深色模式'" 
-          @click.stop="themeStore.toggleDarkMode()"
+          @click.stop="handleToggleDarkMode"
         >
           <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" />
         </button>
@@ -284,6 +284,7 @@ import { useChatStore } from '@/stores/chat'
 import { useThemeStore } from '@/stores/theme'
 import { useUIStore } from '@/stores/ui'
 import { useCloudDiskStore } from '@/stores/cloudDisk'
+import { useSettingsStore } from '@/stores/settings'
 import { storeToRefs } from 'pinia'
 import { API_CONFIG } from '@/config/api'
 import FolderTreeItem from '@/components/FolderTreeItem.vue'
@@ -296,11 +297,26 @@ const chatStore = useChatStore()
 const themeStore = useThemeStore()
 const uiStore = useUIStore()
 const cloudDiskStore = useCloudDiskStore()
+const settingsStore = useSettingsStore()
 
 // 状态
 const newFolderName = ref('')
 const conflictDialogVisible = ref(false)
 const currentConflictFiles = ref([])
+
+/**
+ * 处理主题切换并同步到后端
+ */
+const handleToggleDarkMode = async () => {
+  themeStore.toggleDarkMode()
+  
+  // 同步到后端设置 (如果已登录)
+  if (authStore.isLoggedIn) {
+    await settingsStore.updateSettings({ 
+      theme: themeStore.isDarkMode ? 'dark' : 'light' 
+    })
+  }
+}
 
 // 路由判断
 const isChatRoute = computed(() => route.path.startsWith('/chat'))
@@ -622,7 +638,7 @@ onMounted(() => {
 .sidebar-actions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
 }
 
 .sidebar-icon-btn {
@@ -636,6 +652,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  z-index: 1;
 }
 
 .sidebar-icon-btn:hover {
