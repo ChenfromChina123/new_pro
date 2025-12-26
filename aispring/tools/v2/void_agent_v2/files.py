@@ -52,14 +52,14 @@ def ensure_parent_dir(path_of_file: str) -> None:
 def read_lines_robust(path_of_file: str) -> List[str]:
     try:
         with open(path_of_file, "r", encoding="utf-8") as f:
-            return [line.rstrip("\n") for line in f.readlines()]
+            return [line.rstrip("\r\n") for line in f.readlines()]
     except UnicodeDecodeError:
         try:
             with open(path_of_file, "r", encoding=locale.getpreferredencoding()) as f:
-                return [line.rstrip("\n") for line in f.readlines()]
+                return [line.rstrip("\r\n") for line in f.readlines()]
         except Exception:
             with open(path_of_file, "r", encoding="utf-8", errors="replace") as f:
-                return [line.rstrip("\n") for line in f.readlines()]
+                return [line.rstrip("\r\n") for line in f.readlines()]
 
 
 def read_range(path_of_file: str, start_line: int = 1, end_line: Optional[int] = None) -> Tuple[int, int, str]:
@@ -69,6 +69,20 @@ def read_range(path_of_file: str, start_line: int = 1, end_line: Optional[int] =
     lines_target = lines_all[start_line - 1 : actual_end]
     content = "\n".join(lines_target)
     return total_lines, actual_end, content
+
+
+def read_range_numbered(
+    path_of_file: str,
+    start_line: int = 1,
+    end_line: Optional[int] = None,
+) -> Tuple[int, int, str]:
+    lines_all = read_lines_robust(path_of_file)
+    total_lines = len(lines_all)
+    actual_end = end_line if end_line and end_line <= total_lines else total_lines
+    lines_target = lines_all[start_line - 1 : actual_end]
+    width = len(str(actual_end if actual_end > 0 else 1))
+    numbered = [f"{i:>{width}}: {line}" for i, line in enumerate(lines_target, start=start_line)]
+    return total_lines, actual_end, "\n".join(numbered)
 
 
 def edit_lines(
