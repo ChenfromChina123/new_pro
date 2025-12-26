@@ -20,18 +20,17 @@
       
       <div class="sidebar-actions">
         <div 
-          class="sidebar-icon-btn theme-toggle-wrapper" 
+          class="sidebar-action-btn theme-toggle" 
           :title="themeStore.isDarkMode ? '切换到浅色模式' : '切换到深色模式'" 
-          @click.stop="handleToggleDarkMode"
+          @click="handleToggleDarkMode"
         >
           <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" />
         </div>
         
         <router-link 
           to="/settings" 
-          class="sidebar-icon-btn settings-link"
+          class="sidebar-action-btn settings-link"
           title="设置"
-          @click.stop
         >
           <i class="fas fa-cog" />
         </router-link>
@@ -638,30 +637,32 @@ onMounted(() => {
 .sidebar-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   flex-shrink: 0;
 }
 
-.sidebar-icon-btn {
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  padding: 8px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
+.sidebar-action-btn {
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
-  z-index: 1;
-  width: 36px;
-  height: 36px;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: transparent;
+  border: none;
+  text-decoration: none;
 }
 
-.sidebar-icon-btn:hover {
+.sidebar-action-btn:hover {
   background-color: var(--bg-tertiary);
   color: var(--text-primary);
+}
+
+.sidebar-action-btn i {
+  font-size: 16px;
 }
 
 .sidebar-nav {

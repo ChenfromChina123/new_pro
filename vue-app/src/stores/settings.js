@@ -35,12 +35,11 @@ export const useSettingsStore = defineStore('settings', () => {
           emailNotifications: response.emailNotifications !== undefined ? response.emailNotifications : false
         }
         
-        // 同步本地主题设置
+        // 【重构】仅在初始化加载时同步一次主题，之后主题状态由 themeStore 独立控制
         const themeStore = useThemeStore()
-        if (settings.value.theme === 'dark' && !themeStore.isDarkMode) {
-          themeStore.setDarkMode(true)
-        } else if (settings.value.theme === 'light' && themeStore.isDarkMode) {
-          themeStore.setDarkMode(false)
+        const isDark = settings.value.theme === 'dark'
+        if (themeStore.isDarkMode !== isDark) {
+          themeStore.setDarkMode(isDark)
         }
       }
       
@@ -67,14 +66,10 @@ export const useSettingsStore = defineStore('settings', () => {
       if (response) {
         settings.value = updatedSettings
         
-        // 如果更新了主题，立即应用
+        // 【重构】如果通过设置页面显式修改了主题，则同步
         if (newSettings.theme) {
           const themeStore = useThemeStore()
-          if (newSettings.theme === 'dark') {
-            themeStore.setDarkMode(true)
-          } else if (newSettings.theme === 'light') {
-            themeStore.setDarkMode(false)
-          }
+          themeStore.setDarkMode(newSettings.theme === 'dark')
         }
         
         return { success: true, message: '设置更新成功' }
