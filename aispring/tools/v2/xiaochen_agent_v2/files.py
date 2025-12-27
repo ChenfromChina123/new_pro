@@ -98,7 +98,26 @@ def read_range_numbered(
     actual_end = end_line if end_line and end_line <= total_lines else total_lines
     lines_target = lines_all[start_line - 1 : actual_end]
     width = len(str(actual_end if actual_end > 0 else 1))
-    numbered = [f"{i:>{width}}: {line}" for i, line in enumerate(lines_target, start=start_line)]
+    ext = os.path.splitext(path_of_file)[1].lower()
+    if ext in {".py", ".pyw"}:
+        numbered: List[str] = []
+        for i, line in enumerate(lines_target, start=start_line):
+            spaces = 0
+            tabs = 0
+            for ch in line:
+                if ch == " ":
+                    spaces += 1
+                elif ch == "\t":
+                    tabs += 1
+                else:
+                    break
+            if line and line.strip() == "":
+                shown = "<WS_ONLY>"
+            else:
+                shown = line
+            numbered.append(f"{i:>{width}}: [s={spaces} t={tabs}] {shown}")
+    else:
+        numbered = [f"{i:>{width}}: {line}" for i, line in enumerate(lines_target, start=start_line)]
     return total_lines, actual_end, "\n".join(numbered)
 
 

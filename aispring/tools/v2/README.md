@@ -33,6 +33,8 @@ This project is a collection of tools and mini-applications developed under the 
    ```
 3. **Console Encoding**: Ensure the console uses UTF-8 encoding when running scripts to avoid character display issues.
 4. **Windows Compatibility**: Optimized for Windows 11 systems.
+5. **Indentation Debugging**: When using the agent's `read_file` on Python files, each line includes `[s=<spaces> t=<tabs>]` to make hidden indentation explicit.
+6. **Batch Approval**: When the agent proposes multiple tasks, you can approve them once with `y` (once) or `a` (always) instead of confirming each task repeatedly.
 
 ## Important Rules
 Refer to the `.voidrules` file for detailed project rules and guidelines.

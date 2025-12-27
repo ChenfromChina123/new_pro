@@ -590,147 +590,147 @@ def handle_events(self):
         
         return True
     
-    def run(self):
-        """运行游戏主循环"""
-        running = True
-        
-            # 处理事件
-            running = self.handle_events()
-            
-            # 清屏
-            self.screen.fill(self.colors['background'])
-            
-            if self.game_state == GameState.MENU:
-                # 绘制菜单
-                self.draw_menu()
-                
-                # 绘制菜单按钮
-                mouse_pos = pygame.mouse.get_pos()
-                
-                # 开始游戏按钮
-                start_rect = pygame.Rect(self.screen_width // 2 - 75, 250, 150, 50)
-                pygame.draw.rect(self.screen, self.colors['button_normal'], start_rect, border_radius=8)
-                pygame.draw.rect(self.screen, self.colors['text'], start_rect, 2, border_radius=8)
-                start_text = self.font_medium.render("开始游戏", True, self.colors['button_text'])
-                start_text_rect = start_text.get_rect(center=start_rect.center)
-                self.screen.blit(start_text, start_text_rect)
-                
-                # 退出游戏按钮
-                quit_rect = pygame.Rect(self.screen_width // 2 - 75, 320, 150, 50)
-                pygame.draw.rect(self.screen, self.colors['button_normal'], quit_rect, border_radius=8)
-                pygame.draw.rect(self.screen, self.colors['text'], quit_rect, 2, border_radius=8)
-                quit_text = self.font_medium.render("退出游戏", True, self.colors['button_text'])
-                quit_text_rect = quit_text.get_rect(center=quit_rect.center)
-                self.screen.blit(quit_text, quit_text_rect)
-                
-                # 难度选择按钮
-                easy_rect = pygame.Rect(self.screen_width // 2 - 120, 200, 80, 40)
-                normal_rect = pygame.Rect(self.screen_width // 2 - 40, 200, 80, 40)
-                hard_rect = pygame.Rect(self.screen_width // 2 + 40, 200, 80, 40)
-                
-                # 绘制难度按钮
-                for rect, text, diff in [(easy_rect, "简单", Difficulty.EASY), 
-                                        (normal_rect, "普通", Difficulty.NORMAL), 
-                                        (hard_rect, "困难", Difficulty.HARD)]:
-                    color = self.colors['button_normal'] if self.difficulty != diff else self.colors['button_hover']
-                    pygame.draw.rect(self.screen, color, rect, border_radius=6)
-                    pygame.draw.rect(self.screen, self.colors['text'], rect, 2, border_radius=6)
-                    diff_text = self.font_small.render(text, True, self.colors['button_text'])
-                    diff_text_rect = diff_text.get_rect(center=rect.center)
-                    self.screen.blit(diff_text, diff_text_rect)
-            
-            elif self.game_state == GameState.PLAYING:
-                # 更新游戏逻辑
-                self.update_game()
-                
-                # 绘制游戏
-                self.draw_grid()
-                self.draw_snake()
-                self.draw_food()
-                self.draw_ui()
-                
-                # 绘制按钮
-                mouse_pos = pygame.mouse.get_pos()
-                self.draw_button('start', mouse_pos)
-                self.draw_button('pause', mouse_pos)
-                self.draw_button('restart', mouse_pos)
-                self.draw_button('easy', mouse_pos)
-                self.draw_button('normal', mouse_pos)
-                self.draw_button('hard', mouse_pos)
-                self.draw_button('quit', mouse_pos)
-                
-                # 高亮当前难度按钮
-                difficulty_buttons = {
-                    Difficulty.EASY: 'easy',
-                    Difficulty.NORMAL: 'normal',
-                    Difficulty.HARD: 'hard'
-                }
-                active_button = difficulty_buttons[self.difficulty]
-                rect = self.buttons[active_button]['rect']
-                pygame.draw.rect(self.screen, (255, 255, 0), rect, 3, border_radius=8)
-            
-            elif self.game_state == GameState.PAUSED:
-                # 绘制游戏（暂停状态）
-                self.draw_grid()
-                self.draw_snake()
-                self.draw_food()
-                self.draw_ui()
-                
-                # 绘制按钮
-                mouse_pos = pygame.mouse.get_pos()
-                self.draw_button('start', mouse_pos)
-                self.draw_button('pause', mouse_pos)
-                self.draw_button('restart', mouse_pos)
-                self.draw_button('easy', mouse_pos)
-                self.draw_button('normal', mouse_pos)
-                self.draw_button('hard', mouse_pos)
-                self.draw_button('quit', mouse_pos)
-                
-                # 高亮当前难度按钮
-                difficulty_buttons = {
-                    Difficulty.EASY: 'easy',
-                    Difficulty.NORMAL: 'normal',
-                    Difficulty.HARD: 'hard'
-                }
-                active_button = difficulty_buttons[self.difficulty]
-                rect = self.buttons[active_button]['rect']
-                pygame.draw.rect(self.screen, (255, 255, 0), rect, 3, border_radius=8)
-                
-                # 绘制暂停覆盖层
-                overlay = pygame.Surface((self.screen_width, self.screen_height), pygame.SRCALPHA)
-                overlay.fill((0, 0, 0, 128))
-                self.screen.blit(overlay, (0, 0))
-                
-                # 绘制暂停文字
-                pause_text = self.font_large.render("游戏暂停", True, (255, 152, 0))
-                self.screen.blit(pause_text, 
-                                (self.screen_width // 2 - pause_text.get_width() // 2, 
-                                 self.screen_height // 2 - 50))
-                
-                hint_text = self.font_medium.render("按空格键继续游戏", True, self.colors['text'])
-                self.screen.blit(hint_text, 
-                                (self.screen_width // 2 - hint_text.get_width() // 2, 
-                                 self.screen_height // 2 + 20))
-            
-            elif self.game_state == GameState.GAME_OVER:
-                # 绘制游戏（结束状态）
-                self.draw_grid()
-                self.draw_snake()
-                self.draw_food()
-                self.draw_ui()
-                
-                # 绘制游戏结束画面
-                self.draw_game_over()
-            
-            # 更新显示
-            pygame.display.flip()
-            
-            # 控制帧率
-            self.clock.tick(60)
-        
-        # 退出游戏
-        pygame.quit()
-        sys.exit()
+def run(self):
+    """运行游戏主循环"""
+    running = True
+    while running:
+        # 处理事件
+        running = self.handle_events()
+
+        # 清屏
+        self.screen.fill(self.colors['background'])
+
+        if self.game_state == GameState.MENU:
+            # 绘制菜单
+            self.draw_menu()
+
+            # 绘制菜单按钮
+            mouse_pos = pygame.mouse.get_pos()
+
+            # 开始游戏按钮
+            start_rect = pygame.Rect(self.screen_width // 2 - 75, 250, 150, 50)
+            pygame.draw.rect(self.screen, self.colors['button_normal'], start_rect, border_radius=8)
+            pygame.draw.rect(self.screen, self.colors['text'], start_rect, 2, border_radius=8)
+            start_text = self.font_medium.render("开始游戏", True, self.colors['button_text'])
+            start_text_rect = start_text.get_rect(center=start_rect.center)
+            self.screen.blit(start_text, start_text_rect)
+
+            # 退出游戏按钮
+            quit_rect = pygame.Rect(self.screen_width // 2 - 75, 320, 150, 50)
+            pygame.draw.rect(self.screen, self.colors['button_normal'], quit_rect, border_radius=8)
+            pygame.draw.rect(self.screen, self.colors['text'], quit_rect, 2, border_radius=8)
+            quit_text = self.font_medium.render("退出游戏", True, self.colors['button_text'])
+            quit_text_rect = quit_text.get_rect(center=quit_rect.center)
+            self.screen.blit(quit_text, quit_text_rect)
+
+            # 难度选择按钮
+            easy_rect = pygame.Rect(self.screen_width // 2 - 120, 200, 80, 40)
+            normal_rect = pygame.Rect(self.screen_width // 2 - 40, 200, 80, 40)
+            hard_rect = pygame.Rect(self.screen_width // 2 + 40, 200, 80, 40)
+
+            # 绘制难度按钮
+            for rect, text, diff in [(easy_rect, "简单", Difficulty.EASY), 
+                                    (normal_rect, "普通", Difficulty.NORMAL), 
+                                    (hard_rect, "困难", Difficulty.HARD)]:
+                color = self.colors['button_normal'] if self.difficulty != diff else self.colors['button_hover']
+                pygame.draw.rect(self.screen, color, rect, border_radius=6)
+                pygame.draw.rect(self.screen, self.colors['text'], rect, 2, border_radius=6)
+                diff_text = self.font_small.render(text, True, self.colors['button_text'])
+                diff_text_rect = diff_text.get_rect(center=rect.center)
+                self.screen.blit(diff_text, diff_text_rect)
+
+        elif self.game_state == GameState.PLAYING:
+            # 更新游戏逻辑
+            self.update_game()
+
+            # 绘制游戏
+            self.draw_grid()
+            self.draw_snake()
+            self.draw_food()
+            self.draw_ui()
+
+            # 绘制按钮
+            mouse_pos = pygame.mouse.get_pos()
+            self.draw_button('start', mouse_pos)
+            self.draw_button('pause', mouse_pos)
+            self.draw_button('restart', mouse_pos)
+            self.draw_button('easy', mouse_pos)
+            self.draw_button('normal', mouse_pos)
+            self.draw_button('hard', mouse_pos)
+            self.draw_button('quit', mouse_pos)
+
+            # 高亮当前难度按钮
+            difficulty_buttons = {
+                Difficulty.EASY: 'easy',
+                Difficulty.NORMAL: 'normal',
+                Difficulty.HARD: 'hard'
+            }
+            active_button = difficulty_buttons[self.difficulty]
+            rect = self.buttons[active_button]['rect']
+            pygame.draw.rect(self.screen, (255, 255, 0), rect, 3, border_radius=8)
+
+        elif self.game_state == GameState.PAUSED:
+            # 绘制游戏（暂停状态）
+            self.draw_grid()
+            self.draw_snake()
+            self.draw_food()
+            self.draw_ui()
+
+            # 绘制按钮
+            mouse_pos = pygame.mouse.get_pos()
+            self.draw_button('start', mouse_pos)
+            self.draw_button('pause', mouse_pos)
+            self.draw_button('restart', mouse_pos)
+            self.draw_button('easy', mouse_pos)
+            self.draw_button('normal', mouse_pos)
+            self.draw_button('hard', mouse_pos)
+            self.draw_button('quit', mouse_pos)
+
+            # 高亮当前难度按钮
+            difficulty_buttons = {
+                Difficulty.EASY: 'easy',
+                Difficulty.NORMAL: 'normal',
+                Difficulty.HARD: 'hard'
+            }
+            active_button = difficulty_buttons[self.difficulty]
+            rect = self.buttons[active_button]['rect']
+            pygame.draw.rect(self.screen, (255, 255, 0), rect, 3, border_radius=8)
+
+            # 绘制暂停覆盖层
+            overlay = pygame.Surface((self.screen_width, self.screen_height), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 128))
+            self.screen.blit(overlay, (0, 0))
+
+            # 绘制暂停文字
+            pause_text = self.font_large.render("游戏暂停", True, (255, 152, 0))
+            self.screen.blit(pause_text, 
+                            (self.screen_width // 2 - pause_text.get_width() // 2, 
+                             self.screen_height // 2 - 50))
+
+            hint_text = self.font_medium.render("按空格键继续游戏", True, self.colors['text'])
+            self.screen.blit(hint_text, 
+                            (self.screen_width // 2 - hint_text.get_width() // 2, 
+                             self.screen_height // 2 + 20))
+
+        elif self.game_state == GameState.GAME_OVER:
+            # 绘制游戏（结束状态）
+            self.draw_grid()
+            self.draw_snake()
+            self.draw_food()
+            self.draw_ui()
+
+            # 绘制游戏结束画面
+            self.draw_game_over()
+
+        # 更新显示
+        pygame.display.flip()
+
+        # 控制帧率
+        self.clock.tick(60)
+
+    # 退出游戏
+    pygame.quit()
+    sys.exit()
 
 def main():
     """主函数"""
