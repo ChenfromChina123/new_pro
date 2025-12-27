@@ -161,6 +161,7 @@ class Agent:
         self.taskManager = TaskManager()
         self.lastFullMessages: List[Dict[str, str]] = []
         self.isAutoApproveEnabled = False
+        self._lastOperationIndexOfLastChat = 0
 
     def estimateTokensOfMessages(self, messages: List[Dict[str, str]]) -> int:
         totalChars = 0
@@ -169,6 +170,7 @@ class Agent:
         return int(totalChars / 3)
 
     def isTaskWhitelisted(self, t: Dict[str, Any]) -> bool:
+        """判断该工具调用是否在白名单中，可自动执行而无需用户批准。"""
         if t["type"] in self.config.whitelistedTools:
             return True
         if t["type"] == "run_command":
@@ -179,6 +181,7 @@ class Agent:
         return False
 
     def summarizeTask(self, t: Dict[str, Any]) -> str:
+        """将单个任务压缩为一行摘要，便于批量批准时展示。"""
         ttype = t.get("type") or ""
         if ttype == "run_command":
             cmd = str(t.get("command", "")).strip().splitlines()[:1]
@@ -200,6 +203,7 @@ class Agent:
         return str(ttype)
 
     def confirmBatchExecution(self, tasks: List[Dict[str, Any]]) -> Tuple[bool, bool]:
+        """对一批任务进行一次性批准：y=本批次执行，a=后续批次也自动批准，n=取消。"""
         needsApproval = [t for t in tasks if not self.isTaskWhitelisted(t)]
         if not needsApproval:
             return True, False
@@ -221,6 +225,20 @@ class Agent:
         if ans == "y":
             return True, True
         return False, False
+
+    def renderRunningTerminals(self) -> str:
+        """渲染正在运行的长期任务终端列表，便于用户及时查看和处理。"""
+        terminals = self.terminalManager.list_terminals()
+        if not terminals:
+            return ""
+        lines = ["Running Terminals:"]
+        for t in terminals:
+            uptime = float(t.get("uptime") or 0.0)
+            cmd = str(t.get("command") or "")
+            tid = str(t.get("id") or "")
+            is_running = bool(t.get("is_running"))
+            lines.append(f"- id={tid} running={is_running} uptime={uptime:.1f}s cmd={cmd}")
+        return "\n".join(lines)
 
     def getContextOfSystem(self) -> str:
         return """# XIAOCHEN_TERMINAL - 小晨终端助手
@@ -371,13 +389,22 @@ class Agent:
         else:
             print(f"{Fore.RED}No backup data found for rollback{Style.RESET_ALL}")
 
-    def printStatsOfModification(self):
-        if not self.historyOfOperations:
-            print(f"\n{Fore.GREEN}No file modifications in this session{Style.RESET_ALL}")
+    def printStatsOfModification(self, ops: List[Tuple[str, int, int]]) -> None:
+        """按文件聚合输出本次对话产生的变动统计；如果本次无变动则不输出。"""
+        if not ops:
             return
+
+        aggregated: Dict[str, Tuple[int, int]] = {}
+        for pathOfFile, added, deleted in ops:
+            prev = aggregated.get(pathOfFile)
+            if prev is None:
+                aggregated[pathOfFile] = (added, deleted)
+            else:
+                aggregated[pathOfFile] = (prev[0] + added, prev[1] + deleted)
+
         print(f"\n{Style.BRIGHT}===== File Modification Stats ====={Style.RESET_ALL}")
-        for op in self.historyOfOperations:
-            pathOfFile, added, deleted = op[0], op[1], op[2]
+        for pathOfFile in sorted(aggregated.keys(), key=lambda p: p.lower()):
+            added, deleted = aggregated[pathOfFile]
             print(f"File: {pathOfFile}")
             print(f"  {Fore.BLUE}+({added}){Style.RESET_ALL} | {Fore.RED}-({deleted}){Style.RESET_ALL}")
         print(f"{Style.BRIGHT}==================================={Style.RESET_ALL}")
@@ -389,6 +416,7 @@ class Agent:
         Args:
             inputOfUser: 用户在控制台输入的原始文本。
         """
+        self._lastOperationIndexOfLastChat = len(self.historyOfOperations)
         if not inputOfUser.strip() and not self.historyOfMessages:
             print(f"{Fore.YELLOW}Empty input and no history. Waiting for command...{Style.RESET_ALL}")
             return
@@ -881,7 +909,8 @@ class Agent:
 
         self.historyOfMessages = historyWorking
 
-        self.printStatsOfModification()
+        opsOfThisChat = self.historyOfOperations[self._lastOperationIndexOfLastChat :]
+        self.printStatsOfModification(opsOfThisChat)
 
 
 VoidAgent = Agent
