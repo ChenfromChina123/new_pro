@@ -159,12 +159,67 @@ class Agent:
         self.cacheOfUserRules: Optional[str] = None
         self.taskManager = TaskManager()
         self.lastFullMessages: List[Dict[str, str]] = []
+        self.isAutoApproveEnabled = False
 
     def estimateTokensOfMessages(self, messages: List[Dict[str, str]]) -> int:
         totalChars = 0
         for msg in messages:
             totalChars += len(msg["role"]) + len(msg["content"]) + 8
         return int(totalChars / 3)
+
+    def isTaskWhitelisted(self, t: Dict[str, Any]) -> bool:
+        if t["type"] in self.config.whitelistedTools:
+            return True
+        if t["type"] == "run_command":
+            cmd_first = str(t.get("command", "")).strip().splitlines()[:1]
+            baseCmd = cmd_first[0].split()[0] if cmd_first and cmd_first[0] else ""
+            if baseCmd in self.config.whitelistedCommands:
+                return True
+        return False
+
+    def summarizeTask(self, t: Dict[str, Any]) -> str:
+        ttype = t.get("type") or ""
+        if ttype == "run_command":
+            cmd = str(t.get("command", "")).strip().splitlines()[:1]
+            cmdLine = cmd[0] if cmd and cmd[0] else ""
+            return f"run_command: {cmdLine}"
+        if ttype in {"write_file", "read_file"}:
+            return f"{ttype}: {t.get('path', '')}"
+        if ttype == "edit_lines":
+            ds = t.get("delete_start")
+            de = t.get("delete_end")
+            ins = t.get("insert_at")
+            return f"edit_lines: {t.get('path', '')} del={ds}-{de} ins={ins}"
+        if ttype == "search_files":
+            return f"search_files: {t.get('pattern', '')}"
+        if ttype == "search_in_files":
+            return f"search_in_files: {t.get('regex', '')}"
+        if ttype.startswith("task_"):
+            return f"{ttype}: {t.get('id', '')}"
+        return str(ttype)
+
+    def confirmBatchExecution(self, tasks: List[Dict[str, Any]]) -> Tuple[bool, bool]:
+        needsApproval = [t for t in tasks if not self.isTaskWhitelisted(t)]
+        if not needsApproval:
+            return True, False
+        if self.isAutoApproveEnabled:
+            return True, True
+
+        print(f"{Style.BRIGHT}===== Pending Tasks ({len(tasks)}) ====={Style.RESET_ALL}")
+        for i, t in enumerate(tasks, start=1):
+            flag = "AUTO" if self.isTaskWhitelisted(t) else "ASK"
+            print(f"{i:>2}. [{flag}] {self.summarizeTask(t)}")
+        print(f"{Style.BRIGHT}==========================={Style.RESET_ALL}")
+
+        ans = input(f"{Style.BRIGHT}Execute all tasks once? (y=once / a=always / n=cancel): {Style.RESET_ALL}").strip().lower()
+        if ans == "":
+            ans = "y"
+        if ans == "a":
+            self.isAutoApproveEnabled = True
+            return True, True
+        if ans == "y":
+            return True, True
+        return False, False
 
     def getContextOfSystem(self) -> str:
         """返回包含静态逻辑和用户规则的 System Prompt。"""
@@ -230,6 +285,8 @@ class Agent:
   <start_line>1</start_line>
   <end_line>100</end_line>
 </read_file>
+- **Indent Visibility**: For Python files, leading indentation is annotated as `[s=<spaces> t=<tabs>]` per line.
+- **Whitespace-only Lines**: Lines containing only whitespace are shown as `<WS_ONLY>` to avoid missing hidden indentation.
 
 ### 4. Run Command (Execute system commands)
 <run_command>
@@ -605,20 +662,20 @@ class Agent:
                 observations: List[str] = []
                 isCancelled = False
                 didExecuteAnyTask = False
+                ok, batchApproved = self.confirmBatchExecution(tasks)
+                if not ok:
+                    historyWorking.append({"role": "user", "content": "User cancelled execution"})
+                    isCancelled = True
                 for t in tasks:
-                    isWhitelisted = False
-                    if t["type"] in self.config.whitelistedTools:
-                        isWhitelisted = True
-                    elif t["type"] == "run_command":
-                        cmd_first = str(t.get("command", "")).strip().splitlines()[:1]
-                        baseCmd = cmd_first[0].split()[0] if cmd_first and cmd_first[0] else ""
-                        if baseCmd in self.config.whitelistedCommands:
-                            isWhitelisted = True
-
-                    if isWhitelisted:
+                    if isCancelled:
+                        break
+                    isWhitelisted = self.isTaskWhitelisted(t)
+                    if isWhitelisted or batchApproved:
                         confirm = "y"
                     else:
-                        confirm = input(f"{Style.BRIGHT}Execute this task? (y/n): ")
+                        confirm = input(f"{Style.BRIGHT}Execute this task? (y/n): {Style.RESET_ALL}").strip().lower()
+                        if confirm == "":
+                            confirm = "y"
 
                     if confirm.lower() != "y":
                         historyWorking.append({"role": "user", "content": "User cancelled execution"})
