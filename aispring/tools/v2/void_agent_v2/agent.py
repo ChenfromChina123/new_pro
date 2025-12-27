@@ -4,6 +4,7 @@ import subprocess
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
+import urllib3
 
 from .config import Config
 from .console import Fore, Style
@@ -27,6 +28,8 @@ from .tags import parse_stack_of_tags
 class VoidAgent:
     def __init__(self, config: Config):
         self.config = config
+        if not self.config.verifySsl:
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
         self.historyOfMessages: List[Dict[str, str]] = []
         self.endpointOfChat = f"{self.config.baseUrl.rstrip('/')}/chat/completions"
         self.historyOfOperations: List[Tuple[str, int, int]] = []
@@ -43,8 +46,9 @@ class VoidAgent:
         return int(totalChars / 3)
 
     def getContextOfSystem(self) -> str:
-        """返回绝对静态的 System Prompt（不包含项目树/环境/动态规则）。"""
-        return """# VOID AGENT - STRICT LOGIC & PASSIVE VALIDATION
+        """返回包含静态逻辑和用户规则的 System Prompt。"""
+        rulesBlock = self.getUserRulesCached() or ""
+        return f"""# VOID AGENT - STRICT LOGIC & PASSIVE VALIDATION
 ## 🔴 VOID RULES (STRICT ADHERENCE REQUIRED)
 1. **PASSIVE VALIDATION**: Do NOT execute commands blindly. You must PROPOSE actions. The user acts as the validator.
 2. **SEARCH FIRST (REGEX FIRST)**: When looking for problem code, prefer REGEX searching in file contents.
@@ -57,6 +61,11 @@ class VoidAgent:
 9. **STOP AFTER TASK**: After completing the requested task(s), respond briefly and do NOT continue with additional tasks.
 10. **NO REPETITION**: Do NOT repeat or paraphrase the user's rules, project tree, or any provided context unless explicitly asked.
 11. **NO BOILERPLATE**: Do NOT output greetings, capability lists, or generic prompts. Answer directly.
+
+## 📋 USER RULES (FROM .VOIDRULES)
+```text
+{rulesBlock}
+```
 
 ## 📋 TAG SYNTAX (EXACTLY AS SHOWN)
 
@@ -146,19 +155,13 @@ class VoidAgent:
         return self.cacheOfProjectTree
 
     def printToolResult(self, text: str, maxChars: int = 8000) -> None:
-        """将工具执行结果直接打印到控制台，避免因停止下一轮导致用户看不到输出。"""
-        shown = text
-        if len(shown) > maxChars:
-            shown = shown[:maxChars] + "\n... (truncated)"
-        print(f"{Fore.WHITE}{shown}{Style.RESET_ALL}")
+        return
 
     def getContextOfCurrentUser(self, inputOfUser: str) -> str:
-        """构造当前轮的 user 动态上下文（项目树/规则/环境）并拼接用户问题。"""
+        """构造当前轮的 user 动态上下文（环境信息）并拼接用户问题。"""
         sep = os.sep
         osName = platform.system()
         cwd = os.getcwd()
-        rulesBlock = self.getUserRulesCached() or ""
-        treeOfCwd = self.getProjectTreeCached()
 
         return (
             "IMPORTANT: The following CONTEXT is input-only. Do NOT quote, repeat, or summarize it unless the user asks.\n"
@@ -168,16 +171,6 @@ class VoidAgent:
             f"OPERATING SYSTEM: {osName}\n"
             f"PATH SEPARATOR: {sep}\n"
             f"CURRENT DIRECTORY: {cwd}\n"
-            "\n"
-            "USER_RULES_FROM_DOT_VOIDRULES:\n"
-            "```text\n"
-            f"{rulesBlock}\n"
-            "```\n"
-            "\n"
-            "PROJECT_TREE:\n"
-            "```text\n"
-            f"{treeOfCwd}\n"
-            "```\n"
             "END_CONTEXT\n"
             "\n"
             f"{inputOfUser}"
@@ -233,6 +226,16 @@ class VoidAgent:
         print(f"{Style.BRIGHT}==================================={Style.RESET_ALL}")
 
     def chat(self, inputOfUser: str):
+        """
+        处理用户输入并启动 AI 代理的多轮任务执行循环。
+        
+        Args:
+            inputOfUser: 用户在控制台输入的原始文本。
+        """
+        if not inputOfUser.strip() and not self.historyOfMessages:
+            print(f"{Fore.YELLOW}Empty input and no history. Waiting for command...{Style.RESET_ALL}")
+            return
+
         msgSystem = self.getSystemMessage()
         baseHistoryLen = len(self.historyOfMessages)
         historyWorking: List[Dict[str, str]] = list(self.historyOfMessages)
@@ -272,11 +275,18 @@ class VoidAgent:
                 }
 
                 replyFull = ""
+                fullReasoning = ""
+                hasReasoned = False
                 usageOfRequest: Optional[Dict[str, Any]] = None
                 print(f"{Fore.GREEN}[VoidAgent]: ", end="")
                 try:
                     response = requests.post(
-                        self.endpointOfChat, headers=headers, json=payload, stream=True, timeout=30
+                        self.endpointOfChat, 
+                        headers=headers, 
+                        json=payload, 
+                        stream=True, 
+                        timeout=60,
+                        verify=self.config.verifySsl
                     )
                     response.raise_for_status()
 
@@ -296,8 +306,24 @@ class VoidAgent:
                         choices = dataChunk.get("choices") if isinstance(dataChunk, dict) else None
                         if isinstance(choices, list) and choices:
                             delta = choices[0].get("delta") if isinstance(choices[0], dict) else None
-                            token = delta.get("content", "") if isinstance(delta, dict) else ""
+                            if not delta:
+                                continue
+                            
+                            # 提取推理内容 (reasoning_content)
+                            reasoning = delta.get("reasoning_content", "")
+                            if reasoning:
+                                if not hasReasoned:
+                                    hasReasoned = True
+                                fullReasoning += reasoning
+                                print(f"{Fore.CYAN}{reasoning}{Style.RESET_ALL}", end="", flush=True)
+
+                            # 提取正文内容
+                            token = delta.get("content", "")
                             if token:
+                                if hasReasoned:
+                                    # 如果之前有推理内容，且现在开始输出正文，先换行
+                                    print("\n")
+                                    hasReasoned = False # 只换行一次
                                 replyFull += token
                                 print(token, end="", flush=True)
                 except requests.exceptions.RequestException as e:
@@ -309,8 +335,19 @@ class VoidAgent:
                     print("\n" + "-" * 40)
                     if usageOfRequest:
                         self.statsOfCache.updateFromUsage(usageOfRequest)
+                        
+                        # 从单次请求中提取命中和未命中
                         hit = int(usageOfRequest.get("prompt_cache_hit_tokens") or 0)
+                        if hit == 0:
+                            details = usageOfRequest.get("prompt_tokens_details")
+                            if isinstance(details, dict):
+                                hit = int(details.get("cached_tokens") or 0)
+                        
+                        prompt = int(usageOfRequest.get("prompt_tokens") or 0)
                         miss = int(usageOfRequest.get("prompt_cache_miss_tokens") or 0)
+                        if miss == 0 and prompt > hit:
+                            miss = prompt - hit
+
                         rateReq = CacheStats.getHitRateOfUsage(usageOfRequest)
                         rateSession = self.statsOfCache.getSessionHitRate()
                         rateReqStr = f"{rateReq*100:.1f}%" if rateReq is not None else "N/A"
@@ -368,8 +405,6 @@ class VoidAgent:
                 isCancelled = False
                 didExecuteAnyTask = False
                 for t in tasks:
-                    print(f"{Fore.YELLOW}[Pending Task] {t}{Style.RESET_ALL}")
-
                     isWhitelisted = False
                     if t["type"] in self.config.whitelistedTools:
                         isWhitelisted = True
@@ -380,13 +415,11 @@ class VoidAgent:
                             isWhitelisted = True
 
                     if isWhitelisted:
-                        print(f"{Fore.GREEN}>> Auto-approved whitelisted task.{Style.RESET_ALL}")
                         confirm = "y"
                     else:
                         confirm = input(f"{Style.BRIGHT}Execute this task? (y/n): ")
 
                     if confirm.lower() != "y":
-                        print(f"{Fore.BLUE}User cancelled execution{Style.RESET_ALL}")
                         historyWorking.append({"role": "user", "content": "User cancelled execution"})
                         isCancelled = True
                         break
@@ -394,7 +427,6 @@ class VoidAgent:
 
                     if t["type"] == "search_files":
                         pattern = t["pattern"]
-                        print(f"{Fore.CYAN}[Exec] Searching files: {pattern}")
                         try:
                             results = search_files(pattern, os.getcwd())
                             if results:
@@ -416,7 +448,6 @@ class VoidAgent:
                         glob_pattern = t.get("glob") or "**/*"
                         root = os.path.abspath(t.get("root") or ".")
                         max_matches = int(t.get("max_matches") or 200)
-                        print(f"{Fore.CYAN}[Exec] Searching in files (regex): {regex}")
                         try:
                             matches_by_path, error = search_in_files(
                                 regex=regex,
@@ -457,7 +488,6 @@ class VoidAgent:
                     elif t["type"] == "write_file":
                         path = os.path.abspath(t["path"])
                         content = t["content"]
-                        print(f"{Fore.CYAN}[Exec] Writing file: {path}")
                         try:
                             existedBefore = os.path.exists(path)
                             self.backupFile(path)
@@ -476,6 +506,7 @@ class VoidAgent:
                             self.invalidateProjectTreeCache()
                             if os.path.basename(path).lower() == ".voidrules":
                                 self.invalidateUserRulesCache()
+                                self.invalidateSystemMessageCache()
                             obs = f"SUCCESS: Saved to {path} | +{added} | -{deleted}"
                             observations.append(obs)
                             self.printToolResult(obs)
@@ -490,7 +521,6 @@ class VoidAgent:
                         delete_end = t.get("delete_end")
                         insert_at = t.get("insert_at")
                         content = t.get("content", "")
-                        print(f"{Fore.CYAN}[Exec] Editing lines: {path}")
                         try:
                             existedBefore = os.path.exists(path)
                             self.backupFile(path)
@@ -520,6 +550,7 @@ class VoidAgent:
                             self.invalidateProjectTreeCache()
                             if os.path.basename(path).lower() == ".voidrules":
                                 self.invalidateUserRulesCache()
+                                self.invalidateSystemMessageCache()
                             obs = f"SUCCESS: Edited {path} | +{added} | -{deleted}"
                             observations.append(obs)
                             self.printToolResult(obs)
@@ -532,7 +563,6 @@ class VoidAgent:
                         path = os.path.abspath(t["path"])
                         startLine = t.get("start_line", 1)
                         endLine = t.get("end_line")
-                        print(f"{Fore.CYAN}[Exec] Reading file: {path}")
                         try:
                             totalLines, actualEnd, content = read_range_numbered(path, startLine, endLine)
                             obs = (
@@ -562,7 +592,6 @@ class VoidAgent:
                                     observations.append(obs)
                                     self.printToolResult(obs)
                                     continue
-                                print(f"{Fore.CYAN}[Exec] Running command: {cmd}")
                                 try:
                                     result = subprocess.run(cmd, shell=True, capture_output=True, text=False)
 
@@ -604,7 +633,5 @@ class VoidAgent:
             print(f"{Fore.RED}[Tip] Max cycles reached.{Style.RESET_ALL}")
 
         self.historyOfMessages = historyWorking
-        if insertedUserContext and baseHistoryLen < len(self.historyOfMessages):
-            self.historyOfMessages[baseHistoryLen] = {"role": "user", "content": inputOfUser}
 
         self.printStatsOfModification()
