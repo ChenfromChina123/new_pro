@@ -25,13 +25,13 @@ class TerminalManager:
     def __init__(self):
         self.terminals: Dict[str, TerminalProcess] = {}
 
-    def run_command(self, command: str, is_long_running: bool = False, cwd: Optional[str] = None) -> Tuple[bool, str, str]:
+    def run_command(self, command: str, is_long_running: bool = False, cwd: Optional[str] = None) -> Tuple[bool, str, str, str]:
         """
         执行指令。
         :param command: 要执行的命令
         :param is_long_running: 是否为长期停留任务（如 web 服务）
         :param cwd: 工作目录
-        :return: (是否成功启动/执行, 终端ID/输出结果, 错误信息)
+        :return: (是否成功启动/执行, 终端ID, 输出结果, 错误信息)
         """
         tid = str(uuid.uuid4())[:8]
         
@@ -58,10 +58,14 @@ class TerminalManager:
             )
             self.terminals[tid] = term
 
-            if is_long_running:
-                # 长期任务：启动背景线程读取输出
-                term.thread = threading.Thread(target=self._read_output, args=(term,), daemon=True)
+            def start_monitor() -> None:
+                if term.thread and term.thread.is_alive():
+                    return
+                term.thread = threading.Thread(target=self._monitor_process, args=(term,), daemon=True)
                 term.thread.start()
+
+            if is_long_running:
+                start_monitor()
 
                 # 等待 10 秒观察进程状态
                 wait_seconds = 10
@@ -73,39 +77,65 @@ class TerminalManager:
                         term.exit_code = proc.returncode
                         output = f"Stdout:\n{stdout}\nStderr:\n{stderr}"
                         del self.terminals[tid]
-                        return False, output, f"Process exited early with code {proc.returncode}"
+                        return False, tid, output, f"Process exited early with code {proc.returncode}"
                     time.sleep(0.5)
 
                 # 10 秒后仍然存活，返回已捕获的部分输出
                 initial_output = "".join(term.output)
-                return True, f"Terminal ID: {tid}\nInitial Output (10s):\n{initial_output}", ""
+                return True, tid, f"Initial Output (10s):\n{initial_output}", ""
             else:
                 # 短期任务：等待执行完毕并捕获输出
-                stdout, stderr = proc.communicate(timeout=120)
-                term.exit_code = proc.returncode
-                output = f"Stdout:\n{stdout}\nStderr:\n{stderr}"
-                # 短期任务执行完后从字典移除，避免内存堆积
-                del self.terminals[tid]
-                if proc.returncode == 0:
-                    return True, output, ""
-                else:
-                    return False, output, f"Exit Code: {proc.returncode}"
+                try:
+                    stdout, stderr = proc.communicate(timeout=120)
+                    term.exit_code = proc.returncode
+                    output = f"Stdout:\n{stdout}\nStderr:\n{stderr}"
+                    del self.terminals[tid]
+                    if proc.returncode == 0:
+                        return True, tid, output, ""
+                    else:
+                        return False, tid, output, f"Exit Code: {proc.returncode}"
+                except subprocess.TimeoutExpired:
+                    term.is_long_running = True
+                    start_monitor()
+                    time.sleep(0.2)
+                    initial_output = "".join(term.output)
+                    output = (
+                        "Status: running (timeout, may be waiting for input)\n"
+                        f"Initial Output:\n{initial_output}"
+                    )
+                    return True, tid, output, ""
 
         except Exception as e:
-            return False, "", str(e)
+            return False, tid, "", str(e)
 
-    def _read_output(self, term: TerminalProcess):
-        """背景线程读取长期任务的输出。"""
+    def _monitor_process(self, term: TerminalProcess) -> None:
+        """监控长期任务，异步读取 stdout/stderr 并在结束时记录退出码。"""
         try:
-            for line in iter(term.process.stdout.readline, ''):
-                if line:
-                    term.output.append(line)
-                    # 限制输出缓存大小，避免内存溢出
-                    if len(term.output) > 1000:
-                        term.output.pop(0)
-            
+            def reader(stream, prefix: str) -> None:
+                try:
+                    for line in iter(stream.readline, ""):
+                        if not line:
+                            break
+                        term.output.append(f"{prefix}{line}")
+                        if len(term.output) > 1000:
+                            term.output.pop(0)
+                except Exception:
+                    return
+
+            threads: List[threading.Thread] = []
+            if term.process.stdout is not None:
+                t1 = threading.Thread(target=reader, args=(term.process.stdout, ""), daemon=True)
+                threads.append(t1)
+                t1.start()
+            if term.process.stderr is not None:
+                t2 = threading.Thread(target=reader, args=(term.process.stderr, "[stderr] "), daemon=True)
+                threads.append(t2)
+                t2.start()
+
             term.process.wait()
             term.exit_code = term.process.returncode
+            for t in threads:
+                t.join(timeout=0.2)
         except Exception:
             pass
 
