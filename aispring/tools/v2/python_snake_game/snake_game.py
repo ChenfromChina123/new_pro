@@ -160,14 +160,12 @@ def generate_food(self):
     while True:
         # 随机决定生成普通食物还是特殊食物
         is_special = random.random() < self.special_food_chance
-
         food = {
             'x': random.randint(0, self.grid_width - 1),
             'y': random.randint(0, self.grid_height - 1),
             'is_special': is_special
         }
 
-        # 检查食物是否在蛇身上
         food_on_snake = False
         for segment in self.snake:
             if segment['x'] == food['x'] and segment['y'] == food['y']:
@@ -184,9 +182,6 @@ def generate_food(self):
             
             if not food_on_snake:
                 self.food = food
-                break
-    
-    def draw_grid(self):
         """绘制网格"""
         # 绘制游戏区域背景
         pygame.draw.rect(self.screen, self.colors['game_area'], 

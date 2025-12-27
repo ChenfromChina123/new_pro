@@ -29,12 +29,41 @@ def _matches_glob(rel_path: str, glob_pattern: str) -> bool:
     if gp.startswith("**/"):
         candidates.append(gp[3:])
 
+    expanded: List[str] = []
     for cand in candidates:
+        expanded.append(cand)
+        while "/**/" in cand:
+            cand = cand.replace("/**/", "/")
+            expanded.append(cand)
+        if cand.endswith("/**"):
+            expanded.append(cand[:-3])
+
+    for cand in expanded:
         if fnmatch.fnmatch(norm, cand):
             return True
         if fnmatch.fnmatch(os.path.basename(norm), cand):
             return True
     return False
+
+
+def suggest_similar_patterns(glob_pattern: str, root_dir: str, limit: int = 5) -> List[str]:
+    norm = glob_pattern.replace("\\", "/")
+    norm = norm[2:] if norm.startswith("./") else norm
+    if "/" not in norm:
+        return []
+    first = norm.split("/", 1)[0]
+    if not first or any(ch in first for ch in "*?[]"):
+        return []
+    try:
+        entries = os.listdir(root_dir)
+    except Exception:
+        return []
+    dirs = [e for e in entries if os.path.isdir(os.path.join(root_dir, e)) and not e.startswith(".")]
+    matches = difflib.get_close_matches(first, dirs, n=limit, cutoff=0.4)
+    if not matches:
+        return []
+    rest = norm.split("/", 1)[1]
+    return [f"{m}/{rest}" for m in matches]
 
 
 def calculate_diff_of_lines(path_of_file: str, content_new: str) -> Tuple[int, int]:
@@ -126,6 +155,7 @@ def edit_lines(
     delete_start: Optional[int] = None,
     delete_end: Optional[int] = None,
     insert_at: Optional[int] = None,
+    auto_indent: bool = False,
     content: str = "",
 ) -> Tuple[str, str]:
     """
@@ -137,6 +167,7 @@ def edit_lines(
     else:
         lines = []
 
+    original_lines = list(lines)
     before = "\n".join(lines)
     original_lines_count = len(lines)
 
@@ -181,6 +212,37 @@ def edit_lines(
     # 4. 执行插入
     if content and target_insert_index != -1:
         insert_lines = content.splitlines()
+        if auto_indent and os.path.splitext(path_of_file)[1].lower() in {".py", ".pyw"}:
+            ins_line = int(insert_at) if insert_at is not None else (ds if ds > 0 else 1)
+            ins_line = max(1, ins_line)
+            ins_line = min(ins_line, len(original_lines) if original_lines else 1)
+            indent_prefix = ""
+            if original_lines:
+                start_idx = ins_line - 1
+                for j in range(start_idx, -1, -1):
+                    line = original_lines[j]
+                    if line.strip() != "":
+                        indent_prefix = re.match(r"[ \t]*", line).group(0)
+                        break
+
+            min_ws = None
+            for line in insert_lines:
+                if line.strip() == "":
+                    continue
+                ws = re.match(r"[ \t]*", line).group(0)
+                if min_ws is None or len(ws) < min_ws:
+                    min_ws = len(ws)
+            if min_ws is None:
+                min_ws = 0
+
+            normalized: List[str] = []
+            for line in insert_lines:
+                if line.strip() == "":
+                    normalized.append("")
+                    continue
+                trimmed = line[min_ws:] if len(line) >= min_ws else line.lstrip(" \t")
+                normalized.append(f"{indent_prefix}{trimmed}")
+            insert_lines = normalized
         lines[target_insert_index : target_insert_index] = insert_lines
     elif content and insert_at is None and ds > 0:
         # 如果指定了删除但没指定插入位置，且有内容，则默认在删除位置插入（即替换）

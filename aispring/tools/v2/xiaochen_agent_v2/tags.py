@@ -137,9 +137,11 @@ def parse_stack_of_tags(text: str) -> List[Dict[str, Any]]:
             delete_start_str = find_substring(inner, "delete_start")
             delete_end_str = find_substring(inner, "delete_end")
             insert_at_str = find_substring(inner, "insert_at")
+            auto_indent_str = find_substring(inner, "auto_indent")
             task["delete_start"] = int(delete_start_str) if delete_start_str.strip() else None
             task["delete_end"] = int(delete_end_str) if delete_end_str.strip() else None
             task["insert_at"] = int(insert_at_str) if insert_at_str.strip() else None
+            task["auto_indent"] = auto_indent_str.strip().lower() in {"1", "true", "yes", "y", "on"}
             task["content"] = find_substring(inner, "content", keep_indentation=True)
             if not task["path"]:
                 idx = e_idx + len(end_tag)
