@@ -23,6 +23,7 @@ from .files import (
 from .logs import append_edit_history, append_usage_history, log_request, rollback_last_edit
 from .metrics import CacheStats
 from .tags import parse_stack_of_tags
+from .terminal import TerminalManager
 
 
 class VoidAgent:
@@ -36,6 +37,7 @@ class VoidAgent:
         self.cacheOfBackups: Dict[str, str] = {}
         self.cacheOfSystemMessage: Optional[Dict[str, str]] = None
         self.statsOfCache = CacheStats()
+        self.terminalManager = TerminalManager()
         self.cacheOfProjectTree: Optional[str] = None
         self.cacheOfUserRules: Optional[str] = None
 
@@ -104,10 +106,14 @@ class VoidAgent:
   <end_line>100</end_line>
 </read_file>
 
-### 4. Run Command (Use for system commands, not for file editing)
+### 4. Run Command (Execute system commands)
 <run_command>
-  <command>ls -la</command>
+  <command>python app.py</command>
+  <is_long_running>false</is_long_running>
 </run_command>
+
+- **Short-running**: Set `<is_long_running>false</is_long_running>` (default). Use for quick commands like `ls`, `git status`, `pip install`.
+- **Long-running**: Set `<is_long_running>true</is_long_running>`. Use for web servers, watchers, or any process that stays active. You will receive a Terminal ID to track it.
 
 ## 🚫 FORBIDDEN
 - Unclosed tags
@@ -579,6 +585,8 @@ class VoidAgent:
 
                     elif t["type"] == "run_command":
                         cmd_text = str(t["command"])
+                        is_long = str(t.get("is_long_running", "false")).lower() == "true"
+                        
                         commands = [c.strip() for c in cmd_text.splitlines() if c.strip()]
                         if not commands:
                             obs = "FAILURE: Empty command"
@@ -592,24 +600,17 @@ class VoidAgent:
                                     observations.append(obs)
                                     self.printToolResult(obs)
                                     continue
+                                
                                 try:
-                                    result = subprocess.run(cmd, shell=True, capture_output=True, text=False)
-
-                                    def decodeBytes(b: bytes) -> str:
-                                        try:
-                                            return b.decode("utf-8")
-                                        except UnicodeDecodeError:
-                                            try:
-                                                import locale
-
-                                                return b.decode(locale.getpreferredencoding())
-                                            except Exception:
-                                                return b.decode("utf-8", errors="replace")
-
-                                    stdoutStr = decodeBytes(result.stdout)
-                                    stderrStr = decodeBytes(result.stderr)
-                                    output = f"Stdout:\n{stdoutStr}\nStderr:\n{stderrStr}"
-                                    obs = f"SUCCESS: Command executed: {cmd}\n{output}"
+                                    success, output, error = self.terminalManager.run_command(cmd, is_long_running=is_long)
+                                    if success:
+                                        if is_long:
+                                            obs = f"SUCCESS: Long-running command started. Terminal ID: {output}\nCommand: {cmd}"
+                                        else:
+                                            obs = f"SUCCESS: Command executed: {cmd}\n{output}"
+                                    else:
+                                        obs = f"FAILURE: {error}\n{output}"
+                                    
                                     observations.append(obs)
                                     self.printToolResult(obs)
                                 except Exception as e:
