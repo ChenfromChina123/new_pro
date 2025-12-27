@@ -75,7 +75,11 @@ class SnakeGame:
         
         # 游戏变量
         self.snake = []
-        self.food = None
+self.food = None
+self.special_food = None  # 特殊食物
+self.special_food_timer = 0  # 特殊食物生成时间
+self.special_food_duration = 15  # 特殊食物持续时间（秒）
+self.special_food_chance = 0.2  # 生成特殊食物的概率（20%）
         self.direction = Direction.RIGHT
         self.next_direction = Direction.RIGHT
         self.score = 0
@@ -151,24 +155,32 @@ class SnakeGame:
         
         # 重置分数
         self.score = 0
-        
-        # 重置游戏状态
-        self.game_state = GameState.PLAYING
-        
-    def generate_food(self):
-        """生成食物"""
-        while True:
-            food = {
-                'x': random.randint(0, self.grid_width - 1),
-                'y': random.randint(0, self.grid_height - 1)
-            }
-            
-            # 检查食物是否在蛇身上
-            food_on_snake = False
-            for segment in self.snake:
-                if segment['x'] == food['x'] and segment['y'] == food['y']:
-                    food_on_snake = True
-                    break
+def generate_food(self):
+    """生成食物（普通或特殊）"""
+    while True:
+        # 随机决定生成普通食物还是特殊食物
+        is_special = random.random() < self.special_food_chance
+
+        food = {
+            'x': random.randint(0, self.grid_width - 1),
+            'y': random.randint(0, self.grid_height - 1),
+            'is_special': is_special
+        }
+
+        # 检查食物是否在蛇身上
+        food_on_snake = False
+        for segment in self.snake:
+            if segment['x'] == food['x'] and segment['y'] == food['y']:
+                food_on_snake = True
+                break
+
+        if not food_on_snake:
+            if is_special:
+                self.special_food = food
+                self.special_food_timer = pygame.time.get_ticks()
+            else:
+                self.food = food
+            break
             
             if not food_on_snake:
                 self.food = food
@@ -227,24 +239,51 @@ class SnakeGame:
                     eye2 = (x + self.grid_size - 6, y + self.grid_size - 5)
                 elif self.direction == Direction.LEFT:
                     eye1 = (x + 6, y + 5)
-                    eye2 = (x + 6, y + self.grid_size - 5)
-                elif self.direction == Direction.UP:
-                    eye1 = (x + 5, y + 6)
-                    eye2 = (x + self.grid_size - 5, y + 6)
-                elif self.direction == Direction.DOWN:
-                    eye1 = (x + 5, y + self.grid_size - 6)
-                    eye2 = (x + self.grid_size - 5, y + self.grid_size - 6)
-                
-                # 绘制眼睛
-                pygame.draw.circle(self.screen, eye_color, eye1, eye_radius)
-                pygame.draw.circle(self.screen, eye_color, eye2, eye_radius)
-    
-    def draw_food(self):
-        """绘制食物"""
-        if self.food:
-            x = self.game_area_x + self.food['x'] * self.grid_size
-            y = self.game_area_y + self.food['y'] * self.grid_size
-            
+def draw_food(self):
+    """绘制食物（普通和特殊）"""
+    # 绘制普通食物
+    if self.food:
+        x = self.game_area_x + self.food['x'] * self.grid_size
+        y = self.game_area_y + self.food['y'] * self.grid_size
+
+        # 绘制食物主体
+        pygame.draw.rect(self.screen, self.colors['food'], 
+                        (x + 2, y + 2, self.grid_size -4, self.grid_size -4), 
+                        border_radius=8)
+
+        # 绘制食物细节（苹果梗）
+        pygame.draw.rect(self.screen, (141, 110, 99), 
+                        (x + self.grid_size//2 -1, y -3, 2,5))
+
+        # 绘制高光
+        pygame.draw.circle(self.screen, (255,255,255,128), 
+                          (x + self.grid_size -5, y +5),3)
+
+    # 绘制特殊食物
+    if self.special_food:
+        x = self.game_area_x + self.special_food['x'] * self.grid_size
+        y = self.game_area_y + self.special_food['y'] * self.grid_size
+
+        # 绘制特殊食物主体（金色）
+        pygame.draw.rect(self.screen, (255,215,0), 
+                        (x +2, y +2, self.grid_size -4, self.grid_size -4), 
+                        border_radius=8)
+
+        # 绘制特殊标记（星星）
+        star_points = [
+            (x + self.grid_size//2, y +2),
+            (x + self.grid_size//2 +3, y + self.grid_size//2),
+            (x + self.grid_size -2, y + self.grid_size//2),
+            (x + self.grid_size//2 +5, y + self.grid_size//2 +5),
+            (x + self.grid_size//2 +2, y + self.grid_size -2),
+            (x + self.grid_size//2, y + self.grid_size//2 +3),
+            (x + self.grid_size//2 -2, y + self.grid_size -2),
+            (x + self.grid_size//2 -5, y + self.grid_size//2 +5),
+            (x +2, y + self.grid_size//2),
+            (x + self.grid_size//2 -3, y + self.grid_size//2),
+            (x + self.grid_size//2, y +2)
+        ]
+        pygame.draw.polygon(self.screen, (255,255,255), star_points,1)
             # 绘制食物主体
             pygame.draw.rect(self.screen, self.colors['food'], 
                             (x + 2, y + 2, self.grid_size - 4, self.grid_size - 4), 
@@ -358,141 +397,156 @@ class SnakeGame:
             "5. 尽可能获得高分!"
         ]
         
-        for i, text in enumerate(instructions):
-            instruction_text = self.font_small.render(text, True, self.colors['text'])
-            self.screen.blit(instruction_text, 
-                           (self.screen_width // 2 - instruction_text.get_width() // 2, 
-                            300 + i * 30))
-    
-    def draw_game_over(self):
-        """绘制游戏结束画面"""
-        # 半透明覆盖层
-        overlay = pygame.Surface((self.screen_width, self.screen_height), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 180))
-        self.screen.blit(overlay, (0, 0))
-        
-        # 游戏结束文字
-        game_over_text = self.font_large.render("游戏结束!", True, self.colors['game_over'])
-        self.screen.blit(game_over_text, 
-                        (self.screen_width // 2 - game_over_text.get_width() // 2, 
-                         self.screen_height // 2 - 100))
-        
-        # 最终得分
-        score_text = self.font_medium.render(f"最终得分: {self.score}", True, self.colors['score'])
-        self.screen.blit(score_text, 
-                        (self.screen_width // 2 - score_text.get_width() // 2, 
-                         self.screen_height // 2 - 30))
-        
-        # 最高分
-        if self.score > self.high_score:
-            new_record_text = self.font_medium.render("新纪录!", True, (255, 215, 0))
-            self.screen.blit(new_record_text, 
-                            (self.screen_width // 2 - new_record_text.get_width() // 2, 
-                             self.screen_height // 2 + 10))
-        
-        # 提示信息
-        hint_text = self.font_small.render("按R键重新开始或ESC键返回菜单", True, self.colors['text'])
-        self.screen.blit(hint_text, 
-                        (self.screen_width // 2 - hint_text.get_width() // 2, 
-                         self.screen_height // 2 + 80))
-    
-    def update_game(self):
-        """更新游戏逻辑"""
-        current_time = pygame.time.get_ticks()
-        
-        # 检查是否到了移动时间
-        if current_time - self.last_move_time < self.game_speed:
-            return
-        
-        self.last_move_time = current_time
-        
-        # 更新方向
-        self.direction = self.next_direction
-        
-        # 获取蛇头
-        head = self.snake[0].copy()
-        
-        # 根据方向移动蛇头
-        if self.direction == Direction.UP:
-            head['y'] -= 1
-        elif self.direction == Direction.DOWN:
-            head['y'] += 1
-        elif self.direction == Direction.LEFT:
-            head['x'] -= 1
-        elif self.direction == Direction.RIGHT:
-            head['x'] += 1
-        
-        # 检查是否撞墙
-        if (head['x'] < 0 or head['x'] >= self.grid_width or 
-            head['y'] < 0 or head['y'] >= self.grid_height):
+def update_game(self):
+    """更新游戏逻辑"""
+    current_time = pygame.time.get_ticks()
+
+    # 检查特殊食物是否过期
+    if self.special_food and current_time - self.special_food_timer > self.special_food_duration * 1000:
+        self.special_food = None
+
+    # 检查是否到了移动时间
+    if current_time - self.last_move_time < self.game_speed:
+        return
+
+    self.last_move_time = current_time
+
+    # 更新方向
+    self.direction = self.next_direction
+
+    # 获取蛇头
+    head = self.snake[0].copy()
+
+    # 根据方向移动蛇头
+    if self.direction == Direction.UP:
+        head['y'] -=1
+    elif self.direction == Direction.DOWN:
+        head['y'] +=1
+    elif self.direction == Direction.LEFT:
+        head['x'] -=1
+    elif self.direction == Direction.RIGHT:
+        head['x'] +=1
+
+    # 检查是否撞墙
+    if (head['x'] <0 or head['x'] >= self.grid_width or 
+        head['y'] <0 or head['y'] >= self.grid_height):
+        self.game_over()
+        return
+
+    # 检查是否撞到自己
+    for segment in self.snake:
+        if head['x'] == segment['x'] and head['y'] == segment['y']:
             self.game_over()
             return
-        
-        # 检查是否撞到自己
-        for segment in self.snake:
-            if head['x'] == segment['x'] and head['y'] == segment['y']:
-                self.game_over()
-                return
-        
-        # 将新头部添加到蛇
-        self.snake.insert(0, head)
-        
-        # 检查是否吃到食物
-        if head['x'] == self.food['x'] and head['y'] == self.food['y']:
-            # 增加分数
-            self.score += 10
-            
-            # 更新最高分
-            if self.score > self.high_score:
-                self.high_score = self.score
-                self.save_high_score()
-            
-            # 生成新食物
-            self.generate_food()
-        else:
-            # 如果没有吃到食物，移除尾部
-            self.snake.pop()
-    
-    def game_over(self):
-        """游戏结束"""
-        self.game_state = GameState.GAME_OVER
-    
-    def handle_events(self):
-        """处理事件"""
-        mouse_pos = pygame.mouse.get_pos()
-        
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                return False
-            
-            elif event.type == pygame.KEYDOWN:
-                if self.game_state == GameState.PLAYING:
-                    # 游戏中的键盘控制
-                    if event.key == pygame.K_UP and self.direction != Direction.DOWN:
-                        self.next_direction = Direction.UP
-                    elif event.key == pygame.K_DOWN and self.direction != Direction.UP:
-                        self.next_direction = Direction.DOWN
-                    elif event.key == pygame.K_LEFT and self.direction != Direction.RIGHT:
-                        self.next_direction = Direction.LEFT
-                    elif event.key == pygame.K_RIGHT and self.direction != Direction.LEFT:
-                        self.next_direction = Direction.RIGHT
-                    elif event.key == pygame.K_SPACE:
-                        self.game_state = GameState.PAUSED
-                    elif event.key == pygame.K_p:
-                        self.game_state = GameState.PAUSED
-                    elif event.key == pygame.K_r:
-                        self.init_game()
-                    elif event.key == pygame.K_ESCAPE:
-                        self.game_state = GameState.MENU
-                
-                elif self.game_state == GameState.PAUSED:
-                    # 暂停状态的键盘控制
-                    if event.key == pygame.K_SPACE:
+
+    # 将新头部添加到蛇
+    self.snake.insert(0, head)
+
+    # 检查是否吃到普通食物
+    if self.food and head['x'] == self.food['x'] and head['y'] == self.food['y']:
+        self.score +=10
+        if self.score > self.high_score:
+            self.high_score = self.score
+            self.save_high_score()
+        self.generate_food()
+    # 检查是否吃到特殊食物
+    elif self.special_food and head['x'] == self.special_food['x'] and head['y'] == self.special_food['y']:
+        self.score +=50  # 特殊食物加分更多
+        if self.score > self.high_score:
+            self.high_score = self.score
+            self.save_high_score()
+        self.special_food = None
+        # 添加特殊效果：减速5秒
+def handle_events(self):
+    """处理事件"""
+    mouse_pos = pygame.mouse.get_pos()
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            return False
+
+        elif event.type == pygame.KEYDOWN:
+            if self.game_state == GameState.PLAYING:
+                # 游戏中的键盘控制
+                if event.key == pygame.K_UP and self.direction != Direction.DOWN:
+                    self.next_direction = Direction.UP
+                elif event.key == pygame.K_DOWN and self.direction != Direction.UP:
+                    self.next_direction = Direction.DOWN
+                elif event.key == pygame.K_LEFT and self.direction != Direction.RIGHT:
+                    self.next_direction = Direction.LEFT
+                elif event.key == pygame.K_RIGHT and self.direction != Direction.LEFT:
+                    self.next_direction = Direction.RIGHT
+                elif event.key == pygame.K_SPACE:
+                    self.game_state = GameState.PAUSED
+                elif event.key == pygame.K_p:
+                    self.game_state = GameState.PAUSED
+                elif event.key == pygame.K_r:
+                    self.init_game()
+                elif event.key == pygame.K_ESCAPE:
+                    self.game_state = GameState.MENU
+
+            elif self.game_state == GameState.PAUSED:
+                # 暂停状态的键盘控制
+                if event.key == pygame.K_SPACE:
+                    self.game_state = GameState.PLAYING
+                elif event.key == pygame.K_r:
+                    self.init_game()
+                elif event.key == pygame.K_ESCAPE:
+                    self.game_state = GameState.MENU
+
+            elif self.game_state == GameState.GAME_OVER:
+                # 游戏结束状态的键盘控制
+                if event.key == pygame.K_r:
+                    self.init_game()
+                elif event.key == pygame.K_ESCAPE:
+                    self.game_state = GameState.MENU
+
+            elif self.game_state == GameState.MENU:
+                # 菜单状态的键盘控制
+                if event.key == pygame.K_SPACE:
+                    self.game_state = GameState.PLAYING
+                elif event.key == pygame.K_ESCAPE:
+                    return False
+
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button ==1:  # 左键点击
+                # 检查按钮点击
+                if self.game_state == GameState.PLAYING or self.game_state == GameState.PAUSED:
+                    if self.buttons['start']['rect'].collidepoint(mouse_pos):
                         self.game_state = GameState.PLAYING
-                    elif event.key == pygame.K_r:
+                    elif self.buttons['pause']['rect'].collidepoint(mouse_pos):
+                        self.game_state = GameState.PAUSED
+                    elif self.buttons['restart']['rect'].collidepoint(mouse_pos):
                         self.init_game()
-                    elif event.key == pygame.K_ESCAPE:
-                        self.game_state = GameState.MENU
+                    elif self.buttons['easy']['rect'].collidepoint(mouse_pos):
+                        self.difficulty = Difficulty.EASY
+                        self.game_speed = self.game_speeds[self.difficulty]
+                    elif self.buttons['normal']['rect'].collidepoint(mouse_pos):
+                        self.difficulty = Difficulty.NORMAL
+                        self.game_speed = self.game_speeds[self.difficulty]
+                    elif self.buttons['hard']['rect'].collidepoint(mouse_pos):
+                        self.difficulty = Difficulty.HARD
+                        self.game_speed = self.game_speeds[self.difficulty]
+                    elif self.buttons['quit']['rect'].collidepoint(mouse_pos):
+                        return False
+
+                elif self.game_state == GameState.MENU:
+                    # 菜单中的按钮点击
+                    start_rect = pygame.Rect(self.screen_width //2 -75, 250,150,50)
+                    quit_rect = pygame.Rect(self.screen_width //2 -75,320,150,50)
+
+                    if start_rect.collidepoint(mouse_pos):
+                        self.game_state = GameState.PLAYING
+                    elif quit_rect.collidepoint(mouse_pos):
+                        return False
+
+        # 处理特殊效果结束事件
+        elif event.type == pygame.USEREVENT +1:
+            # 恢复正常速度
+            self.game_speed = self.game_speeds[self.difficulty]
+            pygame.time.set_timer(pygame.USEREVENT +1,0)
+
+    return True
                 
                 elif self.game_state == GameState.GAME_OVER:
                     # 游戏结束状态的键盘控制
