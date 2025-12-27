@@ -256,6 +256,7 @@ def draw_food(self):
 
     # 绘制特殊食物
     if self.special_food:
+    if self.special_food:
         x = self.game_area_x + self.special_food['x'] * self.grid_size
         y = self.game_area_y + self.special_food['y'] * self.grid_size
 
@@ -278,18 +279,6 @@ def draw_food(self):
             (x + self.grid_size//2 -3, y + self.grid_size//2),
             (x + self.grid_size//2, y +2)
         ]
-        pygame.draw.polygon(self.screen, (255,255,255), star_points,1)
-            # 绘制食物主体
-            pygame.draw.rect(self.screen, self.colors['food'], 
-                            (x + 2, y + 2, self.grid_size - 4, self.grid_size - 4), 
-                            border_radius=8)
-            
-            # 绘制食物细节（苹果梗）
-            pygame.draw.rect(self.screen, (141, 110, 99), 
-                            (x + self.grid_size // 2 - 1, y - 3, 2, 5))
-            
-            # 绘制高光
-            pygame.draw.circle(self.screen, (255, 255, 255, 128), 
                               (x + self.grid_size - 5, y + 5), 3)
     
     def draw_ui(self):
@@ -403,12 +392,12 @@ def update_game(self):
     # 检查是否到了移动时间
     if current_time - self.last_move_time < self.game_speed:
         return
-
+        def update_game(self):
     self.last_move_time = current_time
-
+    current_time = pygame.time.get_ticks()
     # 更新方向
-    self.direction = self.next_direction
-
+    # 检查特殊食物是否过期
+    if self.special_food and current_time - self.special_food_timer > self.special_food_duration * 1000:
     # 获取蛇头
     head = self.snake[0].copy()
 
