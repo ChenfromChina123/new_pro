@@ -6,6 +6,7 @@ This project is a collection of tools and mini-applications developed under the 
 ## Directory Structure
 | Directory/File | Description |
 |----------------|-------------|
+| `cpp_projects/` | C++示例项目和代码 |
 | `python_snake_game/` | Python-based Snake game implementation |
 | `snake_game/` | Another version or related resources for the Snake game |
 | `void-main/` | Core module for the Void agent functionality |
@@ -17,8 +18,8 @@ This project is a collection of tools and mini-applications developed under the 
 | `v2_1.py` | Main script for version 2.1 of the toolset |
 | `v2_void.py` | Void agent-related script |
 | `test_doubao.py` | Test script for Doubao service/tool integration |
-
 ## Key Files Explanation
+- `cpp_projects/`: C++示例项目，包含基本的C++编程示例和构建配置
 - `v2_1.py`: Entry point for the main functionality of version 2.1, containing core logic for the toolset.
 - `v2_void.py`: Implements basic Void agent functionalities such as command handling and validation.
 - `test_doubao.py`: Tests integration with the Doubao service, including API calls and functionality checks.
