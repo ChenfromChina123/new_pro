@@ -1,6 +1,8 @@
 import os
 import platform
 import subprocess
+import time
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
@@ -26,7 +28,122 @@ from .tags import parse_stack_of_tags
 from .terminal import TerminalManager
 
 
-class VoidAgent:
+@dataclass
+class TaskItem:
+    id: str
+    content: str
+    status: str = "pending"
+    progress: Optional[int] = None
+    updated_at: float = field(default_factory=time.time)
+
+
+class TaskManager:
+    def __init__(self) -> None:
+        self._counter = 0
+        self._order: List[str] = []
+        self._tasks: Dict[str, TaskItem] = {}
+
+    def _normalize_status(self, status: Optional[str]) -> str:
+        s = (status or "pending").strip().lower()
+        if s in ("pending", "in_progress", "completed"):
+            return s
+        if s in ("doing", "inprogress", "in-progress", "in progress"):
+            return "in_progress"
+        if s in ("done", "finish", "finished"):
+            return "completed"
+        return "pending"
+
+    def _normalize_progress(self, progress: Optional[int]) -> Optional[int]:
+        if progress is None:
+            return None
+        try:
+            p = int(progress)
+        except Exception:
+            return None
+        if p < 0:
+            return 0
+        if p > 100:
+            return 100
+        return p
+
+    def _next_id(self) -> str:
+        self._counter += 1
+        return f"T{self._counter}"
+
+    def add(self, content: str, *, id: Optional[str] = None, status: Optional[str] = None, progress: Optional[int] = None) -> TaskItem:
+        tid = (id or "").strip() or self._next_id()
+        if tid in self._tasks:
+            tid = self._next_id()
+        item = TaskItem(
+            id=tid,
+            content=content.strip(),
+            status=self._normalize_status(status),
+            progress=self._normalize_progress(progress),
+        )
+        self._tasks[tid] = item
+        self._order.append(tid)
+        return item
+
+    def update(
+        self,
+        id: str,
+        *,
+        content: Optional[str] = None,
+        status: Optional[str] = None,
+        progress: Optional[int] = None,
+    ) -> Optional[TaskItem]:
+        tid = (id or "").strip()
+        if not tid or tid not in self._tasks:
+            return None
+        item = self._tasks[tid]
+        if content is not None and content.strip():
+            item.content = content.strip()
+        if status is not None and status.strip():
+            item.status = self._normalize_status(status)
+        if progress is not None:
+            item.progress = self._normalize_progress(progress)
+        item.updated_at = time.time()
+        return item
+
+    def delete(self, id: str) -> bool:
+        tid = (id or "").strip()
+        if not tid or tid not in self._tasks:
+            return False
+        del self._tasks[tid]
+        self._order = [x for x in self._order if x != tid]
+        return True
+
+    def clear(self) -> None:
+        self._tasks.clear()
+        self._order.clear()
+        self._counter = 0
+
+    def summary(self) -> Tuple[int, int, int]:
+        total = len(self._order)
+        done = 0
+        doing = 0
+        for tid in self._order:
+            t = self._tasks.get(tid)
+            if not t:
+                continue
+            if t.status == "completed":
+                done += 1
+            elif t.status == "in_progress":
+                doing += 1
+        return total, done, doing
+
+    def render(self) -> str:
+        total, done, doing = self.summary()
+        lines = [f"Tasks: {done}/{total} completed | {doing} in_progress"]
+        for tid in self._order:
+            t = self._tasks.get(tid)
+            if not t:
+                continue
+            prog = "" if t.progress is None else f" {t.progress}%"
+            lines.append(f"- ({t.id}) [{t.status}{prog}] {t.content}")
+        return "\n".join(lines)
+
+class Agent:
     def __init__(self, config: Config):
         self.config = config
         if not self.config.verifySsl:
@@ -40,6 +157,8 @@ class VoidAgent:
         self.terminalManager = TerminalManager()
         self.cacheOfProjectTree: Optional[str] = None
         self.cacheOfUserRules: Optional[str] = None
+        self.taskManager = TaskManager()
+        self.lastFullMessages: List[Dict[str, str]] = []
 
     def estimateTokensOfMessages(self, messages: List[Dict[str, str]]) -> int:
         totalChars = 0
@@ -50,19 +169,22 @@ class VoidAgent:
     def getContextOfSystem(self) -> str:
         """返回包含静态逻辑和用户规则的 System Prompt。"""
         rulesBlock = self.getUserRulesCached() or ""
-        return f"""# VOID AGENT - STRICT LOGIC & PASSIVE VALIDATION
+        return f"""# XIAOCHEN_TERMINAL - 小晨终端助手
 ## 🔴 VOID RULES (STRICT ADHERENCE REQUIRED)
-1. **PASSIVE VALIDATION**: Do NOT execute commands blindly. You must PROPOSE actions. The user acts as the validator.
-2. **SEARCH FIRST (REGEX FIRST)**: When looking for problem code, prefer REGEX searching in file contents.
-3. **MULTI TASKS ALLOWED**: You may output multiple closed tags per reply; they will be executed in order.
-4. **NO TASK = NO TAGS**: Reply with natural language only if no action is needed.
-5. **NAMING CONVENTION**: Variable names in your code should follow 'bOfA' pattern (e.g., contentOfFile).
-6. **EDIT EXISTING CODE BY LINE**: If a file already exists, prefer editing by lines instead of rewriting the whole file.
-7. **FOCUS FIRST**: The user's current request has the highest priority. Only do what the user explicitly asked.
-8. **NO OVER-EXECUTION**: Do NOT search/read extra files, do NOT propose unrelated improvements, and do NOT create README unless asked.
-9. **STOP AFTER TASK**: After completing the requested task(s), respond briefly and do NOT continue with additional tasks.
-10. **NO REPETITION**: Do NOT repeat or paraphrase the user's rules, project tree, or any provided context unless explicitly asked.
-11. **NO BOILERPLATE**: Do NOT output greetings, capability lists, or generic prompts. Answer directly.
+1. **PROJECT AWARENESS**: Before creating ANY new files or making assumptions, you MUST explore the project structure. If the project tree is not in the context, use `search_files` with `**/*` or `run_command` (e.g., `dir /s /b`) to understand existing code. NEVER reinvent the wheel.
+2. **PASSIVE VALIDATION**: Do NOT execute commands blindly. You must PROPOSE actions. The user acts as the validator.
+3. **SEARCH FIRST (REGEX FIRST)**: When looking for problem code, prefer REGEX searching in file contents.
+4. **MULTI TASKS ALLOWED**: You may output multiple closed tags per reply; they will be executed in order.
+5. **NO HALLUCINATION**: If a tool returns no results, do NOT assume the thing doesn't exist. Try different search patterns or look for related directories first.
+6. **NO TASK = NO TAGS**: Reply with natural language only if no action is needed.
+7. **NAMING CONVENTION**: Variable names in your code should follow 'bOfA' pattern (e.g., contentOfFile).
+8. **EDIT EXISTING CODE BY LINE**: If a file already exists, prefer editing by lines instead of rewriting the whole file.
+9. **FOCUS FIRST**: The user's current request has the highest priority. Only do what the user explicitly asked.
+10. **NO OVER-EXECUTION**: Limit your steps. Do not start a cycle unless necessary. Do NOT search/read extra files, do NOT propose unrelated improvements, and do NOT create README unless asked.
+11. **STOP AFTER TASK**: After completing the requested task(s), respond briefly and do NOT continue with additional tasks.
+12. **NO REPETITION**: Do NOT repeat or paraphrase the user's rules, project tree, or any provided context unless explicitly asked.
+13. **NO BOILERPLATE**: Do NOT output greetings, capability lists, or generic prompts. Answer directly.
+ 14. **LONG TASKS => TASK LIST**: If the user's request is multi-step or long-running, create a task list first (task_add / task_update) and keep it updated as you work.
 
 ## 📋 USER RULES (FROM .VOIDRULES)
 ```text
@@ -90,7 +212,7 @@ class VoidAgent:
   <content>file_content</content>
 </write_file>
 
-### 2b. Edit Lines (delete range, then insert at line)
+### 2b. Edit Lines (delete range, then insert at line. insert_at refers to original line numbers)
 <edit_lines>
   <path>path/to/file.py</path>
   <delete_start>10</delete_start>
@@ -98,6 +220,9 @@ class VoidAgent:
   <insert_at>10</insert_at>
   <content>new lines...</content>
 </edit_lines>
+- **Behavior**: It deletes the range [delete_start, delete_end] (inclusive, 1-indexed) and then inserts `content` at `insert_at`.
+- **Shift Safety**: `insert_at` refers to the **original** line numbers. The tool automatically handles internal offsets.
+- **Replacement**: If `insert_at` is omitted but `content` is provided, it defaults to replacing the deleted range.
 
 ### 3. Read File (path required, start_line/end_line optional)
 <read_file>
@@ -114,6 +239,25 @@ class VoidAgent:
 
 - **Short-running**: Set `<is_long_running>false</is_long_running>` (default). Use for quick commands like `ls`, `git status`, `pip install`.
 - **Long-running**: Set `<is_long_running>true</is_long_running>`. Use for web servers, watchers, or any process that stays active. You will receive a Terminal ID to track it.
+
+### 5. Task List (plan & progress)
+<task_add>
+  <id>T1</id>
+  <content>Describe the task</content>
+  <status>pending</status>
+  <progress>0</progress>
+</task_add>
+
+<task_update>
+  <id>T1</id>
+  <status>in_progress</status>
+  <progress>30</progress>
+  <content>Optional updated description</content>
+</task_update>
+
+<task_list></task_list>
+<task_delete><id>T1</id></task_delete>
+<task_clear></task_clear>
 
 ## 🚫 FORBIDDEN
 - Unclosed tags
@@ -163,24 +307,34 @@ class VoidAgent:
     def printToolResult(self, text: str, maxChars: int = 8000) -> None:
         return
 
-    def getContextOfCurrentUser(self, inputOfUser: str) -> str:
-        """构造当前轮的 user 动态上下文（环境信息）并拼接用户问题。"""
-        sep = os.sep
-        osName = platform.system()
-        cwd = os.getcwd()
+    def printTaskProgress(self) -> None:
+        content = self.taskManager.render()
+        print(f"{Style.BRIGHT}===== TASKS ====={Style.RESET_ALL}")
+        print(content)
+        print(f"{Style.BRIGHT}================={Style.RESET_ALL}")
 
-        return (
-            "IMPORTANT: The following CONTEXT is input-only. Do NOT quote, repeat, or summarize it unless the user asks.\n"
-            "IMPORTANT: Answer only the user's question. No greetings. No capability lists.\n"
-            "\n"
-            "BEGIN_CONTEXT\n"
-            f"OPERATING SYSTEM: {osName}\n"
-            f"PATH SEPARATOR: {sep}\n"
-            f"CURRENT DIRECTORY: {cwd}\n"
-            "END_CONTEXT\n"
-            "\n"
-            f"{inputOfUser}"
-        )
+    def getContextOfCurrentUser(self, inputOfUser: str) -> str:
+        """返回 User 上下文。"""
+        cwd = os.getcwd()
+        # 获取任务清单状态
+        task_str = ""
+        if self.taskManager._tasks:
+            task_str = f"\n\n## 📋 CURRENT TASKS\n{self.taskManager.render()}"
+
+        # 获取一级目录列表作为提示，但不展示完整树
+        try:
+            top_items = os.listdir(cwd)
+            dirs = [d for d in top_items if os.path.isdir(os.path.join(cwd, d)) and not d.startswith(".")]
+            files = [f for f in top_items if os.path.isfile(os.path.join(cwd, f)) and not f.startswith(".")]
+            hint = f"Current Directory: {cwd}\nTop-level Dirs: {dirs}\nTop-level Files: {files}"
+        except Exception:
+            hint = f"Current Directory: {cwd}"
+
+        return f"""{hint}{task_str}
+
+## 📥 USER INPUT
+{inputOfUser}
+"""
 
     def getSystemMessage(self) -> Dict[str, str]:
         if self.cacheOfSystemMessage is None:
@@ -263,6 +417,22 @@ class VoidAgent:
                     tail = historyWorking[-54:]
                     messages = [msgSystem] + head + tail
                     estimateTokens = self.estimateTokensOfMessages(messages)
+                
+                # 本地计算缓存命中估算 (备用方案)
+                localHitEstimate = 0
+                if self.lastFullMessages:
+                    commonPrefix = []
+                    for m1, m2 in zip(self.lastFullMessages, messages):
+                        if m1 == m2:
+                            commonPrefix.append(m1)
+                        else:
+                            break
+                    if commonPrefix:
+                        localHitEstimate = self.estimateTokensOfMessages(commonPrefix)
+                
+                # 更新本次请求的完整消息，供下次对比
+                self.lastFullMessages = list(messages)
+                
                 print(f"{Fore.MAGENTA}[Token Estimate] ~{estimateTokens} tokens{Style.RESET_ALL}")
 
                 try:
@@ -284,7 +454,7 @@ class VoidAgent:
                 fullReasoning = ""
                 hasReasoned = False
                 usageOfRequest: Optional[Dict[str, Any]] = None
-                print(f"{Fore.GREEN}[VoidAgent]: ", end="")
+                print(f"{Fore.GREEN}[小晨终端助手]: ", end="")
                 try:
                     response = requests.post(
                         self.endpointOfChat, 
@@ -340,14 +510,26 @@ class VoidAgent:
                 finally:
                     print("\n" + "-" * 40)
                     if usageOfRequest:
-                        self.statsOfCache.updateFromUsage(usageOfRequest)
-                        
                         # 从单次请求中提取命中和未命中
                         hit = int(usageOfRequest.get("prompt_cache_hit_tokens") or 0)
                         if hit == 0:
                             details = usageOfRequest.get("prompt_tokens_details")
                             if isinstance(details, dict):
                                 hit = int(details.get("cached_tokens") or 0)
+                        
+                        # 备用方案：如果 API 返回 0 但本地计算有重复前缀，则使用本地估算值
+                        isEstimated = False
+                        if hit == 0 and localHitEstimate > 0:
+                            hit = localHitEstimate
+                            isEstimated = True
+                            # 更新 usage 对象以便后续统计使用
+                            if "prompt_tokens_details" not in usageOfRequest:
+                                usageOfRequest["prompt_tokens_details"] = {}
+                            usageOfRequest["prompt_tokens_details"]["cached_tokens"] = hit
+                            # 如果是 DeepSeek 风格也可以设置
+                            usageOfRequest["prompt_cache_hit_tokens"] = hit
+
+                        self.statsOfCache.updateFromUsage(usageOfRequest)
                         
                         prompt = int(usageOfRequest.get("prompt_tokens") or 0)
                         miss = int(usageOfRequest.get("prompt_cache_miss_tokens") or 0)
@@ -357,6 +539,9 @@ class VoidAgent:
                         rateReq = CacheStats.getHitRateOfUsage(usageOfRequest)
                         rateSession = self.statsOfCache.getSessionHitRate()
                         rateReqStr = f"{rateReq*100:.1f}%" if rateReq is not None else "N/A"
+                        if isEstimated:
+                            rateReqStr += " (Est.)"
+                        
                         rateSessionStr = f"{rateSession*100:.1f}%" if rateSession is not None else "N/A"
                         print(
                             f"{Fore.CYAN}[Cache] hit={hit} miss={miss} rate={rateReqStr} | session_rate={rateSessionStr}{Style.RESET_ALL}"
@@ -394,12 +579,22 @@ class VoidAgent:
                         "<search_files",
                         "<search_in_files",
                         "<edit_lines",
+                        "<task_add",
+                        "<task_update",
+                        "<task_delete",
+                        "<task_list",
+                        "<task_clear",
                         "</write_file",
                         "</read_file",
                         "</run_command",
                         "</search_files",
                         "</search_in_files",
                         "</edit_lines",
+                        "</task_add",
+                        "</task_update",
+                        "</task_delete",
+                        "</task_list",
+                        "</task_clear",
                     ]
                     if any(tok in replyLower for tok in suspiciousTagTokens):
                         feedbackError = "ERROR: Invalid Format! Use one or more closed tags. No tag if no task."
@@ -617,6 +812,55 @@ class VoidAgent:
                                     obs = f"FAILURE: {str(e)}"
                                     observations.append(obs)
                                     self.printToolResult(obs)
+                    elif t["type"] == "task_add":
+                        content = str(t.get("content") or "").strip()
+                        status = str(t.get("status") or "").strip() or None
+                        tid = str(t.get("id") or "").strip() or None
+                        progress = t.get("progress")
+                        if not content:
+                            obs = "FAILURE: task_add missing <content>"
+                            observations.append(obs)
+                        else:
+                            item = self.taskManager.add(content, id=tid, status=status, progress=progress)
+                            obs = f"SUCCESS: Task added ({item.id})"
+                            observations.append(obs)
+                            self.printTaskProgress()
+
+                    elif t["type"] == "task_update":
+                        tid = str(t.get("id") or "").strip()
+                        content = t.get("content")
+                        status = t.get("status")
+                        progress = t.get("progress")
+                        item = self.taskManager.update(tid, content=content, status=status, progress=progress)
+                        if not item:
+                            obs = f"FAILURE: Task not found: {tid}"
+                            observations.append(obs)
+                        else:
+                            obs = f"SUCCESS: Task updated ({item.id})"
+                            observations.append(obs)
+                            self.printTaskProgress()
+
+                    elif t["type"] == "task_delete":
+                        tid = str(t.get("id") or "").strip()
+                        ok = self.taskManager.delete(tid)
+                        if not ok:
+                            obs = f"FAILURE: Task not found: {tid}"
+                            observations.append(obs)
+                        else:
+                            obs = f"SUCCESS: Task deleted ({tid})"
+                            observations.append(obs)
+                            self.printTaskProgress()
+
+                    elif t["type"] == "task_clear":
+                        self.taskManager.clear()
+                        obs = "SUCCESS: Tasks cleared"
+                        observations.append(obs)
+                        self.printTaskProgress()
+
+                    elif t["type"] == "task_list":
+                        obs = "SUCCESS: Task list\n" + self.taskManager.render()
+                        observations.append(obs)
+                        self.printTaskProgress()
 
                 if observations:
                     historyWorking.append({"role": "user", "content": "\n".join(observations)})
@@ -636,3 +880,6 @@ class VoidAgent:
         self.historyOfMessages = historyWorking
 
         self.printStatsOfModification()
+
+
+VoidAgent = Agent

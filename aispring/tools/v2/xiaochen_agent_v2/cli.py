@@ -40,7 +40,7 @@ def run_cli() -> None:
     verifySsl = True
 
     if not apiKey:
-        print(f"{Fore.CYAN}=== Void Agent Model Selection ==={Style.RESET_ALL}")
+        print(f"{Fore.CYAN}=== 小晨终端助手 (XIAOCHEN_TERMINAL) ==={Style.RESET_ALL}")
         for k, v in PRESETS.items():
             print(f"{k}. {v['name']}")
         
@@ -67,7 +67,7 @@ def run_cli() -> None:
 
     while True:
         try:
-            inputOfUser = input(f"\n{Style.BRIGHT}VoidUser: ")
+            inputOfUser = input(f"\n{Style.BRIGHT}User: ")
             if not inputOfUser.strip():
                 continue
             if inputOfUser.strip().lower() == "rollback":
@@ -77,6 +77,6 @@ def run_cli() -> None:
                 break
             agent.chat(inputOfUser)
         except KeyboardInterrupt:
-            print(f"\n{Fore.BLUE}VoidAgent Exiting...{Style.RESET_ALL}")
+            print(f"\n{Fore.BLUE}小晨终端助手 正在退出...{Style.RESET_ALL}")
             break
 

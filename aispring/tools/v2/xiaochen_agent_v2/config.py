@@ -10,5 +10,16 @@ class Config:
     maxCycles: int = 30
     stopAfterFirstToolExecution: bool = False
     verifySsl: bool = True
-    whitelistedTools: List[str] = field(default_factory=lambda: ["search_files", "search_in_files", "read_file"])
+    whitelistedTools: List[str] = field(
+        default_factory=lambda: [
+            "search_files",
+            "search_in_files",
+            "read_file",
+            "task_add",
+            "task_update",
+            "task_delete",
+            "task_list",
+            "task_clear",
+        ]
+    )
     whitelistedCommands: List[str] = field(default_factory=lambda: ["ls", "dir", "pwd", "whoami", "echo", "cat", "type"])

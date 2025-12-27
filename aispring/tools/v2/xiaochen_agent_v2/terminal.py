@@ -36,13 +36,15 @@ class TerminalManager:
         tid = str(uuid.uuid4())[:8]
         
         try:
-            # 统一使用 shell 执行
+            # 统一使用 shell 执行，并设置编码为 utf-8 以避免 Windows 上的解码错误
             proc = subprocess.Popen(
                 command,
                 shell=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
+                encoding='utf-8',
+                errors='replace', # 解码失败时替换字符，不抛出异常
                 cwd=cwd or os.getcwd(),
                 bufsize=1,
                 universal_newlines=True
@@ -57,10 +59,26 @@ class TerminalManager:
             self.terminals[tid] = term
 
             if is_long_running:
-                # 长期任务：启动背景线程读取输出，立即返回 TID
+                # 长期任务：启动背景线程读取输出
                 term.thread = threading.Thread(target=self._read_output, args=(term,), daemon=True)
                 term.thread.start()
-                return True, tid, ""
+
+                # 等待 10 秒观察进程状态
+                wait_seconds = 10
+                start_wait = time.time()
+                while time.time() - start_wait < wait_seconds:
+                    if proc.poll() is not None:
+                        # 进程在 10 秒内提前结束，说明启动失败或瞬时任务
+                        stdout, stderr = proc.communicate()
+                        term.exit_code = proc.returncode
+                        output = f"Stdout:\n{stdout}\nStderr:\n{stderr}"
+                        del self.terminals[tid]
+                        return False, output, f"Process exited early with code {proc.returncode}"
+                    time.sleep(0.5)
+
+                # 10 秒后仍然存活，返回已捕获的部分输出
+                initial_output = "".join(term.output)
+                return True, f"Terminal ID: {tid}\nInitial Output (10s):\n{initial_output}", ""
             else:
                 # 短期任务：等待执行完毕并捕获输出
                 stdout, stderr = proc.communicate(timeout=120)

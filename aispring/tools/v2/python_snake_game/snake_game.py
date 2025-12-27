@@ -548,12 +548,6 @@ def handle_events(self):
 
     return True
                 
-                elif self.game_state == GameState.GAME_OVER:
-                    # 游戏结束状态的键盘控制
-                    if event.key == pygame.K_r:
-                        self.init_game()
-                    elif event.key == pygame.K_ESCAPE:
-                        self.game_state = GameState.MENU
                 
                 elif self.game_state == GameState.MENU:
                     # 菜单状态的键盘控制
@@ -600,7 +594,6 @@ def handle_events(self):
         """运行游戏主循环"""
         running = True
         
-        while running:
             # 处理事件
             running = self.handle_events()
             
