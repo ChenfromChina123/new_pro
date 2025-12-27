@@ -57,7 +57,19 @@ def find_substring(source: str, sub: str, *, keep_indentation: bool = False) -> 
 def parse_stack_of_tags(text: str) -> List[Dict[str, Any]]:
     tasks: List[Dict[str, Any]] = []
     text_lower = text.lower()
-    valid_tags = ["write_file", "read_file", "run_command", "search_files", "search_in_files", "edit_lines"]
+    valid_tags = [
+        "write_file",
+        "read_file",
+        "run_command",
+        "search_files",
+        "search_in_files",
+        "edit_lines",
+        "task_add",
+        "task_update",
+        "task_delete",
+        "task_list",
+        "task_clear",
+    ]
     idx = 0
 
     while idx < len(text):
@@ -135,6 +147,36 @@ def parse_stack_of_tags(text: str) -> List[Dict[str, Any]]:
             if task["delete_start"] is None and task["insert_at"] is None and not task["content"]:
                 idx = e_idx + len(end_tag)
                 continue
+        elif next_tag == "task_add":
+            task["id"] = find_substring(inner, "id")
+            task["content"] = find_substring(inner, "content", keep_indentation=True) or find_substring(inner, "title")
+            task["status"] = find_substring(inner, "status") or "pending"
+            progress_str = find_substring(inner, "progress")
+            task["progress"] = int(progress_str) if progress_str.strip() else None
+            if not task["content"]:
+                idx = e_idx + len(end_tag)
+                continue
+        elif next_tag == "task_update":
+            task["id"] = find_substring(inner, "id")
+            task["content"] = find_substring(inner, "content", keep_indentation=True) or find_substring(inner, "title")
+            task["status"] = find_substring(inner, "status")
+            progress_str = find_substring(inner, "progress")
+            task["progress"] = int(progress_str) if progress_str.strip() else None
+            if not task["id"]:
+                idx = e_idx + len(end_tag)
+                continue
+            if not task["content"] and not task["status"] and task["progress"] is None:
+                idx = e_idx + len(end_tag)
+                continue
+        elif next_tag == "task_delete":
+            task["id"] = find_substring(inner, "id")
+            if not task["id"]:
+                idx = e_idx + len(end_tag)
+                continue
+        elif next_tag == "task_list":
+            pass
+        elif next_tag == "task_clear":
+            pass
 
         tasks.append(task)
         idx = e_idx + len(end_tag)

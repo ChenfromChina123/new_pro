@@ -1,3 +1,4 @@
+import difflib
 import fnmatch
 import locale
 import os
@@ -10,8 +11,10 @@ def search_files(pattern: str, root_dir: str, limit: int = 50) -> List[str]:
     for root, dirs, files in os.walk(root_dir):
         dirs[:] = [d for d in dirs if not d.startswith(".")]
         for name in files:
-            if fnmatch.fnmatch(name, pattern):
-                results.append(os.path.join(root, name))
+            path_of_file = os.path.join(root, name)
+            rel_path = os.path.relpath(path_of_file, root_dir)
+            if _matches_glob(rel_path, pattern):
+                results.append(path_of_file)
                 if len(results) >= limit:
                     return results
     return results
@@ -35,13 +38,27 @@ def _matches_glob(rel_path: str, glob_pattern: str) -> bool:
 
 
 def calculate_diff_of_lines(path_of_file: str, content_new: str) -> Tuple[int, int]:
-    lines_old = 0
-    if os.path.exists(path_of_file):
-        with open(path_of_file, "r", encoding="utf-8") as f:
-            lines_old = len(f.readlines())
-    lines_new = len(content_new.splitlines())
-    added = max(0, lines_new - lines_old)
-    deleted = max(0, lines_old - lines_new)
+    """
+    计算文件现有内容与新内容之间的行数差异（增加和删除）。
+    使用 difflib 进行精确计算。
+    """
+    if not os.path.exists(path_of_file):
+        return len(content_new.splitlines()), 0
+    
+    lines_old = read_lines_robust(path_of_file)
+    lines_new = content_new.splitlines()
+    
+    added = 0
+    deleted = 0
+    
+    # 使用 difflib 计算差异
+    diff = difflib.ndiff(lines_old, lines_new)
+    for line in diff:
+        if line.startswith("+ "):
+            added += 1
+        elif line.startswith("- "):
+            deleted += 1
+            
     return added, deleted
 
 
@@ -92,27 +109,63 @@ def edit_lines(
     insert_at: Optional[int] = None,
     content: str = "",
 ) -> Tuple[str, str]:
+    """
+    编辑文件的特定行。支持删除范围和在指定位置插入。
+    优化了行号偏移处理：insert_at 现在参考的是原始行号。
+    """
     if os.path.exists(path_of_file):
         lines = read_lines_robust(path_of_file)
     else:
         lines = []
 
     before = "\n".join(lines)
+    original_lines_count = len(lines)
 
+    # 1. 计算删除范围
+    ds = 0
+    de = 0
     if delete_start is not None:
         ds = max(1, int(delete_start))
         de = int(delete_end) if delete_end is not None else ds
         de = max(ds, de)
-        if lines:
-            ds = min(ds, len(lines))
-            de = min(de, len(lines))
-            del lines[ds - 1 : de]
+        # 限制在实际行数内
+        if original_lines_count > 0:
+            ds = min(ds, original_lines_count)
+            de = min(de, original_lines_count)
+        else:
+            ds = 0
+            de = 0
 
-    if content and insert_at is not None:
-        insert_line = max(1, int(insert_at))
-        insert_line = min(insert_line, len(lines) + 1)
+    # 2. 计算插入位置（参考原始行号）
+    target_insert_index = -1
+    if insert_at is not None:
+        ins = max(1, int(insert_at))
+        # 如果插入位置在删除范围之后，需要根据删除的行数进行偏移
+        if ds > 0 and ins > de:
+            # 插入点在删除范围之后
+            target_insert_index = (ins - 1) - (de - ds + 1)
+        elif ds > 0 and ins >= ds:
+            # 插入点在删除范围内，默认插在删除后的起始位置
+            target_insert_index = ds - 1
+        else:
+            # 插入点在删除范围之前
+            target_insert_index = ins - 1
+        
+        # 限制在调整后的范围内
+        new_total_after_del = original_lines_count - (de - ds + 1) if ds > 0 else original_lines_count
+        target_insert_index = max(0, min(target_insert_index, new_total_after_del))
+
+    # 3. 执行删除
+    if ds > 0:
+        del lines[ds - 1 : de]
+
+    # 4. 执行插入
+    if content and target_insert_index != -1:
         insert_lines = content.splitlines()
-        lines[insert_line - 1 : insert_line - 1] = insert_lines
+        lines[target_insert_index : target_insert_index] = insert_lines
+    elif content and insert_at is None and ds > 0:
+        # 如果指定了删除但没指定插入位置，且有内容，则默认在删除位置插入（即替换）
+        lines[ds - 1 : ds - 1] = content.splitlines()
 
     after = "\n".join(lines)
     return before, after
