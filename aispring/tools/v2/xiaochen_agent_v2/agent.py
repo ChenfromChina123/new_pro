@@ -21,6 +21,7 @@ from .files import (
     read_range_numbered,
     search_files,
     search_in_files,
+    suggest_similar_patterns,
 )
 from .logs import append_edit_history, append_usage_history, log_request, rollback_last_edit
 from .metrics import CacheStats
@@ -222,103 +223,38 @@ class Agent:
         return False, False
 
     def getContextOfSystem(self) -> str:
-        """返回包含静态逻辑和用户规则的 System Prompt。"""
-        rulesBlock = self.getUserRulesCached() or ""
-        return f"""# XIAOCHEN_TERMINAL - 小晨终端助手
+        return """# XIAOCHEN_TERMINAL - 小晨终端助手
 ## 🔴 VOID RULES (STRICT ADHERENCE REQUIRED)
-1. **PROJECT AWARENESS**: Before creating ANY new files or making assumptions, you MUST explore the project structure. If the project tree is not in the context, use `search_files` with `**/*` or `run_command` (e.g., `dir /s /b`) to understand existing code. NEVER reinvent the wheel.
-2. **PASSIVE VALIDATION**: Do NOT execute commands blindly. You must PROPOSE actions. The user acts as the validator.
-3. **SEARCH FIRST (REGEX FIRST)**: When looking for problem code, prefer REGEX searching in file contents.
+1. **PROJECT AWARENESS**: Before making assumptions, explore the project structure.
+2. **PASSIVE VALIDATION**: Do NOT execute commands blindly. You must PROPOSE actions. The user validates.
+3. **SEARCH FIRST**: When looking for code, prefer searching file contents.
 4. **MULTI TASKS ALLOWED**: You may output multiple closed tags per reply; they will be executed in order.
-5. **NO HALLUCINATION**: If a tool returns no results, do NOT assume the thing doesn't exist. Try different search patterns or look for related directories first.
+5. **NO HALLUCINATION**: If a tool returns no results, try different patterns/paths.
 6. **NO TASK = NO TAGS**: Reply with natural language only if no action is needed.
-7. **NAMING CONVENTION**: Variable names in your code should follow 'bOfA' pattern (e.g., contentOfFile).
-8. **EDIT EXISTING CODE BY LINE**: If a file already exists, prefer editing by lines instead of rewriting the whole file.
-9. **FOCUS FIRST**: The user's current request has the highest priority. Only do what the user explicitly asked.
-10. **NO OVER-EXECUTION**: Limit your steps. Do not start a cycle unless necessary. Do NOT search/read extra files, do NOT propose unrelated improvements, and do NOT create README unless asked.
-11. **STOP AFTER TASK**: After completing the requested task(s), respond briefly and do NOT continue with additional tasks.
-12. **NO REPETITION**: Do NOT repeat or paraphrase the user's rules, project tree, or any provided context unless explicitly asked.
-13. **NO BOILERPLATE**: Do NOT output greetings, capability lists, or generic prompts. Answer directly.
- 14. **LONG TASKS => TASK LIST**: If the user's request is multi-step or long-running, create a task list first (task_add / task_update) and keep it updated as you work.
+7. **FOCUS FIRST**: Only do what the user explicitly asked.
+8. **STOP AFTER TASK**: After completing the requested task(s), respond briefly.
 
-## 📋 USER RULES (FROM .VOIDRULES)
-```text
-{rulesBlock}
-```
+## 📋 USER CONTEXT
+- User rules, current directory, and task list are provided in the user message to keep this system prompt stable for caching.
 
-## 📋 TAG SYNTAX (EXACTLY AS SHOWN)
-
-### 1. Search Files (glob pattern)
-<search_files>
-  <pattern>**/*.py</pattern>
-</search_files>
-
-### 1b. Search In Files (regex + glob + root)
-<search_in_files>
-  <regex>VoidAgent\\b</regex>
-  <glob>**/*.py</glob>
-  <root>.</root>
-  <max_matches>200</max_matches>
-</search_in_files>
-
-### 2. Write File (path + content required)
-<write_file>
-  <path>path/to/file</path>
-  <content>file_content</content>
-</write_file>
-
-### 2b. Edit Lines (delete range, then insert at line. insert_at refers to original line numbers)
-<edit_lines>
-  <path>path/to/file.py</path>
-  <delete_start>10</delete_start>
-  <delete_end>20</delete_end>
-  <insert_at>10</insert_at>
-  <content>new lines...</content>
-</edit_lines>
-- **Behavior**: It deletes the range [delete_start, delete_end] (inclusive, 1-indexed) and then inserts `content` at `insert_at`.
-- **Shift Safety**: `insert_at` refers to the **original** line numbers. The tool automatically handles internal offsets.
-- **Replacement**: If `insert_at` is omitted but `content` is provided, it defaults to replacing the deleted range.
-
-### 3. Read File (path required, start_line/end_line optional)
-<read_file>
-  <path>path/to/file</path>
-  <start_line>1</start_line>
-  <end_line>100</end_line>
-</read_file>
-- **Indent Visibility**: For Python files, leading indentation is annotated as `[s=<spaces> t=<tabs>]` per line.
-- **Whitespace-only Lines**: Lines containing only whitespace are shown as `<WS_ONLY>` to avoid missing hidden indentation.
-
-### 4. Run Command (Execute system commands)
-<run_command>
-  <command>python app.py</command>
-  <is_long_running>false</is_long_running>
-</run_command>
-
-- **Short-running**: Set `<is_long_running>false</is_long_running>` (default). Use for quick commands like `ls`, `git status`, `pip install`.
-- **Long-running**: Set `<is_long_running>true</is_long_running>`. Use for web servers, watchers, or any process that stays active. You will receive a Terminal ID to track it.
-
-### 5. Task List (plan & progress)
-<task_add>
-  <id>T1</id>
-  <content>Describe the task</content>
-  <status>pending</status>
-  <progress>0</progress>
-</task_add>
-
-<task_update>
-  <id>T1</id>
-  <status>in_progress</status>
-  <progress>30</progress>
-  <content>Optional updated description</content>
-</task_update>
-
-<task_list></task_list>
-<task_delete><id>T1</id></task_delete>
-<task_clear></task_clear>
-
-## 🚫 FORBIDDEN
-- Unclosed tags
-- Dangerous commands (rm -rf, etc.) without explicit user request
+## 🧩 TOOL TAGS (CLOSED TAGS ONLY)
+- Search files:
+  <search_files><pattern>**/*.py</pattern></search_files>
+- Search in files:
+  <search_in_files><regex>...</regex><glob>**/*.py</glob><root>.</root><max_matches>200</max_matches></search_in_files>
+- Read file:
+  <read_file><path>...</path><start_line>1</start_line><end_line>200</end_line></read_file>
+  - Python files annotate indentation as: [s=<spaces> t=<tabs>], and whitespace-only lines show as <WS_ONLY>.
+- Write file:
+  <write_file><path>...</path><content>...</content></write_file>
+- Edit lines:
+  <edit_lines><path>...</path><delete_start>10</delete_start><delete_end>20</delete_end><insert_at>10</insert_at><auto_indent>true</auto_indent><content>...</content></edit_lines>
+  - insert_at refers to original line numbers; the tool handles offsets.
+  - auto_indent aligns inserted Python code to surrounding indentation.
+- Run command:
+  <run_command><command>...</command><is_long_running>false</is_long_running></run_command>
+- Task list:
+  <task_add>...</task_add> <task_update>...</task_update> <task_list></task_list> <task_delete>...</task_delete> <task_clear></task_clear>
 """
 
     def invalidateProjectTreeCache(self) -> None:
@@ -373,6 +309,10 @@ class Agent:
     def getContextOfCurrentUser(self, inputOfUser: str) -> str:
         """返回 User 上下文。"""
         cwd = os.getcwd()
+        rulesBlock = self.getUserRulesCached() or ""
+        rules_str = ""
+        if rulesBlock:
+            rules_str = f"\n\n## 📋 USER RULES\n```text\n{rulesBlock}\n```"
         # 获取任务清单状态
         task_str = ""
         if self.taskManager._tasks:
@@ -387,7 +327,7 @@ class Agent:
         except Exception:
             hint = f"Current Directory: {cwd}"
 
-        return f"""{hint}{task_str}
+        return f"""{hint}{rules_str}{task_str}
 
 ## 📥 USER INPUT
 {inputOfUser}
@@ -693,7 +633,12 @@ class Agent:
                                 observations.append(obs)
                                 self.printToolResult(obs)
                             else:
-                                obs = f"SUCCESS: No files found matching {pattern}"
+                                suggestions = suggest_similar_patterns(pattern, os.getcwd())
+                                if suggestions:
+                                    sug = "\n".join([f"- {s}" for s in suggestions])
+                                    obs = f"SUCCESS: No files found matching {pattern}\nSuggestions:\n{sug}"
+                                else:
+                                    obs = f"SUCCESS: No files found matching {pattern}"
                                 observations.append(obs)
                                 self.printToolResult(obs)
                         except Exception as e:
@@ -764,7 +709,6 @@ class Agent:
                             self.invalidateProjectTreeCache()
                             if os.path.basename(path).lower() == ".voidrules":
                                 self.invalidateUserRulesCache()
-                                self.invalidateSystemMessageCache()
                             obs = f"SUCCESS: Saved to {path} | +{added} | -{deleted}"
                             observations.append(obs)
                             self.printToolResult(obs)
@@ -778,6 +722,7 @@ class Agent:
                         delete_start = t.get("delete_start")
                         delete_end = t.get("delete_end")
                         insert_at = t.get("insert_at")
+                        auto_indent = bool(t.get("auto_indent") or False)
                         content = t.get("content", "")
                         try:
                             existedBefore = os.path.exists(path)
@@ -788,6 +733,7 @@ class Agent:
                                 delete_start=delete_start,
                                 delete_end=delete_end,
                                 insert_at=insert_at,
+                                auto_indent=auto_indent,
                                 content=content,
                             )
                             added, deleted = calculate_diff_of_lines(path, after_content)
@@ -808,7 +754,6 @@ class Agent:
                             self.invalidateProjectTreeCache()
                             if os.path.basename(path).lower() == ".voidrules":
                                 self.invalidateUserRulesCache()
-                                self.invalidateSystemMessageCache()
                             obs = f"SUCCESS: Edited {path} | +{added} | -{deleted}"
                             observations.append(obs)
                             self.printToolResult(obs)

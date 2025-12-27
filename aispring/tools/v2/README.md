@@ -35,6 +35,8 @@ This project is a collection of tools and mini-applications developed under the 
 4. **Windows Compatibility**: Optimized for Windows 11 systems.
 5. **Indentation Debugging**: When using the agent's `read_file` on Python files, each line includes `[s=<spaces> t=<tabs>]` to make hidden indentation explicit.
 6. **Batch Approval**: When the agent proposes multiple tasks, you can approve them once with `y` (once) or `a` (always) instead of confirming each task repeatedly.
+7. **Auto Indent for Python**: In `edit_lines`, you can set `<auto_indent>true</auto_indent>` to align inserted code to surrounding indentation automatically.
+8. **Better Glob Matching**: Patterns like `dir/**/*.py` now also match `dir/file.py` (no intermediate subdirectory).
 
 ## Important Rules
 Refer to the `.voidrules` file for detailed project rules and guidelines.
