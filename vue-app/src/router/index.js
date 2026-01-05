@@ -89,7 +89,7 @@ router.beforeEach((to, from, next) => {
       const json = decodeURIComponent(atob(b).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''))
       const payload = JSON.parse(json)
       expired = !!(payload && payload.exp && payload.exp * 1000 <= Date.now())
-    } catch (_) {}
+    } catch { }
   }
   
   if (expired) {
