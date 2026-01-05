@@ -1,0 +1,44 @@
+spring:
+  # 生产环境数据库配置
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:aispring}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: ${DB_USERNAME:aispring}
+    password: ${DB_PASSWORD:xGDswMCdHhsajfxF}
+    hikari:
+      maximum-pool-size: 50
+      minimum-idle: 10
+      idle-timeout: 600000
+      connection-timeout: 30000
+      max-lifetime: 1800000
+
+  # 生产环境 JPA 配置
+  jpa:
+    hibernate:
+      ddl-auto: validate # 生产环境建议使用 validate，由 Flyway/Liquibase 管理表结构
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+  # 邮件配置 (如果生产环境有不同配置可在此覆盖)
+  mail:
+    properties:
+      mail:
+        debug: false
+
+  # 生产环境禁用热部署
+  devtools:
+    restart:
+      enabled: false
+    livereload:
+      enabled: false
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.aispring: INFO
+  file:
+    name: logs/aispring-prod.log
+    max-history: 30
+    max-size: 10MB
