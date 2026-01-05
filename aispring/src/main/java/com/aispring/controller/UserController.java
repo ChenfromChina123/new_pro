@@ -6,6 +6,7 @@ import com.aispring.entity.User;
 import com.aispring.security.CustomUserDetails;
 import com.aispring.service.UserService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
@@ -20,11 +21,13 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
+@Slf4j
 public class UserController {
     private final UserService userService;
     private final StorageProperties storageProperties;
@@ -35,36 +38,47 @@ public class UserController {
     @PostMapping("/avatar/upload")
     public ResponseEntity<ApiResponse<String>> uploadAvatar(
             @RequestParam("file") MultipartFile file,
-            @AuthenticationPrincipal CustomUserDetails customUserDetails) throws IOException {
+            @AuthenticationPrincipal CustomUserDetails customUserDetails) {
         
-        if (file.isEmpty()) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(400, "文件不能为空"));
-        }
+        try {
+            if (file.isEmpty()) {
+                return ResponseEntity.badRequest().body(ApiResponse.error(400, "文件不能为空"));
+            }
 
-        // 验证文件类型
-        String contentType = file.getContentType();
-        if (contentType == null || !contentType.startsWith("image/")) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(400, "只能上传图片文件"));
-        }
+            // 验证文件类型
+            String contentType = file.getContentType();
+            if (contentType == null || !contentType.startsWith("image/")) {
+                return ResponseEntity.badRequest().body(ApiResponse.error(400, "只能上传图片文件"));
+            }
 
-        Long userId = customUserDetails.getUser().getId();
-        String originalFilename = file.getOriginalFilename();
-        String extension = originalFilename != null && originalFilename.contains(".") 
-                ? originalFilename.substring(originalFilename.lastIndexOf(".")) 
-                : ".jpg";
-        
-        // 生成唯一文件名: userId_uuid.ext
-        String filename = userId + "_" + UUID.randomUUID().toString().substring(0, 8) + extension;
-        Path filePath = Paths.get(storageProperties.getAvatarsAbsolute()).resolve(filename);
-        
-        // 保存文件
-        Files.copy(file.getInputStream(), filePath);
-        
-        // 更新数据库中的头像路径
-        String avatarPath = "/api/users/avatar/" + filename;
-        userService.updateAvatar(userId, avatarPath);
-        
-        return ResponseEntity.ok(ApiResponse.success("头像上传成功", avatarPath));
+            Long userId = customUserDetails.getUser().getId();
+            String originalFilename = file.getOriginalFilename();
+            String extension = originalFilename != null && originalFilename.contains(".") 
+                    ? originalFilename.substring(originalFilename.lastIndexOf(".")) 
+                    : ".jpg";
+            
+            // 生成唯一文件名: userId_uuid.ext
+            String filename = userId + "_" + UUID.randomUUID().toString().substring(0, 8) + extension;
+            Path filePath = Paths.get(storageProperties.getAvatarsAbsolute()).resolve(filename);
+            
+            // 确保父目录存在 (虽然 StorageProperties 已经尝试创建，但这里再双重检查一次更安全)
+            Files.createDirectories(filePath.getParent());
+            
+            // 保存文件，使用 REPLACE_EXISTING 覆盖同名文件
+            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+            
+            // 更新数据库中的头像路径
+            String avatarPath = "/api/users/avatar/" + filename;
+            userService.updateAvatar(userId, avatarPath);
+            
+            log.info("用户 {} 上传头像成功: {}", userId, filename);
+            return ResponseEntity.ok(ApiResponse.success("头像上传成功", avatarPath));
+            
+        } catch (Exception e) {
+            log.error("上传头像失败: ", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error(500, "头像上传失败: " + e.getMessage()));
+        }
     }
 
     @GetMapping("/avatar/{filename:.+}")
