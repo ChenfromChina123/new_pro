@@ -2,8 +2,8 @@ spring:
   # 生产环境数据库配置
   datasource:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:aispring}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    username: ${DB_USERNAME:aispring}
-    password: ${DB_PASSWORD:xGDswMCdHhsajfxF}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:123456}
     hikari:
       maximum-pool-size: 50
       minimum-idle: 10
