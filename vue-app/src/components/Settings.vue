@@ -29,6 +29,74 @@
       v-else
       class="settings-content"
     >
+      <!-- 个人资料设置 -->
+      <div class="settings-section">
+        <h3 class="section-title">
+          个人资料
+        </h3>
+        
+        <div class="setting-item avatar-upload-item">
+          <label class="setting-label">用户头像</label>
+          <div class="setting-control avatar-upload-control">
+            <div class="avatar-preview-wrapper">
+              <img 
+                v-if="authStore.userInfo?.avatar" 
+                :src="avatarPreviewUrl || authStore.userInfo.avatar" 
+                class="avatar-preview"
+                alt="头像预览"
+              >
+              <div 
+                v-else 
+                class="avatar-placeholder"
+              >
+                <i class="fas fa-user" />
+              </div>
+              
+              <div 
+                v-if="isUploading" 
+                class="upload-loading"
+              >
+                <div class="loading-spinner-small" />
+              </div>
+            </div>
+            
+            <div class="avatar-actions">
+              <input
+                ref="fileInput"
+                type="file"
+                accept="image/*"
+                style="display: none"
+                @change="onFileChange"
+              >
+              <button 
+                class="btn btn-secondary btn-sm" 
+                :disabled="isUploading"
+                @click="$refs.fileInput.click()"
+              >
+                {{ isUploading ? '上传中...' : '更换头像' }}
+              </button>
+              <p class="upload-tip">
+                支持 JPG、PNG 格式，大小不超过 2MB
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <label class="setting-label">用户名</label>
+          <div class="setting-control">
+            <span class="text-value">{{ authStore.username }}</span>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <label class="setting-label">电子邮箱</label>
+          <div class="setting-control">
+            <span class="text-value">{{ authStore.email }}</span>
+          </div>
+        </div>
+      </div>
+
       <!-- 常规设置 -->
       <div class="settings-section">
         <h3 class="section-title">
@@ -178,12 +246,16 @@ import { useRouter } from 'vue-router'
 import { useSettingsStore } from '@/stores/settings'
 import { useUIStore } from '@/stores/ui'
 import { useAuthStore } from '@/stores/auth'
+import request from '@/utils/request'
+import { API_ENDPOINTS } from '@/config/api'
 
 const settingsStore = useSettingsStore()
 const uiStore = useUIStore()
 const authStore = useAuthStore()
 const router = useRouter()
 const localSettings = ref({})
+const isUploading = ref(false)
+const avatarPreviewUrl = ref(null)
 
 // Initialize local settings from store
 watch(() => settingsStore.settings, (newSettings) => {
@@ -194,6 +266,57 @@ onMounted(async () => {
   await settingsStore.fetchSettings()
   localSettings.value = { ...settingsStore.settings }
 })
+
+/**
+ * 处理头像上传
+ */
+const onFileChange = async (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+
+  // 验证文件大小 (2MB)
+  if (file.size > 2 * 1024 * 1024) {
+    uiStore.showToast('图片大小不能超过 2MB', 'error')
+    return
+  }
+
+  // 验证文件类型
+  if (!file.type.startsWith('image/')) {
+    uiStore.showToast('只能上传图片文件', 'error')
+    return
+  }
+
+  const formData = new FormData()
+  formData.append('file', file)
+
+  isUploading.value = true
+  try {
+    const response = await request.post(API_ENDPOINTS.auth.uploadAvatar, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+
+    if (response.code === 200) {
+      const avatarPath = response.data
+      // 更新本地状态
+      authStore.updateUserInfo({ avatar: avatarPath })
+      uiStore.showToast('头像上传成功')
+      
+      // 触发 AppHeader/Sidebar 刷新
+      authStore.forceRefreshUserInfo()
+    } else {
+      uiStore.showToast(response.message || '上传失败', 'error')
+    }
+  } catch (error) {
+    console.error('Avatar upload error:', error)
+    uiStore.showToast(error.response?.data?.message || '上传过程中发生错误', 'error')
+  } finally {
+    isUploading.value = false
+    // 清除 input 值，允许重复上传同一张图
+    event.target.value = ''
+  }
+}
 
 const handleUpdate = async (field) => {
   const updatePayload = {}
@@ -300,10 +423,92 @@ const handleLogout = () => {
   padding: 8px 12px;
   border-radius: 6px;
   border: 1px solid var(--border-color);
-  background-color: var(--bg-secondary);
+  background-color: var(--bg-primary);
   color: var(--text-primary);
   font-size: 14px;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
+}
+
+/* 头像上传样式 */
+.avatar-upload-control {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  justify-content: flex-start;
+}
+
+.avatar-preview-wrapper {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid var(--border-color);
+  background-color: var(--bg-secondary);
+}
+
+.avatar-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  color: var(--text-tertiary);
+}
+
+.upload-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-spinner-small {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #ffffff;
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.avatar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.upload-tip {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin: 0;
+}
+
+.text-value {
+  color: var(--text-primary);
+  font-size: 15px;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 13px;
 }
 
 .select-control:focus, .input-control:focus {
