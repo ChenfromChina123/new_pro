@@ -210,7 +210,13 @@
             <artifactId>spring-ai-openai-spring-boot-starter</artifactId>
             <version>0.8.1</version>
         </dependency>
-        
+
+        <!-- Jasypt for Configuration Encryption -->
+        <dependency>
+            <groupId>com.github.ulisesbocchio</groupId>
+            <artifactId>jasypt-spring-boot-starter</artifactId>
+            <version>3.0.5</version>
+        </dependency>
 
     </dependencies>
 

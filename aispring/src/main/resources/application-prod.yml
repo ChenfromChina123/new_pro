@@ -3,7 +3,7 @@ spring:
   datasource:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:aispring}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: ${DB_USERNAME:aispring}
-    password: ${DB_PASSWORD:xGDswMCdHhsajfxF}
+    password: ${DB_PASSWORD:ENC(+yqdk06jmsk4+aN2ztM3IaEhuSp2j6JRPbM7QRQW7Uc=)}
     hikari:
       maximum-pool-size: 50
       minimum-idle: 10
