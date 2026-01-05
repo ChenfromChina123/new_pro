@@ -4,9 +4,9 @@ spring:
   
   # 数据库配置
   datasource:
-    url: jdbc:mysql://localhost:3306/ipv6_education?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    username: root
-    password: 123456
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:ipv6_education}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:123456}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       minimum-idle: 5
@@ -65,17 +65,17 @@ spring:
           ssl:
             trust: smtp.qq.com
   
-  # 热部署配置
+  # 热部署配置 (生产环境默认禁用)
   devtools:
     restart:
-      enabled: true
+      enabled: false
       poll-interval: 2000ms
       quiet-period: 1000ms
       log-condition-evaluation-delta: false
       exclude: META-INF/maven/**,META-INF/resources/**,static/**,public/**,templates/**,**/*Test.class,**/*Tests.class
       additional-exclude: logs/**
     livereload:
-      enabled: true
+      enabled: false
     add-properties: true
   
   # Spring AI配置 - DeepSeek (兼容OpenAI API)
