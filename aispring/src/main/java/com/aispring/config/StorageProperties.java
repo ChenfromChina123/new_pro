@@ -14,6 +14,7 @@ public class StorageProperties {
     private String rootDir = "./";
     private String cloudDiskDir = "cloud_disk_storage";
     private String avatarsDir = "avatars";
+    private String publicFilesDir = "public_files";
 
     public String getRootDir() { return rootDir; }
     public void setRootDir(String rootDir) { this.rootDir = rootDir; }
@@ -21,6 +22,8 @@ public class StorageProperties {
     public void setCloudDiskDir(String cloudDiskDir) { this.cloudDiskDir = cloudDiskDir; }
     public String getAvatarsDir() { return avatarsDir; }
     public void setAvatarsDir(String avatarsDir) { this.avatarsDir = avatarsDir; }
+    public String getPublicFilesDir() { return publicFilesDir; }
+    public void setPublicFilesDir(String publicFilesDir) { this.publicFilesDir = publicFilesDir; }
 
     public Path getRootAbsolute() {
         String dir = System.getProperty("user.dir");
@@ -47,6 +50,12 @@ public class StorageProperties {
 
     public String getAvatarsAbsolute() {
         Path base = getRootAbsolute().resolve(avatarsDir).normalize();
+        try { Files.createDirectories(base); } catch (Exception ignore) {}
+        return base.toString();
+    }
+
+    public String getPublicFilesAbsolute() {
+        Path base = getRootAbsolute().resolve(publicFilesDir).normalize();
         try { Files.createDirectories(base); } catch (Exception ignore) {}
         return base.toString();
     }

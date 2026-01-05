@@ -126,6 +126,13 @@ export const API_ENDPOINTS = {
     getArticles: '/api/vocabulary/articles',
     getArticle: (articleId) => `/api/vocabulary/articles/${articleId}`,
     downloadArticlePdf: (articleId) => `/api/vocabulary/articles/${articleId}/download-pdf`
+  },
+
+  // 公共文件
+  publicFiles: {
+    list: '/api/public-files',
+    download: (filename) => `/api/public-files/download/${filename}`,
+    upload: '/api/public-files/upload'
   }
 }
 

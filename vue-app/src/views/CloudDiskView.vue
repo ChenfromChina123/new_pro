@@ -144,8 +144,6 @@
                       </span>
                     </div>
                   </th>
-                  <th class="size-column">大小</th>
-                  <th class="actions-column">操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -176,35 +174,6 @@
                   </td>
                   <td class="date-column">
                     {{ formatDate(file.upload_time) }}
-                  </td>
-                  <td class="size-column">
-                    {{ formatFileSize(file.file_size) }}
-                  </td>
-                  <td class="actions-column">
-                    <div class="file-actions">
-                      <button 
-                        v-if="isPreviewable(file.filename)" 
-                        class="action-btn" 
-                        title="预览"
-                        @click.stop="previewFile(file)"
-                      >
-                        <i class="fas fa-eye"></i>
-                      </button>
-                      <button 
-                        class="action-btn" 
-                        title="下载"
-                        @click.stop="downloadFile(file.id)"
-                      >
-                        <i class="fas fa-download"></i>
-                      </button>
-                      <button 
-                        class="action-btn delete" 
-                        title="删除"
-                        @click.stop="deleteFile(file.id)"
-                      >
-                        <i class="fas fa-trash"></i>
-                      </button>
-                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -1026,20 +995,16 @@ const toggleSelectAll = () => {
 .select-column {
   width: 48px;
   padding-left: 24px !important;
-  flex-shrink: 0;
 }
 
 .name-column {
   padding-left: 0 !important;
-  /* Let name column take remaining space */
-  width: auto; 
 }
 
 .date-column {
   text-align: right !important;
   padding-right: 32px !important;
-  width: 20%; /* Flexible width */
-  min-width: 150px;
+  width: 200px;
 }
 
 .type-column {
