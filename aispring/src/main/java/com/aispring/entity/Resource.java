@@ -44,10 +44,10 @@ public class Resource {
     private String description;
     
     @Builder.Default
-    @Column(name = "is_public", nullable = false, columnDefinition = "int default 1")
+    @Column(name = "is_public", nullable = false)
     private Integer isPublic = 1;  // 0: 私有, 1: 公共
     
-    @Column(name = "is_favorite", nullable = false, columnDefinition = "tinyint default 0")
+    @Column(name = "is_favorite", nullable = false)
     @Builder.Default
     private Integer isFavorite = 0;  // 0: 未收藏, 1: 已收藏
     
