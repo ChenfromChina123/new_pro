@@ -10,7 +10,8 @@ import Settings from '@/components/Settings.vue'
 
 <style scoped>
 .settings-view {
-  min-height: 100vh;
+  height: 100%;
+  overflow-y: auto;
   background-color: var(--bg-color, #f5f7fa);
   padding: 20px;
   transition: background-color 0.3s ease;

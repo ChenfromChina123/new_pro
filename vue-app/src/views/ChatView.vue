@@ -1633,7 +1633,7 @@ const adjustTextareaHeight = (event) => {
 
 <style scoped>
 .chat-page {
-  height: 100vh;
+  height: 100%;
   overflow: hidden;
   background-color: var(--bg-primary);
 }

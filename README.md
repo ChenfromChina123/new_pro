@@ -92,6 +92,22 @@
 - **验证码系统校准**: 确认并验证了 Spring Boot 后端使用 `verification_codes_v2` 表进行验证码管理，打通了发送重置码、验证并更新密码的完整流程。
 - **登录逻辑验证**: 验证了密码重置后的登录流程，确保加密存储与认证校验完全同步。
 
+### 🛡️ 管理员设置与界面滚动优化 (2026-01-05)
+- **管理员自动化设置**:
+  - 新增了 `UserService.setAsAdmin` 事务性方法，支持将指定邮箱账号设置为非超级管理员角色的管理员。
+  - 引入了 `CommandLineRunner` 机制（`adminSetupRunner`），在应用启动时自动将指定账号（如 `3301767269@qq.com`）配置为管理员，简化了初始化流程。
+  - 增强了认证系统：在 JWT Token 中新增了 `is_admin` Claim，使前端能够实时感知用户的管理员身份，动态展示管理入口。
+- **数据库架构加固 (Flyway)**:
+  - 新增了 `V2_2__fix_admin_table_defaults.sql` 迁移文件，为 `admins` 表的 `is_active` 和 `is_superadmin` 字段添加了数据库级别的默认值（1 和 0）。
+  - 解决了 `SQL Error 1364: Field 'is_active' doesn't have a default value` 报错，确保管理员记录在各种插入场景下的稳定性。
+- **全屏滚动体验优化**:
+  - 统一修复了全站页面的滚动失效问题。核心方案是将各子页面的 `height: 100vh` 或固定计算高度修改为 `height: 100%`，并由父容器 `AppLayout` 统一管理滚动条。
+  - **云盘页 (CloudDiskView)**: 修复了长文件列表无法下滑的问题。
+  - **聊天页 (ChatView)**: 修复了消息历史过长时的滚动异常。
+  - **设置页 (SettingsView)**: 解决了设置选项过多时无法滑动查看底部内容的问题。
+  - **管理页 (AdminView & ChatManagementView)**: 移除了 `AdminView` 和 `ChatManagementView` 中冗余嵌套的 `AppLayout` 组件，修复了双重布局导致的滚动冲突和样式错乱。
+  - **布局系统加固**: 在 `AppLayout.vue` 的 `main-content` 容器中增加了 `min-height: 0` 配置，解决了 Flex 布局下子元素无法正确触发内部滚动的经典难题。
+
 ### 🐧 Linux 环境部署与界面精简 (2026-01-05)
 - **Linux 一键部署增强**: 
   - 优化了 `start_linux.sh` 脚本，支持通过环境变量 (`DB_USERNAME`, `DB_PASSWORD`, `DB_NAME`) 动态配置数据库连接，解决了硬编码凭据导致的安全风险和迁移困难。

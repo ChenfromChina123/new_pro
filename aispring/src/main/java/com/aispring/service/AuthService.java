@@ -113,6 +113,7 @@ public class AuthService {
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
         Map<String, Object> extraClaims = new HashMap<>();
         extraClaims.put("user_id", user.getId());
+        extraClaims.put("is_admin", user.isAdmin());
         String token = jwtUtil.generateToken(userDetails, extraClaims);
         
         log.info("用户注册成功: {}", user.getEmail());
@@ -167,6 +168,7 @@ public class AuthService {
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
         Map<String, Object> extraClaims = new HashMap<>();
         extraClaims.put("user_id", user.getId());
+        extraClaims.put("is_admin", user.isAdmin());
         String token = jwtUtil.generateToken(userDetails, extraClaims);
         
         return AuthResponse.builder()
@@ -205,6 +207,7 @@ public class AuthService {
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
         Map<String, Object> extraClaims = new HashMap<>();
         extraClaims.put("user_id", user.getId());
+        extraClaims.put("is_admin", user.isAdmin());
         String token = jwtUtil.generateToken(userDetails, extraClaims);
         
         log.info("用户登录成功: {}", user.getEmail());

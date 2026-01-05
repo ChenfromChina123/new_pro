@@ -46,6 +46,27 @@ public class UserService {
     }
     
     /**
+     * 将用户设置为管理员
+     * @param email 用户邮箱
+     * @return Admin 管理员实体
+     */
+    @Transactional
+    public Admin setAsAdmin(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new CustomException("用户不存在: " + email));
+        
+        return adminRepository.findByUser(user)
+                .orElseGet(() -> {
+                    Admin admin = new Admin();
+                    admin.setUser(user);
+                    admin.setIsSuperadmin(false);
+                    admin.setIsActive(true);
+                    admin.setCreatedAt(LocalDateTime.now());
+                    return adminRepository.save(admin);
+                });
+    }
+
+    /**
      * 根据ID获取用户
      * @param userId 用户ID
      * @return User 用户实体

@@ -2179,7 +2179,7 @@ const formatDuration = (seconds) => {
 /* Page Layout */
 .language-learning-page {
   display: flex;
-  height: calc(100vh - 64px); /* Fixed height */
+  height: 100%; /* Changed from fixed height to 100% */
   overflow: hidden;
   background-color: var(--bg-primary);
   position: relative;
