@@ -63,25 +63,43 @@ public class UserController {
             
             // 生成唯一文件名: userId_uuid.ext
             String filename = userId + "_" + UUID.randomUUID().toString().substring(0, 8) + extension;
-            Path filePath = Paths.get(storageProperties.getAvatarsAbsolute()).resolve(filename);
             
-            // 确保父目录存在 (虽然 StorageProperties 已经尝试创建，但这里再双重检查一次更安全)
-            Files.createDirectories(filePath.getParent());
+            String avatarsBase = storageProperties.getAvatarsAbsolute();
+            log.info("头像存储基目录: {}", avatarsBase);
             
-            // 保存文件，使用 REPLACE_EXISTING 覆盖同名文件
+            Path filePath = Paths.get(avatarsBase).resolve(filename).normalize();
+            log.info("目标文件路径: {}", filePath);
+            
+            // 确保父目录存在
+            Path parentDir = filePath.getParent();
+            if (parentDir != null && !Files.exists(parentDir)) {
+                log.info("创建目录: {}", parentDir);
+                Files.createDirectories(parentDir);
+            }
+            
+            // 保存文件
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+            log.info("文件已保存到磁盘");
             
             // 更新数据库中的头像路径
             String avatarPath = "/api/users/avatar/" + filename;
-            userService.updateAvatar(userId, avatarPath);
+            try {
+                userService.updateAvatar(userId, avatarPath);
+                log.info("数据库已更新: userId={}, path={}", userId, avatarPath);
+            } catch (Exception dbEx) {
+                log.error("更新数据库头像路径失败: ", dbEx);
+                // 如果数据库更新失败，尝试删除已上传的文件以保持一致性
+                Files.deleteIfExists(filePath);
+                throw new RuntimeException("数据库更新失败: " + dbEx.getMessage());
+            }
             
-            log.info("用户 {} 上传头像成功: {}", userId, filename);
             return ResponseEntity.ok(ApiResponse.success("头像上传成功", avatarPath));
             
         } catch (Exception e) {
-            log.error("上传头像失败: ", e);
+            log.error("上传头像过程发生异常: ", e);
+            String errorMsg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error(500, "头像上传失败: " + e.getMessage()));
+                    .body(ApiResponse.error(500, "上传失败原因: " + errorMsg));
         }
     }
 

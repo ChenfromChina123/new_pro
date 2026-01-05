@@ -25,13 +25,17 @@ public class StorageProperties {
     public Path getRootAbsolute() {
         String dir = System.getProperty("user.dir");
         Path rootPath;
-        if (rootDir == null || rootDir.trim().isEmpty()) {
-            rootPath = Paths.get(dir).normalize();
+        if (rootDir == null || rootDir.trim().isEmpty() || ".".equals(rootDir) || "./".equals(rootDir)) {
+            rootPath = Paths.get(dir).toAbsolutePath().normalize();
         } else {
             Path rp = Paths.get(rootDir);
-            rootPath = rp.isAbsolute() ? rp.normalize() : Paths.get(dir).resolve(rp).normalize();
+            rootPath = rp.isAbsolute() ? rp.normalize() : Paths.get(dir).resolve(rp).toAbsolutePath().normalize();
         }
-        try { Files.createDirectories(rootPath); } catch (Exception ignore) {}
+        try { 
+            if (!Files.exists(rootPath)) {
+                Files.createDirectories(rootPath); 
+            }
+        } catch (Exception ignore) {}
         return rootPath;
     }
 
