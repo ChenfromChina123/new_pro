@@ -14,7 +14,7 @@ spring:
   # 生产环境 JPA 配置
   jpa:
     hibernate:
-      ddl-auto: validate # 生产环境建议使用 validate，由 Flyway/Liquibase 管理表结构
+      ddl-auto: none # 生产环境禁用自动更新/校验，由 Flyway 管理表结构
     show-sql: false
     properties:
       hibernate:
