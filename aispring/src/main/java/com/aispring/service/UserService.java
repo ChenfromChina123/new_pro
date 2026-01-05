@@ -1,10 +1,15 @@
 package com.aispring.service;
 
+import com.aispring.entity.Admin;
 import com.aispring.entity.User;
+import com.aispring.repository.AdminRepository;
 import com.aispring.repository.UserRepository;
 import com.aispring.exception.CustomException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 
 /**
  * 用户服务类
@@ -15,6 +20,7 @@ import org.springframework.stereotype.Service;
 public class UserService {
     
     private final UserRepository userRepository;
+    private final AdminRepository adminRepository;
     
     /**
      * 更新用户头像
@@ -36,7 +42,7 @@ public class UserService {
      */
     public User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new CustomException("用户不存在"));
+                .orElseThrow(() -> new CustomException("用户不存在: " + email));
     }
     
     /**

@@ -12,10 +12,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import com.aispring.service.CloudDiskService;
 
 /**
- * AI智能学习助手 - Spring Boot应用主类
- * 
- * @author AI Spring Team
- * @version 1.0.0
+ * AI智能学习助手 - Spring Boot版本启动成功！
  */
 @SpringBootApplication(scanBasePackages = {"com.aispring", "com.example.aispring"})
 @EnableJpaAuditing
