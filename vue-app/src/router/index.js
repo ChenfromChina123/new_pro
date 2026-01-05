@@ -31,6 +31,12 @@ const router = createRouter({
           meta: { requiresAuth: true }
         },
         {
+          path: 'public-files',
+          name: 'PublicFiles',
+          component: () => import('@/views/PublicFilesView.vue'),
+          meta: { requiresAuth: true }
+        },
+        {
           path: 'chat-management',
           name: 'ChatManagement',
           component: () => import('@/views/ChatManagementView.vue'),

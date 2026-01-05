@@ -39,6 +39,7 @@ public class SecurityConfig {
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/users/avatar/**").permitAll()
                 .requestMatchers("/api/resources/public").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/public-files/**").permitAll()
                 .requestMatchers("/error").permitAll()
                 // 其他需要认证
                 .anyRequest().authenticated()
