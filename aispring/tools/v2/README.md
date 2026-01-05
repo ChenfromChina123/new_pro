@@ -38,7 +38,8 @@ This project is a collection of tools and mini-applications developed under the 
 6. **Batch Approval**: When the agent proposes multiple tasks, you can approve them once with `y` (once) or `a` (always) instead of confirming each task repeatedly.
 7. **Auto Indent for Python**: In `edit_lines`, you can set `<auto_indent>true</auto_indent>` to align inserted code to surrounding indentation automatically.
 8. **Better Glob Matching**: Patterns like `dir/**/*.py` now also match `dir/file.py` (no intermediate subdirectory).
-9. **Modification Stats**: File modification stats are aggregated per file and printed only when the current input caused changes.
-
+9. **Modification Stats**: File modification stats are aggregated per file and printed only once for incremental new changes (not repeated every chat, and rollback won’t block future stats).
+10. **Terminal Info**: Each `run_command` now prints a `Terminal ID` and output summary to the console. If the process keeps running (or times out), it also prints a running terminal summary.
+ 
 ## Important Rules
 Refer to the `.voidrules` file for detailed project rules and guidelines.
