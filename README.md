@@ -28,8 +28,28 @@
 - **运行环境**: **Java 17+ (必须)**
 - **构建工具**: Maven 3.6+
 - **AI 框架**: Spring AI
+- **默认端口**: 5000 (请确保此端口未被其他服务占用，如 Python Flask 等)
 
-## 🚀 最近更新
+## 🛠️ 服务启动指南
+
+### 后端启动 (Spring Boot)
+1. 进入 `aispring` 目录
+2. 运行 `./mvnw.cmd spring-boot:run` (Windows) 或 `./mvnw spring-boot:run` (Linux/Mac)
+3. 确保端口 5000 可用。如果启动失败并提示端口占用，请使用 `netstat -ano | findstr :5000` 查找并终止冲突进程。
+
+### 前端启动 (Vue 3)
+1. 进入 `vue-app` 目录
+2. 运行 `npm install` (首次启动)
+3. 运行 `npm run dev`
+4. 默认访问地址: `http://localhost:5173`
+
+##### 🚀 最近更新
+
+### 🔐 找回密码与认证功能修复 (2026-01-05)
+- **参数映射修复**: 修复了 `ResetPasswordRequest` 中 JSON 字段无法正确映射的问题，通过添加 `@JsonProperty` 注解确保前端传递的 `email`、`code`、`newPassword` 能正确解析。
+- **错误响应规范化**: 更新了 `GlobalExceptionHandler`，将验证失败（`MethodArgumentNotValidException`）的返回格式从 `Map` 统一为 `ErrorResponse` 对象，提升了前端错误处理的兼容性。
+- **验证码系统校准**: 确认并验证了 Spring Boot 后端使用 `verification_codes_v2` 表进行验证码管理，打通了发送重置码、验证并更新密码的完整流程。
+- **登录逻辑验证**: 验证了密码重置后的登录流程，确保加密存储与认证校验完全同步。
 
 ### 🔧 工具批准系统修复 (2025-12-25)
 - **前端设置保存**: 修复了用户在前端设置工具批准规则后未保存到后端的问题
