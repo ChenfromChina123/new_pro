@@ -89,15 +89,9 @@ public class ToolsServiceImpl implements ToolsService {
      * 工具 definition
      */
     private static class ToolDefinition {
-        final String name;
-        final String description;
-        final Map<String, String> params; // 参数名 -> 参数描述
-        
-        ToolDefinition(String name, String description, Map<String, String> params) {
-            this.name = name;
-            this.description = description;
-            this.params = params;
-        }
+        String name;
+        String description;
+        Map<String, String> params; // 参数名 -> 参数描述
         
         // 获取必需参数列表（用于兼容旧代码）
         List<String> getRequiredParams() {
