@@ -46,7 +46,7 @@ public class GlobalExceptionHandler {
     }
     
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, String>> handleValidationExceptions(
+    public ResponseEntity<ErrorResponse> handleValidationExceptions(
             MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach((error) -> {
@@ -55,7 +55,13 @@ public class GlobalExceptionHandler {
             errors.put(fieldName, errorMessage);
         });
         log.error("参数验证失败: {}", errors);
-        return ResponseEntity.badRequest().body(errors);
+        
+        // 拼接错误消息
+        String message = "参数验证失败: " + errors.values().stream().findFirst().orElse("格式不正确");
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .detail(message)
+                .build();
+        return ResponseEntity.badRequest().body(errorResponse);
     }
     
     @ExceptionHandler(Exception.class)
