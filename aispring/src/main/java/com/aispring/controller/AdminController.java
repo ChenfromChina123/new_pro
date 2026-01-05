@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,6 +30,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
+@Slf4j
 public class AdminController {
 
     private final UserRepository userRepository;
@@ -38,9 +40,13 @@ public class AdminController {
 
     @Data
     public static class AdminStatistics {
+        @com.fasterxml.jackson.annotation.JsonProperty("totalUsers")
         private long totalUsers;
+        @com.fasterxml.jackson.annotation.JsonProperty("totalChats")
         private long totalChats;
+        @com.fasterxml.jackson.annotation.JsonProperty("totalFiles")
         private long totalFiles;
+        @com.fasterxml.jackson.annotation.JsonProperty("totalStorage")
         private long totalStorage;
     }
 
@@ -73,11 +79,19 @@ public class AdminController {
     @GetMapping("/statistics")
     public ResponseEntity<ApiResponse<AdminStatistics>> getStatistics() {
         AdminStatistics stats = new AdminStatistics();
-        stats.setTotalUsers(userRepository.count());
-        stats.setTotalChats(chatRecordRepository.count());
-        stats.setTotalFiles(userFileRepository.count());
+        long userCount = userRepository.count();
+        long chatCount = chatRecordRepository.count();
+        long fileCount = userFileRepository.count();
         Long storage = userFileRepository.sumAllFileSizes();
-        stats.setTotalStorage(storage != null ? storage : 0L);
+        long storageSize = storage != null ? storage : 0L;
+        
+        log.info("Admin Statistics - Users: {}, Chats: {}, Files: {}, Storage: {}", 
+                userCount, chatCount, fileCount, storageSize);
+        
+        stats.setTotalUsers(userCount);
+        stats.setTotalChats(chatCount);
+        stats.setTotalFiles(fileCount);
+        stats.setTotalStorage(storageSize);
         return ResponseEntity.ok(ApiResponse.success(stats));
     }
 
