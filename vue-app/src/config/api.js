@@ -5,7 +5,7 @@ const getBaseURL = () => {
   }
   // 如果当前主机名是 aistudy.icu，则自动切换到该域名的 API
   if (typeof window !== 'undefined' && window.location.hostname === 'aistudy.icu') {
-    return 'http://aistudy.icu:5000';
+    return 'http://aistudy.icu'; // 移除 5000 端口，由 Nginx 处理转发
   }
   return 'http://localhost:5000';
 };
