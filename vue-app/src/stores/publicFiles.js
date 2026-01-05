@@ -74,11 +74,27 @@ export const usePublicFilesStore = defineStore('publicFiles', () => {
     }
   }
 
+  // 删除文件
+  async function deleteFile(filename) {
+    try {
+      await request.delete(API_ENDPOINTS.publicFiles.delete(filename))
+      await fetchFiles()
+      return { success: true, message: '删除成功' }
+    } catch (error) {
+      console.error('Delete public file error:', error)
+      return { 
+        success: false, 
+        message: error.response?.data?.message || '删除失败' 
+      }
+    }
+  }
+
   return {
     files,
     isLoading,
     fetchFiles,
     uploadFile,
-    downloadFile
+    downloadFile,
+    deleteFile
   }
 })

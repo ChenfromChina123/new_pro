@@ -101,6 +101,10 @@
   - 新增了 `V2_2__fix_admin_table_defaults.sql` 迁移文件，为 `admins` 表的 `is_active` 和 `is_superadmin` 字段添加了数据库级别的默认值（1 和 0）。
   - 解决了 `SQL Error 1364: Field 'is_active' doesn't have a default value` 报错，确保管理员记录在各种插入场景下的稳定性。
   - 修复了管理后台首页统计数据可能显示为 0 的问题，通过添加 `@JsonProperty` 确保了前后端数据字段映射的一致性。
+- **公共资源管理**:
+  - 新增了公共文件删除功能，仅管理员可见并操作。
+  - 后端实现了 `DELETE /api/public-files/{filename}` 接口，支持物理文件删除。
+  - 前端添加了确认弹窗和操作反馈，提升了管理的安全性与便捷性。
 - **全屏滚动体验优化**:
   - 统一修复了全站页面的滚动失效问题。核心方案是将各子页面的 `height: 100vh` 或固定计算高度修改为 `height: 100%`，并由父容器 `AppLayout` 统一管理滚动条。
   - **云盘页 (CloudDiskView)**: 修复了长文件列表无法下滑的问题。

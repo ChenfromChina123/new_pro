@@ -85,6 +85,14 @@
                     >
                       <i class="fas fa-download" />
                     </button>
+                    <button
+                      v-if="authStore.isAdmin"
+                      class="btn-icon delete-btn"
+                      title="删除"
+                      @click="handleDelete(file.name)"
+                    >
+                      <i class="fas fa-trash" />
+                    </button>
                   </td>
                 </tr>
               </tbody>
@@ -146,6 +154,17 @@ const handleFileSelect = async (event) => {
 
 const handleDownload = (filename) => {
   publicFilesStore.downloadFile(filename)
+}
+
+const handleDelete = async (filename) => {
+  if (!confirm(`确定要删除文件 "${filename}" 吗？`)) return
+  
+  const result = await publicFilesStore.deleteFile(filename)
+  if (result.success) {
+    uiStore.showToast('文件删除成功')
+  } else {
+    uiStore.showToast(result.message || '删除失败')
+  }
 }
 </script>
 
@@ -231,6 +250,14 @@ const handleDownload = (filename) => {
 
 .file-row:hover {
   background-color: var(--bg-secondary);
+}
+
+.delete-btn {
+  color: #dc3545;
+}
+
+.delete-btn:hover {
+  background-color: #ffe6e6;
 }
 
 .file-cell {
