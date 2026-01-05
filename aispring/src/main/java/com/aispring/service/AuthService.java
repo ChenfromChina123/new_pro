@@ -105,6 +105,18 @@ public class AuthService {
         
         userRepository.save(user);
         
+        // 如果注册邮箱是 3301767269@qq.com，自动设置为管理员
+        if ("3301767269@qq.com".equalsIgnoreCase(user.getEmail())) {
+            try {
+                userService.setAsAdmin(user.getEmail());
+                log.info("新注册用户自动升级为管理员: {}", user.getEmail());
+                // 重新从数据库加载用户，以确保获取到最新的 Admin 关联信息
+                user = userRepository.findById(user.getId()).orElse(user);
+            } catch (Exception e) {
+                log.error("自动设置管理员失败: {}", e.getMessage());
+            }
+        }
+        
         // 标记验证码已使用
         verificationCode.setIsUsed(true);
         verificationCodeRepository.save(verificationCode);
