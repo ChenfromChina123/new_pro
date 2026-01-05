@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
+import org.springframework.boot.autoconfigure.flyway.FlywayMigrationStrategy;
 import org.springframework.scheduling.annotation.EnableAsync;
 import com.aispring.service.CloudDiskService;
 
@@ -42,5 +43,13 @@ public class AiTutorApplication {
     @ConditionalOnProperty(name = "app.cloud-disk.migrate-on-startup", havingValue = "true")
     public CommandLineRunner cloudDiskMigrationRunner(CloudDiskService cloudDiskService) {
         return args -> cloudDiskService.migrateToUnifiedBase();
+    }
+
+    @Bean
+    public FlywayMigrationStrategy cleanMigrateStrategy() {
+        return flyway -> {
+            flyway.repair();
+            flyway.migrate();
+        };
     }
 }
