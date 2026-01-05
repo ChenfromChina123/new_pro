@@ -4,15 +4,22 @@
 # AI Study Project - Linux 启动脚本
 # ==========================================
 
+# 设置数据库凭据 (来自截图信息)
+# 使用环境变量覆盖 application.yml 中的默认配置
+export DB_USERNAME=aispring
+export DB_PASSWORD=xGDswMCdHhsajfxF
+export DB_NAME=aispring
+
 # 1. 启动后端 (Spring Boot)
 echo "正在启动后端服务..."
 if [ -d "aispring" ]; then
     cd aispring
     # 使用 nohup 后台运行，日志输出到 backend.log
-    # 注意：确保服务器已安装 Maven (mvn) 和 Java
+    # 注意：确保服务器已安装 Maven (mvn) 和 Java 17+
     nohup mvn spring-boot:run > ../backend.log 2>&1 &
     BACKEND_PID=$!
     echo "✅ 后端服务已在后台启动 (PID: $BACKEND_PID)"
+    echo "   使用数据库用户: $DB_USERNAME"
     echo "   日志文件: backend.log"
     cd ..
 else
