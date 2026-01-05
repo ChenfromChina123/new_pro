@@ -28,8 +28,11 @@ public class Admin {
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
     
-    @Column(name = "is_superadmin", nullable = false)
+    @Column(name = "is_superadmin", nullable = false, columnDefinition = "BIT DEFAULT 0")
     private Boolean isSuperadmin = false;
+
+    @Column(name = "is_active", nullable = false, columnDefinition = "BIT DEFAULT 1")
+    private Boolean isActive = true;
     
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)

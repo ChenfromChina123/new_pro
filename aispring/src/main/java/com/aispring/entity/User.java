@@ -46,7 +46,7 @@ public class User {
     @Column(length = 255)
     private String avatar;
     
-    @Column(name = "is_active", nullable = false)
+    @Column(name = "is_active", nullable = false, columnDefinition = "BIT DEFAULT 1")
     private Boolean isActive = true;
     
     @CreatedDate
