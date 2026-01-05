@@ -162,6 +162,7 @@ class Agent:
         self.lastFullMessages: List[Dict[str, str]] = []
         self.isAutoApproveEnabled = False
         self._lastOperationIndexOfLastChat = 0
+        self._lastPrintedOperationIndex = 0
 
     def estimateTokensOfMessages(self, messages: List[Dict[str, str]]) -> int:
         totalChars = 0
@@ -239,6 +240,31 @@ class Agent:
             is_running = bool(t.get("is_running"))
             lines.append(f"- id={tid} running={is_running} uptime={uptime:.1f}s cmd={cmd}")
         return "\n".join(lines)
+
+    def printRunCommandSummary(self, *, tid: str, cmd: str, success: bool, output: str, error: str) -> None:
+        """将 run_command 的关键信息直接打印给用户，便于及时查看终端状态与输出。"""
+        status = self.terminalManager.get_terminal_status(tid)
+        isRunning = bool(status.get("is_running")) if isinstance(status, dict) else False
+        header = "SUCCESS" if success else "FAILURE"
+        state = "running" if isRunning else "exited"
+        print(f"{Style.BRIGHT}[Terminal]{Style.RESET_ALL} {header} | id={tid} | state={state}")
+        print(f"{Style.BRIGHT}Command:{Style.RESET_ALL} {cmd}")
+        if error and not success:
+            print(f"{Fore.RED}{error}{Style.RESET_ALL}")
+        if isinstance(status, dict) and status.get("output"):
+            shown = str(status.get("output") or "")
+            if len(shown) > 4000:
+                shown = shown[:4000] + "\n... (truncated)"
+            print(f"{Style.BRIGHT}Output (tail):{Style.RESET_ALL}\n{shown}")
+        else:
+            shown = output or ""
+            if len(shown) > 4000:
+                shown = shown[:4000] + "\n... (truncated)"
+            if shown.strip():
+                print(f"{Style.BRIGHT}Output:{Style.RESET_ALL}\n{shown}")
+        summary = self.renderRunningTerminals()
+        if summary:
+            print(f"{Style.BRIGHT}{summary}{Style.RESET_ALL}")
 
     def getContextOfSystem(self) -> str:
         return """# XIAOCHEN_TERMINAL - 小晨终端助手
@@ -370,6 +396,7 @@ class Agent:
             print(f"{Fore.GREEN}{msg}{Style.RESET_ALL}")
             if self.historyOfOperations:
                 self.historyOfOperations.pop()
+                self._lastPrintedOperationIndex = min(self._lastPrintedOperationIndex, len(self.historyOfOperations))
             return
 
         if not self.historyOfOperations:
@@ -383,6 +410,7 @@ class Agent:
                     f.write(self.cacheOfBackups[pathOfFile])
                 print(f"{Fore.GREEN}Rolled back file: {pathOfFile}{Style.RESET_ALL}")
                 self.historyOfOperations.pop()
+                self._lastPrintedOperationIndex = min(self._lastPrintedOperationIndex, len(self.historyOfOperations))
                 del self.cacheOfBackups[pathOfFile]
             except Exception as e:
                 print(f"{Fore.RED}Rollback failed: {str(e)}{Style.RESET_ALL}")
@@ -408,6 +436,20 @@ class Agent:
             print(f"File: {pathOfFile}")
             print(f"  {Fore.BLUE}+({added}){Style.RESET_ALL} | {Fore.RED}-({deleted}){Style.RESET_ALL}")
         print(f"{Style.BRIGHT}==================================={Style.RESET_ALL}")
+
+    def maybePrintModificationStats(self) -> None:
+        if self._lastPrintedOperationIndex > len(self.historyOfOperations):
+            self._lastPrintedOperationIndex = len(self.historyOfOperations)
+        opsOfThisChat = self.historyOfOperations[self._lastOperationIndexOfLastChat :]
+        if not opsOfThisChat:
+            return
+        if self._lastPrintedOperationIndex >= len(self.historyOfOperations):
+            return
+        opsToPrint = self.historyOfOperations[self._lastPrintedOperationIndex :]
+        if not opsToPrint:
+            return
+        self.printStatsOfModification(opsToPrint)
+        self._lastPrintedOperationIndex = len(self.historyOfOperations)
 
     def chat(self, inputOfUser: str):
         """
@@ -827,15 +869,35 @@ class Agent:
                                     continue
                                 
                                 try:
-                                    success, output, error = self.terminalManager.run_command(cmd, is_long_running=is_long)
+                                    success, tid, output, error = self.terminalManager.run_command(cmd, is_long_running=is_long)
                                     if success:
-                                        if is_long:
-                                            obs = f"SUCCESS: Long-running command started. Terminal ID: {output}\nCommand: {cmd}"
+                                        status = self.terminalManager.get_terminal_status(tid)
+                                        isRunning = bool(status.get("is_running")) if isinstance(status, dict) else False
+                                        if isRunning:
+                                            obs = (
+                                                "SUCCESS: Command started (running)\n"
+                                                f"Terminal ID: {tid}\n"
+                                                f"Command: {cmd}\n"
+                                                f"{output}\n"
+                                                f"{self.renderRunningTerminals()}"
+                                            )
                                         else:
-                                            obs = f"SUCCESS: Command executed: {cmd}\n{output}"
+                                            obs = (
+                                                "SUCCESS: Command executed\n"
+                                                f"Terminal ID: {tid}\n"
+                                                f"Command: {cmd}\n"
+                                                f"{output}"
+                                            )
                                     else:
-                                        obs = f"FAILURE: {error}\n{output}"
+                                        obs = (
+                                            "FAILURE: Command failed\n"
+                                            f"Terminal ID: {tid}\n"
+                                            f"Command: {cmd}\n"
+                                            f"{error}\n"
+                                            f"{output}"
+                                        )
                                     
+                                    self.printRunCommandSummary(tid=tid, cmd=cmd, success=success, output=output, error=error)
                                     observations.append(obs)
                                     self.printToolResult(obs)
                                 except Exception as e:
@@ -908,9 +970,7 @@ class Agent:
             print(f"{Fore.RED}[Tip] Max cycles reached.{Style.RESET_ALL}")
 
         self.historyOfMessages = historyWorking
-
-        opsOfThisChat = self.historyOfOperations[self._lastOperationIndexOfLastChat :]
-        self.printStatsOfModification(opsOfThisChat)
+        self.maybePrintModificationStats()
 
 
 VoidAgent = Agent
