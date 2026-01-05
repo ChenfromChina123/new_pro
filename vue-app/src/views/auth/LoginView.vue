@@ -17,6 +17,7 @@
             class="input"
             placeholder="请输入邮箱"
             required
+            autocomplete="off"
           >
         </div>
         
@@ -28,6 +29,7 @@
             class="input"
             placeholder="请输入密码"
             required
+            autocomplete="new-password"
           >
         </div>
         
@@ -65,7 +67,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
@@ -110,13 +112,6 @@ const handleLogin = async () => {
   
   isLoading.value = false
 }
-
-// 开发阶段自动登录
-onMounted(() => {
-  form.value.email = '3301767269@qq.com'
-  form.value.password = '123456'
-  handleLogin()
-})
 </script>
 
 <style scoped>

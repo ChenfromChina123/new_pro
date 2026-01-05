@@ -15,7 +15,7 @@
     <description>AI智能学习助手系统 - Spring Boot版本</description>
     
     <properties>
-        <java.version>17</java.version>
+        <java.version>17</java.version> <!-- 注意：Spring Boot 3.x 必须使用 Java 17 或更高版本运行 -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
@@ -210,9 +210,19 @@
                 </configuration>
             </plugin>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.2.0</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.0.0-M5</version>
+            </plugin>
+            <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <version>3.3.5</version>
+                <version>2.7.18</version> <!-- 降级插件版本以兼容低版本 Maven/Java 环境下的运行，但应用运行仍需 Java 17 -->
                 <configuration>
                     <excludes>
                         <exclude>
