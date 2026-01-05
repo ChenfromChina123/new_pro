@@ -42,3 +42,11 @@ logging:
     name: logs/aispring-prod.log
     max-history: 30
     max-size: 10MB
+
+# 生产环境 CORS 配置
+cors:
+  allowed-origins: http://aistudy.icu,https://aistudy.icu,http://www.aistudy.icu,https://www.aistudy.icu
+  allowed-methods: GET,POST,PUT,DELETE,OPTIONS
+  allowed-headers: "*"
+  allow-credentials: true
+  max-age: 3600

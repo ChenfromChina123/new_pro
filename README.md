@@ -46,6 +46,10 @@
 ##### 🚀 最近更新
 
 ### 🌐 生产环境部署与数据库兼容性优化 (2026-01-05)
+- **域名自动识别**: 前端配置现在能够自动识别 `aistudy.icu` 域名并切换后端基础地址到 `http://aistudy.icu:5000`。
+- **CORS 与安全修复**: 
+  - 更新了后端 CORS 白名单，允许来自 `aistudy.icu` 的跨域请求。
+  - 修复了 Spring Security 导致的 OPTIONS 预检请求返回 403 Forbidden 的问题。
 - **多环境配置支持**: 引入了 `application-dev.yml` 和 `application-prod.yml`，支持通过 `--spring.profiles.active=prod` 参数切换环境，实现了开发与生产配置的彻底分离。
 - **数据库版本管理**: 引入了 **Flyway** 数据库迁移工具，支持自动版本控制和基准线 (`baseline`) 迁移，解决了服务器现有数据库与新表结构的兼容性问题。
 - **安全与稳定性**: 默认禁用生产环境的热部署 (`devtools`) 和详细 SQL 日志，优化了数据库连接池参数以应对高并发。

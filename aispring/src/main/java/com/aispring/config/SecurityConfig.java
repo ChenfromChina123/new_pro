@@ -30,6 +30,8 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .cors(cors -> {})
             .authorizeHttpRequests(auth -> auth
+                // 允许所有 OPTIONS 请求（预检请求）
+                .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                 // 允许异步分发（用于SSE等）
                 .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
                 // 公开端点
