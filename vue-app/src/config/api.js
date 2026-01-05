@@ -1,6 +1,17 @@
 // API配置
+const getBaseURL = () => {
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  // 如果当前主机名是 aistudy.icu，则自动切换到该域名的 API
+  if (typeof window !== 'undefined' && window.location.hostname === 'aistudy.icu') {
+    return 'http://aistudy.icu:5000';
+  }
+  return 'http://localhost:5000';
+};
+
 export const API_CONFIG = {
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000',
+  baseURL: getBaseURL(),
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json'
