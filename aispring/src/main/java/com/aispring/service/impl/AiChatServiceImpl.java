@@ -1152,10 +1152,6 @@ public class AiChatServiceImpl implements AiChatService {
             return new ToolCallResult(false, null);
         }
         
-        public static ToolCallResult interrupted() {
-            return new ToolCallResult(true, null);
-        }
-        
         public static ToolCallResult error(String error) {
             return new ToolCallResult(false, error);
         }
