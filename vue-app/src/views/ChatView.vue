@@ -692,6 +692,7 @@ marked.setOptions({
     const language = hljs.getLanguage(lang) ? lang : 'plaintext'
     return hljs.highlight(code, { language }).value
   },
+  langPrefix: 'hljs language-',
   breaks: true,
   gfm: true,
   renderer: renderer // 使用自定义渲染器
@@ -1441,6 +1442,10 @@ const formatMessage = (content) => {
     // 匹配多行代码块 ```...``` (包括未闭合的) 和 行内代码 `...`
     // 注意：使用非贪婪匹配 [\s\S]*? 以支持跨行代码块
     let contentWithCodeProtected = processedContent.replace(/(```[\s\S]*?```|```[\s\S]*$|`[^`\n]+`)/g, (match) => {
+      // 自动闭合未闭合的代码块，防止渲染吞噬
+      if (match.startsWith('```') && !match.endsWith('```')) {
+        match += '\n```';
+      }
       const placeholder = `CODE_BLOCK_PLACEHOLDER_${codeBlocks.length}_END`;
       codeBlocks.push(match);
       return placeholder;

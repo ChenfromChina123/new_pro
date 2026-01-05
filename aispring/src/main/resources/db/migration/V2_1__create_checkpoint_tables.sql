@@ -6,8 +6,47 @@
 -- Description: 创建检查点系统相关表
 -- =============================================
 
+SET FOREIGN_KEY_CHECKS = 0;
+
+-- 清理 chat_records 中的相关字段和约束（如果存在）
+DROP PROCEDURE IF EXISTS DropChatRecordsFields;
+DELIMITER //
+CREATE PROCEDURE DropChatRecordsFields()
+BEGIN
+    -- 1. 删除外键
+    IF EXISTS (SELECT * FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = 'chat_records' AND CONSTRAINT_NAME = 'fk_chat_records_tool_approval') THEN
+        ALTER TABLE chat_records DROP FOREIGN KEY fk_chat_records_tool_approval;
+    END IF;
+
+    -- 2. 删除索引
+    IF EXISTS (SELECT * FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'chat_records' AND INDEX_NAME = 'idx_checkpoint') THEN
+        ALTER TABLE chat_records DROP INDEX idx_checkpoint;
+    END IF;
+    IF EXISTS (SELECT * FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'chat_records' AND INDEX_NAME = 'idx_loop') THEN
+        ALTER TABLE chat_records DROP INDEX idx_loop;
+    END IF;
+
+    -- 3. 删除列
+    IF EXISTS (SELECT * FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'chat_records' AND COLUMN_NAME = 'checkpoint_id') THEN
+        ALTER TABLE chat_records DROP COLUMN checkpoint_id;
+    END IF;
+    IF EXISTS (SELECT * FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'chat_records' AND COLUMN_NAME = 'loop_id') THEN
+        ALTER TABLE chat_records DROP COLUMN loop_id;
+    END IF;
+    IF EXISTS (SELECT * FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'chat_records' AND COLUMN_NAME = 'tool_approval_id') THEN
+        ALTER TABLE chat_records DROP COLUMN tool_approval_id;
+    END IF;
+END //
+DELIMITER ;
+CALL DropChatRecordsFields();
+DROP PROCEDURE IF EXISTS DropChatRecordsFields;
+
+DROP TABLE IF EXISTS user_approval_settings;
+DROP TABLE IF EXISTS tool_approvals;
+DROP TABLE IF EXISTS chat_checkpoints;
+
 -- 1. 创建 chat_checkpoints 表（检查点表）
-CREATE TABLE IF NOT EXISTS chat_checkpoints (
+CREATE TABLE chat_checkpoints (
     id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
     checkpoint_id VARCHAR(64) NOT NULL UNIQUE COMMENT '检查点唯一标识（UUID）',
     session_id VARCHAR(100) NOT NULL COMMENT '会话ID',
@@ -26,7 +65,7 @@ CREATE TABLE IF NOT EXISTS chat_checkpoints (
     description VARCHAR(500) COMMENT '检查点描述',
     
     -- 时间戳
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     
     -- 索引
     INDEX idx_session_user (session_id, user_id),
@@ -41,7 +80,7 @@ CREATE TABLE IF NOT EXISTS chat_checkpoints (
 COMMENT='AI 终端检查点表 - 支持时间旅行功能';
 
 -- 2. 创建 tool_approvals 表（工具批准记录表）
-CREATE TABLE IF NOT EXISTS tool_approvals (
+CREATE TABLE tool_approvals (
     id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
     session_id VARCHAR(100) NOT NULL COMMENT '会话ID',
     user_id BIGINT NOT NULL COMMENT '用户ID',
@@ -58,8 +97,8 @@ CREATE TABLE IF NOT EXISTS tool_approvals (
     approval_reason VARCHAR(500) COMMENT '批准/拒绝原因',
     
     -- 时间戳
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    approved_at TIMESTAMP NULL COMMENT '批准/拒绝时间',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    approved_at DATETIME NULL COMMENT '批准/拒绝时间',
     
     -- 索引
     INDEX idx_session_user (session_id, user_id),
@@ -75,7 +114,7 @@ CREATE TABLE IF NOT EXISTS tool_approvals (
 COMMENT='工具批准记录表 - 支持工具调用批准机制';
 
 -- 3. 创建 user_approval_settings 表（用户批准设置表）
-CREATE TABLE IF NOT EXISTS user_approval_settings (
+CREATE TABLE user_approval_settings (
     id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
     user_id BIGINT NOT NULL UNIQUE COMMENT '用户ID',
     
@@ -96,14 +135,14 @@ CREATE TABLE IF NOT EXISTS user_approval_settings (
         COMMENT '每个会话保留的最大检查点数量',
     
     -- 时间戳
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     
     -- 外键
-    CONSTRAINT fk_approval_settings_user 
+    CONSTRAINT fk_settings_user 
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci 
-COMMENT='用户批准设置表 - 配置工具批准规则';
+COMMENT='用户批准设置表 - 个性化工具调用策略';
 
 -- 4. 扩展 chat_records 表（添加新字段）
 -- 注意：使用 ALTER TABLE 而不是 CREATE TABLE
@@ -157,4 +196,6 @@ FROM information_schema.STATISTICS
 WHERE TABLE_SCHEMA = DATABASE() 
     AND TABLE_NAME IN ('chat_checkpoints', 'tool_approvals', 'user_approval_settings', 'chat_records')
 ORDER BY TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX;
+
+SET FOREIGN_KEY_CHECKS = 1;
 

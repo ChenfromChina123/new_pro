@@ -35,17 +35,17 @@ public class UserController {
     /**
      * 上传用户头像
      */
-    @PostMapping("/avatar-upload")
+    @PostMapping("/upload-avatar")
     public ResponseEntity<ApiResponse<String>> uploadAvatar(
             @RequestParam("file") MultipartFile file,
             @AuthenticationPrincipal CustomUserDetails customUserDetails) {
         
         try {
-            if (customUserDetails == null) {
+            if (customUserDetails == null || customUserDetails.getUser() == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error(401, "请先登录"));
             }
             
-            if (file.isEmpty()) {
+            if (file == null || file.isEmpty()) {
                 return ResponseEntity.badRequest().body(ApiResponse.error(400, "文件不能为空"));
             }
 
@@ -57,14 +57,18 @@ public class UserController {
 
             Long userId = customUserDetails.getUser().getId();
             String originalFilename = file.getOriginalFilename();
-            String extension = originalFilename != null && originalFilename.contains(".") 
-                    ? originalFilename.substring(originalFilename.lastIndexOf(".")) 
-                    : ".jpg";
+            String extension = ".jpg"; // 默认扩展名
+            if (originalFilename != null && originalFilename.contains(".")) {
+                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+            }
             
             // 生成唯一文件名: userId_uuid.ext
             String filename = userId + "_" + UUID.randomUUID().toString().substring(0, 8) + extension;
             
             String avatarsBase = storageProperties.getAvatarsAbsolute();
+            if (avatarsBase == null) {
+                throw new RuntimeException("无法获取头像存储路径");
+            }
             log.info("头像存储基目录: {}", avatarsBase);
             
             Path filePath = Paths.get(avatarsBase).resolve(filename).normalize();
@@ -90,16 +94,23 @@ public class UserController {
                 log.error("更新数据库头像路径失败: ", dbEx);
                 // 如果数据库更新失败，尝试删除已上传的文件以保持一致性
                 Files.deleteIfExists(filePath);
-                throw new RuntimeException("数据库更新失败: " + dbEx.getMessage());
+                throw new RuntimeException("更新个人资料失败: " + (dbEx.getMessage() != null ? dbEx.getMessage() : "数据库异常"));
             }
             
             return ResponseEntity.ok(ApiResponse.success("头像上传成功", avatarPath));
             
         } catch (Exception e) {
             log.error("上传头像过程发生异常: ", e);
-            String errorMsg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            String errorMsg = "系统繁忙，请稍后再试";
+            if (e != null) {
+                if (e.getMessage() != null) {
+                    errorMsg = e.getMessage();
+                } else {
+                    errorMsg = e.getClass().getSimpleName();
+                }
+            }
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error(500, "上传失败原因: " + errorMsg));
+                    .body(ApiResponse.error(500, "上传失败: " + errorMsg));
         }
     }
 
