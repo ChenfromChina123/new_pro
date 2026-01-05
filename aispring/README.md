@@ -46,24 +46,30 @@ CREATE DATABASE IF NOT EXISTS ipv6_education
 
 ### 3. 配置application.yml
 
-修改 `src/main/resources/application.yml` 中的配置：
+修改 `src/main/resources/application.yml` 中的配置。本项目已集成 Jasypt 对敏感信息进行加密（推荐）：
 
 ```yaml
 spring:
   datasource:
     url: jdbc:mysql://localhost:3306/ipv6_education
     username: your_username
-    password: your_password
+    password: ENC(encrypted_password)
   
 jwt:
   secret: your_jwt_secret_key
 
 ai:
   deepseek:
-    api-key: your_deepseek_key
+    api-key: ENC(encrypted_key)
   doubao:
-    api-key: your_doubao_key
+    api-key: ENC(encrypted_key)
+
+jasypt:
+  encryptor:
+    password: ${JASYPT_PASSWORD:aistudy_secret} # 加密盐值，生产环境建议通过环境变量设置
 ```
+
+**提示**: 可以运行 `com.aispring.utils.JasyptUtils` 类中的 `main` 方法来生成加密后的密文。
 
 ### 4. 构建和运行
 
