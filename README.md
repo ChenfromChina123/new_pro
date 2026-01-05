@@ -45,6 +45,12 @@
 
 ##### 🚀 最近更新
 
+### 🌐 生产环境部署与数据库兼容性优化 (2026-01-05)
+- **多环境配置支持**: 引入了 `application-dev.yml` 和 `application-prod.yml`，支持通过 `--spring.profiles.active=prod` 参数切换环境，实现了开发与生产配置的彻底分离。
+- **数据库版本管理**: 引入了 **Flyway** 数据库迁移工具，支持自动版本控制和基准线 (`baseline`) 迁移，解决了服务器现有数据库与新表结构的兼容性问题。
+- **安全与稳定性**: 默认禁用生产环境的热部署 (`devtools`) 和详细 SQL 日志，优化了数据库连接池参数以应对高并发。
+- **配置自动化**: 统一使用环境变量和默认值组合的配置方式，简化了服务器部署流程。
+
 ### 🔐 找回密码与认证功能修复 (2026-01-05)
 - **参数映射修复**: 修复了 `ResetPasswordRequest` 中 JSON 字段无法正确映射的问题，通过添加 `@JsonProperty` 注解确保前端传递的 `email`、`code`、`newPassword` 能正确解析。
 - **错误响应规范化**: 更新了 `GlobalExceptionHandler`，将验证失败（`MethodArgumentNotValidException`）的返回格式从 `Map` 统一为 `ErrorResponse` 对象，提升了前端错误处理的兼容性。
