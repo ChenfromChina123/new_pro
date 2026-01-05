@@ -53,7 +53,9 @@
 - **多环境配置支持**: 引入了 `application-dev.yml` 和 `application-prod.yml`，支持通过 `--spring.profiles.active=prod` 参数切换环境，实现了开发与生产配置的彻底分离。
 - **数据库版本管理**: 引入了 **Flyway** 数据库迁移工具，支持自动版本控制和基准线 (`baseline`) 迁移，解决了服务器现有数据库与新表结构的兼容性问题。
 - **安全与稳定性**: 默认禁用生产环境的热部署 (`devtools`) 和详细 SQL 日志，优化了数据库连接池参数以应对高并发。
-- **Hibernate 兼容性修复**: 移除了实体类中冗余的 `columnDefinition` 约束，并将生产环境的 `ddl-auto` 调整为 `none`，由 Flyway 统一管理，解决了服务器上 `is_favorite` 等字段的类型校验冲突。
+- **Hibernate 兼容性修复**: 移除了实体类中冗余的 `columnDefinition` 约束，移除了 `application.yml` 中过时的 `MySQL8Dialect` 配置，并将生产环境的 `ddl-auto` 调整为 `none`，由 Flyway 统一管理，解决了服务器上 `is_favorite` 等字段的类型校验冲突。
+- **日志冲突优化**: 移除了 `commons-logging` 依赖冲突，统一由 Spring Boot 的 `spring-jcl` 处理，消除了启动时的警告信息。
+- **端口冲突处理**: 明确了 5000 端口占用即代表服务已在热部署状态下运行，无需重复启动。
 - **配置自动化**: 统一使用环境变量和默认值组合的配置方式，简化了服务器部署流程。
 
 ### 🔐 找回密码与认证功能修复 (2026-01-05)
