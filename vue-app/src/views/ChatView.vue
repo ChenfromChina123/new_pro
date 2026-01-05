@@ -189,12 +189,7 @@
             
             <div class="input-toolbar">
               <div class="toolbar-left">
-                <button 
-                  class="tool-btn" 
-                  title="上传附件"
-                >
-                  <i class="fas fa-paperclip" />
-                </button>
+                <!-- 已移除上传附件按钮 -->
                 <button 
                   class="tool-btn-special" 
                   :class="{ active: chatStore.selectedModel.includes('reasoner') }"
@@ -246,26 +241,7 @@
               </div>
               
               <div class="toolbar-right">
-                <button 
-                  class="tool-btn" 
-                  title="截图"
-                >
-                  <i class="fas fa-cut" />
-                </button>
-                <button 
-                  class="tool-btn" 
-                  title="语音通话"
-                >
-                  <i class="fas fa-phone" />
-                </button>
-                <button 
-                  class="tool-btn" 
-                  title="语音输入"
-                >
-                  <i class="fas fa-microphone" />
-                </button>
-                
-                <div class="toolbar-divider" />
+                <!-- 已移除无用组件 -->
                 
                 <button
                   v-if="chatStore.isLoading"
@@ -2567,13 +2543,6 @@ body.dark-mode .message-copy-button:hover {
 .menu-fade-leave-to {
   opacity: 0;
   transform: translateY(12px) scale(0.95);
-}
-
-.toolbar-divider {
-  width: 1px;
-  height: 20px;
-  background-color: var(--border-color);
-  margin: 0 4px;
 }
 
 .stop-btn, .send-btn-new {
