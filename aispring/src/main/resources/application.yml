@@ -6,7 +6,7 @@ spring:
   datasource:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:ipv6_education}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:123456}
+    password: ${DB_PASSWORD:ENC(ChwOBS62kHNKHEfErml6nw==)}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       minimum-idle: 5
@@ -60,7 +60,7 @@ spring:
     host: smtp.qq.com
     port: 587
     username: ${SENDER_EMAIL:3301767269@qq.com}
-    password: ${SENDER_PASSWORD:dinasyxqstbodbej}
+    password: ${SENDER_PASSWORD:ENC(LZy5qJumY+qHyFxAmZ3NLwqIl6mXaN/CBQ8KrjhAEIg=)}
     properties:
       mail:
         smtp:
@@ -87,7 +87,7 @@ spring:
   # Spring AI配置 - DeepSeek (兼容OpenAI API)
   ai:
     openai:
-      api-key: ${DEEPSEEK_API_KEY:sk-7f17e997c31e4d82bf0286116ad34226}
+      api-key: ${DEEPSEEK_API_KEY:ENC(PXkZZlkx8FKyKOigb+jXg54bgTu/38HyEAjzh74ohFt0yN8NfIWqAd0flh3y4p2q)}
       base-url: ${DEEPSEEK_API_URL:${DEEPSEEK_URL:https://api.deepseek.com}}
       chat:
         options:
@@ -98,6 +98,13 @@ spring:
 # 服务器配置
 server:
   port: 5000
+
+# Jasypt 加密配置
+jasypt:
+  encryptor:
+    password: ${JASYPT_PASSWORD:aistudy_secret}
+    algorithm: PBEWithMD5AndDES
+    iv-generator-classname: org.jasypt.iv.NoIvGenerator
   servlet:
     context-path: /
   compression:
