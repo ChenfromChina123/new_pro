@@ -1,76 +1,73 @@
 <template>
-  <AppLayout>
-    <div class="chat-management-page">
-      <div class="container">
-        <div class="page-header">
-          <h1>💾 聊天记录管理</h1>
-          <p>查看和管理你的所有对话记录</p>
-        </div>
-        
-        <div class="sessions-grid">
-          <div
-            v-for="session in sessions"
-            :key="session.id"
-            class="session-card card"
-          >
-            <div class="session-header">
-              <h3>{{ session.title || '新对话' }}</h3>
-              <button
-                class="delete-btn"
-                title="删除"
-                @click="deleteSession(session.id)"
-              >
-                🗑️
-              </button>
-            </div>
-            
-            <div class="session-info">
-              <p class="session-date">
-                📅 {{ formatDate(session.created_at) }}
-              </p>
-              <p
-                v-if="session.message_count"
-                class="session-count"
-              >
-                💬 {{ session.message_count }} 条消息
-              </p>
-            </div>
-            
+  <div class="chat-management-page">
+    <div class="container">
+      <div class="page-header">
+        <h1>💾 聊天记录管理</h1>
+        <p>查看和管理你的所有对话记录</p>
+      </div>
+      
+      <div class="sessions-grid">
+        <div
+          v-for="session in sessions"
+          :key="session.id"
+          class="session-card card"
+        >
+          <div class="session-header">
+            <h3>{{ session.title || '新对话' }}</h3>
             <button
-              class="btn btn-primary"
-              @click="viewSession(session.id)"
+              class="delete-btn"
+              title="删除"
+              @click="deleteSession(session.id)"
             >
-              查看详情
+              🗑️
             </button>
           </div>
-        </div>
-        
-        <div
-          v-if="sessions.length === 0"
-          class="empty-state"
-        >
-          <div class="empty-icon">
-            💬
+          
+          <div class="session-info">
+            <p class="session-date">
+              📅 {{ formatDate(session.created_at) }}
+            </p>
+            <p
+              v-if="session.message_count"
+              class="session-count"
+            >
+              💬 {{ session.message_count }} 条消息
+            </p>
           </div>
-          <h3>暂无聊天记录</h3>
-          <p>开始新的对话来创建记录</p>
-          <router-link
-            to="/chat"
+          
+          <button
             class="btn btn-primary"
+            @click="viewSession(session.id)"
           >
-            开始对话
-          </router-link>
+            查看详情
+          </button>
         </div>
       </div>
+      
+      <div
+        v-if="sessions.length === 0"
+        class="empty-state"
+      >
+        <div class="empty-icon">
+          💬
+        </div>
+        <h3>暂无聊天记录</h3>
+        <p>开始新的对话来创建记录</p>
+        <router-link
+          to="/chat"
+          class="btn btn-primary"
+        >
+          开始对话
+        </router-link>
+      </div>
     </div>
-  </AppLayout>
+  </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useChatStore } from '@/stores/chat'
-import AppLayout from '@/components/AppLayout.vue'
 
 const router = useRouter()
 const chatStore = useChatStore()
@@ -107,7 +104,8 @@ const formatDate = (dateString) => {
 
 <style scoped>
 .chat-management-page {
-  min-height: calc(100vh - 64px);
+  height: 100%;
+  overflow-y: auto;
   padding: 32px 0;
 }
 

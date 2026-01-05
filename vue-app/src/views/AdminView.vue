@@ -1,226 +1,224 @@
 <template>
-  <AppLayout>
-    <div class="admin-page">
-      <div class="container">
-        <div class="page-header">
-          <h1>⚙️ 管理后台</h1>
-          <p>系统管理和数据统计</p>
-        </div>
-        
-        <!-- 统计卡片 -->
-        <div class="stats-grid">
-          <div class="stat-card card">
-            <div class="stat-icon">
-              👥
-            </div>
-            <div class="stat-info">
-              <h3>{{ statistics.totalUsers || 0 }}</h3>
-              <p>总用户数</p>
-            </div>
+  <div class="admin-page">
+    <div class="container">
+      <div class="page-header">
+        <h1>⚙️ 管理后台</h1>
+        <p>系统管理和数据统计</p>
+      </div>
+      
+      <!-- 统计卡片 -->
+      <div class="stats-grid">
+        <div class="stat-card card">
+          <div class="stat-icon">
+            👥
           </div>
-          
-          <div class="stat-card card">
-            <div class="stat-icon">
-              💬
-            </div>
-            <div class="stat-info">
-              <h3>{{ statistics.totalChats || 0 }}</h3>
-              <p>对话次数</p>
-            </div>
-          </div>
-          
-          <div class="stat-card card">
-            <div class="stat-icon">
-              📁
-            </div>
-            <div class="stat-info">
-              <h3>{{ statistics.totalFiles || 0 }}</h3>
-              <p>文件总数</p>
-            </div>
-          </div>
-          
-          <div class="stat-card card">
-            <div class="stat-icon">
-              💾
-            </div>
-            <div class="stat-info">
-              <h3>{{ formatSize(statistics.totalStorage || 0) }}</h3>
-              <p>存储空间</p>
-            </div>
+          <div class="stat-info">
+            <h3>{{ statistics.totalUsers || 0 }}</h3>
+            <p>总用户数</p>
           </div>
         </div>
         
-        <!-- 功能选项卡 -->
-        <div class="tabs">
-          <button
-            v-for="tab in tabs"
-            :key="tab.key"
-            class="tab-btn"
-            :class="{ active: currentTab === tab.key }"
-            @click="currentTab = tab.key"
-          >
-            {{ tab.label }}
-          </button>
+        <div class="stat-card card">
+          <div class="stat-icon">
+            💬
+          </div>
+          <div class="stat-info">
+            <h3>{{ statistics.totalChats || 0 }}</h3>
+            <p>对话次数</p>
+          </div>
         </div>
         
-        <!-- 用户管理 -->
-        <div
-          v-if="currentTab === 'users'"
-          class="tab-content card"
+        <div class="stat-card card">
+          <div class="stat-icon">
+            📁
+          </div>
+          <div class="stat-info">
+            <h3>{{ statistics.totalFiles || 0 }}</h3>
+            <p>文件总数</p>
+          </div>
+        </div>
+        
+        <div class="stat-card card">
+          <div class="stat-icon">
+            💾
+          </div>
+          <div class="stat-info">
+            <h3>{{ formatSize(statistics.totalStorage || 0) }}</h3>
+            <p>存储空间</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 功能选项卡 -->
+      <div class="tabs">
+        <button
+          v-for="tab in tabs"
+          :key="tab.key"
+          class="tab-btn"
+          :class="{ active: currentTab === tab.key }"
+          @click="currentTab = tab.key"
         >
-          <h2>用户管理</h2>
-          <div class="table-container">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>邮箱</th>
-                  <th>注册时间</th>
-                  <th>状态</th>
-                  <th>操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="user in users"
-                  :key="user.id"
-                >
-                  <td>{{ user.id }}</td>
-                  <td>{{ user.email }}</td>
-                  <td>{{ formatDate(user.createdAt) }}</td>
-                  <td>
-                    <span :class="['badge', user.active ? 'success' : 'danger']">
-                      {{ user.active ? '正常' : '禁用' }}
-                    </span>
-                  </td>
-                  <td>
-                    <button class="btn-small btn-secondary">
-                      详情
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-        
-        <!-- 文件管理 -->
-        <div
-          v-if="currentTab === 'files'"
-          class="tab-content card"
-        >
-          <h2>文件管理</h2>
-          <div class="table-container">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>文件名</th>
-                  <th>用户</th>
-                  <th>大小</th>
-                  <th>上传时间</th>
-                  <th>操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="file in files"
-                  :key="file.id"
-                >
-                  <td>{{ file.filename }}</td>
-                  <td>{{ file.userEmail }}</td>
-                  <td>{{ formatSize(file.fileSize) }}</td>
-                  <td>{{ formatDate(file.uploadTime) }}</td>
-                  <td>
-                    <button 
-                      class="btn-small btn-secondary"
-                      style="margin-right: 8px;"
-                      @click="handleEditFile(file)"
-                    >
-                      编辑
-                    </button>
-                    <button 
-                      class="btn-small btn-danger" 
-                      @click="handleDeleteFile(file.id)"
-                    >
-                      删除
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-        
-        <!-- 文件编辑弹窗 -->
-        <div 
-          v-if="showEditModal" 
-          class="modal-overlay"
-        >
-          <div class="modal-content edit-modal">
-            <div class="modal-header">
-              <h3>编辑文件: {{ editingFile?.filename }}</h3>
-              <button 
-                class="close-btn" 
-                @click="showEditModal = false"
+          {{ tab.label }}
+        </button>
+      </div>
+      
+      <!-- 用户管理 -->
+      <div
+        v-if="currentTab === 'users'"
+        class="tab-content card"
+      >
+        <h2>用户管理</h2>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>邮箱</th>
+                <th>注册时间</th>
+                <th>状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="user in users"
+                :key="user.id"
               >
-                &times;
-              </button>
-            </div>
-            <div class="modal-body">
-              <div class="editor-container">
-                <textarea 
-                  v-model="editContent" 
-                  class="file-editor"
-                  spellcheck="false"
-                />
-              </div>
-            </div>
-            <div class="modal-footer">
-              <button 
-                class="btn-secondary" 
-                @click="showEditModal = false"
-              >
-                取消
-              </button>
-              <button 
-                class="btn-primary" 
-                :disabled="saving"
-                @click="saveFileContent"
-              >
-                {{ saving ? '保存中...' : '保存' }}
-              </button>
-            </div>
-          </div>
+                <td>{{ user.id }}</td>
+                <td>{{ user.email }}</td>
+                <td>{{ formatDate(user.createdAt) }}</td>
+                <td>
+                  <span :class="['badge', user.active ? 'success' : 'danger']">
+                    {{ user.active ? '正常' : '禁用' }}
+                  </span>
+                </td>
+                <td>
+                  <button class="btn-small btn-secondary">
+                    详情
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-        
-        <!-- 反馈管理 -->
-        <div
-          v-if="currentTab === 'feedback'"
-          class="tab-content card"
-        >
-          <h2>用户反馈</h2>
-          <div class="feedback-list">
-            <div
-              v-for="feedback in feedbacks"
-              :key="feedback.id"
-              class="feedback-item"
+      </div>
+      
+      <!-- 文件管理 -->
+      <div
+        v-if="currentTab === 'files'"
+        class="tab-content card"
+      >
+        <h2>文件管理</h2>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>文件名</th>
+                <th>用户</th>
+                <th>大小</th>
+                <th>上传时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="file in files"
+                :key="file.id"
+              >
+                <td>{{ file.filename }}</td>
+                <td>{{ file.userEmail }}</td>
+                <td>{{ formatSize(file.fileSize) }}</td>
+                <td>{{ formatDate(file.uploadTime) }}</td>
+                <td>
+                  <button 
+                    class="btn-small btn-secondary"
+                    style="margin-right: 8px;"
+                    @click="handleEditFile(file)"
+                  >
+                    编辑
+                  </button>
+                  <button 
+                    class="btn-small btn-danger" 
+                    @click="handleDeleteFile(file.id)"
+                  >
+                    删除
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <!-- 文件编辑弹窗 -->
+      <div 
+        v-if="showEditModal" 
+        class="modal-overlay"
+      >
+        <div class="modal-content edit-modal">
+          <div class="modal-header">
+            <h3>编辑文件: {{ editingFile?.filename }}</h3>
+            <button 
+              class="close-btn" 
+              @click="showEditModal = false"
             >
-              <div class="feedback-header">
-                <span class="feedback-user">{{ feedback.userEmail }}</span>
-                <span class="feedback-date">{{ formatDate(feedback.createdAt) }}</span>
-              </div>
-              <p class="feedback-content">
-                {{ feedback.content }}
-              </p>
-              <button class="btn-small btn-secondary">
-                标记已处理
-              </button>
+              &times;
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="editor-container">
+              <textarea 
+                v-model="editContent" 
+                class="file-editor"
+                spellcheck="false"
+              />
             </div>
+          </div>
+          <div class="modal-footer">
+            <button 
+              class="btn-secondary" 
+              @click="showEditModal = false"
+            >
+              取消
+            </button>
+            <button 
+              class="btn-primary" 
+              :disabled="saving"
+              @click="saveFileContent"
+            >
+              {{ saving ? '保存中...' : '保存' }}
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 反馈管理 -->
+      <div
+        v-if="currentTab === 'feedback'"
+        class="tab-content card"
+      >
+        <h2>用户反馈</h2>
+        <div class="feedback-list">
+          <div
+            v-for="feedback in feedbacks"
+            :key="feedback.id"
+            class="feedback-item"
+          >
+            <div class="feedback-header">
+              <span class="feedback-user">{{ feedback.userEmail }}</span>
+              <span class="feedback-date">{{ formatDate(feedback.createdAt) }}</span>
+            </div>
+            <p class="feedback-content">
+              {{ feedback.content }}
+            </p>
+            <button class="btn-small btn-secondary">
+              标记已处理
+            </button>
           </div>
         </div>
       </div>
     </div>
-  </AppLayout>
+  </div>
 </template>
 
 <script setup>
@@ -357,7 +355,8 @@ const formatSize = (bytes) => {
 
 <style scoped>
 .admin-page {
-  min-height: calc(100vh - 64px);
+  height: 100%;
+  overflow-y: auto;
   padding: 32px 0;
 }
 

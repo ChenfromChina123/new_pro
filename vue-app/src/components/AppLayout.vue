@@ -59,6 +59,7 @@ const showSidebar = computed(() => {
   height: 100%;
   overflow: hidden;
   position: relative;
+  min-height: 0; /* 关键：允许 flex 子项在需要时缩小，从而使内部滚动生效 */
 }
 
 /* Toast 样式 */
