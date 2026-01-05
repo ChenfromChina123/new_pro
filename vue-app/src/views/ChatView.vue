@@ -1429,117 +1429,84 @@ const getReasoningLength = (content) => {
 
 const formatMessage = (content) => {
   try {
-    // 1. 先清理原始内容中的问题
-    let cleanContent = content;
-
-    // 0. 预处理：移除可能包裹公式的 Markdown 代码标记 (反引号)
-    // AI 有时会输出 `\( x^2 \)` 导致公式被渲染为代码块
-    // 移除包裹 $$ ... $$ 的反引号
-    cleanContent = cleanContent.replace(/`(\$\$[\s\S]+?\$\$)`/g, '$1');
-    // 移除包裹 \[ ... \] 的反引号
-    cleanContent = cleanContent.replace(/`(\\\[[\s\S]+?\\\])`/g, '$1');
-    // 移除包裹 \( ... \) 的反引号
-    cleanContent = cleanContent.replace(/`(\\\([\s\S]+?\\\))`/g, '$1');
-    // 移除包裹 \int ... 的反引号 (需要匹配到对应的结束反引号)
-    // 匹配 `\int ... `，确保内部不包含反引号
-    cleanContent = cleanContent.replace(/`(\\int(?:\\[\s\S]|[^`])+?)`/g, '$1');
+    if (!content) return '';
     
-    // 2. 处理多余的代码块标记（连续的三个或更多反引号）
+    // 0. 预处理：修复可能导致解析问题的特殊标记
+    let processedContent = content;
     // 匹配四个或更多反引号，替换为三个（标准代码块标记）
-    cleanContent = cleanContent.replace(/`{4,}/g, '```');
+    processedContent = processedContent.replace(/`{4,}/g, '```');
     
-    // 预处理：清理公式行中的编号（如 "5."、"1." 等）
-    // 只处理包含LaTeX命令的行，避免误删正常文本
-    // 匹配模式：行首编号 + 可选中文 + LaTeX命令
-    // 注意：这里只清理行首的编号，不清理公式内部的编号
-    cleanContent = cleanContent.replace(/^(\s*)(\d+\.\s*)([\u4e00-\u9fa5：:，,。.；;！!？?\s]*?)(\\int|\\left|\\right|\\frac|\\sqrt|\\sum|\\lim|\\sin|\\cos|\\tan|\\sec|\\ln|\\log|\\exp)/gm, '$1$4');
+    // 1. 保护代码块，避免被后续的数学公式识别或文本清理正则破坏
+    const codeBlocks = [];
+    // 匹配多行代码块 ```...``` (包括未闭合的) 和 行内代码 `...`
+    // 注意：使用非贪婪匹配 [\s\S]*? 以支持跨行代码块
+    let contentWithCodeProtected = processedContent.replace(/(```[\s\S]*?```|```[\s\S]*$|`[^`\n]+`)/g, (match) => {
+      const placeholder = `CODE_BLOCK_PLACEHOLDER_${codeBlocks.length}_END`;
+      codeBlocks.push(match);
+      return placeholder;
+    });
+
+    // 2. 在保护了代码块的基础上，进行数学公式预处理和文本清理
+    let cleanContent = contentWithCodeProtected;
+
+    // 移除可能包裹公式的 Markdown 代码标记 (反引号) - 此时只会处理非代码块中的反引号
+    cleanContent = cleanContent.replace(/`(\$\$[\s\S]+?\$\$)`/g, '$1');
+    cleanContent = cleanContent.replace(/`(\\\[[\s\S]+?\\\])`/g, '$1');
+    cleanContent = cleanContent.replace(/`(\\\\([\s\S]+?\\\\))`/g, '$1');
+    cleanContent = cleanContent.replace(/`(\\\\int(?:\\[\s\S]|[^`])+?)`/g, '$1');
     
-    // 处理HTML标签问题 - 更强的正则，包含转义字符
+    // 清理公式行中的编号
+    cleanContent = cleanContent.replace(/^(\s*)(\d+\.\s*)([\u4e00-\u9fa5：:，,。.；;！!？?\s]*?)(\\\\int|\\\\left|\\\\right|\\\\frac|\\\\sqrt|\\\\sum|\\\\lim|\\\\sin|\\\\cos|\\\\tan|\\\\sec|\\\\ln|\\\\log|\\\\exp)/gm, '$1$4');
+    
+    // 处理HTML标签问题 - 只处理非代码块区域
     cleanContent = cleanContent.replace(/&lt;\s*\/?\s*(li|ul|ol|p|br|div|span|strong|em)\s*&gt;/gi, '');
     cleanContent = cleanContent.replace(/<\s*\/?\s*(li|ul|ol|p|div|span)\s*>/gi, '');
-    // 移除：处理带有空格的标签，如 < br > (不要替换为空格，以免破坏换行)
-    // cleanContent = cleanContent.replace(/<\s*br\s*\/?\s*>/gi, ' ');
-    // 强力清除 strong 和 em 标签及其空格变体 (如 < strong >)
     cleanContent = cleanContent.replace(/<\s*\/?\s*(strong|em)\s*>/gi, '');
     
-    // // 处理数学符号问题：将错误显示的符号替换为正确的
-    // cleanContent = cleanContent.replace(/目/g, '≠');
-    
-    /* 移除过于暴力的括号修复，这些会破坏正常的文本内容
-    // 移除公式周围的双重括号 ((...)) -> ...
-    // 使用 [\s\S]*? 非贪婪匹配任意字符(包括换行)，直到遇到 ))
-    cleanContent = cleanContent.replace(/\(\(([\s\S]*?)\)\)/g, '$1');
-    // 暴力修复：直接将 (( 替换为 (，将 )) 替换为 )
-    cleanContent = cleanContent.replace(/\(\(/g, '(');
-    cleanContent = cleanContent.replace(/\)\)/g, ')');
-    */
-
-    // 处理导数公式 ((...)' = ...)
+    // 处理导数公式
     cleanContent = cleanContent.replace(/\(\(([\s\S]*?)\)\)'\s*=/g, "($1)' =");
     
-    /* 移除这些可能误删文本的正则
-    // 去除公式周围的多余括号 ( \int ... ) -> \int ...
-    cleanContent = cleanContent.replace(/\(\s*\\int/g, '\\int');
-    // 去除结尾的多余双括号 (针对 ...)) 的情况)
-    cleanContent = cleanContent.replace(/\)\)\s*$/gm, ')');
-    // 尝试去除单独行的右括号
-    cleanContent = cleanContent.replace(/^\s*\)\s*$/gm, '');
-    // 尝试去除单独行的左括号
-    cleanContent = cleanContent.replace(/^\s*\(\s*$/gm, '');
-    
-    // 处理行尾的多余方括号 ] (通常是AI生成的格式错误)
-    // 匹配非转义的 ] 出现在行尾的情况
-    cleanContent = cleanContent.replace(/([^\\])\]\s*$/gm, '$1');
-    // 处理行首的多余方括号 [
-    cleanContent = cleanContent.replace(/^\s*\[/gm, '');
-    */
-
-    // 处理区间表示中的错误：(la, b]) → [a, b]
+    // 处理其他文本中的多余括号
     cleanContent = cleanContent.replace(/\(la,\s*b\]\)/g, '[a, b]');
     cleanContent = cleanContent.replace(/\(a,\s*b\)\)/g, '[a, b]');
-    
-    // 处理函数表示中的多余括号：(f(x)) → f(x)
     cleanContent = cleanContent.replace(/\(f\(x\)\)/g, 'f(x)');
     cleanContent = cleanContent.replace(/\(F\(x\)\)/g, 'F(x)');
-    
-    // 处理导数和等式中的多余括号
     cleanContent = cleanContent.replace(/\(F'\(x\)\s*=\s*/g, "F'(x) = ");
     cleanContent = cleanContent.replace(/\s*\(f\(x\)\)\)/g, " f(x)");
-    
-    // 处理文本中的多余括号
     cleanContent = cleanContent.replace(/\(即\s*/g, "即 ");
     cleanContent = cleanContent.replace(/\(\)/g, "");
     cleanContent = cleanContent.replace(/\)\)/g, ")");
-    
-    // 处理公式周围的多余括号和方括号
-    cleanContent = cleanContent.replace(/\[\s*\\int/g, '\\int');
+    cleanContent = cleanContent.replace(/\[\s*\\\\int/g, '\\\\int');
     cleanContent = cleanContent.replace(/dx\s*\]/g, 'dx');
     
-    // 2. 先识别并保护数学公式 (生成占位符)
-    const placeholders = [];
-    let contentWithPlaceholders = renderMathFormula(cleanContent, placeholders);
+    // 3. 识别并保护数学公式 (生成占位符)
+    const mathPlaceholders = [];
+    let contentWithMathPlaceholders = renderMathFormula(cleanContent, mathPlaceholders);
 
-    // 3. 使用marked解析Markdown (此时公式已被占位符保护，不会被marked破坏)
-    // 增加：在解析前先进行必要的 trim，防止某些解析器将首行视为代码块
-    let html = marked.parse(contentWithPlaceholders.trim());
+    // 4. 还原代码块，以便 marked 可以正确解析并渲染它们
+    let contentToParse = contentWithMathPlaceholders;
+    codeBlocks.forEach((block, i) => {
+      // 使用函数作为替换参数，避免特殊字符（如 $）被错误解析
+      contentToParse = contentToParse.replace(`CODE_BLOCK_PLACEHOLDER_${i}_END`, () => block);
+    });
+
+    // 5. 使用marked解析Markdown
+    let html = marked.parse(contentToParse.trim());
     
-    // 4. 还原数学公式 (将占位符替换回KaTeX生成的HTML)
-    html = restoreMathFormula(html, placeholders);
+    // 6. 还原数学公式 (将占位符替换回KaTeX生成的HTML)
+    html = restoreMathFormula(html, mathPlaceholders);
     
-    // 5. 清理多余的HTML标签和格式问题 (改进：不要盲目替换所有 br，仅处理公式周围的异常)
+    // 7. 后置清理：处理 marked 解析后可能出现的格式问题
     html = html.replace(/\[\s*<p>\s*/g, '<p>');
     html = html.replace(/\s*<\/p>\s*\]/g, '</p>');
     html = html.replace(/<br\s*\/?>\]\s*<\/p>/g, '</p>');
-    // 移除：html = html.replace(/<br\s*\/?>/g, ' '); // 这会破坏正常的换行
-    
-    // 6. 处理公式周围的多余字符 (仅处理行首行尾的方括号，避免误删数学符号)
     html = html.replace(/^\s*\[/g, '');
     html = html.replace(/\]\s*$/g, '');
     
-    // 7. 安全过滤，防止 XSS
+    // 8. 安全过滤，防止 XSS
     return DOMPurify.sanitize(html, {
-      ADD_ATTR: ['onclick', 'style'], // 允许 onclick 和 style 属性，因为我们自定义了复制按钮
-      ADD_TAGS: ['button', 'i'] // 允许 button 和 i 标签
+      ADD_ATTR: ['onclick', 'style', 'class'],
+      ADD_TAGS: ['button', 'i', 'pre', 'code', 'span']
     });
   } catch (error) {
     console.error('消息格式化错误:', error);

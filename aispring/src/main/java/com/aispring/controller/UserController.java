@@ -41,6 +41,10 @@ public class UserController {
             @AuthenticationPrincipal CustomUserDetails customUserDetails) {
         
         try {
+            if (customUserDetails == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error(401, "请先登录"));
+            }
+            
             if (file.isEmpty()) {
                 return ResponseEntity.badRequest().body(ApiResponse.error(400, "文件不能为空"));
             }
