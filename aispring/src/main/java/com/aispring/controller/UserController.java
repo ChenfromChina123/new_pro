@@ -35,7 +35,7 @@ public class UserController {
     /**
      * 上传用户头像
      */
-    @PostMapping("/avatar/upload")
+    @PostMapping("/avatar-upload")
     public ResponseEntity<ApiResponse<String>> uploadAvatar(
             @RequestParam("file") MultipartFile file,
             @AuthenticationPrincipal CustomUserDetails customUserDetails) {
