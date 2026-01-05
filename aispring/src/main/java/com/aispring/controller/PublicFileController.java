@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -102,6 +103,29 @@ public class PublicFileController {
             return ResponseEntity.ok(ApiResponse.success("上传成功", filename));
         } catch (IOException e) {
             return ResponseEntity.internalServerError().body(ApiResponse.error(500, "上传失败: " + e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{filename:.+}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<String>> deleteFile(@PathVariable String filename) {
+        try {
+            // 防止路径遍历攻击
+            if (filename == null || filename.contains("..")) {
+                 return ResponseEntity.badRequest().body(ApiResponse.error(400, "非法的文件名"));
+            }
+            
+            Path targetLocation = Paths.get(storageProperties.getPublicFilesAbsolute()).resolve(filename).normalize();
+            
+            if (Files.exists(targetLocation)) {
+                Files.delete(targetLocation);
+                return ResponseEntity.ok(ApiResponse.success("删除成功", filename));
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(404, "文件不存在"));
+            }
+        } catch (IOException e) {
+            log.error("Failed to delete public file: " + filename, e);
+            return ResponseEntity.internalServerError().body(ApiResponse.error(500, "删除失败: " + e.getMessage()));
         }
     }
 

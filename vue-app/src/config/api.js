@@ -132,7 +132,8 @@ export const API_ENDPOINTS = {
   publicFiles: {
     list: '/api/public-files',
     download: (filename) => `/api/public-files/download/${filename}`,
-    upload: '/api/public-files/upload'
+    upload: '/api/public-files/upload',
+    delete: (filename) => `/api/public-files/${filename}`
   }
 }
 
