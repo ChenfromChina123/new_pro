@@ -26,7 +26,8 @@ export const API_ENDPOINTS = {
     login: '/api/auth/login',
     sendVerificationCode: '/api/auth/register/send-code',
     forgotPassword: '/api/auth/forgot-password',
-    sendResetCode: '/api/auth/forgot-password/send-code'
+    sendResetCode: '/api/auth/forgot-password/send-code',
+    uploadAvatar: '/api/users/avatar/upload'
   },
   
   // AI问答

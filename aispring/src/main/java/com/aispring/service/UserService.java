@@ -17,6 +17,18 @@ public class UserService {
     private final UserRepository userRepository;
     
     /**
+     * 更新用户头像
+     * @param userId 用户ID
+     * @param avatarPath 头像相对路径
+     * @return 更新后的用户对象
+     */
+    public User updateAvatar(Long userId, String avatarPath) {
+        User user = getUserById(userId);
+        user.setAvatar(avatarPath);
+        return userRepository.save(user);
+    }
+    
+    /**
      * 根据邮箱获取用户
      * @param email 用户邮箱
      * @return User 用户实体
