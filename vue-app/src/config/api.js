@@ -3,10 +3,17 @@ const getBaseURL = () => {
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL;
   }
-  // 如果当前主机名是 aistudy.icu，则自动切换到该域名的 API
-  if (typeof window !== 'undefined' && window.location.hostname === 'aistudy.icu') {
-    return ''; // 使用相对路径，自动跟随当前域名、协议和端口（Nginx 转发）
+  
+  // 在浏览器环境中
+  if (typeof window !== 'undefined') {
+    // 如果是开发环境（localhost 或 127.0.0.1），使用默认的 5000 端口
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return 'http://localhost:5000';
+    }
+    // 如果是生产环境，使用当前协议和主机名（Nginx 转发）
+    return ''; 
   }
+  
   return 'http://localhost:5000';
 };
 
@@ -131,9 +138,9 @@ export const API_ENDPOINTS = {
   // 公共文件
   publicFiles: {
     list: '/api/public-files',
-    download: (filename) => `/api/public-files/download/${filename}`,
+    download: (filename) => `/api/public-files/download/${encodeURIComponent(filename)}`,
     upload: '/api/public-files/upload',
-    delete: (filename) => `/api/public-files/${filename}`
+    delete: (filename) => `/api/public-files/${encodeURIComponent(filename)}`
   }
 }
 
