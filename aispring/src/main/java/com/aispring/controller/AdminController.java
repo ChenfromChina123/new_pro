@@ -96,10 +96,46 @@ public class AdminController {
             log.warn("Invalid file request: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(ApiResponse.error(400, e.getMessage()));
+        } catch (IOException e) {
+            log.error("Error downloading file {}: {}", fileId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error(500, "文件不存在或已被删除,请检查文件完整性"));
         } catch (Exception e) {
             log.error("Error downloading file {}: {}", fileId, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error(500, "下载文件失败: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 验证文件完整性 - 检查数据库记录与物理文件是否一致
+     */
+    @GetMapping("/files/verify")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> verifyFiles() {
+        try {
+            Map<String, Object> result = cloudDiskService.verifyAllFiles();
+            return ResponseEntity.ok(ApiResponse.success(result));
+        } catch (Exception e) {
+            log.error("Error verifying files: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error(500, "验证文件失败: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 清理孤立的文件记录（数据库中存在但物理文件不存在）
+     */
+    @DeleteMapping("/files/cleanup-orphans")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> cleanupOrphanFiles() {
+        try {
+            Map<String, Object> result = cloudDiskService.cleanupOrphanFiles();
+            return ResponseEntity.ok(ApiResponse.success(result));
+        } catch (Exception e) {
+            log.error("Error cleaning up orphan files: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error(500, "清理失败: " + e.getMessage()));
         }
     }
 

@@ -25,12 +25,15 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
 import java.util.ArrayList;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 云盘服务
@@ -39,6 +42,8 @@ import java.util.zip.ZipOutputStream;
 @Service
 @RequiredArgsConstructor
 public class CloudDiskService {
+    
+    private static final Logger log = LoggerFactory.getLogger(CloudDiskService.class);
     
     private final UserFileRepository userFileRepository;
     private final UserFolderRepository userFolderRepository;
@@ -1467,6 +1472,154 @@ public class CloudDiskService {
                 userFileRepository.delete(file);
             }
         }
+    }
+
+    /**
+     * 验证所有文件的完整性
+     * 检查数据库记录与物理文件是否一致
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> verifyAllFiles() {
+        List<UserFile> allFiles = userFileRepository.findAllWithUser();
+        List<Map<String, Object>> missingFiles = new ArrayList<>();
+        int totalFiles = allFiles.size();
+        int validFiles = 0;
+        int missingCount = 0;
+
+        for (UserFile file : allFiles) {
+            try {
+                Long userId = file.getUser().getId();
+                String rel = file.getFilepath();
+                
+                if (rel == null) {
+                    missingFiles.add(createFileInfo(file, "文件路径为空", null));
+                    missingCount++;
+                    continue;
+                }
+
+                String relNorm = rel.startsWith("/") ? rel.substring(1) : rel;
+                Path base = Paths.get(getCloudDiskAbsolutePath()).normalize();
+                Path userBase = base.resolve(String.valueOf(userId)).normalize();
+                Path filePath = userBase.resolve(relNorm).normalize();
+
+                boolean found = Files.exists(filePath) && Files.isRegularFile(filePath);
+                
+                if (!found) {
+                    // 尝试其他路径
+                    String userIdStr = String.valueOf(userId);
+                    if (relNorm.startsWith(userIdStr + "/")) {
+                        String subRel = relNorm.substring(userIdStr.length() + 1);
+                        Path altPath = userBase.resolve(subRel).normalize();
+                        if (Files.exists(altPath) && Files.isRegularFile(altPath)) {
+                            found = true;
+                            filePath = altPath;
+                        }
+                    }
+                    
+                    if (!found) {
+                        Path directPath = base.resolve(relNorm).normalize();
+                        if (Files.exists(directPath) && Files.isRegularFile(directPath)) {
+                            found = true;
+                            filePath = directPath;
+                        }
+                    }
+                }
+
+                if (found) {
+                    validFiles++;
+                } else {
+                    missingFiles.add(createFileInfo(file, "物理文件不存在", filePath.toString()));
+                    missingCount++;
+                }
+            } catch (Exception e) {
+                missingFiles.add(createFileInfo(file, "验证失败: " + e.getMessage(), null));
+                missingCount++;
+            }
+        }
+
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("totalFiles", totalFiles);
+        result.put("validFiles", validFiles);
+        result.put("missingFiles", missingCount);
+        result.put("missingFileDetails", missingFiles);
+        return result;
+    }
+
+    /**
+     * 清理孤立的文件记录（数据库中存在但物理文件不存在）
+     */
+    @Transactional
+    public Map<String, Object> cleanupOrphanFiles() {
+        List<UserFile> allFiles = userFileRepository.findAllWithUser();
+        List<Map<String, Object>> deletedFiles = new ArrayList<>();
+        int deletedCount = 0;
+
+        for (UserFile file : allFiles) {
+            try {
+                Long userId = file.getUser().getId();
+                String rel = file.getFilepath();
+                
+                if (rel == null) {
+                    userFileRepository.delete(file);
+                    deletedFiles.add(createFileInfo(file, "文件路径为空", null));
+                    deletedCount++;
+                    continue;
+                }
+
+                String relNorm = rel.startsWith("/") ? rel.substring(1) : rel;
+                Path base = Paths.get(getCloudDiskAbsolutePath()).normalize();
+                Path userBase = base.resolve(String.valueOf(userId)).normalize();
+                Path filePath = userBase.resolve(relNorm).normalize();
+
+                boolean found = Files.exists(filePath) && Files.isRegularFile(filePath);
+                
+                if (!found) {
+                    // 尝试其他路径
+                    String userIdStr = String.valueOf(userId);
+                    if (relNorm.startsWith(userIdStr + "/")) {
+                        String subRel = relNorm.substring(userIdStr.length() + 1);
+                        Path altPath = userBase.resolve(subRel).normalize();
+                        if (Files.exists(altPath) && Files.isRegularFile(altPath)) {
+                            found = true;
+                        }
+                    }
+                    
+                    if (!found) {
+                        Path directPath = base.resolve(relNorm).normalize();
+                        if (Files.exists(directPath) && Files.isRegularFile(directPath)) {
+                            found = true;
+                        }
+                    }
+                }
+
+                if (!found) {
+                    userFileRepository.delete(file);
+                    deletedFiles.add(createFileInfo(file, "物理文件不存在", filePath.toString()));
+                    deletedCount++;
+                }
+            } catch (Exception e) {
+                // 如果验证失败，为安全起见不删除
+                log.error("Error checking file {}: {}", file.getId(), e.getMessage());
+            }
+        }
+
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("deletedCount", deletedCount);
+        result.put("deletedFiles", deletedFiles);
+        return result;
+    }
+
+    private Map<String, Object> createFileInfo(UserFile file, String reason, String attemptedPath) {
+        Map<String, Object> info = new java.util.HashMap<>();
+        info.put("fileId", file.getId());
+        info.put("userId", file.getUser().getId());
+        info.put("filename", file.getOriginalFilename());
+        info.put("filepath", file.getFilepath());
+        info.put("reason", reason);
+        if (attemptedPath != null) {
+            info.put("attemptedPath", attemptedPath);
+        }
+        return info;
     }
 }
 
