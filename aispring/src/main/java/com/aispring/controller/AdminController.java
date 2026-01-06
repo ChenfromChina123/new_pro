@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -77,6 +78,7 @@ public class AdminController {
      * 获取统计数据
      */
     @GetMapping("/statistics")
+    @Transactional(readOnly = true)
     public ResponseEntity<ApiResponse<AdminStatistics>> getStatistics() {
         AdminStatistics stats = new AdminStatistics();
         long userCount = userRepository.count();
@@ -99,6 +101,7 @@ public class AdminController {
      * 获取文件内容
      */
     @GetMapping("/files/content/{fileId}")
+    @Transactional(readOnly = true)
     public ResponseEntity<ApiResponse<String>> getFileContent(@PathVariable Long fileId) {
         try {
             String content = cloudDiskService.getFileContentAdmin(fileId);
@@ -135,6 +138,7 @@ public class AdminController {
      * 获取所有用户列表
      */
     @GetMapping("/users")
+    @Transactional(readOnly = true)
     public ResponseEntity<ApiResponse<Map<String, Object>>> getUsers() {
         List<User> allUsers = userRepository.findAll();
         List<AdminUserDTO> userDTOs = allUsers.stream().map(u -> {
@@ -155,8 +159,9 @@ public class AdminController {
      * 获取所有文件列表
      */
     @GetMapping("/files")
+    @Transactional(readOnly = true)
     public ResponseEntity<ApiResponse<List<AdminFileDTO>>> getFiles() {
-        List<UserFile> allFiles = userFileRepository.findAll();
+        List<UserFile> allFiles = userFileRepository.findAllWithUser();
         List<AdminFileDTO> fileDTOs = allFiles.stream().map(f -> {
             AdminFileDTO dto = new AdminFileDTO();
             dto.setId(f.getId());

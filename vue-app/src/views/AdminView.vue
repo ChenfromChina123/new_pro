@@ -67,7 +67,17 @@
         v-if="currentTab === 'users'"
         class="tab-content card"
       >
-        <h2>用户管理</h2>
+        <div class="content-header">
+          <h2>用户管理</h2>
+          <div class="search-box">
+            <input 
+              v-model="userSearchQuery" 
+              type="text" 
+              placeholder="搜索用户邮箱..."
+              class="search-input"
+            >
+          </div>
+        </div>
         <div class="table-container">
           <table class="data-table">
             <thead>
@@ -81,22 +91,32 @@
             </thead>
             <tbody>
               <tr
-                v-for="user in users"
+                v-for="user in filteredUsers"
                 :key="user.id"
               >
                 <td>{{ user.id }}</td>
                 <td>{{ user.email }}</td>
-                <td>{{ formatDate(user.createdAt) }}</td>
+                <td>{{ formatDate(user.created_at || user.createdAt) }}</td>
                 <td>
                   <span :class="['badge', user.active ? 'success' : 'danger']">
                     {{ user.active ? '正常' : '禁用' }}
                   </span>
                 </td>
                 <td>
+                  <button 
+                    class="btn-small btn-secondary"
+                    style="margin-right: 8px;"
+                    @click="viewUserFiles(user.email)"
+                  >
+                    查看文件
+                  </button>
                   <button class="btn-small btn-secondary">
                     详情
                   </button>
                 </td>
+              </tr>
+              <tr v-if="filteredUsers.length === 0">
+                <td colspan="5" class="empty-row">未找到匹配的用户</td>
               </tr>
             </tbody>
           </table>
@@ -108,7 +128,27 @@
         v-if="currentTab === 'files'"
         class="tab-content card"
       >
-        <h2>文件管理</h2>
+        <div class="content-header">
+          <h2>文件管理</h2>
+          <div class="filter-group">
+            <div class="user-select-wrapper">
+              <select v-model="selectedUserEmail" class="user-select">
+                <option value="">所有用户</option>
+                <option v-for="user in users" :key="user.id" :value="user.email">
+                  {{ user.email }}
+                </option>
+              </select>
+            </div>
+            <div class="search-box">
+              <input 
+                v-model="fileSearchQuery" 
+                type="text" 
+                placeholder="搜索文件名..."
+                class="search-input"
+              >
+            </div>
+          </div>
+        </div>
         <div class="table-container">
           <table class="data-table">
             <thead>
@@ -122,13 +162,13 @@
             </thead>
             <tbody>
               <tr
-                v-for="file in files"
+                v-for="file in filteredFiles"
                 :key="file.id"
               >
                 <td>{{ file.filename }}</td>
-                <td>{{ file.userEmail }}</td>
-                <td>{{ formatSize(file.fileSize) }}</td>
-                <td>{{ formatDate(file.uploadTime) }}</td>
+                <td>{{ file.user_email || file.userEmail }}</td>
+                <td>{{ formatSize(file.file_size || file.fileSize) }}</td>
+                <td>{{ formatDate(file.upload_time || file.uploadTime) }}</td>
                 <td>
                   <button 
                     class="btn-small btn-secondary"
@@ -138,12 +178,15 @@
                     编辑
                   </button>
                   <button 
-                    class="btn-small btn-danger" 
+                    class="btn-small btn-danger"
                     @click="handleDeleteFile(file.id)"
                   >
                     删除
                   </button>
                 </td>
+              </tr>
+              <tr v-if="filteredFiles.length === 0">
+                <td colspan="5" class="empty-row">未找到匹配的文件</td>
               </tr>
             </tbody>
           </table>
@@ -155,7 +198,7 @@
         v-if="showEditModal" 
         class="modal-overlay"
       >
-        <div class="modal-content edit-modal">
+        <div class="modal-content edit-modal animate-slideIn">
           <div class="modal-header">
             <h3>编辑文件: {{ editingFile?.filename }}</h3>
             <button 
@@ -166,26 +209,50 @@
             </button>
           </div>
           <div class="modal-body">
-            <div class="editor-container">
+            <div 
+              v-if="editContent === '获取内容失败'" 
+              class="error-state"
+            >
+              <div class="error-icon">⚠️</div>
+              <p>获取文件内容失败</p>
+              <button 
+                class="btn btn-secondary btn-small" 
+                @click="handleEditFile(editingFile)"
+              >
+                重试
+              </button>
+            </div>
+            <div 
+              v-else
+              class="editor-container"
+              :class="{ loading: editContent === '加载中...' }"
+            >
               <textarea 
                 v-model="editContent" 
                 class="file-editor"
                 spellcheck="false"
+                placeholder="文件内容加载中..."
+                :disabled="editContent === '加载中...'"
               />
+              <div v-if="editContent === '加载中...'" class="editor-loading-overlay">
+                <div class="loading"></div>
+                <span>内容加载中...</span>
+              </div>
             </div>
           </div>
           <div class="modal-footer">
             <button 
-              class="btn-secondary" 
+              class="btn btn-secondary" 
               @click="showEditModal = false"
             >
               取消
             </button>
             <button 
-              class="btn-primary" 
-              :disabled="saving"
+              class="btn btn-primary" 
+              :disabled="saving || editContent === '加载中...' || editContent === '获取内容失败'"
               @click="saveFileContent"
             >
+              <span v-if="saving" class="loading-spinner"></span>
               {{ saving ? '保存中...' : '保存' }}
             </button>
           </div>
@@ -205,8 +272,8 @@
             class="feedback-item"
           >
             <div class="feedback-header">
-              <span class="feedback-user">{{ feedback.userEmail }}</span>
-              <span class="feedback-date">{{ formatDate(feedback.createdAt) }}</span>
+              <span class="feedback-user">{{ feedback.user_email || feedback.userEmail }}</span>
+              <span class="feedback-date">{{ formatDate(feedback.created_at || feedback.createdAt) }}</span>
             </div>
             <p class="feedback-content">
               {{ feedback.content }}
@@ -222,7 +289,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import request from '@/utils/request'
 import { API_ENDPOINTS } from '@/config/api'
 import AppLayout from '@/components/AppLayout.vue'
@@ -236,6 +303,9 @@ const showEditModal = ref(false)
 const editingFile = ref(null)
 const editContent = ref('')
 const saving = ref(false)
+const fileSearchQuery = ref('')
+const userSearchQuery = ref('')
+const selectedUserEmail = ref('')
 
 const tabs = [
   { key: 'users', label: '用户管理' },
@@ -243,8 +313,37 @@ const tabs = [
   { key: 'feedback', label: '反馈管理' }
 ]
 
+// 过滤用户列表
+const filteredUsers = computed(() => {
+  if (!userSearchQuery.value) return users.value
+  const query = userSearchQuery.value.toLowerCase()
+  return users.value.filter(user => 
+    user.email?.toLowerCase().includes(query)
+  )
+})
+
+// 过滤文件列表
+const filteredFiles = computed(() => {
+  let result = files.value
+  
+  // 按选择的用户邮箱筛选
+  if (selectedUserEmail.value) {
+    result = result.filter(file => (file.user_email || file.userEmail) === selectedUserEmail.value)
+  }
+  
+  // 按搜索关键词筛选
+  if (fileSearchQuery.value) {
+    const query = fileSearchQuery.value.toLowerCase()
+    result = result.filter(file => 
+      file.filename?.toLowerCase().includes(query) || 
+      (file.user_email || file.userEmail)?.toLowerCase().includes(query)
+    )
+  }
+  
+  return result
+})
+
 // 监听标签页切换
-import { watch } from 'vue'
 watch(currentTab, (newTab) => {
   if (newTab === 'users') fetchUsers()
   if (newTab === 'files') fetchFiles()
@@ -290,6 +389,11 @@ const fetchFeedbacks = async () => {
   } catch (error) {
     console.error('获取反馈列表失败:', error)
   }
+}
+
+const viewUserFiles = (email) => {
+  selectedUserEmail.value = email
+  currentTab.value = 'files'
 }
 
 const handleEditFile = async (file) => {
@@ -516,7 +620,102 @@ const formatSize = (bytes) => {
 
 .tab-content h2 {
   font-size: 20px;
+  margin-bottom: 0;
+}
+
+.content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 20px;
+}
+
+.filter-group {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.user-select-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.user-select-wrapper::after {
+  content: '▼';
+  font-size: 10px;
+  color: var(--text-secondary);
+  position: absolute;
+  right: 12px;
+  pointer-events: none;
+}
+
+.user-select {
+  padding: 8px 32px 8px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  background-color: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  cursor: pointer;
+  min-width: 200px;
+  transition: all 0.3s ease;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+
+.user-select:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.1);
+}
+
+.user-select:hover {
+  border-color: var(--gray-300);
+}
+
+.loading-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.search-box {
+  width: 250px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 8px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  background-color: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.search-input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.1);
+}
+
+.empty-row {
+  text-align: center;
+  padding: 32px !important;
+  color: var(--text-secondary);
+  font-style: italic;
 }
 
 .table-container {
@@ -525,12 +724,13 @@ const formatSize = (bytes) => {
 
 .data-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
 .data-table th,
 .data-table td {
-  padding: 12px;
+  padding: 16px;
   text-align: left;
   border-bottom: 1px solid var(--border-color);
 }
@@ -538,7 +738,23 @@ const formatSize = (bytes) => {
 .data-table th {
   font-weight: 600;
   color: var(--text-secondary);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background-color: var(--bg-secondary);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.data-table tr:hover td {
+  background-color: rgba(var(--primary-rgb), 0.02);
+}
+
+.data-table td {
   font-size: 14px;
+  color: var(--text-primary);
+  transition: background-color 0.2s ease;
 }
 
 .badge {
@@ -648,24 +864,65 @@ const formatSize = (bytes) => {
 }
 
 .editor-container {
-  height: 400px;
+  height: 500px;
   border: 1px solid var(--border-color);
   border-radius: 8px;
   overflow: hidden;
+  position: relative;
+  background-color: var(--input-bg);
+  transition: all 0.3s ease;
+}
+
+.editor-container.loading {
+  opacity: 0.7;
+}
+
+.editor-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(var(--bg-secondary-rgb), 0.5);
+  gap: 12px;
+  z-index: 5;
+}
+
+.error-state {
+  height: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 16px;
+  color: var(--text-secondary);
+}
+
+.error-icon {
+  font-size: 48px;
 }
 
 .file-editor {
   width: 100%;
   height: 100%;
-  padding: 12px;
+  padding: 16px;
   border: none;
   resize: none;
-  background-color: var(--input-bg);
+  background-color: transparent;
   color: var(--text-primary);
-  font-family: 'Courier New', Courier, monospace;
+  font-family: 'Fira Code', 'Cascadia Code', 'Source Code Pro', monospace;
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.6;
   outline: none;
+}
+
+.file-editor:disabled {
+  cursor: wait;
 }
 
 .modal-footer {

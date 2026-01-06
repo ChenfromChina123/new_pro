@@ -16,6 +16,12 @@ import java.util.Optional;
 public interface UserFileRepository extends JpaRepository<UserFile, Long> {
     
     /**
+     * 获取所有文件并立即加载用户信息（用于管理后台）
+     */
+    @Query("SELECT f FROM UserFile f JOIN FETCH f.user")
+    List<UserFile> findAllWithUser();
+
+    /**
      * 根据用户ID查找所有文件
      */
     List<UserFile> findByUser_IdOrderByUploadTimeDesc(Long userId);
