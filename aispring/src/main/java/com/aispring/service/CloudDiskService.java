@@ -974,19 +974,56 @@ public class CloudDiskService {
     /**
      * 下载文件 (管理员权限)
      */
+    @Transactional(readOnly = true)
     public Path downloadFileAdmin(Long fileId) throws IOException {
-        UserFile file = userFileRepository.findById(fileId)
-            .orElseThrow(() -> new IllegalArgumentException("文件不存在"));
+        UserFile file = userFileRepository.findByIdWithUser(fileId)
+            .orElseThrow(() -> new IllegalArgumentException("文件不存在: " + fileId));
         Long userId = file.getUser().getId();
-        ensureUserDirectoryExists(userId);
+        
         String rel = file.getFilepath();
-        String relNorm = (rel != null && rel.startsWith("/")) ? rel.substring(1) : rel;
-        String physicalPath = getCloudDiskAbsolutePath() + "/" + userId + (rel != null && rel.startsWith("/") ? rel : ("/" + rel));
-        Path fallback = Paths.get(physicalPath).normalize();
-        if (!Files.exists(fallback) || !Files.isRegularFile(fallback)) {
-            throw new IOException("文件不存在或已被删除: " + fallback);
+        if (rel == null) {
+            throw new IOException("文件路径为空: " + fileId);
         }
-        return fallback;
+        
+        // 去掉开头的斜杠以进行 resolve
+        String relNorm = rel.startsWith("/") ? rel.substring(1) : rel;
+        
+        // 使用 Path.resolve 进行稳健的路径拼接
+        Path base = Paths.get(getCloudDiskAbsolutePath()).normalize();
+        Path userBase = base.resolve(String.valueOf(userId)).normalize();
+        Path filePath = userBase.resolve(relNorm).normalize();
+        
+        log.info("Admin download resolution attempt 1: userId={}, rel={}, resolved={}", userId, rel, filePath);
+
+        // 如果路径不存在，尝试去掉 relNorm 中的 userId 前缀（如果存在）
+        if (!Files.exists(filePath) || !Files.isRegularFile(filePath)) {
+            String userIdStr = String.valueOf(userId);
+            if (relNorm.startsWith(userIdStr + "/")) {
+                String subRel = relNorm.substring(userIdStr.length() + 1);
+                Path altPath = userBase.resolve(subRel).normalize();
+                log.info("Admin download resolution attempt 2 (stripped userId): {}", altPath);
+                if (Files.exists(altPath) && Files.isRegularFile(altPath)) {
+                    return altPath;
+                }
+            }
+            
+            // 尝试直接在 base 下 resolve (如果 relNorm 已经包含 userId)
+            Path directPath = base.resolve(relNorm).normalize();
+            log.info("Admin download resolution attempt 3 (direct from base): {}", directPath);
+            if (Files.exists(directPath) && Files.isRegularFile(directPath)) {
+                return directPath;
+            }
+
+            // 尝试 base + userId + relNorm (处理可能缺失斜杠导致的合并路径, 如 215.翻译)
+            Path mergedPath = base.resolve(userId + relNorm).normalize();
+            log.info("Admin download resolution attempt 4 (merged userId+rel): {}", mergedPath);
+            if (Files.exists(mergedPath) && Files.isRegularFile(mergedPath)) {
+                return mergedPath;
+            }
+
+            throw new IOException("物理文件不存在。已尝试路径: " + filePath + ", " + directPath + ", " + mergedPath);
+        }
+        return filePath;
     }
 
     /**
