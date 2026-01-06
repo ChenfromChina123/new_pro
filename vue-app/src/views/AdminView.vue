@@ -226,34 +226,43 @@
 
             <!-- 二进制文件预览 (PDF/图片) -->
             <div v-else-if="isBinaryFile" class="preview-container">
-              <div v-if="previewType === 'image'" class="image-preview">
-                <img :src="previewUrl" :alt="editingFile?.filename">
+              <!-- 加载状态 -->
+              <div v-if="isLoadingPreview" class="preview-loading">
+                <div class="loading-spinner"></div>
+                <span>正在加载预览内容...</span>
               </div>
-              <div v-else-if="previewType === 'pdf'" class="pdf-preview">
-                <iframe 
-                  v-if="previewUrl"
-                  :src="previewUrl" 
-                  width="100%" 
-                  height="100%"
-                  style="border: none;"
-                ></iframe>
-                <div v-else class="loading-state">
-                  <span class="loading-spinner"></span>
-                  <p>正在生成预览...</p>
-                </div>
+
+              <!-- 错误提示 -->
+              <div v-else-if="editContent && editContent !== '加载中...'" class="preview-error">
+                <i class="fas fa-exclamation-circle"></i>
+                <span>{{ editContent }}</span>
               </div>
-              <div v-else-if="previewType === 'word' || previewType === 'other'" class="download-preview">
-                <div class="file-icon-large">
-                  {{ previewType === 'word' ? '📄' : '📁' }}
+
+              <template v-else-if="previewUrl && !isLoadingPreview">
+                <div v-if="previewType === 'image'" class="image-preview">
+                  <img :src="previewUrl" :alt="editingFile?.filename">
                 </div>
-                <div class="file-info-text">
-                  <p class="filename">{{ editingFile?.filename }}</p>
-                  <p class="tip">该文件类型不支持直接在线预览</p>
+                <div v-else-if="previewType === 'pdf'" class="pdf-preview">
+                  <iframe 
+                    :src="previewUrl" 
+                    width="100%" 
+                    height="100%"
+                    style="border: none;"
+                  ></iframe>
                 </div>
-                <button class="btn btn-primary" @click="downloadFile">
-                  下载查看
-                </button>
-              </div>
+                <div v-else-if="previewType === 'word' || previewType === 'other'" class="download-preview">
+                  <div class="file-icon-large">
+                    {{ previewType === 'word' ? '📄' : '📁' }}
+                  </div>
+                  <div class="file-info-text">
+                    <p class="filename">{{ editingFile?.filename }}</p>
+                    <p class="tip">该文件类型不支持直接在线预览，请点击下方按钮下载后查看。</p>
+                  </div>
+                  <button class="btn btn-primary" @click="downloadFile">
+                    下载查看
+                  </button>
+                </div>
+              </template>
             </div>
 
             <!-- 文本文件编辑 -->
@@ -344,6 +353,7 @@ const userSearchQuery = ref('')
 const selectedUserEmail = ref('')
 const previewUrl = ref('')
 const previewType = ref('')
+const isLoadingPreview = ref(false)
 
 const isBinaryFile = computed(() => {
   if (!editingFile.value) return false
@@ -462,9 +472,13 @@ const handleEditFile = async (file) => {
   } else if (filename.endsWith('.doc') || filename.endsWith('.docx')) {
     previewType.value = 'word'
     editContent.value = '' // 不显示文本内容
+    previewUrl.value = 'word-file' // 设置标记以显示下载预览
+    isLoadingPreview.value = false
   } else if (isBinaryFile.value) {
     previewType.value = 'other'
     editContent.value = ''
+    previewUrl.value = 'other-file' // 设置标记以显示下载预览
+    isLoadingPreview.value = false
   } else {
     previewType.value = 'text'
     try {
@@ -479,39 +493,91 @@ const handleEditFile = async (file) => {
 
 const loadBinaryPreview = async (fileId) => {
   try {
-    const response = await request.get(API_ENDPOINTS.admin.downloadFile(fileId), {
+    editContent.value = ''
+    isLoadingPreview.value = true
+    previewUrl.value = ''
+    
+    // 使用 mode=inline 确保后端返回 inline disposition，方便在 iframe 中预览
+    const response = await request.get(`${API_ENDPOINTS.admin.downloadFile(fileId)}?mode=inline`, {
       responseType: 'blob',
-      // 显式告知拦截器不要处理 data，直接返回完整 response 或原始数据
       transformResponse: [(data) => data]
     })
     
-    // axios 返回的是 response，由于我们修改了 transformResponse，response.data 就是原始 Blob
     const blobData = response.data || response;
     
     if (!(blobData instanceof Blob)) {
       console.error('响应不是 Blob 类型:', blobData)
-      editContent.value = '获取内容失败'
+      editContent.value = '获取内容失败：服务器返回格式错误'
       return
     }
 
-    const blob = new Blob([blobData], { type: previewType.value === 'pdf' ? 'application/pdf' : 'image/*' })
+    // 检查是否是 JSON 错误信息 (如果 Blob 的 type 是 application/json)
+    if (blobData.type === 'application/json') {
+      const text = await blobData.text()
+      try {
+        const errorData = JSON.parse(text)
+        editContent.value = `获取内容失败: ${errorData.message || errorData.detail || '未知错误'}`
+        return
+      } catch (e) {
+        // 不是 JSON，继续按文件处理
+      }
+    }
+
+    // 确保正确的 MIME 类型，否则浏览器可能无法正确渲染 PDF 或图片
+    const filename = editingFile.value?.filename?.toLowerCase() || ''
+    let mimeType = blobData.type
+    if (filename.endsWith('.pdf')) {
+      mimeType = 'application/pdf'
+    } else if (filename.endsWith('.jpg') || filename.endsWith('.jpeg')) {
+      mimeType = 'image/jpeg'
+    } else if (filename.endsWith('.png')) {
+      mimeType = 'image/png'
+    } else if (filename.endsWith('.gif')) {
+      mimeType = 'image/gif'
+    }
+
+    const blob = new Blob([blobData], { type: mimeType })
     previewUrl.value = URL.createObjectURL(blob)
-    editContent.value = ''
   } catch (error) {
     console.error('加载预览失败:', error)
-    editContent.value = '获取内容失败'
+    let errorMessage = '获取内容失败：' + (error.message || '网络连接失败')
+    
+    if (error.response && error.response.data instanceof Blob) {
+      try {
+        const text = await error.response.data.text()
+        const errorData = JSON.parse(text)
+        errorMessage = `获取内容失败: ${errorData.message || errorData.detail || '服务器内部错误'}`
+      } catch (e) {}
+    } else if (error.response?.data?.message) {
+      errorMessage = `获取内容失败: ${error.response.data.message}`
+    }
+    
+    editContent.value = errorMessage
+  } finally {
+    isLoadingPreview.value = false
   }
 }
 
-const downloadFile = () => {
+const downloadFile = async () => {
   if (!editingFile.value) return
   
-  // 为了确保权限和正确处理，使用 request 获取 blob 再下载
-  request.get(API_ENDPOINTS.admin.downloadFile(editingFile.value.id), {
-    responseType: 'blob',
-    transformResponse: [(data) => data]
-  }).then(response => {
+  try {
+    const response = await request.get(API_ENDPOINTS.admin.downloadFile(editingFile.value.id), {
+      responseType: 'blob',
+      transformResponse: [(data) => data]
+    })
+    
     const blobData = response.data || response;
+    
+    if (blobData.type === 'application/json') {
+      const text = await blobData.text()
+      try {
+        const errorData = JSON.parse(text)
+        alert('下载失败: ' + (errorData.message || errorData.detail || '未知错误'))
+        return
+      } catch (e) {}
+    }
+
     const downloadUrl = URL.createObjectURL(new Blob([blobData]))
     const a = document.createElement('a')
     a.href = downloadUrl
@@ -520,10 +586,22 @@ const downloadFile = () => {
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(downloadUrl)
-  }).catch(error => {
+  } catch (error) {
     console.error('下载文件失败:', error)
-    alert('下载文件失败')
-  })
+    let errorMessage = '下载文件失败：' + (error.message || '网络错误')
+    
+    if (error.response && error.response.data instanceof Blob) {
+      try {
+        const text = await error.response.data.text()
+        const errorData = JSON.parse(text)
+        errorMessage = '下载失败: ' + (errorData.message || errorData.detail || '服务器错误')
+      } catch (e) {}
+    } else if (error.response?.data?.message) {
+      errorMessage = '下载失败: ' + error.response.data.message
+    }
+    
+    alert(errorMessage)
+  }
 }
 
 const closeModal = () => {
@@ -1078,6 +1156,47 @@ const formatSize = (bytes) => {
   flex-direction: column;
   background-color: #f8f9fa;
   position: relative;
+  overflow: hidden;
+}
+
+.preview-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+  gap: 12px;
+  color: #64748b;
+}
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(0, 0, 0, 0.1);
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.preview-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+  gap: 12px;
+  color: #ef4444;
+  padding: 20px;
+  text-align: center;
+}
+
+.preview-error i {
+  font-size: 32px;
+  margin-bottom: 8px;
 }
 
 .image-preview {
@@ -1096,9 +1215,9 @@ const formatSize = (bytes) => {
 }
 
 .pdf-preview {
-  flex: 1;
   width: 100%;
-  height: 100%;
+  height: 600px;
+  border: none;
 }
 
 .download-preview {

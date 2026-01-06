@@ -144,6 +144,11 @@
                       </span>
                     </div>
                   </th>
+                  <th class="actions-column">
+                    <div class="column-header">
+                      <span>操作</span>
+                    </div>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -152,16 +157,15 @@
                   :key="file.id"
                   class="file-row"
                   :class="{ selected: isFileSelected(file.id) }"
-                  @click="toggleFileSelection(file.id)"
                 >
-                  <td class="select-column">
+                  <td class="select-column" @click.stop="toggleFileSelection(file.id)">
                     <input
                       type="checkbox"
                       :checked="isFileSelected(file.id)"
                       @click.stop="toggleFileSelection(file.id)"
                     >
                   </td>
-                  <td class="name-column">
+                  <td class="name-column" @click.stop="toggleFileSelection(file.id)">
                     <div class="file-cell">
                       <span class="file-icon-wrapper">
                         <span class="file-icon-img">{{ getFileIcon(file.filename) }}</span>
@@ -172,8 +176,33 @@
                       >{{ file.filename }}</span>
                     </div>
                   </td>
-                  <td class="date-column">
+                  <td class="date-column" @click.stop="toggleFileSelection(file.id)">
                     {{ formatDate(file.upload_time) }}
+                  </td>
+                  <td class="actions-column" @click.stop>
+                    <div class="file-actions">
+                      <button
+                        class="action-btn"
+                        title="预览"
+                        @click="previewFile(file)"
+                      >
+                        👁️
+                      </button>
+                      <button
+                        class="action-btn"
+                        title="下载"
+                        @click="downloadFile(file.id)"
+                      >
+                        📥
+                      </button>
+                      <button
+                        class="action-btn delete-btn"
+                        title="删除"
+                        @click="deleteFile(file.id)"
+                      >
+                        🗑️
+                      </button>
+                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -191,13 +220,24 @@
     >
       <div class="modal-content large">
         <div class="modal-header">
-          <h3>{{ previewFileData.filename }}</h3>
-          <button
-            class="close-btn"
-            @click="closePreview"
-          >
-            ✕
-          </button>
+          <h3>{{ isEditMode ? '编辑文件' : '预览文件' }}: {{ previewFileData.filename }}</h3>
+          <div class="header-actions">
+            <!-- 文本文件显示编辑按钮 -->
+            <button
+              v-if="getFileType(previewFileData.filename) === 'text' && !isEditMode"
+              class="edit-btn"
+              @click="enterEditMode"
+              title="编辑文件"
+            >
+              ✏️ 编辑
+            </button>
+            <button
+              class="close-btn"
+              @click="closePreview"
+            >
+              ✕
+            </button>
+          </div>
         </div>
         <div class="modal-body">
           <div
@@ -234,13 +274,29 @@
                 v-else-if="getFileType(previewFileData.filename) === 'text'"
                 class="preview-content preview-text"
               >
-                <pre><code>{{ previewText }}</code></pre>
+                <!-- 编辑模式 -->
+                <textarea
+                  v-if="isEditMode"
+                  v-model="editingText"
+                  class="text-editor"
+                  :disabled="isSaving"
+                />
+                <!-- 预览模式 -->
+                <pre v-else><code>{{ previewText }}</code></pre>
               </div>
+              <!-- PDF 预览使用 embed 标签以获得更好的兼容性 -->
+              <embed
+                v-else-if="getFileType(previewFileData.filename) === 'pdf'"
+                :src="previewUrl"
+                type="application/pdf"
+                class="preview-frame"
+              />
+              <!-- 其他文件类型使用 iframe -->
               <iframe
                 v-else
                 :src="previewUrl"
                 class="preview-frame"
-                sandbox="allow-scripts allow-same-origin"
+                title="文件预览"
               />
             </template>
           </div>
@@ -248,14 +304,36 @@
             v-else
             class="not-previewable"
           >
-            <p>此文件类型不支持预览</p>
+            <div class="file-icon-large">
+              {{ getFileTypeIcon(previewFileData.filename) }}
+            </div>
+            <p class="file-name">{{ previewFileData.filename }}</p>
+            <p class="file-info">{{ getNotPreviewableMessage(previewFileData.filename) }}</p>
             <button
               class="btn btn-primary"
               @click="downloadFile(previewFileData.id)"
             >
-              下载文件
+              <i class="fas fa-download"></i> 下载文件
             </button>
           </div>
+        </div>
+        <!-- 编辑模式的操作按钮 -->
+        <div v-if="isEditMode" class="modal-footer">
+          <button
+            class="btn btn-secondary"
+            @click="cancelEdit"
+            :disabled="isSaving"
+          >
+            取消
+          </button>
+          <button
+            class="btn btn-primary"
+            @click="saveFile"
+            :disabled="isSaving"
+          >
+            <span v-if="isSaving">保存中...</span>
+            <span v-else>💾 保存</span>
+          </button>
         </div>
       </div>
     </div>
@@ -272,6 +350,49 @@
         />
       </div>
       <p>上传中... {{ uploadProgress }}%</p>
+    </div>
+
+    <!-- 新建文件夹对话框 -->
+    <div
+      v-if="showCreateFolderDialog"
+      class="modal"
+      @click.self="cancelCreateFolder"
+    >
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>创建新文件夹</h3>
+          <button
+            class="close-btn"
+            @click="cancelCreateFolder"
+          >
+            ✕
+          </button>
+        </div>
+        <div class="modal-body">
+          <input
+            v-model="newFolderName"
+            type="text"
+            class="input"
+            placeholder="输入文件夹名称"
+            @keyup.enter="confirmCreateFolder"
+            autofocus
+          >
+        </div>
+        <div class="modal-footer">
+          <button
+            class="btn btn-secondary"
+            @click="cancelCreateFolder"
+          >
+            取消
+          </button>
+          <button
+            class="btn btn-primary"
+            @click="confirmCreateFolder"
+          >
+            创建
+          </button>
+        </div>
+      </div>
     </div>
 
     <ConflictResolutionDialog
@@ -301,6 +422,15 @@ const previewUrl = ref('')
 const previewText = ref('')
 const uploadProgress = ref(0)
 const viewportWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1024)
+
+// 编辑相关状态
+const isEditMode = ref(false)
+const editingText = ref('')
+const isSaving = ref(false)
+
+// 新建文件夹对话框状态
+const showCreateFolderDialog = ref(false)
+const newFolderName = ref('')
 
 // 冲突处理状态
 const conflictDialogVisible = ref(false)
@@ -393,9 +523,22 @@ const handleNewFolder = () => {
     return
   }
   
-  const folderName = prompt('请输入文件夹名称', '新建文件夹')
-  if (folderName && folderName.trim()) {
-    createFolder(folderName)
+  newFolderName.value = '新建文件夹'
+  showCreateFolderDialog.value = true
+}
+
+// 取消创建文件夹
+const cancelCreateFolder = () => {
+  showCreateFolderDialog.value = false
+  newFolderName.value = ''
+}
+
+// 确认创建文件夹
+const confirmCreateFolder = () => {
+  if (newFolderName.value && newFolderName.value.trim()) {
+    createFolder(newFolderName.value)
+    showCreateFolderDialog.value = false
+    newFolderName.value = ''
   }
 }
 
@@ -618,35 +761,106 @@ const getFileType = (filename) => {
 }
 
 const previewFile = async (file) => {
+  console.log('👁️ Preview file clicked:', file)
+  
   previewFileData.value = file
   previewText.value = ''
+  previewUrl.value = ''
   
   if (isPreviewable(file.filename)) {
     const fileType = getFileType(file.filename)
     const mimeType = getMimeType(file.filename)
     
-    if (fileType === 'text') {
-      // 读取文本文件内容
-      const response = await fetch(cloudDiskStore.getDownloadUrl(file.id))
-      previewText.value = await response.text()
-      previewUrl.value = 'text-preview'
-    } else {
-      // 其他类型文件使用URL预览
-      const url = await cloudDiskStore.fetchPreviewUrl(file.id, mimeType)
-      if (url) {
-        previewUrl.value = url
+    console.log('📋 File type:', fileType, 'MIME type:', mimeType)
+    
+    try {
+      if (fileType === 'text') {
+        // 读取文本文件内容 - 使用带认证的请求
+        console.log('📝 Loading text file...')
+        const textContent = await cloudDiskStore.fetchTextFileContent(file.id)
+        if (textContent !== null) {
+          previewText.value = textContent
+          previewUrl.value = 'text-preview'
+          console.log('✅ Text file loaded, length:', textContent.length)
+        } else {
+          console.error('❌ Failed to load text file')
+          uiStore.showToast('预览失败：无法加载文本文件')
+        }
+      } else {
+        // 其他类型文件使用URL预览
+        console.log('🖼️ Loading binary file...')
+        const url = await cloudDiskStore.fetchPreviewUrl(file.id, mimeType)
+        if (url) {
+          previewUrl.value = url
+          console.log('✅ Binary file preview URL set:', url)
+        } else {
+          console.error('❌ Failed to get preview URL')
+          uiStore.showToast('预览失败：无法加载文件')
+        }
       }
+    } catch (error) {
+      console.error('❌ Error in previewFile:', error)
+      uiStore.showToast('预览失败：' + error.message)
     }
+  } else {
+    console.log('ℹ️ File is not previewable, showing download option')
   }
 }
 
 const closePreview = () => {
   previewFileData.value = null
   previewText.value = ''
+  editingText.value = ''
+  isEditMode.value = false
+  isSaving.value = false
   if (previewUrl.value && previewUrl.value !== 'text-preview') {
     window.URL.revokeObjectURL(previewUrl.value)
   }
   previewUrl.value = ''
+}
+
+// 进入编辑模式
+const enterEditMode = () => {
+  editingText.value = previewText.value
+  isEditMode.value = true
+}
+
+// 取消编辑
+const cancelEdit = () => {
+  if (confirm('确定要取消编辑吗？未保存的更改将丢失。')) {
+    isEditMode.value = false
+    editingText.value = ''
+  }
+}
+
+// 保存文件
+const saveFile = async () => {
+  if (!previewFileData.value) return
+  
+  try {
+    isSaving.value = true
+    console.log('💾 Saving file:', previewFileData.value.id)
+    
+    const result = await cloudDiskStore.updateFileContent(
+      previewFileData.value.id,
+      editingText.value
+    )
+    
+    if (result.success) {
+      previewText.value = editingText.value
+      isEditMode.value = false
+      uiStore.showToast('保存成功！')
+      console.log('✅ File saved successfully')
+    } else {
+      uiStore.showToast('保存失败：' + result.message)
+      console.error('❌ Failed to save file:', result.message)
+    }
+  } catch (error) {
+    console.error('❌ Error saving file:', error)
+    uiStore.showToast('保存失败：' + error.message)
+  } finally {
+    isSaving.value = false
+  }
 }
 
 const isPreviewable = (filename) => {
@@ -710,6 +924,35 @@ const formatDate = (dateString) => {
   if (!dateString) return ''
   const date = new Date(dateString)
   return date.toLocaleString('zh-CN')
+}
+
+// 获取大图标（用于预览）
+const getFileTypeIcon = (filename) => {
+  const ext = filename.split('.').pop().toLowerCase()
+  const iconMap = {
+    doc: '📄', docx: '📄',
+    xls: '📊', xlsx: '📊',
+    ppt: '📽️', pptx: '📽️',
+    zip: '📦', rar: '📦', '7z': '📦',
+  }
+  return iconMap[ext] || '📁'
+}
+
+// 获取不可预览文件的提示信息
+const getNotPreviewableMessage = (filename) => {
+  const ext = filename.split('.').pop().toLowerCase()
+  const messages = {
+    doc: 'Word 文档无法在线预览，请下载后使用 Microsoft Word 或 WPS 打开',
+    docx: 'Word 文档无法在线预览，请下载后使用 Microsoft Word 或 WPS 打开',
+    xls: 'Excel 表格无法在线预览，请下载后使用 Microsoft Excel 或 WPS 打开',
+    xlsx: 'Excel 表格无法在线预览，请下载后使用 Microsoft Excel 或 WPS 打开',
+    ppt: 'PowerPoint 演示文稿无法在线预览，请下载后使用 Microsoft PowerPoint 或 WPS 打开',
+    pptx: 'PowerPoint 演示文稿无法在线预览，请下载后使用 Microsoft PowerPoint 或 WPS 打开',
+    zip: '压缩文件无法预览，请下载后解压查看',
+    rar: '压缩文件无法预览，请下载后解压查看',
+    '7z': '压缩文件无法预览，请下载后解压查看',
+  }
+  return messages[ext] || '此文件类型不支持在线预览，请下载后查看'
 }
 
 // 排序文件
@@ -1019,9 +1262,49 @@ const toggleSelectAll = () => {
 }
 
 .actions-column {
-  min-width: 120px;
-  width: 15%;
+  min-width: 140px;
+  width: 140px;
   text-align: center;
+}
+
+.actions-column th {
+  cursor: default !important;
+}
+
+.actions-column th:hover {
+  background-color: transparent !important;
+}
+
+/* 文件操作按钮 */
+.file-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.action-btn {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+}
+
+.action-btn:hover {
+  background-color: var(--bg-secondary);
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.action-btn.delete-btn:hover {
+  background-color: rgba(239, 68, 68, 0.1);
 }
 
 /* 表头内容 */
@@ -1188,28 +1471,35 @@ input[type="checkbox"] {
 
 /* Modal样式 */
 .modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
   background-color: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 9999 !important;
   backdrop-filter: blur(8px);
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 .modal-content {
   background-color: var(--bg-secondary);
   border-radius: 20px;
-  padding: 32px;
-  min-width: 400px;
+  padding: 0;
+  min-width: 450px;
   max-width: 90vw;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
   border: 1px solid var(--border-color);
   animation: modal-in 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  max-height: 90vh;
+  overflow: hidden;
 }
 
 @keyframes modal-in {
@@ -1224,7 +1514,9 @@ input[type="checkbox"] {
 }
 
 .modal-content.large {
-  min-width: 800px;
+  min-width: 80vw;
+  max-width: 95vw;
+  width: 80vw;
   max-height: 90vh;
   padding: 0;
   display: flex;
@@ -1244,6 +1536,33 @@ input[type="checkbox"] {
   font-size: 20px;
   font-weight: 600;
   color: var(--text-primary);
+  flex: 1;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.edit-btn {
+  background: var(--gradient-primary);
+  border: none;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.edit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
 }
 
 .close-btn {
@@ -1269,9 +1588,16 @@ input[type="checkbox"] {
 }
 
 .modal-body {
-  padding: 32px;
-  max-height: 70vh;
+  padding: 24px 32px 32px 32px;
+  max-height: 80vh;
   overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-content:not(.large) .modal-body {
+  padding: 24px;
 }
 
 .modal-content h3 {
@@ -1402,6 +1728,15 @@ input[type="checkbox"] {
     display: none;
   }
   
+  .actions-column {
+    min-width: 120px;
+  }
+  
+  .action-btn {
+    font-size: 16px;
+    padding: 4px 6px;
+  }
+  
   /* Modal adaptation */
   .modal-content {
     min-width: unset;
@@ -1426,6 +1761,194 @@ input[type="checkbox"] {
   }
 }
 
+/* 预览容器样式 */
+.preview-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 70vh;
+}
+
+.loading-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  color: var(--text-secondary);
+}
+
+/* 预览内容样式 */
+.preview-content {
+  max-width: 100%;
+  max-height: 75vh;
+  object-fit: contain;
+}
+
+.preview-image {
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.preview-video,
+.preview-audio {
+  width: 100%;
+}
+
+.preview-text {
+  width: 100%;
+  height: 70vh;
+  overflow: auto;
+  background-color: var(--bg-primary);
+  border-radius: 8px;
+  padding: 24px;
+}
+
+.preview-text pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.preview-text code {
+  font-family: 'Fira Code', 'Cascadia Code', 'Source Code Pro', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+
+/* 文本编辑器 */
+.text-editor {
+  width: 100%;
+  height: 70vh;
+  padding: 24px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Fira Code', 'Cascadia Code', 'Source Code Pro', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  resize: none;
+  outline: none;
+}
+
+.text-editor:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.text-editor:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 模态框底部按钮 */
+.modal-footer {
+  padding: 16px 32px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  background-color: var(--bg-secondary);
+}
+
+.modal-footer .btn {
+  padding: 10px 24px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 15px;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.modal-footer .btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.modal-footer .btn-primary {
+  background: var(--gradient-primary);
+  color: white;
+  border: none;
+}
+
+.modal-footer .btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.modal-footer .btn-secondary {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.modal-footer .btn-secondary:hover:not(:disabled) {
+  background-color: var(--bg-primary);
+}
+
+/* PDF 和 iframe 预览 */
+.preview-frame {
+  width: 100%;
+  height: 75vh;
+  border: none;
+  border-radius: 8px;
+}
+
+/* 不可预览文件样式 */
+.not-previewable {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  padding: 40px 20px;
+  gap: 20px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(147, 51, 234, 0.05) 100%);
+  border-radius: 12px;
+}
+
+.not-previewable .file-icon-large {
+  font-size: 80px;
+  opacity: 0.9;
+  animation: float 3s ease-in-out infinite;
+}
+
+.not-previewable .file-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: center;
+  max-width: 80%;
+  word-break: break-word;
+}
+
+.not-previewable .file-info {
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-align: center;
+  max-width: 600px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.not-previewable .btn {
+  margin-top: 12px;
+  min-width: 160px;
+  gap: 8px;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
 @media (max-width: 480px) {
   .breadcrumb {
     font-size: 12px;
@@ -1437,6 +1960,14 @@ input[type="checkbox"] {
   
   .preview-frame {
     height: 400px;
+  }
+  
+  .not-previewable .file-icon-large {
+    font-size: 60px;
+  }
+  
+  .not-previewable .file-name {
+    font-size: 16px;
   }
 }
 </style>

@@ -1009,4 +1009,108 @@ onMounted(() => {
     left: 0;
   }
 }
+
+/* Modal 对话框样式 */
+.modal {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 9999 !important;
+  backdrop-filter: blur(8px);
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.modal-content {
+  background-color: var(--bg-secondary);
+  border-radius: 20px;
+  padding: 32px;
+  min-width: 400px;
+  max-width: 500px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-color);
+  animation: modal-in 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-content h3 {
+  margin: 0 0 20px 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.modal-content .input {
+  width: 100%;
+  padding: 12px 16px;
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-size: 15px;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+
+.modal-content .input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.1);
+  background-color: var(--bg-secondary);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+.modal-actions .btn {
+  padding: 10px 24px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 15px;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.modal-actions .btn-primary {
+  background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%);
+  color: white;
+  border: none;
+}
+
+.modal-actions .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.modal-actions .btn-secondary {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.modal-actions .btn-secondary:hover {
+  background-color: var(--bg-primary);
+}
 </style>
