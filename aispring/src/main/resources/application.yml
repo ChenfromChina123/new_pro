@@ -164,4 +164,8 @@ app:
     avatars-dir: ${AVATARS_DIR:avatars}
   cloud-disk:
     path: ./cloud_disk
+  file:
+    # 启动时自动清理孤立的文件记录（数据库中存在但物理文件不存在）
+    # 设置为 false 可禁用自动清理
+    auto-cleanup-on-startup: true
 

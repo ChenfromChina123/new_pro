@@ -317,10 +317,12 @@ public class CloudDiskController {
     /**
      * 下载文件
      * Python: GET /api/cloud_disk/download/{file_id}
+     * 支持 mode 参数：inline (预览) 或 attachment (下载，默认)
      */
     @GetMapping("/download/{fileId}")
     public ResponseEntity<?> downloadFile(
             @PathVariable Long fileId,
+            @RequestParam(required = false) String mode,
             @AuthenticationPrincipal CustomUserDetails customUserDetails) {
         
         try {
@@ -346,13 +348,25 @@ public class CloudDiskController {
                     .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "文件路径无效: " + e.getMessage()));
             }
             
+            // 检测文件的 MIME 类型
+            String contentType = Files.probeContentType(filePath);
+            if (contentType == null) {
+                contentType = "application/octet-stream";
+            }
+            
+            // 根据 mode 参数决定是内联预览还是下载
+            String disposition = "attachment";
+            if ("inline".equalsIgnoreCase(mode)) {
+                disposition = "inline";
+            }
+            
             String filename = filePath.getFileName().toString();
             String encodedFilename = URLEncoder.encode(filename, StandardCharsets.UTF_8);
             
             return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .contentType(MediaType.parseMediaType(contentType))
                 .header(HttpHeaders.CONTENT_DISPOSITION, 
-                    "attachment; filename=\"" + encodedFilename + "\"")
+                    disposition + "; filename=\"" + encodedFilename + "\"")
                 .body(resource);
                 
         } catch (IllegalArgumentException e) {
