@@ -358,6 +358,7 @@ const formatSize = (bytes) => {
   height: 100%;
   overflow-y: auto;
   padding: 32px 0;
+  background-color: var(--bg-primary);
 }
 
 .page-header {
@@ -375,6 +376,76 @@ const formatSize = (bytes) => {
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 24px;
   margin-bottom: 32px;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .admin-page {
+    padding: 16px;
+  }
+
+  .page-header {
+    margin-bottom: 24px;
+  }
+
+  .page-header h1 {
+    font-size: 24px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .stat-card {
+    padding: 16px;
+  }
+  
+  .stat-icon {
+    width: 60px;
+    height: 60px;
+    font-size: 32px;
+  }
+  
+  .stat-info h3 {
+    font-size: 24px;
+  }
+
+  .tabs {
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: 4px; /* Hide scrollbar potentially or give space */
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tab-btn {
+    padding: 10px 16px;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  
+  .data-table th, 
+  .data-table td {
+    padding: 8px;
+    font-size: 12px;
+  }
+  
+  /* Hide less important columns on mobile if needed, or just rely on scroll */
+  
+  .modal-content {
+    width: 95%;
+    max-height: 85vh;
+  }
+  
+  .modal-header,
+  .modal-body,
+  .modal-footer {
+    padding: 16px;
+  }
+  
+  .editor-container {
+    height: 300px;
+  }
 }
 
 .stat-card {

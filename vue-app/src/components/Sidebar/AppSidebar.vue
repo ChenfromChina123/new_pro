@@ -576,6 +576,11 @@ const onConflictCancelled = () => {
 watch(
   () => route.path,
   async (newPath) => {
+    // 移动端路由切换时自动关闭侧边栏
+    if (window.innerWidth < 768) {
+      uiStore.closeMobileSidebar()
+    }
+
     if (newPath.startsWith('/chat')) {
       await chatStore.fetchSessions()
     } else if (newPath.startsWith('/cloud-disk')) {
@@ -756,8 +761,8 @@ onMounted(() => {
 }
 
 .nav-item.active {
-  background-color: #ebf5ff;
-  color: #2563eb;
+  background-color: var(--chip-bg);
+  color: var(--primary-color);
   font-weight: 500;
 }
 
@@ -987,5 +992,21 @@ onMounted(() => {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--gray-400);
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .app-sidebar {
+    position: fixed;
+    top: 0;
+    left: -300px;
+    height: 100vh;
+    z-index: 100;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .app-sidebar.mobile-open {
+    left: 0;
+  }
 }
 </style>

@@ -107,6 +107,7 @@ const formatDate = (dateString) => {
   height: 100%;
   overflow-y: auto;
   padding: 32px 0;
+  background-color: var(--bg-primary);
 }
 
 .page-header {
@@ -195,8 +196,29 @@ const formatDate = (dateString) => {
 }
 
 @media (max-width: 768px) {
+  .chat-management-page {
+    padding: 16px;
+  }
+
+  .page-header {
+    margin-bottom: 24px;
+  }
+
+  .page-header h1 {
+    font-size: 24px;
+  }
+  
   .sessions-grid {
     grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .empty-state {
+    padding: 40px 16px;
+  }
+  
+  .empty-icon {
+    font-size: 60px;
   }
 }
 </style>

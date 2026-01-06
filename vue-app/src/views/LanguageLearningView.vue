@@ -1,45 +1,74 @@
 <template>
   <div class="language-learning-container">
     <div class="language-learning-page">
+      <!-- Mobile Header -->
+      <div class="mobile-header">
+        <button
+          class="mobile-menu-btn"
+          @click="showMobileSidebar = !showMobileSidebar"
+        >
+          <i class="fas fa-bars" />
+        </button>
+        <span class="mobile-title">Language Learning</span>
+      </div>
+
+      <!-- Sidebar -->
+      <div
+        class="sidebar"
+        :class="{ 'sidebar-mobile-open': showMobileSidebar }"
+      >
+        <div class="sidebar-header">
+          <h2>Language Learning</h2>
+        </div>
+        <div class="sidebar-nav">
+          <a
+            href="#"
+            class="nav-item"
+            :class="{ active: currentView === 'dashboard' }"
+            @click.prevent="currentView = 'dashboard'; showMobileSidebar = false"
+          >
+            <span class="icon">📊</span>
+            <span class="label">学习概览</span>
+          </a>
+          <a
+            href="#"
+            class="nav-item"
+            :class="{ active: currentView === 'my-words' }"
+            @click.prevent="currentView = 'my-words'; showMobileSidebar = false"
+          >
+            <span class="icon">📚</span>
+            <span class="label">我的单词</span>
+          </a>
+          <a
+            href="#"
+            class="nav-item"
+            :class="{ active: currentView === 'public-library' }"
+            @click.prevent="currentView = 'public-library'; showMobileSidebar = false"
+          >
+            <span class="icon">🌐</span>
+            <span class="label">公共词库</span>
+          </a>
+          <a
+            href="#"
+            class="nav-item"
+            :class="{ active: currentView === 'ai-articles' }"
+            @click.prevent="currentView = 'ai-articles'; showMobileSidebar = false"
+          >
+            <span class="icon">🤖</span>
+            <span class="label">AI文章</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Mobile Sidebar Overlay -->
+      <div 
+        v-if="showMobileSidebar" 
+        class="sidebar-overlay"
+        @click="showMobileSidebar = false"
+      />
+
       <!-- Main Content Area -->
       <div class="main-content">
-        <!-- Function Navigation -->
-        <div class="function-nav">
-          <div class="nav-container">
-            <a
-              href="#"
-              class="nav-item"
-              :class="{ active: currentView === 'dashboard' }"
-              @click.prevent="currentView = 'dashboard'"
-            >
-              <span class="label">学习概览</span>
-            </a>
-            <a
-              href="#"
-              class="nav-item"
-              :class="{ active: currentView === 'my-words' }"
-              @click.prevent="currentView = 'my-words'"
-            >
-              <span class="label">我的单词</span>
-            </a>
-            <a
-              href="#"
-              class="nav-item"
-              :class="{ active: currentView === 'public-library' }"
-              @click.prevent="currentView = 'public-library'"
-            >
-              <span class="label">公共词库</span>
-            </a>
-            <a
-              href="#"
-              class="nav-item"
-              :class="{ active: currentView === 'ai-articles' }"
-              @click.prevent="currentView = 'ai-articles'"
-            >
-              <span class="label">AI文章</span>
-            </a>
-          </div>
-        </div>
         <!-- Dashboard View -->
         <div
           v-if="currentView === 'dashboard'"
@@ -1216,7 +1245,7 @@ const selectedWordsCountForActive = computed(() => {
   try {
     const ids = Array.isArray(used) ? used : JSON.parse(used)
     return Array.isArray(ids) ? ids.length : selectedWordIds.size
-  } catch (_) {
+  } catch {
     return selectedWordIds.size
   }
 })
@@ -1318,7 +1347,7 @@ const flushDuration = async () => {
       duration
     })
     await vocabularyStore.fetchStats()
-  } catch (_) {
+  } catch {
     pendingDuration.value += duration
   } finally {
     isFlushingDuration.value = false
@@ -1935,7 +1964,7 @@ const downloadArticle = async (type) => {
           const text = await data.text()
           const json = JSON.parse(text)
           message = json?.message || json?.detail || message
-        } catch (_) {
+        } catch {
         }
       }
       uiStore.showToast(message)
@@ -2015,23 +2044,9 @@ const refreshCurrentList = async () => {
   await vocabularyStore.fetchListProgress(currentListId.value)
 }
 
-const refreshOverview = async () => {
-  markActive()
-  await vocabularyStore.fetchStats()
-}
-
 const refreshReview = async () => {
   markActive()
   await vocabularyStore.fetchReviewWords()
-}
-
-const getListWordCount = (listId) => {
-  // Now using list.wordCount from backend if available, fallback to length
-  const list = vocabularyLists.value.find(l => l.id === listId)
-  if (list && list.wordCount !== undefined) return list.wordCount
-  
-  const ws = vocabularyStore.wordsByListId[listId]
-  return Array.isArray(ws) ? ws.length : 0
 }
 
 const getWordProgress = (wordId) => {
@@ -2229,6 +2244,10 @@ const formatDuration = (seconds) => {
 /* Mobile Header */
 .mobile-header {
   display: none;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  width: 100%;
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
@@ -2333,44 +2352,16 @@ const formatDuration = (seconds) => {
   font-size: 18px;
 }
 
-/* Function Navigation */
-.function-nav {
-  background-color: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
-  padding: 0 32px;
-  position: sticky;
+/* Sidebar Overlay */
+.sidebar-overlay {
+  position: fixed;
   top: 0;
-  z-index: 100;
-}
-
-.nav-container {
-  display: flex;
-  gap: 4px;
-  overflow-x: auto;
-  padding: 12px 0;
-}
-
-.nav-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  border-radius: 20px;
-  color: var(--text-secondary);
-  text-decoration: none;
-  transition: all 0.2s;
-  white-space: nowrap;
-  font-weight: 500;
-}
-
-.nav-item:hover {
-  background-color: var(--bg-tertiary);
-  color: var(--primary-color);
-}
-
-.nav-item.active {
-  background-color: var(--chip-bg);
-  color: var(--primary-color);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  backdrop-filter: blur(2px);
 }
 
 /* Main Content */

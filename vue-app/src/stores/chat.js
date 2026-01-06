@@ -225,6 +225,7 @@ export const useChatStore = defineStore('chat', () => {
       content: '',
       reasoning_content: '', // 新增推理内容字段
       isStreaming: true,
+      error: false, // 初始化错误状态
       isReasoningCollapsed: false, // 默认展开，直到生成内容开始
       timestamp: new Date().toISOString(),
       model: selectedModel.value
@@ -319,6 +320,11 @@ export const useChatStore = defineStore('chat', () => {
               // 处理回复内容
               const contentChunk = normalizeStreamChunk(parsed.content)
               if (contentChunk) {
+                // 如果后端返回了错误信息，标记为错误状态
+                if (contentChunk.includes('AI服务暂时不可用') || contentChunk.includes('请求失败')) {
+                  activeAiMessage.error = true
+                }
+                
                 if (!activeAiMessage.content) {
                   activeAiMessage.isReasoningCollapsed = true
                 }
@@ -401,13 +407,28 @@ export const useChatStore = defineStore('chat', () => {
         return { success: true, aborted: true }
       }
       console.error('Send message error:', error)
-      messages.value.pop() // 移除AI消息占位符
+      
+      // 不再移除占位符，而是标记错误状态，让 UI 显示友好提示
+      activeAiMessage.isStreaming = false
+      activeAiMessage.error = true
+      // 如果已经有部分内容了，就在后面追加错误提示，否则直接显示错误
+      const errorHint = '\n\n [发送消息失败，请稍后重试]'
+      if (activeAiMessage.content) {
+        activeAiMessage.content += errorHint
+      } else {
+        activeAiMessage.content = '发送消息失败，请稍后重试。'
+      }
+      
       return { 
         success: false, 
-        message: error.response?.data?.message || '发送消息失败' 
+        message: error.message || '发送消息失败' 
       }
     } finally {
       isLoading.value = false
+      if (activeAiMessage) {
+        activeAiMessage.isStreaming = false
+        // 如果流结束但内容完全为空且没有被中止且没有错误，保持内容为空，由 UI 显示空状态提示
+      }
     }
   }
   

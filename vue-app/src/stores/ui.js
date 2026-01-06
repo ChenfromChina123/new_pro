@@ -4,6 +4,7 @@ import { ref } from 'vue'
 export const useUIStore = defineStore('ui', () => {
   const showToastMsg = ref(false)
   const toastMessage = ref('')
+  const isMobileSidebarOpen = ref(false)
   let toastTimer = null
 
   /**
@@ -18,6 +19,14 @@ export const useUIStore = defineStore('ui', () => {
     toastTimer = setTimeout(() => {
       showToastMsg.value = false
     }, duration)
+  }
+
+  const toggleMobileSidebar = () => {
+    isMobileSidebarOpen.value = !isMobileSidebarOpen.value
+  }
+
+  const closeMobileSidebar = () => {
+    isMobileSidebarOpen.value = false
   }
 
   // --- Terminal UI State Persistence ---
@@ -70,6 +79,9 @@ export const useUIStore = defineStore('ui', () => {
     showToastMsg,
     toastMessage,
     showToast,
+    isMobileSidebarOpen,
+    toggleMobileSidebar,
+    closeMobileSidebar,
     // Terminal UI States
     sidebarCollapsed,
     rightPanelCollapsed,

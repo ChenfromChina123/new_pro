@@ -400,6 +400,40 @@ onUnmounted(() => {
   text-decoration: underline;
 }
 
+@media (max-width: 768px) {
+  .auth-card {
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  }
+
+  .auth-title {
+    font-size: 20px;
+    margin-bottom: 24px;
+  }
+
+  .auth-page {
+    padding: 16px;
+  }
+  
+  .verify-code-group {
+    flex-direction: column;
+  }
+  
+  .code-btn {
+    width: 100%;
+    min-width: unset;
+  }
+  
+  .form-actions {
+    flex-direction: column;
+  }
+  
+  .btn {
+    width: 100%;
+  }
+}
+
 .loading {
   display: inline-block;
   width: 16px;
