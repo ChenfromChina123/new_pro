@@ -972,6 +972,24 @@ public class CloudDiskService {
     }
 
     /**
+     * 下载文件 (管理员权限)
+     */
+    public Path downloadFileAdmin(Long fileId) throws IOException {
+        UserFile file = userFileRepository.findById(fileId)
+            .orElseThrow(() -> new IllegalArgumentException("文件不存在"));
+        Long userId = file.getUser().getId();
+        ensureUserDirectoryExists(userId);
+        String rel = file.getFilepath();
+        String relNorm = (rel != null && rel.startsWith("/")) ? rel.substring(1) : rel;
+        String physicalPath = getCloudDiskAbsolutePath() + "/" + userId + (rel != null && rel.startsWith("/") ? rel : ("/" + rel));
+        Path fallback = Paths.get(physicalPath).normalize();
+        if (!Files.exists(fallback) || !Files.isRegularFile(fallback)) {
+            throw new IOException("文件不存在或已被删除: " + fallback);
+        }
+        return fallback;
+    }
+
+    /**
      * 下载文件
      */
     public Path downloadFile(Long userId, Long fileId) throws IOException {
