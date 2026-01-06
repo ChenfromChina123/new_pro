@@ -57,11 +57,15 @@ public class AdminController {
         private long totalStorage;
     }
 
-    @GetMapping("/file/download/{fileId}")
+    @GetMapping("/files/download/{fileId}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Resource> downloadFile(@PathVariable Long fileId) {
+    public ResponseEntity<?> downloadFile(
+            @PathVariable Long fileId,
+            @RequestParam(required = false) String mode) {
+        log.info("Admin download request for fileId: {}, mode: {}", fileId, mode);
         try {
             Path filePath = cloudDiskService.downloadFileAdmin(fileId);
+            log.info("Resolved file path: {}", filePath);
             Resource resource = new UrlResource(filePath.toUri());
 
             if (resource.exists() || resource.isReadable()) {
@@ -70,15 +74,32 @@ public class AdminController {
                     contentType = "application/octet-stream";
                 }
 
+                String disposition = "attachment";
+                if ("inline".equalsIgnoreCase(mode)) {
+                    disposition = "inline";
+                }
+
+                // 获取原始文件名
+                String originalFilename = filePath.getFileName().toString();
+                // 尝试从数据库获取更好的文件名（如果需要）
+                
                 return ResponseEntity.ok()
                         .contentType(MediaType.parseMediaType(contentType))
-                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
+                        .header(HttpHeaders.CONTENT_DISPOSITION, disposition + "; filename=\"" + originalFilename + "\"")
                         .body(resource);
             } else {
-                return ResponseEntity.notFound().build();
+                log.warn("File not found or not readable: {}", filePath);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(ApiResponse.error(404, "文件不存在或不可读: " + filePath.getFileName()));
             }
-        } catch (IOException e) {
-            return ResponseEntity.internalServerError().build();
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid file request: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error(400, e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error downloading file {}: {}", fileId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error(500, "下载文件失败: " + e.getMessage()));
         }
     }
 

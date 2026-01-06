@@ -22,6 +22,12 @@ public interface UserFileRepository extends JpaRepository<UserFile, Long> {
     List<UserFile> findAllWithUser();
 
     /**
+     * 根据ID查找文件并立即加载用户信息
+     */
+    @Query("SELECT f FROM UserFile f JOIN FETCH f.user WHERE f.id = :id")
+    Optional<UserFile> findByIdWithUser(@Param("id") Long id);
+
+    /**
      * 根据用户ID查找所有文件
      */
     List<UserFile> findByUser_IdOrderByUploadTimeDesc(Long userId);
