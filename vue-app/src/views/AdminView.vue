@@ -175,7 +175,7 @@
                     style="margin-right: 8px;"
                     @click="handleEditFile(file)"
                   >
-                    编辑
+                    {{ getActionText(file.filename) }}
                   </button>
                   <button 
                     class="btn-small btn-danger"
@@ -200,15 +200,16 @@
       >
         <div class="modal-content edit-modal animate-slideIn">
           <div class="modal-header">
-            <h3>编辑文件: {{ editingFile?.filename }}</h3>
+            <h3>{{ isBinaryFile ? '预览文件' : '编辑文件' }}: {{ editingFile?.filename }}</h3>
             <button 
               class="close-btn" 
-              @click="showEditModal = false"
+              @click="closeModal"
             >
               &times;
             </button>
           </div>
           <div class="modal-body">
+            <!-- 错误状态 -->
             <div 
               v-if="editContent === '获取内容失败'" 
               class="error-state"
@@ -222,6 +223,28 @@
                 重试
               </button>
             </div>
+
+            <!-- 二进制文件预览 (PDF/图片) -->
+            <div v-else-if="isBinaryFile" class="preview-container">
+              <div v-if="previewType === 'image'" class="image-preview">
+                <img :src="previewUrl" :alt="editingFile?.filename">
+              </div>
+              <div v-else-if="previewType === 'pdf'" class="pdf-preview">
+                <iframe :src="previewUrl" width="100%" height="100%"></iframe>
+              </div>
+              <div v-else-if="previewType === 'word' || previewType === 'other'" class="download-preview">
+                <div class="file-icon-large">
+                  {{ previewType === 'word' ? '📄' : '📁' }}
+                </div>
+                <p>{{ editingFile?.filename }}</p>
+                <p class="text-secondary text-sm mb-2">该文件类型不支持直接在线预览</p>
+                <button class="btn btn-primary" @click="downloadFile">
+                  下载查看
+                </button>
+              </div>
+            </div>
+
+            <!-- 文本文件编辑 -->
             <div 
               v-else
               class="editor-container"
@@ -243,11 +266,12 @@
           <div class="modal-footer">
             <button 
               class="btn btn-secondary" 
-              @click="showEditModal = false"
+              @click="closeModal"
             >
-              取消
+              {{ isBinaryFile ? '关闭' : '取消' }}
             </button>
             <button 
+              v-if="!isBinaryFile"
               class="btn btn-primary" 
               :disabled="saving || editContent === '加载中...' || editContent === '获取内容失败'"
               @click="saveFileContent"
@@ -306,6 +330,20 @@ const saving = ref(false)
 const fileSearchQuery = ref('')
 const userSearchQuery = ref('')
 const selectedUserEmail = ref('')
+const previewUrl = ref('')
+const previewType = ref('')
+
+const isBinaryFile = computed(() => {
+  if (!editingFile.value) return false
+  const filename = editingFile.value.filename.toLowerCase()
+  return filename.endsWith('.pdf') || 
+         filename.endsWith('.doc') || 
+         filename.endsWith('.docx') || 
+         filename.endsWith('.png') || 
+         filename.endsWith('.jpg') || 
+         filename.endsWith('.jpeg') || 
+         filename.endsWith('.gif')
+})
 
 const tabs = [
   { key: 'users', label: '用户管理' },
@@ -400,14 +438,77 @@ const handleEditFile = async (file) => {
   editingFile.value = file
   showEditModal.value = true
   editContent.value = '加载中...'
+  previewUrl.value = ''
   
+  const filename = file.filename.toLowerCase()
+  if (filename.endsWith('.pdf')) {
+    previewType.value = 'pdf'
+    await loadBinaryPreview(file.id)
+  } else if (filename.match(/\.(jpg|jpeg|png|gif)$/)) {
+    previewType.value = 'image'
+    await loadBinaryPreview(file.id)
+  } else if (filename.endsWith('.doc') || filename.endsWith('.docx')) {
+    previewType.value = 'word'
+    editContent.value = '' // 不显示文本内容
+  } else if (isBinaryFile.value) {
+    previewType.value = 'other'
+    editContent.value = ''
+  } else {
+    previewType.value = 'text'
+    try {
+      const response = await request.get(API_ENDPOINTS.admin.getFileContent(file.id))
+      editContent.value = response.data || ''
+    } catch (error) {
+      console.error('获取文件内容失败:', error)
+      editContent.value = '获取内容失败'
+    }
+  }
+}
+
+const loadBinaryPreview = async (fileId) => {
   try {
-    const response = await request.get(API_ENDPOINTS.admin.getFileContent(file.id))
-    editContent.value = response.data || ''
+    const response = await request.get(API_ENDPOINTS.admin.downloadFile(fileId), {
+      responseType: 'blob'
+    })
+    // 这里的 response 已经是 blob 数据了，因为 request 拦截器返回了 response.data
+    const blob = new Blob([response], { type: previewType.value === 'pdf' ? 'application/pdf' : 'image/*' })
+    previewUrl.value = URL.createObjectURL(blob)
+    editContent.value = ''
   } catch (error) {
-    console.error('获取文件内容失败:', error)
+    console.error('加载预览失败:', error)
     editContent.value = '获取内容失败'
   }
+}
+
+const downloadFile = () => {
+  if (!editingFile.value) return
+  
+  // 为了确保权限和正确处理，使用 request 获取 blob 再下载
+  request.get(API_ENDPOINTS.admin.downloadFile(editingFile.value.id), {
+    responseType: 'blob'
+  }).then(blob => {
+    const downloadUrl = URL.createObjectURL(new Blob([blob]))
+    const a = document.createElement('a')
+    a.href = downloadUrl
+    a.download = editingFile.value.filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(downloadUrl)
+  }).catch(error => {
+    console.error('下载文件失败:', error)
+    alert('下载文件失败')
+  })
+}
+
+const closeModal = () => {
+  showEditModal.value = false
+  if (previewUrl.value) {
+    URL.revokeObjectURL(previewUrl.value)
+    previewUrl.value = ''
+  }
+  editingFile.value = null
+  editContent.value = ''
 }
 
 const saveFileContent = async () => {
@@ -440,6 +541,17 @@ const handleDeleteFile = async (fileId) => {
     console.error('删除文件失败:', error)
     alert('删除失败')
   }
+}
+
+const getActionText = (filename) => {
+  if (!filename) return '查看'
+  const name = filename.toLowerCase()
+  if (name.endsWith('.pdf') || name.match(/\.(jpg|jpeg|png|gif)$/)) return '预览'
+  if (name.endsWith('.doc') || name.endsWith('.docx')) return '查看'
+  // 文本文件
+  const textExtensions = ['.txt', '.md', '.js', '.css', '.html', '.json', '.vue', '.java', '.py', '.sql']
+  if (textExtensions.some(ext => name.endsWith(ext))) return '编辑'
+  return '查看'
 }
 
 const formatDate = (dateString) => {
@@ -543,7 +655,59 @@ const formatSize = (bytes) => {
   
   .modal-header,
   .modal-body,
-  .modal-footer {
+  /* 预览容器样式 */
+.preview-container {
+  height: 500px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--input-bg);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.image-preview {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.image-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.pdf-preview {
+  width: 100%;
+  height: 100%;
+}
+
+.pdf-preview iframe {
+  border: none;
+}
+
+.download-preview {
+  text-align: center;
+  padding: 40px;
+}
+
+.file-icon-large {
+  font-size: 64px;
+  margin-bottom: 20px;
+}
+
+.download-preview p {
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.modal-footer {
     padding: 16px;
   }
   

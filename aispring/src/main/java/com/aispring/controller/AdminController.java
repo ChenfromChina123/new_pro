@@ -14,11 +14,17 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +55,31 @@ public class AdminController {
         private long totalFiles;
         @com.fasterxml.jackson.annotation.JsonProperty("totalStorage")
         private long totalStorage;
+    }
+
+    @GetMapping("/file/download/{fileId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Resource> downloadFile(@PathVariable Long fileId) {
+        try {
+            Path filePath = cloudDiskService.downloadFileAdmin(fileId);
+            Resource resource = new UrlResource(filePath.toUri());
+
+            if (resource.exists() || resource.isReadable()) {
+                String contentType = Files.probeContentType(filePath);
+                if (contentType == null) {
+                    contentType = "application/octet-stream";
+                }
+
+                return ResponseEntity.ok()
+                        .contentType(MediaType.parseMediaType(contentType))
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
+                        .body(resource);
+            } else {
+                return ResponseEntity.notFound().build();
+            }
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
     @Data
