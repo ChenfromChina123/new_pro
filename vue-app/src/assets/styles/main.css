@@ -73,6 +73,10 @@
   --icon-btn-bg: rgba(0, 0, 0, 0.06);
   --toolbar-btn-bg: rgba(59, 130, 246, 0.08);
   --toolbar-btn-border: rgba(59, 130, 246, 0.2);
+
+  /* 背景渐变色 */
+  --gradient-start: #f0f9ff;
+  --gradient-end: #e0f2fe;
 }
 
 /* 夜间模式变量 */
@@ -93,6 +97,15 @@ body.dark-mode {
   --ai-message-bg: #374151;
   --user-message-bg: #1d4ed8;
   
+  /* 状态颜色背景 */
+  --bg-error: #450a0a;
+  --border-error: #7f1d1d;
+  --text-error: #fca5a5;
+  
+  --bg-info-light: #374151;
+  --border-info-light: #4b5563;
+  --text-info-light: #9ca3af;
+
   /* 特殊元素 */
   --input-bg: #1f2937;
   --card-border: rgba(255, 255, 255, 0.1);
@@ -101,6 +114,21 @@ body.dark-mode {
   --icon-btn-bg: rgba(255, 255, 255, 0.1);
   --toolbar-btn-bg: rgba(59, 130, 246, 0.1);
   --toolbar-btn-border: rgba(59, 130, 246, 0.35);
+
+  /* 背景渐变色 */
+  --gradient-start: #0f172a;
+  --gradient-end: #1e293b;
+}
+
+/* 自动填充样式修复 */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px var(--input-bg) inset !important;
+  -webkit-text-fill-color: var(--text-primary) !important;
+  transition: background-color 5000s ease-in-out 0s;
+  caret-color: var(--text-primary);
 }
 
 body {

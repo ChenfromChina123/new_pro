@@ -351,4 +351,37 @@ const handleDelete = async (filename) => {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+@media (max-width: 768px) {
+  .files-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  
+  .header-title {
+    text-align: center;
+  }
+  
+  .toolbar {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+  
+  .file-table th,
+  .file-table td {
+    padding: 8px;
+    font-size: 14px;
+  }
+  
+  /* Optional: Hide columns on very small screens if needed, 
+     but horizontal scroll is usually better for tables */
+  /*
+  .size-column,
+  .date-column {
+    display: none;
+  }
+  */
+}
 </style>

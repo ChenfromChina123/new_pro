@@ -99,6 +99,11 @@ spring:
 # 服务器配置
 server:
   port: 5000
+  servlet:
+    context-path: /
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
 
 # Jasypt 加密配置
 jasypt:
@@ -106,11 +111,6 @@ jasypt:
     password: ${JASYPT_PASSWORD:aistudy_secret}
     algorithm: PBEWithMD5AndDES
     iv-generator-classname: org.jasypt.iv.NoIvGenerator
-  servlet:
-    context-path: /
-  compression:
-    enabled: true
-    mime-types: application/json,application/xml,text/html,text/xml,text/plain
 
 # JWT配置
 jwt:

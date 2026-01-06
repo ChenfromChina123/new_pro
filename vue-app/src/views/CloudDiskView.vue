@@ -1369,13 +1369,60 @@ input[type="checkbox"] {
   
   .toolbar {
     flex-direction: column;
-    gap: 8px;
+    gap: 12px;
     align-items: stretch;
   }
   
-  .btn {
+  .toolbar-left, .toolbar-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .toolbar .btn {
     width: 100%;
     justify-content: center;
+  }
+  
+  /* Table adaptation */
+  .file-table-container {
+    overflow-x: auto;
+  }
+  
+  .file-table {
+    min-width: 600px;
+  }
+  
+  .file-table th,
+  .file-table td {
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+  
+  .type-column {
+    display: none;
+  }
+  
+  /* Modal adaptation */
+  .modal-content {
+    min-width: unset;
+    width: 95vw;
+    padding: 24px 16px;
+  }
+  
+  .modal-content.large {
+    min-width: unset;
+    width: 95vw;
+    height: 90vh;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .upload-progress {
+    min-width: unset;
+    width: 90vw;
+    padding: 16px;
+    bottom: 16px;
+    right: 5vw;
   }
 }
 
@@ -1388,25 +1435,8 @@ input[type="checkbox"] {
     padding: 4px;
   }
   
-  .modal-content {
-    min-width: unset;
-    width: 95vw;
-    padding: 24px 16px;
-  }
-  
-  .modal-content.large {
-    min-width: unset;
-    width: 95vw;
-  }
-  
   .preview-frame {
     height: 400px;
-  }
-  
-  .upload-progress {
-    min-width: unset;
-    width: 90vw;
-    padding: 16px;
   }
 }
 </style>

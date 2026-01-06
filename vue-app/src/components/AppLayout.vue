@@ -1,7 +1,27 @@
 <template>
   <div class="app-layout">
-    <AppSidebar v-if="showSidebar" />
+    <!-- 移动端遮罩层 -->
+    <div 
+      v-if="showSidebar && uiStore.isMobileSidebarOpen"
+      class="mobile-overlay"
+      @click="uiStore.closeMobileSidebar()"
+    />
+
+    <AppSidebar 
+      v-if="showSidebar" 
+      :class="{ 'mobile-open': uiStore.isMobileSidebarOpen }"
+    />
+    
     <main class="main-content">
+      <!-- 移动端菜单按钮 -->
+      <button 
+        v-if="showSidebar"
+        class="mobile-menu-btn"
+        @click="uiStore.toggleMobileSidebar()"
+      >
+        <i class="fas fa-bars" />
+      </button>
+
       <router-view v-slot="{ Component }">
         <transition
           name="fade-slide"
@@ -122,5 +142,51 @@ const showSidebar = computed(() => {
 .fade-slide-leave-to {
   opacity: 0;
   transform: translateX(-10px);
+}
+
+/* 移动端适配 */
+.mobile-menu-btn {
+  display: none;
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 90;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: none;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mobile-menu-btn:hover {
+  background-color: var(--bg-tertiary);
+}
+
+.mobile-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 99;
+  backdrop-filter: blur(2px);
+}
+
+@media (max-width: 768px) {
+  .mobile-menu-btn {
+    display: flex;
+  }
+
+  .mobile-overlay {
+    display: block;
+  }
 }
 </style>

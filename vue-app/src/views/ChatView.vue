@@ -99,23 +99,45 @@
                   </transition>
                 </div>
 
+                <!-- AI 响应内容 -->
+                <div
+                  v-if="message.error"
+                  class="message-text error-state"
+                >
+                  <div class="error-content">
+                    <i class="fas fa-exclamation-triangle error-icon" />
+                    <span>{{ message.content || '响应异常，请稍后重试' }}</span>
+                  </div>
+                </div>
                 <!-- eslint-disable-next-line vue/no-v-html -->
                 <div
-                  v-if="message.content && !message.isStreaming"
+                  v-else-if="message.content && !message.isStreaming"
                   class="message-text"
                   v-html="formatMessageCached(message, 'content')"
                 />
                 <div
                   v-else-if="message.content && message.isStreaming"
                   class="message-text"
-                  v-html="formatMessage(sanitizeNullRuns(message.content))"
-                />
-                <!-- 如果没有内容但有reasoning_content，显示占位符或仅显示reasoning -->
+                >
+                  <span v-html="formatMessage(sanitizeNullRuns(message.content))" />
+                  <span class="typing-cursor" />
+                </div>
+                <!-- 如果流式进行中且没有内容，显示输入状态 -->
                 <div
-                  v-else-if="!message.reasoning_content"
+                  v-else-if="message.isStreaming"
                   class="message-text"
                 >
                   <span class="typing-cursor" />
+                </div>
+                <!-- 如果流式结束但内容为空，显示空状态提示 -->
+                <div
+                  v-else
+                  class="message-text empty-response"
+                >
+                  <div class="empty-content">
+                    <i class="fas fa-info-circle info-icon" />
+                    <span>AI 未返回内容，请重试或检查配置。</span>
+                  </div>
                 </div>
               </div>
               <div class="message-time">
@@ -164,6 +186,8 @@
               class="scroll-to-bottom-floating"
               @mouseenter="handleMouseEnterScrollBottom"
               @mouseleave="handleMouseLeaveScrollBottom"
+              @touchstart="handleMouseEnterScrollBottom"
+              @touchend="handleMouseLeaveScrollBottom"
             >
               <button 
                 class="scroll-to-bottom-btn"
@@ -276,6 +300,8 @@
         class="nav-arrows"
         @mouseenter="handleMouseEnterNavArrows"
         @mouseleave="handleMouseLeaveNavArrows"
+        @touchstart="handleMouseEnterNavArrows"
+        @touchend="handleMouseLeaveNavArrows"
       >
         <button 
           v-show="canScrollUp"
@@ -810,6 +836,15 @@ const handleMessagesScroll = () => {
     // 如果已经在最底部，确保下箭头隐藏
     if (isPinnedToBottom.value) {
       canScrollDown.value = false
+    }
+
+    // 移动端适配：滚动时显示导航箭头
+    if (window.innerWidth <= 768) {
+      showNavArrows.value = true
+      if (navArrowsTimer) clearTimeout(navArrowsTimer)
+      navArrowsTimer = setTimeout(() => {
+        showNavArrows.value = false
+      }, 2000)
     }
   }
 }
@@ -1885,6 +1920,51 @@ const adjustTextareaHeight = (event) => {
   word-break: break-word;
 }
 
+.message-text.error-state {
+  color: #ef4444;
+  background-color: #fef2f2;
+  border: 1px solid #fee2e2;
+  border-radius: 8px;
+  padding: 12px 16px !important;
+  font-size: 14px;
+  margin-top: 8px;
+  width: fit-content;
+  max-width: 100%;
+}
+
+body.dark-mode .message-text.error-state {
+  background-color: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.message-text.empty-response {
+  color: #6b7280;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px 16px !important;
+  font-size: 14px;
+  margin-top: 8px;
+  width: fit-content;
+  max-width: 100%;
+}
+
+body.dark-mode .message-text.empty-response {
+  color: #94a3b8;
+  background-color: rgba(148, 163, 184, 0.1);
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+.error-content, .empty-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.error-icon, .info-icon {
+  font-size: 14px;
+}
+
 .message.assistant .message-text :deep(h1),
 .message.assistant .message-text :deep(h2),
 .message.assistant .message-text :deep(h3) {
@@ -2631,11 +2711,11 @@ body.dark-mode .message-copy-button:hover {
   }
   
   .messages-container {
-    padding: 24px 16px;
+    padding: 20px 16px;
   }
   
   .chat-input-area {
-    padding: 16px 16px;
+    padding: 12px 16px 20px;
   }
   
   .message-content {
@@ -2643,7 +2723,7 @@ body.dark-mode .message-copy-button:hover {
   }
   
   .chat-header {
-    padding: 16px 16px;
+    padding: 12px 16px;
   }
   
   .sidebar-title {
@@ -2651,14 +2731,59 @@ body.dark-mode .message-copy-button:hover {
   }
   
   .empty-icon {
-    font-size: 64px;
+    font-size: 56px;
+    margin-bottom: 16px;
   }
   
   .empty-title {
-    font-size: 24px;
+    font-size: 20px;
   }
   
   .empty-description {
+    font-size: 14px;
+    max-width: 100%;
+  }
+  
+  .nav-arrows {
+    display: none;
+  }
+  
+  .input-toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .toolbar-left, .toolbar-right {
+    gap: 4px;
+  }
+  
+  .model-selector-trigger {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+  
+  .send-btn {
+    padding: 8px 16px;
+    font-size: 13px;
+  }
+  
+  .message-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+  }
+  
+  .message {
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  
+  .reasoning-header {
+    padding: 6px 10px;
+  }
+  
+  .reasoning-text {
+    padding: 12px;
     font-size: 14px;
   }
 }
@@ -2715,7 +2840,7 @@ body.dark-mode .message-copy-button:hover {
   justify-content: space-between;
   padding: 8px 12px;
   cursor: pointer;
-  background-color: white;
+  background-color: var(--bg-secondary);
   user-select: none;
   transition: background-color 0.2s;
   border-radius: 8px;
@@ -3075,15 +3200,30 @@ body.dark-mode .nav-arrows {
   transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+body.dark-mode .reasoning-block {
+  background: rgba(30, 41, 59, 0.5);
+  border-color: rgba(255, 255, 255, 0.1);
+  border-left-color: #818cf8;
+}
+
 .reasoning-block:hover {
   border-color: #cbd5e1;
   background: #f1f5f9;
+}
+
+body.dark-mode .reasoning-block:hover {
+  background: rgba(30, 41, 59, 0.8);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .reasoning-block.streaming {
   border-left-color: #8b5cf6;
   background: #f5f3ff;
   animation: reasoning-border-pulse 2s infinite;
+}
+
+body.dark-mode .reasoning-block.streaming {
+  background: rgba(139, 92, 246, 0.1);
 }
 
 .reasoning-block.collapsed {
@@ -3096,9 +3236,18 @@ body.dark-mode .nav-arrows {
   background: #f1f5f9;
 }
 
+body.dark-mode .reasoning-block.collapsed {
+  background: rgba(51, 65, 85, 0.5);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
 .reasoning-block.collapsed:hover {
   background: #e2e8f0;
   border-color: #cbd5e1;
+}
+
+body.dark-mode .reasoning-block.collapsed:hover {
+  background: rgba(51, 65, 85, 0.8);
 }
 
 .reasoning-block.collapsed .reasoning-header {
@@ -3139,6 +3288,11 @@ body.dark-mode .nav-arrows {
   color: #64748b;
   line-height: 1.5;
   border-top: 1px solid #f1f5f9;
+}
+
+body.dark-mode .reasoning-preview {
+  color: #94a3b8;
+  border-top-color: rgba(255, 255, 255, 0.05);
 }
 
 .reasoning-preview .preview-text {
@@ -3195,16 +3349,28 @@ body.dark-mode .nav-arrows {
   color: #475569;
 }
 
+body.dark-mode .reasoning-title {
+  color: #e2e8f0;
+}
+
 .reasoning-subtitle {
   font-size: 11px;
   color: #94a3b8;
   font-weight: 400;
 }
 
+body.dark-mode .reasoning-subtitle {
+  color: #64748b;
+}
+
 .reasoning-count {
   font-size: 11px;
   color: #94a3b8;
   font-weight: 400;
+}
+
+body.dark-mode .reasoning-count {
+  color: #64748b;
 }
 
 .reasoning-block .header-right {
@@ -3238,10 +3404,19 @@ body.dark-mode .nav-arrows {
   border-top: 1px dashed #e2e8f0;
 }
 
+body.dark-mode .reasoning-block .reasoning-content {
+  color: #cbd5e1;
+  border-top-color: rgba(255, 255, 255, 0.1);
+}
+
 .reasoning-block .reasoning-content .markdown-body {
   background-color: transparent;
   font-size: 13.5px;
   color: #334155;
+}
+
+body.dark-mode .reasoning-block .reasoning-content .markdown-body {
+  color: #cbd5e1;
 }
 
 .reasoning-block .reasoning-content :deep(pre) {
@@ -3252,9 +3427,18 @@ body.dark-mode .nav-arrows {
   margin: 10px 0;
 }
 
+body.dark-mode .reasoning-block .reasoning-content :deep(pre) {
+  background: rgba(15, 23, 42, 0.5);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
 .reasoning-block .reasoning-content :deep(pre code) {
   color: #1e293b;
   font-size: 12px;
+}
+
+body.dark-mode .reasoning-block .reasoning-content :deep(pre code) {
+  color: #e2e8f0;
 }
 
 /* 内容区域动画 */
@@ -3300,16 +3484,30 @@ body.dark-mode .nav-arrows {
   border: 1px solid #e2e8f0;
 }
 
+body.dark-mode .reasoning-block .reasoning-content :deep(table) {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
 .reasoning-block .reasoning-content :deep(table th),
 .reasoning-block .reasoning-content :deep(table td) {
   padding: 10px 12px;
   border: 1px solid #e2e8f0;
 }
 
+body.dark-mode .reasoning-block .reasoning-content :deep(table th),
+body.dark-mode .reasoning-block .reasoning-content :deep(table td) {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
 .reasoning-block .reasoning-content :deep(table th) {
   background: #f8fafc;
   font-weight: 600;
   color: #475569;
+}
+
+body.dark-mode .reasoning-block .reasoning-content :deep(table th) {
+  background: rgba(51, 65, 85, 0.5);
+  color: #e2e8f0;
 }
 
 .reasoning-block .reasoning-content .markdown-body p {
@@ -3325,9 +3523,17 @@ body.dark-mode .nav-arrows {
   font-weight: 600;
 }
 
+body.dark-mode .reasoning-block .reasoning-content :deep(strong) {
+  color: #f1f5f9;
+}
+
 .reasoning-block .reasoning-content :deep(em) {
   color: #64748b;
   font-style: italic;
+}
+
+body.dark-mode .reasoning-block .reasoning-content :deep(em) {
+  color: #94a3b8;
 }
 
 .reasoning-block .reasoning-content :deep(ul),
@@ -3339,5 +3545,100 @@ body.dark-mode .nav-arrows {
 .reasoning-block .reasoning-content :deep(li) {
   margin-bottom: 6px;
   color: #475569;
+}
+
+body.dark-mode .reasoning-block .reasoning-content :deep(li) {
+  color: #cbd5e1;
+}
+@media (max-width: 768px) {
+  .chat-header {
+    padding: 12px 16px;
+  }
+  
+  .chat-header-inner {
+    margin-left: 0;
+    width: 100%;
+    padding-right: 40px; /* Make space for history toggle */
+  }
+
+  .messages-container {
+    padding: 16px;
+  }
+  
+  .message {
+    max-width: 100%;
+    padding: 0;
+    margin-bottom: 20px;
+  }
+
+  .message-content {
+    max-width: 100%;
+  }
+
+  /* 移动端导航箭头适配 */
+  .nav-arrows {
+    right: 12px;
+    padding: 6px;
+    gap: 12px;
+    background-color: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(8px);
+  }
+  
+  body.dark-mode .nav-arrows {
+    background-color: rgba(30, 41, 59, 0.9);
+  }
+  
+  .nav-arrow-btn {
+    width: 36px;
+    height: 36px;
+  }
+  
+  /* 移动端历史记录面板适配 */
+  .history-nav-container {
+    top: 16px; /* Move to header area */
+    right: 16px;
+    z-index: 100;
+  }
+  
+  .history-nav-toggle {
+    width: 32px;
+    height: 32px;
+    background-color: var(--bg-secondary);
+  }
+  
+  .history-nav-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .history-nav-panel .panel-content {
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  /* 输入框区域适配 */
+  .chat-input-area {
+    padding: 12px;
+  }
+
+  .input-container {
+    padding: 8px;
+  }
+
+  /* 调整深度思考块在移动端的显示 */
+  .reasoning-block {
+    margin-left: 0;
+    margin-right: 0;
+  }
 }
 </style>

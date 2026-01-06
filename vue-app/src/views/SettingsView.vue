@@ -12,15 +12,14 @@ import Settings from '@/components/Settings.vue'
 .settings-view {
   height: 100%;
   overflow-y: auto;
-  background-color: var(--bg-color, #f5f7fa);
+  background-color: var(--bg-primary);
   padding: 20px;
   transition: background-color 0.3s ease;
 }
 
-/* 深色主题适配 */
-@media (prefers-color-scheme: dark) {
+@media (max-width: 768px) {
   .settings-view {
-    background-color: #1e1e1e;
+    padding: 16px;
   }
 }
 </style>
