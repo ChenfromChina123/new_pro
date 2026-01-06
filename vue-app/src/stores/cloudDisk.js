@@ -648,15 +648,115 @@ export const useCloudDiskStore = defineStore('cloudDisk', () => {
   // 获取文件预览URL (Blob方式)
   async function fetchPreviewUrl(fileId, mimeType) {
     try {
-      const response = await request.get(API_ENDPOINTS.cloudDisk.download(fileId), {
+      console.log('🔍 Fetching preview for file:', fileId, 'with mimeType:', mimeType)
+      
+      // 添加 mode=inline 参数以支持预览模式
+      const url = `${API_ENDPOINTS.cloudDisk.download(fileId)}?mode=inline`
+      console.log('📡 Request URL:', url)
+      
+      const response = await request.get(url, {
         responseType: 'blob'
       })
+      
+      console.log('✅ Response received:', response)
+      console.log('📦 Response data type:', typeof response.data, response.data)
+      
+      // axios 的 blob 响应在 response.data 中
+      const blobData = response.data || response
+      
+      console.log('📦 Blob data:', blobData)
+      console.log('📦 Blob size:', blobData.size, 'bytes')
+      console.log('📦 Blob type:', blobData.type)
+      
       // 如果传入了mimeType，则强制设置Blob类型
-      const blob = mimeType ? new Blob([response], { type: mimeType }) : response
-      return window.URL.createObjectURL(blob)
+      const blob = mimeType ? new Blob([blobData], { type: mimeType }) : blobData
+      
+      // 确保blob是Blob对象
+      if (!(blob instanceof Blob)) {
+        console.error('❌ Response is not a Blob:', blob)
+        return null
+      }
+      
+      if (blob.size === 0) {
+        console.error('❌ Blob is empty (size: 0)')
+        return null
+      }
+      
+      const objectUrl = window.URL.createObjectURL(blob)
+      console.log('✅ Object URL created:', objectUrl)
+      
+      return objectUrl
     } catch (error) {
-      console.error('Fetch preview url error:', error)
+      console.error('❌ Fetch preview url error:', error)
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response,
+        status: error.response?.status,
+        data: error.response?.data
+      })
       return null
+    }
+  }
+
+  // 获取文本文件内容（带认证）
+  async function fetchTextFileContent(fileId) {
+    try {
+      console.log('📄 Fetching text file content for:', fileId)
+      
+      // 使用 request（自动带认证 token）
+      // 注意：request.js 的响应拦截器会返回 response.data，
+      // 所以这里的 response 实际上已经是 Blob 了
+      const blob = await request.get(`${API_ENDPOINTS.cloudDisk.download(fileId)}?mode=inline`, {
+        responseType: 'blob'
+      })
+      
+      console.log('✅ Blob received:', blob)
+      console.log('📦 Blob type:', typeof blob)
+      console.log('📦 Is Blob:', blob instanceof Blob)
+      
+      if (!blob || !(blob instanceof Blob)) {
+        console.error('❌ Response is not a Blob:', blob)
+        return null
+      }
+      
+      console.log('📦 Blob size:', blob.size, 'bytes')
+      console.log('📦 Blob MIME type:', blob.type)
+      
+      // 将 blob 转换为文本
+      const text = await blob.text()
+      
+      console.log('✅ Text file content received, length:', text?.length || 0)
+      console.log('📝 First 100 chars:', text?.substring(0, 100))
+      
+      return text || ''
+    } catch (error) {
+      console.error('❌ Fetch text file content error:', error)
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response,
+        status: error.response?.status
+      })
+      return null
+    }
+  }
+
+  // 更新文件内容
+  async function updateFileContent(fileId, content) {
+    try {
+      console.log('💾 Updating file content for:', fileId, 'length:', content?.length)
+      
+      await request.put(API_ENDPOINTS.cloudDisk.updateContent(fileId), {
+        content: content
+      })
+      
+      console.log('✅ File content updated successfully')
+      return { success: true, message: '保存成功' }
+    } catch (error) {
+      console.error('❌ Update file content error:', error)
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message || '保存失败'
+      }
     }
   }
 
@@ -720,6 +820,8 @@ export const useCloudDiskStore = defineStore('cloudDisk', () => {
     downloadFileBlob,
     downloadFolder,
     fetchPreviewUrl,
+    fetchTextFileContent,
+    updateFileContent,
     getPreviewUrl,
     toggleFileSelection,
     toggleSelectAll,
