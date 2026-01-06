@@ -230,14 +230,26 @@
                 <img :src="previewUrl" :alt="editingFile?.filename">
               </div>
               <div v-else-if="previewType === 'pdf'" class="pdf-preview">
-                <iframe :src="previewUrl" width="100%" height="100%"></iframe>
+                <iframe 
+                  v-if="previewUrl"
+                  :src="previewUrl" 
+                  width="100%" 
+                  height="100%"
+                  style="border: none;"
+                ></iframe>
+                <div v-else class="loading-state">
+                  <span class="loading-spinner"></span>
+                  <p>正在生成预览...</p>
+                </div>
               </div>
               <div v-else-if="previewType === 'word' || previewType === 'other'" class="download-preview">
                 <div class="file-icon-large">
                   {{ previewType === 'word' ? '📄' : '📁' }}
                 </div>
-                <p>{{ editingFile?.filename }}</p>
-                <p class="text-secondary text-sm mb-2">该文件类型不支持直接在线预览</p>
+                <div class="file-info-text">
+                  <p class="filename">{{ editingFile?.filename }}</p>
+                  <p class="tip">该文件类型不支持直接在线预览</p>
+                </div>
                 <button class="btn btn-primary" @click="downloadFile">
                   下载查看
                 </button>
@@ -468,10 +480,21 @@ const handleEditFile = async (file) => {
 const loadBinaryPreview = async (fileId) => {
   try {
     const response = await request.get(API_ENDPOINTS.admin.downloadFile(fileId), {
-      responseType: 'blob'
+      responseType: 'blob',
+      // 显式告知拦截器不要处理 data，直接返回完整 response 或原始数据
+      transformResponse: [(data) => data]
     })
-    // 这里的 response 已经是 blob 数据了，因为 request 拦截器返回了 response.data
-    const blob = new Blob([response], { type: previewType.value === 'pdf' ? 'application/pdf' : 'image/*' })
+    
+    // axios 返回的是 response，由于我们修改了 transformResponse，response.data 就是原始 Blob
+    const blobData = response.data || response;
+    
+    if (!(blobData instanceof Blob)) {
+      console.error('响应不是 Blob 类型:', blobData)
+      editContent.value = '获取内容失败'
+      return
+    }
+
+    const blob = new Blob([blobData], { type: previewType.value === 'pdf' ? 'application/pdf' : 'image/*' })
     previewUrl.value = URL.createObjectURL(blob)
     editContent.value = ''
   } catch (error) {
@@ -485,9 +508,11 @@ const downloadFile = () => {
   
   // 为了确保权限和正确处理，使用 request 获取 blob 再下载
   request.get(API_ENDPOINTS.admin.downloadFile(editingFile.value.id), {
-    responseType: 'blob'
-  }).then(blob => {
-    const downloadUrl = URL.createObjectURL(new Blob([blob]))
+    responseType: 'blob',
+    transformResponse: [(data) => data]
+  }).then(response => {
+    const blobData = response.data || response;
+    const downloadUrl = URL.createObjectURL(new Blob([blobData]))
     const a = document.createElement('a')
     a.href = downloadUrl
     a.download = editingFile.value.filename
@@ -987,17 +1012,19 @@ const formatSize = (bytes) => {
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  backdrop-filter: blur(4px);
 }
 
 .modal-content {
   background-color: var(--card-bg);
   border-radius: 12px;
   width: 90%;
-  max-width: 800px;
+  max-width: 900px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
 }
 
 .modal-header {
@@ -1006,11 +1033,17 @@ const formatSize = (bytes) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  background-color: var(--bg-secondary);
 }
 
 .modal-header h3 {
   margin: 0;
   font-size: 18px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 80%;
 }
 
 .close-btn {
@@ -1019,62 +1052,108 @@ const formatSize = (bytes) => {
   font-size: 24px;
   color: var(--text-secondary);
   cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.close-btn:hover {
+  color: var(--danger-color);
 }
 
 .modal-body {
-  padding: 24px;
+  padding: 0;
   flex: 1;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 400px;
 }
 
-.editor-container {
-  height: 500px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  overflow: hidden;
+.preview-container {
+  flex: 1;
+  width: 100%;
+  min-height: 500px;
+  display: flex;
+  flex-direction: column;
+  background-color: #f8f9fa;
   position: relative;
-  background-color: var(--input-bg);
-  transition: all 0.3s ease;
 }
 
-.editor-container.loading {
-  opacity: 0.7;
+.image-preview {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
 }
 
-.editor-loading-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+.image-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.pdf-preview {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+}
+
+.download-preview {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background-color: rgba(var(--bg-secondary-rgb), 0.5);
-  gap: 12px;
-  z-index: 5;
+  gap: 20px;
+  padding: 40px;
+  background-color: var(--bg-primary);
 }
 
-.error-state {
-  height: 400px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+.file-icon-large {
+  font-size: 64px;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
+}
+
+.file-info-text {
   text-align: center;
-  gap: 16px;
+}
+
+.file-info-text .filename {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+}
+
+.file-info-text .tip {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 100%;
   color: var(--text-secondary);
 }
 
-.error-icon {
-  font-size: 48px;
+.editor-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--input-bg);
 }
 
 .file-editor {
+  flex: 1;
   width: 100%;
-  height: 100%;
-  padding: 16px;
+  padding: 20px;
   border: none;
   resize: none;
   background-color: transparent;
@@ -1085,16 +1164,13 @@ const formatSize = (bytes) => {
   outline: none;
 }
 
-.file-editor:disabled {
-  cursor: wait;
-}
-
 .modal-footer {
   padding: 16px 24px;
   border-top: 1px solid var(--border-color);
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+  background-color: var(--bg-secondary);
 }
 </style>
 
