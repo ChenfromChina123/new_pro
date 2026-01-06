@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import request from '@/utils/request'
-import { API_ENDPOINTS } from '@/config/api'
+import { API_ENDPOINTS, API_CONFIG } from '@/config/api'
 
 export const usePublicFilesStore = defineStore('publicFiles', () => {
   const files = ref([])
@@ -50,12 +50,12 @@ export const usePublicFilesStore = defineStore('publicFiles', () => {
 
   // 下载文件 URL
   function getDownloadUrl(filename) {
-    const baseURL = API_ENDPOINTS.publicFiles.download(filename)
-    if (baseURL.startsWith('http')) return baseURL
+    const endpoint = API_ENDPOINTS.publicFiles.download(filename)
+    if (endpoint.startsWith('http')) return endpoint
     
-    // 如果是相对路径，需要拼接 baseURL
-    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'
-    return `${apiBase}${baseURL}`
+    // 使用 API_CONFIG.baseURL，如果为空则使用相对路径
+    const apiBase = API_CONFIG.baseURL || ''
+    return `${apiBase}${endpoint}`
   }
   
   // 下载文件
@@ -65,11 +65,13 @@ export const usePublicFilesStore = defineStore('publicFiles', () => {
        const link = document.createElement('a')
        link.href = getDownloadUrl(filename)
        link.download = filename
+       link.target = '_blank' // 预防失败时在当前页跳转
        document.body.appendChild(link)
        link.click()
        document.body.removeChild(link)
        return { success: true }
     } catch (error) {
+       console.error('Download error:', error)
        return { success: false, message: '下载失败' }
     }
   }
