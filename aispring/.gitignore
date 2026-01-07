@@ -31,3 +31,9 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Public Files - Large archives ###
+public_files/*.7z
+public_files/*.zip
+public_files/*.tar.gz
+public_files/*.rar

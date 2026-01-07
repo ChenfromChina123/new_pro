@@ -26,6 +26,12 @@ aispring/deps/
 *.log.*
 *.gz
 
+# Large files / archives
+aispring/public_files/*.7z
+aispring/public_files/*.zip
+aispring/public_files/*.tar.gz
+aispring/public_files/*.rar
+
 # OS / IDE
 .DS_Store
 .idea/
