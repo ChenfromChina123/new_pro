@@ -259,7 +259,7 @@ public class CloudDiskService {
     }
     
     /**
-     * 上传文件
+     * 上传文件（优化版：使用流式处理，减少内存占用）
      * @param conflictStrategy 冲突处理策略: RENAME (默认), OVERWRITE
      */
     @Transactional(rollbackFor = Exception.class)
@@ -268,12 +268,20 @@ public class CloudDiskService {
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new IllegalArgumentException("用户不存在"));
 
+        // 获取文件大小（不读取文件内容）
+        long fileSize = file.getSize();
+        
         // 存储配额限制：普通用户最多1GB，管理员无限制
         if (!user.isAdmin()) {
             long usedSize = userFileRepository.sumFileSizeByUserId(userId);
             long limitSize = 1024L * 1024L * 1024L; // 1GB
-            if (usedSize + file.getSize() > limitSize) {
-                throw new IllegalArgumentException("存储空间已满（普通用户限额 1GB），请联系管理员或清理文件");
+            if (usedSize + fileSize > limitSize) {
+                throw new IllegalArgumentException(
+                    String.format("存储空间不足。已使用: %.2f MB，本次上传: %.2f MB，配额: %.2f MB", 
+                        usedSize / (1024.0 * 1024.0),
+                        fileSize / (1024.0 * 1024.0),
+                        limitSize / (1024.0 * 1024.0))
+                );
             }
         }
 
@@ -314,10 +322,16 @@ public class CloudDiskService {
                 String uniqueFilename = UUID.randomUUID().toString() + extension;
                 
                 String userDiskPath = getCloudDiskAbsolutePath() + "/" + userId + saveFolderPath;
-                new File(userDiskPath).mkdirs();
+                Path userDiskPathObj = Paths.get(userDiskPath);
+                Files.createDirectories(userDiskPathObj);
                 
                 String filePath = userDiskPath + "/" + uniqueFilename;
-                Files.copy(file.getInputStream(), Paths.get(filePath), StandardCopyOption.REPLACE_EXISTING);
+                Path filePathObj = Paths.get(filePath);
+                
+                // 使用流式复制
+                try (java.io.InputStream inputStream = file.getInputStream()) {
+                    Files.copy(inputStream, filePathObj, StandardCopyOption.REPLACE_EXISTING);
+                }
                 
                 // 更新记录
                 String fileRelPath = saveFolderPath.equals("/") ? ("/" + uniqueFilename) : (saveFolderPath + "/" + uniqueFilename);
@@ -363,12 +377,18 @@ public class CloudDiskService {
         String extension = originalFilename.contains(".") ? originalFilename.substring(originalFilename.lastIndexOf(".")) : "";
         String uniqueFilename = UUID.randomUUID().toString() + extension;
         
-        // 保存物理文件
+        // 使用流式方式保存物理文件（减少内存占用）
         String userDiskPath = getCloudDiskAbsolutePath() + "/" + userId + saveFolderPath;
-        new File(userDiskPath).mkdirs();
+        Path userDiskPathObj = Paths.get(userDiskPath);
+        Files.createDirectories(userDiskPathObj);
         
         String filePath = userDiskPath + "/" + uniqueFilename;
-        Files.copy(file.getInputStream(), Paths.get(filePath), StandardCopyOption.REPLACE_EXISTING);
+        Path filePathObj = Paths.get(filePath);
+        
+        // 使用缓冲流式复制，避免一次性加载整个文件到内存
+        try (java.io.InputStream inputStream = file.getInputStream()) {
+            Files.copy(inputStream, filePathObj, StandardCopyOption.REPLACE_EXISTING);
+        }
         
         UserFile userFile = new UserFile();
         userFile.setUser(user);
@@ -902,11 +922,18 @@ public class CloudDiskService {
     }
 
     /**
-     * 带编码检测的文件读取
+     * 带编码检测的文件读取（优化：限制大文件读取，避免内存溢出）
      * @param path 文件路径
      * @return 文件内容
      */
     private String readFileWithEncodingDetection(Path path) throws IOException {
+        // 检查文件大小，防止读取过大文件导致内存问题
+        long fileSize = Files.size(path);
+        if (fileSize > 50 * 1024 * 1024) { // 限制50MB
+            throw new IOException("文件过大，无法直接读取。文件大小: " + 
+                String.format("%.2f MB", fileSize / (1024.0 * 1024.0)));
+        }
+        
         byte[] bytes = Files.readAllBytes(path);
         if (bytes.length == 0) return "";
 
