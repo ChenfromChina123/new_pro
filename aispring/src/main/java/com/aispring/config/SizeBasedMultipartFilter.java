@@ -18,10 +18,10 @@ import java.util.concurrent.atomic.AtomicLong;
 @Component
 public class SizeBasedMultipartFilter implements Filter {
 
-    @Value("${spring.servlet.multipart.max-file-size:524288000}") // 默认500MB
+    @Value("${spring.servlet.multipart.max-file-size:1048576000}") // 默认1000MB (1GB)
     private String maxFileSize;
 
-    @Value("${spring.servlet.multipart.max-request-size:524288000}") // 默认500MB
+    @Value("${spring.servlet.multipart.max-request-size:1048576000}") // 默认1000MB (1GB)
     private String maxRequestSize;
 
     /**
@@ -53,7 +53,7 @@ public class SizeBasedMultipartFilter implements Filter {
             return Long.parseLong(numStr) * multiplier;
         } catch (NumberFormatException e) {
             log.warn("无法解析文件大小配置: {}, 使用默认值", size);
-            return 500L * 1024L * 1024L; // 默认500MB
+            return 1000L * 1024L * 1024L; // 默认1000MB (1GB)
         }
     }
 
