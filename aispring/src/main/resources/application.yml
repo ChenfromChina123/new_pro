@@ -61,8 +61,8 @@ spring:
   servlet:
     multipart:
       enabled: true
-      max-file-size: 500MB
-      max-request-size: 500MB
+      max-file-size: 1000MB
+      max-request-size: 1000MB
       file-size-threshold: 10MB
       # 使用流式处理，避免将整个文件加载到内存
   
