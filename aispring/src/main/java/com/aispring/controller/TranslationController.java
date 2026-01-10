@@ -28,7 +28,7 @@ public class TranslationController {
      * @return 翻译后的文本结果
      */
     @PostMapping("/translate")
-    public ResponseEntity<ApiResponse<String>> translate(@Valid @RequestBody TranslationRequest request) {
+    public ResponseEntity<ApiResponse<String>> translate(@RequestBody TranslationRequest request) {
         String result = translationService.translate(request);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
