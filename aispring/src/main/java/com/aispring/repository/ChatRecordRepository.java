@@ -21,6 +21,17 @@ public interface ChatRecordRepository extends JpaRepository<ChatRecord, Long> {
     List<ChatRecord> findByUserIdOrderByMessageOrderAsc(Long userId);
     
     /**
+     * 根据会话ID查找聊天记录（不区分用户）
+     */
+    List<ChatRecord> findBySessionIdOrderByMessageOrderAsc(String sessionId);
+
+    /**
+     * 获取会话的最新消息顺序号（不区分用户）
+     */
+    @Query("SELECT COALESCE(MAX(c.messageOrder), 0) FROM ChatRecord c WHERE c.sessionId = :sessionId")
+    Integer findMaxMessageOrderBySessionId(@Param("sessionId") String sessionId);
+
+    /**
      * 根据用户ID和会话ID查找聊天记录
      */
     List<ChatRecord> findByUserIdAndSessionIdOrderByMessageOrderAsc(Long userId, String sessionId);

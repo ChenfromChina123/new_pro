@@ -40,6 +40,11 @@ public class SecurityConfig {
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/users/avatar/**").permitAll()
                 .requestMatchers("/api/resources/public").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/public-files/**").permitAll()
+                .requestMatchers("/api/ask", "/api/ask-stream").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/chat-records/save").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/chat-records/new-session").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/chat-records/sessions").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/chat-records/session/**").permitAll()
                 .requestMatchers("/error").permitAll()
                 // 其他需要认证
                 .anyRequest().authenticated()

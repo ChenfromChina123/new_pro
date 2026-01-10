@@ -31,7 +31,7 @@ public class ChatSession {
     @Column(name = "session_id", nullable = false, length = 255)
     private String sessionId;
     
-    @Column(name = "user_id", nullable = false)
+    @Column(name = "user_id")
     private Long userId;
     
     @Column(name = "title", length = 255)

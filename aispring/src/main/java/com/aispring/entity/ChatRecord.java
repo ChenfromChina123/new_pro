@@ -35,7 +35,7 @@ public class ChatRecord {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(name = "user_id", nullable = false)
+    @Column(name = "user_id")
     private Long userId;
     
     @Column(name = "session_id", nullable = false, length = 255)

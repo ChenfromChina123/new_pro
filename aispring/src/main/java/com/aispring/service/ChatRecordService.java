@@ -6,6 +6,8 @@ import com.aispring.entity.User;
 import com.aispring.repository.ChatRecordRepository;
 import com.aispring.repository.ChatSessionRepository;
 import com.aispring.repository.UserRepository;
+import com.aispring.repository.AnonymousChatRecordRepository;
+import com.aispring.entity.AnonymousChatRecord;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +28,7 @@ public class ChatRecordService {
     private final ChatRecordRepository chatRecordRepository;
     private final ChatSessionRepository chatSessionRepository;
     private final UserRepository userRepository;
+    private final AnonymousChatRecordRepository anonymousChatRecordRepository;
     
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -54,12 +57,33 @@ public class ChatRecordService {
     }
 
     /**
-     * 创建聊天记录（包含所有字段，包括工具执行结果）
+     * 创建聊天记录（包含所有字段，包括工具执行结果和IP）
      */
     @Transactional
     public ChatRecord createChatRecord(String content, Integer senderType, Long userId, 
                                       String sessionId, String aiModel, String status, String sessionType, 
-                                      String reasoningContent, Integer exitCode, String stdout, String stderr) {
+                                      String reasoningContent, Integer exitCode, String stdout, String stderr, String ipAddress) {
+        
+        // 匿名用户处理 (Isolation)
+        if (userId == null) {
+            String finalIp = ipAddress != null ? ipAddress : "unknown";
+            String role = (senderType == 1) ? "user" : "assistant";
+            
+            AnonymousChatRecord anonymousRecord = AnonymousChatRecord.builder()
+                .sessionId(sessionId != null ? sessionId : UUID.randomUUID().toString().replace("-", ""))
+                .ipAddress(finalIp)
+                .role(role)
+                .content(content)
+                .reasoningContent(reasoningContent)
+                .model(aiModel)
+                .createdAt(LocalDateTime.now())
+                .build();
+            
+            anonymousChatRecordRepository.save(anonymousRecord);
+            
+            return mapToChatRecord(anonymousRecord);
+        }
+
         // 如果没有会话ID，生成新的
         if (sessionId == null || sessionId.isEmpty()) {
             sessionId = UUID.randomUUID().toString().replace("-", "");
@@ -86,8 +110,7 @@ public class ChatRecordService {
         }
 
         // 获取该会话中最新的消息顺序号
-        Integer lastMessageOrder = chatRecordRepository
-            .findMaxMessageOrderBySessionIdAndUserId(sessionId, userId);
+        Integer lastMessageOrder = chatRecordRepository.findMaxMessageOrderBySessionIdAndUserId(sessionId, userId);
         int messageOrder = (lastMessageOrder == null ? 0 : lastMessageOrder) + 1;
         
         // 创建聊天记录
@@ -107,6 +130,16 @@ public class ChatRecordService {
             .build();
         
         return chatRecordRepository.save(chatRecord);
+    }
+
+    /**
+     * 创建聊天记录（兼容旧接口）
+     */
+    @Transactional
+    public ChatRecord createChatRecord(String content, Integer senderType, Long userId, 
+                                      String sessionId, String aiModel, String status, String sessionType, 
+                                      String reasoningContent, Integer exitCode, String stdout, String stderr) {
+        return createChatRecord(content, senderType, userId, sessionId, aiModel, status, sessionType, reasoningContent, exitCode, stdout, stderr, null);
     }
     
     /**
@@ -163,10 +196,37 @@ public class ChatRecordService {
     }
     
     /**
-     * 获取特定会话的所有消息
+     * 获取会话的所有消息
      */
     public List<ChatRecord> getSessionMessages(Long userId, String sessionId) {
-        return chatRecordRepository.findByUserIdAndSessionIdOrderByMessageOrderAsc(userId, sessionId);
+        return getSessionMessages(userId, sessionId, null);
+    }
+
+    /**
+     * 获取会话的所有消息（支持匿名用户按IP隔离）
+     */
+    public List<ChatRecord> getSessionMessages(Long userId, String sessionId, String ipAddress) {
+        if (userId != null) {
+            return chatRecordRepository.findByUserIdAndSessionIdOrderByMessageOrderAsc(userId, sessionId);
+        }
+
+        List<AnonymousChatRecord> records = (ipAddress == null || ipAddress.isEmpty())
+            ? anonymousChatRecordRepository.findBySessionIdOrderByCreatedAtAsc(sessionId)
+            : anonymousChatRecordRepository.findBySessionIdAndIpAddressOrderByCreatedAtAsc(sessionId, ipAddress);
+        return records.stream().map(this::mapToChatRecord).collect(Collectors.toList());
+    }
+     
+    private ChatRecord mapToChatRecord(AnonymousChatRecord ar) {
+        return ChatRecord.builder()
+            .sessionId(ar.getSessionId())
+            .senderType("user".equalsIgnoreCase(ar.getRole()) ? 1 : 2)
+            .content(ar.getContent())
+            .reasoningContent(ar.getReasoningContent())
+            .sendTime(ar.getCreatedAt())
+            .aiModel(ar.getModel())
+            .status("completed")
+            .messageOrder(0)
+            .build();
     }
 
     /**
@@ -239,18 +299,26 @@ public class ChatRecordService {
     }
 
     /**
-     * 创建并保存新会话
+     * 创建新会话
      */
     @Transactional
     public ChatSession createChatSession(Long userId, String sessionType) {
-        String sessionId = createNewSession();
+        String sessionId = UUID.randomUUID().toString().replace("-", "");
         ChatSession session = ChatSession.builder()
             .sessionId(sessionId)
             .userId(userId)
             .title("新对话")
             .sessionType(sessionType)
+            .createdAt(LocalDateTime.now())
+            .updatedAt(LocalDateTime.now())
             .build();
-        return chatSessionRepository.save(session);
+        
+        if (userId != null) {
+            return chatSessionRepository.save(session);
+        } else {
+            // 匿名用户：不保存到 chat_sessions 表，仅返回临时对象
+            return session;
+        }
     }
     
     /**

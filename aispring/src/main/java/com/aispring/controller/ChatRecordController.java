@@ -21,6 +21,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 /**
  * 聊天记录控制器
  * 对应Python: chat_records.py
@@ -78,10 +80,12 @@ public class ChatRecordController {
     @PostMapping("/save")
     public ResponseEntity<Map<String, Object>> saveChatRecord(
             @RequestBody SaveRecordRequest request,
-            @AuthenticationPrincipal CustomUserDetails customUserDetails) {
+            @AuthenticationPrincipal CustomUserDetails customUserDetails,
+            HttpServletRequest servletRequest) {
         
-        // 获取当前用户ID
-        Long userId = customUserDetails.getUser().getId();
+        // 获取当前用户ID (允许匿名)
+        Long userId = customUserDetails != null ? customUserDetails.getUser().getId() : null;
+        String ip = getClientIp(servletRequest);
         
         String session = request.getSessionId();
         String model = request.getModel();
@@ -94,7 +98,11 @@ public class ChatRecordController {
                 userId,
                 session,
                 model,
-                "completed"
+                "completed",
+                "chat",
+                null,
+                null, null, null,
+                ip
             );
             // 保存 AI 消息，包含 reasoning_content
             chatRecordService.createChatRecord(
@@ -105,7 +113,9 @@ public class ChatRecordController {
                 model,
                 "completed",
                 "chat",
-                request.getAiReasoning()  // 传递深度思考内容
+                request.getAiReasoning(),  // 传递深度思考内容
+                null, null, null,
+                ip
             );
         } else {
             Integer senderType = (request.getRole() != null && request.getRole().equalsIgnoreCase("user")) ? 1 : 2;
@@ -119,7 +129,9 @@ public class ChatRecordController {
                 model,
                 "completed",
                 "chat",
-                reasoningContent
+                reasoningContent,
+                null, null, null,
+                ip
             );
         }
         
@@ -127,6 +139,14 @@ public class ChatRecordController {
         response.put("message", "聊天记录保存成功");
         
         return ResponseEntity.ok(response);
+    }
+    
+    private String getClientIp(HttpServletRequest request) {
+        String xfHeader = request.getHeader("X-Forwarded-For");
+        if (xfHeader == null) {
+            return request.getRemoteAddr();
+        }
+        return xfHeader.split(",")[0];
     }
     
     /**
@@ -137,6 +157,12 @@ public class ChatRecordController {
     public ResponseEntity<Map<String, Object>> getChatSessions(
             @AuthenticationPrincipal CustomUserDetails customUserDetails) {
         
+        if (customUserDetails == null) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("sessions", java.util.Collections.emptyList());
+            return ResponseEntity.ok(response);
+        }
+
         Long userId = customUserDetails.getUser().getId();
         List<Map<String, Object>> sessions = chatRecordService.getUserSessions(userId);
         
@@ -153,10 +179,12 @@ public class ChatRecordController {
     @GetMapping("/session/{sessionId}")
     public ResponseEntity<Map<String, Object>> getSessionMessages(
             @PathVariable String sessionId,
-            @AuthenticationPrincipal CustomUserDetails customUserDetails) {
+            @AuthenticationPrincipal CustomUserDetails customUserDetails,
+            HttpServletRequest servletRequest) {
         
-        Long userId = customUserDetails.getUser().getId();
-        List<ChatRecord> messages = chatRecordService.getSessionMessages(userId, sessionId);
+        Long userId = customUserDetails != null ? customUserDetails.getUser().getId() : null;
+        String ip = getClientIp(servletRequest);
+        List<ChatRecord> messages = chatRecordService.getSessionMessages(userId, sessionId, ip);
         
         Map<String, Object> response = new HashMap<>();
         response.put("messages", messages.stream().map(ChatRecord::toMap).toList());
@@ -197,7 +225,7 @@ public class ChatRecordController {
     public ResponseEntity<Map<String, String>> createNewSession(
             @AuthenticationPrincipal CustomUserDetails customUserDetails) {
         
-        Long userId = customUserDetails.getUser().getId();
+        Long userId = customUserDetails != null ? customUserDetails.getUser().getId() : null;
         ChatSession session = chatRecordService.createChatSession(userId, "chat");
         
         Map<String, String> response = new HashMap<>();
@@ -282,4 +310,3 @@ public class ChatRecordController {
         return ResponseEntity.ok(stats);
     }
 }
-
