@@ -61,9 +61,10 @@
                     @click="toggleReasoning(message)"
                   >
                     <div class="header-left">
-                      <div class="reasoning-icon-wrapper">
+                      <!-- 移除以匹配图 2 风格 -->
+                      <!-- <div class="reasoning-icon-wrapper">
                         <i class="fas fa-brain reasoning-icon" />
-                      </div>
+                      </div> -->
                       <div class="header-text">
                         <span class="reasoning-title">深度思考</span>
                         <span 
@@ -3176,7 +3177,7 @@ body.dark-mode .nav-arrows {
 }
 
 .typing-cursor::after {
-  content: '▋';
+  content: ''; /* 移除光标以匹配图 2 风格 */
   display: inline-block;
   vertical-align: middle;
   animation: blink 1s step-end infinite;

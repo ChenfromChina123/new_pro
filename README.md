@@ -51,6 +51,9 @@
   - 移除了 `AiChatService` 中的 `askAgentStream` 接口，统一使用 `askStream` 进行流式问答。
   - 清理了不再使用的 `ToolsService`、`ToolCallParser` 等相关类和方法，减少了系统复杂度。
   - 优化了对话核心实现，移除了不必要的 JSON 解析和任务上下文维护逻辑，提升了响应速度。
+- **上下文与 UI 优化**:
+  - **取消上下文窗口限制**: 移除了对话历史消息数量的限制（MAX_CONTEXT_MESSAGES），现在 AI 可以保留并引用全部历史对话内容。
+  - **UI 图标移除**: 移除了 AI 生成内容时的“深度思考”脑部图标及闪烁光标，以匹配图 2 的极简设计风格。
 - **配置安全性增强**:
   - 对 `application.yml` 中的 DeepSeek 和 豆包 API Key 进行了 Jasypt 加密处理。
   - 支持通过环境变量 `JASYPT_ENCRYPTOR_PASSWORD` 注入解密密钥，避免敏感信息明文泄露。
