@@ -83,9 +83,10 @@ export const useAuthStore = defineStore('auth', () => {
       return { success: false, message: '登录失败' }
     } catch (error) {
       console.error('Login error:', error)
+      const message = error.response?.data?.message || error.response?.data?.detail || '登录失败，请检查账号密码'
       return { 
         success: false, 
-        message: error.response?.data?.message || '登录失败，请检查账号密码' 
+        message
       }
     }
   }
@@ -128,9 +129,10 @@ export const useAuthStore = defineStore('auth', () => {
       return { success: true, message: '注册成功' }
     } catch (error) {
       console.error('Register error:', error)
+      const message = error.response?.data?.message || error.response?.data?.detail || '注册失败'
       return { 
         success: false, 
-        message: error.response?.data?.message || '注册失败' 
+        message
       }
     }
   }
@@ -144,9 +146,10 @@ export const useAuthStore = defineStore('auth', () => {
       return { success: true, message: response.message || '验证码已发送' }
     } catch (error) {
       console.error('Send code error:', error)
+      const message = error.response?.data?.message || error.response?.data?.detail || '发送验证码失败'
       return { 
         success: false, 
-        message: error.response?.data?.message || '发送验证码失败' 
+        message
       }
     }
   }
@@ -160,9 +163,10 @@ export const useAuthStore = defineStore('auth', () => {
       return { success: true, message: response.message || '验证码已发送至邮箱' }
     } catch (error) {
       console.error('Send reset code error:', error)
+      const message = error.response?.data?.message || error.response?.data?.detail || '发送验证码失败'
       return { 
         success: false, 
-        message: error.response?.data?.message || '发送验证码失败' 
+        message
       }
     }
   }
@@ -175,12 +179,13 @@ export const useAuthStore = defineStore('auth', () => {
         code,
         newPassword
       })
-      return { success: true, message: response.message || '密码重置成功' }
+      return { success: true, message: response.message || '密码已重置' }
     } catch (error) {
       console.error('Reset password error:', error)
+      const message = error.response?.data?.message || error.response?.data?.detail || '密码重置失败'
       return { 
         success: false, 
-        message: error.response?.data?.message || '密码重置失败' 
+        message
       }
     }
   }
@@ -200,9 +205,10 @@ export const useAuthStore = defineStore('auth', () => {
       return { success: true, message: '个人资料更新成功' }
     } catch (error) {
       console.error('Update profile error:', error)
+      const message = error.response?.data?.message || error.response?.data?.detail || '更新失败'
       return { 
         success: false, 
-        message: error.response?.data?.message || '更新失败' 
+        message
       }
     }
   }
