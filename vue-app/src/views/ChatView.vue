@@ -88,16 +88,16 @@
                   </div>
                 
                 <transition name="reasoning-slide">
+                  <div 
+                    v-show="!message.isReasoningCollapsed" 
+                    class="reasoning-content"
+                  >
                     <div 
-                      v-show="!message.isReasoningCollapsed" 
-                      class="reasoning-content"
-                    >
-                      <div 
-                        class="markdown-body"
-                        v-html="formatReasoningCached(message)" 
-                      />
-                    </div>
-                  </transition>
+                      class="markdown-body"
+                      v-html="formatReasoningCached(message)" 
+                    />
+                  </div>
+                </transition>
                 </div>
 
                 <!-- AI 响应内容 -->
@@ -632,23 +632,8 @@ const handleMouseLeaveScrollBottom = () => {
 }
 
 /**
- * 解析并返回消息头像图片地址；无可用图片时返回 `null` 以回退到默认图标
+ * 复制代码到剪贴板 - 改为全局函数，供内联事件调用
  */
-const deepseekAvatarUrl = new URL('../../static/image/deepseek-image.png', import.meta.url).href
-const doubaoAvatarUrl = new URL('../../static/image/doubao-imge.png', import.meta.url).href
-
-const getMessageAvatarSrc = (message) => {
-  if (!message) return null
-  if (message.role === 'user') {
-    return userAvatarUrl.value || null
-  }
-  const model = String(message.model || chatStore.selectedModel || '').toLowerCase()
-  if (model.includes('deepseek')) return deepseekAvatarUrl
-  if (model.includes('doubao')) return doubaoAvatarUrl
-  return null
-}
-
-// 复制代码到剪贴板 - 改为全局函数，供内联事件调用
 window.copyCodeBlock = (element) => {
   const code = element.previousElementSibling.textContent
   const button = element
@@ -1286,7 +1271,7 @@ const renderMathFormula = (content, placeholders = []) => {
   // 使用更宽松的匹配，确保能捕获完整的公式（包括等号后面的所有内容，可能包含多个积分）
   // 改进：匹配到等号后，继续匹配可能存在的第二个积分
   const generalIntegralRegex = /\\int\s*(?:(?:_\{[^}]+\})|(?:_[-a-zA-Z0-9]+))?(?:\^\{[^}]+\}|\^[-a-zA-Z0-9]+)?\s*[^\n]*?d(?:[a-z]+|\\[a-zA-Z]+)(?:\s*=\s*[^\n]*?(?:\\int\s*(?:(?:_\{[^}]+\})|(?:_[-a-zA-Z0-9]+))?(?:\^\{[^}]+\}|\^[-a-zA-Z0-9]+)?\s*[^\n]*?d(?:[a-z]+|\\[a-zA-Z]+))?[^\n]*?)?(?=[\s\u4e00-\u9fa5]|$|\[|\(|\)|,|\.\s)/g;
-  processedContent = processedContent.replace(generalIntegralRegex, (match, offset, string) => {
+  processedContent = processedContent.replace(generalIntegralRegex, (match) => {
      // 清理匹配内容：移除HTML标签
      let cleanedMatch = cleanTags(match);
      
@@ -1398,28 +1383,6 @@ const formatReasoningCached = (() => {
     return html
   }
 })()
-
-/**
- * 获取深度思考内容的预览文本（用于折叠状态）
- */
-const getReasoningPreview = (content) => {
-  if (!content) return ''
-  // 移除 markdown 标记和 HTML 标签
-  const text = content
-    .replace(/```[\s\S]*?```/g, '[代码块]')
-    .replace(/`[^`]+`/g, '[代码]')
-    .replace(/#{1,6}\s+/g, '')
-    .replace(/\*\*([^*]+)\*\*/g, '$1')
-    .replace(/\*([^*]+)\*/g, '$1')
-    .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
-    .replace(/<[^>]+>/g, '')
-    .replace(/\n+/g, ' ')
-    .trim()
-  
-  // 返回前 80 个字符，如果更长则添加省略号
-  if (text.length <= 80) return text
-  return text.substring(0, 80) + '...'
-}
 
 /**
  * 获取深度思考内容的字符长度（用于显示统计）
@@ -1565,24 +1528,6 @@ const formatTime = (timestamp) => {
     hour: '2-digit',
     minute: '2-digit'
   })
-}
-
-const formatSessionDate = (timestamp) => {
-  if (!timestamp) return ''
-  const date = new Date(timestamp)
-  const now = new Date()
-  const diffTime = Math.abs(now - date)
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
-  
-  if (diffDays === 0) {
-    return '今天 '
-  } else if (diffDays === 1) {
-    return '昨天 '
-  } else if (diffDays < 7) {
-    return `${diffDays}天前`
-  } else {
-    return date.toLocaleDateString('zh-CN')
-  }
 }
 
 const isModelMenuOpen = ref(false)
