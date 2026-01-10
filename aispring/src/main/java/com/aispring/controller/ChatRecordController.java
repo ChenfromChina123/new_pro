@@ -11,6 +11,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -45,12 +47,19 @@ public class ChatRecordController {
     
     @Data
     public static class SaveRecordRequest {
-        private String session_id;
-        private String user_message;
-        private String ai_response;
-        private String ai_reasoning;  // AI 深度思考内容
-        private String model;
+        @JsonAlias({"session_id", "sessionId"})
         private String sessionId;
+        
+        @JsonProperty("user_message")
+        private String userMessage;
+        
+        @JsonProperty("ai_response")
+        private String aiResponse;
+        
+        @JsonProperty("ai_reasoning")
+        private String aiReasoning;  // AI 深度思考内容
+        
+        private String model;
         private String role; // "user" or "assistant"
         private String content;
         private Long timestamp;
@@ -58,6 +67,7 @@ public class ChatRecordController {
     
     @Data
     public static class SessionIdRequest {
+        @JsonAlias({"session_id", "sessionId"})
         private String sessionId;
     }
     
@@ -73,13 +83,13 @@ public class ChatRecordController {
         // 获取当前用户ID
         Long userId = customUserDetails.getUser().getId();
         
-        String session = request.getSession_id() != null ? request.getSession_id() : request.getSessionId();
+        String session = request.getSessionId();
         String model = request.getModel();
         
-        if (request.getUser_message() != null || request.getAi_response() != null) {
+        if (request.getUserMessage() != null || request.getAiResponse() != null) {
             // 保存用户消息
             chatRecordService.createChatRecord(
-                request.getUser_message(),
+                request.getUserMessage(),
                 1,
                 userId,
                 session,
@@ -88,19 +98,19 @@ public class ChatRecordController {
             );
             // 保存 AI 消息，包含 reasoning_content
             chatRecordService.createChatRecord(
-                request.getAi_response(),
+                request.getAiResponse(),
                 2,
                 userId,
                 session,
                 model,
                 "completed",
                 "chat",
-                request.getAi_reasoning()  // 传递深度思考内容
+                request.getAiReasoning()  // 传递深度思考内容
             );
         } else {
             Integer senderType = (request.getRole() != null && request.getRole().equalsIgnoreCase("user")) ? 1 : 2;
             String content = request.getContent();
-            String reasoningContent = senderType == 2 ? request.getAi_reasoning() : null;
+            String reasoningContent = senderType == 2 ? request.getAiReasoning() : null;
             chatRecordService.createChatRecord(
                 content,
                 senderType,
