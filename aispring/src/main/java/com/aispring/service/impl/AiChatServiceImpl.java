@@ -622,7 +622,7 @@ public class AiChatServiceImpl implements AiChatService {
     }
     
     @Override
-    public String ask(String prompt, String sessionId, String model, Long userId) {
+    public String ask(String prompt, String sessionId, String model, Long userId, String systemPrompt) {
         try {
             // 异步生成标题（仅限第一条消息）和建议问题（每条消息）
             generateTitleAndSuggestionsAsync(prompt, sessionId, userId, null);
@@ -664,7 +664,7 @@ public class AiChatServiceImpl implements AiChatService {
                     .withMaxTokens(maxTokens)
                     .build();
             
-            Prompt promptObj = buildPrompt(prompt, sessionId, userId, options);
+            Prompt promptObj = buildPrompt(prompt, sessionId, userId, options, systemPrompt);
             
             final ChatClient finalClient = clientToUse;
             System.out.println("Sending request to AI. Model: " + actualModel + ", Prompt length: " + prompt.length());
