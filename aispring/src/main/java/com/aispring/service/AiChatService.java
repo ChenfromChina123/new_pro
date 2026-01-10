@@ -14,9 +14,17 @@ public interface AiChatService {
      * @param sessionId 会话ID
      * @param model 模型名称
      * @param userId 用户ID
+     * @param ipAddress 客户端IP（用于匿名用户隔离）
      * @return SSE发射器，用于流式响应
      */
-    SseEmitter askStream(String prompt, String sessionId, String model, Long userId);
+    SseEmitter askStream(String prompt, String sessionId, String model, Long userId, String ipAddress);
+    
+    /**
+     * AI流式问答 (兼容旧接口)
+     */
+    default SseEmitter askStream(String prompt, String sessionId, String model, Long userId) {
+        return askStream(prompt, sessionId, model, userId, null);
+    }
     
     /**
      * AI非流式问答
