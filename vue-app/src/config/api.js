@@ -100,6 +100,11 @@ export const API_ENDPOINTS = {
       delete: (feedbackId) => `/api/feedback/admin/${feedbackId}`
     }
   },
+
+  // 翻译功能
+  translation: {
+    translate: '/api/translation/translate'
+  },
   
   // 笔记相关
   notes: {
