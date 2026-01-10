@@ -1,72 +1,6 @@
 <template>
   <div class="language-learning-container">
     <div class="language-learning-page">
-      <!-- Mobile Header -->
-      <div class="mobile-header">
-        <button
-          class="mobile-menu-btn"
-          @click="showMobileSidebar = !showMobileSidebar"
-        >
-          <i class="fas fa-bars" />
-        </button>
-        <span class="mobile-title">Language Learning</span>
-      </div>
-
-      <!-- Sidebar -->
-      <div
-        class="sidebar"
-        :class="{ 'sidebar-mobile-open': showMobileSidebar }"
-      >
-        <div class="sidebar-header">
-          <h2>Language Learning</h2>
-        </div>
-        <div class="sidebar-nav">
-          <a
-            href="#"
-            class="nav-item"
-            :class="{ active: currentView === 'dashboard' }"
-            @click.prevent="currentView = 'dashboard'; showMobileSidebar = false"
-          >
-            <span class="icon">📊</span>
-            <span class="label">学习概览</span>
-          </a>
-          <a
-            href="#"
-            class="nav-item"
-            :class="{ active: currentView === 'my-words' }"
-            @click.prevent="currentView = 'my-words'; showMobileSidebar = false"
-          >
-            <span class="icon">📚</span>
-            <span class="label">我的单词</span>
-          </a>
-          <a
-            href="#"
-            class="nav-item"
-            :class="{ active: currentView === 'public-library' }"
-            @click.prevent="currentView = 'public-library'; showMobileSidebar = false"
-          >
-            <span class="icon">🌐</span>
-            <span class="label">公共词库</span>
-          </a>
-          <a
-            href="#"
-            class="nav-item"
-            :class="{ active: currentView === 'ai-articles' }"
-            @click.prevent="currentView = 'ai-articles'; showMobileSidebar = false"
-          >
-            <span class="icon">🤖</span>
-            <span class="label">AI文章</span>
-          </a>
-        </div>
-      </div>
-
-      <!-- Mobile Sidebar Overlay -->
-      <div 
-        v-if="showMobileSidebar" 
-        class="sidebar-overlay"
-        @click="showMobileSidebar = false"
-      />
-
       <!-- Main Content Area -->
       <div class="main-content">
         <!-- Dashboard View -->
@@ -803,6 +737,18 @@
             </div>
           </div>
         </div>
+
+        <!-- Translation View -->
+        <div
+          v-if="currentView === 'translation'"
+          class="view-section"
+        >
+          <div class="view-header">
+            <h2>智能翻译</h2>
+            <p>多语言 AI 翻译工具</p>
+          </div>
+          <TranslationTool />
+        </div>
       </div>
     </div>
       
@@ -1151,13 +1097,15 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, onActivated, onDeactivated, reactive, watch, nextTick } from 'vue'
+import { useRoute } from 'vue-router'
 import request from '@/utils/request'
 import { API_ENDPOINTS } from '@/config/api'
 import { useVocabularyStore } from '@/stores/vocabulary'
 import { useUIStore } from '@/stores/ui'
+import TranslationTool from '@/components/TranslationTool.vue'
 
-const currentView = ref('dashboard') // dashboard, my-words, public-library, ai-articles
-const showMobileSidebar = ref(false)
+const route = useRoute()
+const currentView = computed(() => route.query.view || 'dashboard') // dashboard, my-words, public-library, ai-articles, translation
 
 const currentListId = ref(null)
 const showCreateList = ref(false)
@@ -2193,8 +2141,7 @@ const formatDuration = (seconds) => {
 <style scoped>
 /* Page Layout */
 .language-learning-page {
-  display: flex;
-  height: 100%; /* Changed from fixed height to 100% */
+  height: 100%;
   overflow: hidden;
   background-color: var(--bg-primary);
   position: relative;
@@ -2239,129 +2186,6 @@ const formatDuration = (seconds) => {
   width: 20px;
   height: 20px;
   border-width: 2px;
-}
-
-/* Mobile Header */
-.mobile-header {
-  display: none;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  width: 100%;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px;
-  background-color: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
-}
-
-.mobile-menu-btn {
-  background: transparent;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: var(--primary-color);
-  padding: 8px;
-  border-radius: 6px;
-  transition: background 0.2s;
-}
-
-.mobile-menu-btn:hover {
-  background-color: var(--chip-bg);
-}
-
-.mobile-title {
-  font-size: 18px;
-  color: var(--text-primary);
-  margin: 0;
-  font-weight: 600;
-}
-
-/* Sidebar */
-.sidebar {
-  width: 240px;
-  background-color: var(--bg-secondary);
-  border-right: 1px solid var(--border-color);
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  transition: transform 0.3s ease;
-}
-
-.sidebar-mobile-open {
-  transform: translateX(0);
-}
-
-.close-mobile-menu {
-  display: none;
-  background: transparent;
-  border: none;
-  font-size: 20px;
-  cursor: pointer;
-  color: var(--text-secondary);
-  padding: 4px;
-  border-radius: 4px;
-  transition: background 0.2s;
-}
-
-.sidebar-header {
-  padding: 24px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.sidebar-header h2 {
-  font-size: 18px;
-  color: var(--text-primary);
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.sidebar-nav {
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  border-radius: 8px;
-  color: var(--text-secondary);
-  text-decoration: none;
-  transition: all 0.2s;
-}
-
-.nav-item:hover {
-  background-color: var(--bg-tertiary);
-  color: var(--primary-color);
-}
-
-.nav-item.active {
-  background-color: var(--chip-bg);
-  color: var(--primary-color);
-  font-weight: 500;
-}
-
-.nav-item .icon {
-  font-size: 18px;
-}
-
-/* Sidebar Overlay */
-.sidebar-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 999;
-  backdrop-filter: blur(2px);
 }
 
 /* Main Content */
@@ -4005,7 +3829,7 @@ select {
 
   .main-content {
     padding: 16px;
-    margin-top: 64px; /* Account for mobile header */
+    margin-top: 0; /* 移除冗余的边距，由 AppLayout 处理 */
   }
 
   .dashboard-grid {

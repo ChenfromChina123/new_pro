@@ -210,6 +210,55 @@
         </div>
       </template>
 
+      <!-- 语言学习相关的侧边栏内容 -->
+      <template v-else-if="isLanguageLearningRoute">
+        <div class="sidebar-header">
+          <h3>📖 语言学习</h3>
+        </div>
+        <div class="sub-nav-list">
+          <router-link
+            :to="{ path: '/language-learning', query: { view: 'dashboard' } }"
+            class="sub-nav-item"
+            :class="{ active: !route.query.view || route.query.view === 'dashboard' }"
+          >
+            <span class="item-icon">📊</span>
+            <span class="item-text">学习概览</span>
+          </router-link>
+          <router-link
+            :to="{ path: '/language-learning', query: { view: 'my-words' } }"
+            class="sub-nav-item"
+            :class="{ active: route.query.view === 'my-words' }"
+          >
+            <span class="item-icon">📚</span>
+            <span class="item-text">我的单词</span>
+          </router-link>
+          <router-link
+            :to="{ path: '/language-learning', query: { view: 'public-library' } }"
+            class="sub-nav-item"
+            :class="{ active: route.query.view === 'public-library' }"
+          >
+            <span class="item-icon">🌐</span>
+            <span class="item-text">公共词库</span>
+          </router-link>
+          <router-link
+            :to="{ path: '/language-learning', query: { view: 'ai-articles' } }"
+            class="sub-nav-item"
+            :class="{ active: route.query.view === 'ai-articles' }"
+          >
+            <span class="item-icon">🤖</span>
+            <span class="item-text">AI文章</span>
+          </router-link>
+          <router-link
+            :to="{ path: '/language-learning', query: { view: 'translation' } }"
+            class="sub-nav-item"
+            :class="{ active: route.query.view === 'translation' }"
+          >
+            <span class="item-icon">🔤</span>
+            <span class="item-text">智能翻译</span>
+          </router-link>
+        </div>
+      </template>
+
       <!-- 其他路由可以根据需要添加内容 -->
       <template v-else>
         <div class="sidebar-empty-tip">
@@ -341,6 +390,7 @@ const handleToggleDarkMode = async () => {
 const isChatRoute = computed(() => route.path.startsWith('/chat'))
 const isCloudDiskRoute = computed(() => route.path.startsWith('/cloud-disk'))
 const isPublicFilesRoute = computed(() => route.path.startsWith('/public-files'))
+const isLanguageLearningRoute = computed(() => route.path.startsWith('/language-learning'))
 
 // 头像逻辑
 const avatarUrl = ref(null)
@@ -574,7 +624,7 @@ const onConflictCancelled = () => {
 
 // 监听路由变化加载数据
 watch(
-  () => route.path,
+  () => route.fullPath,
   async (newPath) => {
     // 移动端路由切换时自动关闭侧边栏
     if (window.innerWidth < 768) {
@@ -798,6 +848,53 @@ onMounted(() => {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition: all 0.2s;
   cursor: pointer;
+}
+
+/* 语言学习子导航样式 */
+.sub-nav-list {
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+}
+
+.sub-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  background-color: transparent;
+}
+
+.sub-nav-item:hover {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.sub-nav-item.active {
+  background-color: var(--bg-tertiary);
+  color: var(--primary-color);
+  font-weight: 600;
+  border-left: 3px solid var(--primary-color);
+  border-radius: 4px 10px 10px 4px;
+}
+
+.item-icon {
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+}
+
+.item-text {
+  font-size: 14px;
 }
 
 .new-chat-btn:hover {
