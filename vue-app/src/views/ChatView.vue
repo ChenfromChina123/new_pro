@@ -87,17 +87,17 @@
                     </div>
                   </div>
                 
-                <transition name="reasoning-slide">
-                  <div 
-                    v-show="!message.isReasoningCollapsed" 
-                    class="reasoning-content"
-                  >
+                  <transition name="reasoning-slide">
                     <div 
-                      class="markdown-body"
-                      v-html="formatReasoningCached(message)" 
-                    />
-                  </div>
-                </transition>
+                      v-show="!message.isReasoningCollapsed" 
+                      class="reasoning-content"
+                    >
+                      <div 
+                        class="markdown-body"
+                        v-html="formatReasoningCached(message)" 
+                      />
+                    </div>
+                  </transition>
                 </div>
 
                 <!-- AI 响应内容 -->
