@@ -95,7 +95,7 @@ public class AuthService {
         
         // 创建用户
         User user = new User();
-        user.setUsername(request.getEmail().split("@")[0]);
+        user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
         user.setPassword(request.getPassword()); // 会自动加密
         user.setIsActive(true);

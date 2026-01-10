@@ -85,7 +85,45 @@
         <div class="setting-item">
           <label class="setting-label">用户名</label>
           <div class="setting-control">
-            <span class="text-value">{{ authStore.username }}</span>
+            <div
+              v-if="isEditingUsername"
+              class="edit-group"
+            >
+              <input
+                v-model="newUsername"
+                type="text"
+                class="input-control sm"
+                placeholder="输入新用户名"
+                @keyup.enter="saveUsername"
+              >
+              <div class="edit-actions">
+                <button
+                  class="btn btn-primary btn-xs"
+                  @click="saveUsername"
+                >
+                  保存
+                </button>
+                <button
+                  class="btn btn-secondary btn-xs"
+                  @click="cancelEditingUsername"
+                >
+                  取消
+                </button>
+              </div>
+            </div>
+            <div
+              v-else
+              class="display-group"
+            >
+              <span class="text-value">{{ authStore.userInfo?.username }}</span>
+              <button
+                class="btn-icon"
+                title="修改用户名"
+                @click="startEditingUsername"
+              >
+                <i class="fas fa-edit" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -257,6 +295,52 @@ const localSettings = ref({})
 const isUploading = ref(false)
 const avatarPreviewUrl = ref(null)
 
+const isEditingUsername = ref(false)
+const newUsername = ref('')
+
+/**
+ * 开始编辑用户名
+ */
+const startEditingUsername = () => {
+  newUsername.value = authStore.userInfo?.username || ''
+  isEditingUsername.value = true
+}
+
+/**
+ * 取消编辑用户名
+ */
+const cancelEditingUsername = () => {
+  isEditingUsername.value = false
+}
+
+/**
+ * 保存新用户名
+ */
+const saveUsername = async () => {
+  if (!newUsername.value || newUsername.value.trim() === '') {
+    uiStore.showToast('用户名不能为空', 'error')
+    return
+  }
+  
+  if (newUsername.value === authStore.userInfo?.username) {
+    isEditingUsername.value = false
+    return
+  }
+
+  try {
+    const result = await authStore.updateProfile({ username: newUsername.value })
+    if (result.success) {
+      uiStore.showToast('用户名更新成功')
+      isEditingUsername.value = false
+    } else {
+      uiStore.showToast(result.message || '更新失败', 'error')
+    }
+  } catch (error) {
+    console.error('Update username error:', error)
+    uiStore.showToast('更新过程中发生错误', 'error')
+  }
+}
+
 // Initialize local settings from store
 watch(() => settingsStore.settings, (newSettings) => {
   localSettings.value = { ...newSettings }
@@ -416,6 +500,53 @@ const handleLogout = () => {
   min-width: 200px;
   display: flex;
   justify-content: flex-end;
+}
+
+.display-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.edit-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.edit-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-icon {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-icon:hover {
+  color: var(--primary-color);
+  background-color: var(--bg-secondary);
+}
+
+.btn-xs {
+  padding: 4px 12px;
+  font-size: 12px;
+  height: auto;
+}
+
+.input-control.sm {
+  padding: 6px 10px;
+  font-size: 13px;
 }
 
 .select-control, .input-control {
