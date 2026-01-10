@@ -1,8 +1,6 @@
 package com.aispring.service.impl;
 
 import com.aispring.service.AiChatService;
-import com.aispring.service.ToolsService;
-import com.aispring.service.ToolCallParser;
 import com.aispring.repository.ChatRecordRepository;
 import com.aispring.entity.ChatRecord;
 import com.aispring.entity.ChatSession;
@@ -56,9 +54,6 @@ public class AiChatServiceImpl implements AiChatService {
     private final com.aispring.service.ChatRecordService chatRecordService; // 注入 ChatRecordService
     private final OkHttpClient okHttpClient;
     
-    private final com.aispring.service.ToolsService toolsService;
-    private final com.aispring.service.ToolCallParser toolCallParser;
-    
     @Value("${ai.max-tokens:4096}")
     private Integer maxTokens;
     
@@ -83,17 +78,10 @@ public class AiChatServiceImpl implements AiChatService {
     // 上下文最大消息数
     private static final int MAX_CONTEXT_MESSAGES = 10;
     
-    // Agent 循环配置（参考 void-main）
-    private static final int CHAT_RETRIES = 3; // LLM 请求最大重试次数
-    private static final long RETRY_DELAY_MS = 1000; // 重试延迟（毫秒）
-    private static final int MAX_AGENT_LOOPS = 50; // Agent 循环最大次数
-
     public AiChatServiceImpl(ObjectProvider<ChatClient> chatClientProvider,
                              ObjectProvider<StreamingChatClient> streamingChatClientProvider,
                              ChatRecordRepository chatRecordRepository,
                              com.aispring.service.ChatRecordService chatRecordService, // 添加到构造函数
-                             com.aispring.service.ToolsService toolsService,
-                             com.aispring.service.ToolCallParser toolCallParser,
                              @Value("${ai.doubao.api-key:}") String doubaoApiKey,
                              @Value("${ai.doubao.api-url:}") String doubaoApiUrl,
                              @Value("${ai.deepseek.api-key:}") String deepseekApiKey,
@@ -102,8 +90,6 @@ public class AiChatServiceImpl implements AiChatService {
         this.streamingChatClientProvider = streamingChatClientProvider;
         this.chatRecordRepository = chatRecordRepository;
         this.chatRecordService = chatRecordService; // 初始化
-        this.toolsService = toolsService;
-        this.toolCallParser = toolCallParser;
         
         this.doubaoApiKey = doubaoApiKey;
         this.doubaoApiUrl = doubaoApiUrl;
@@ -209,412 +195,43 @@ public class AiChatServiceImpl implements AiChatService {
 
     @Override
     public SseEmitter askStream(String prompt, String sessionId, String model, Long userId) {
-        return askAgentStream(prompt, sessionId, model, userId, null, null, null);
+        return askStreamInternal(prompt, sessionId, model, userId);
     }
-
-    @Override
-    public SseEmitter askAgentStream(String prompt, String sessionId, String model, Long userId, String systemPrompt, List<Map<String, Object>> tasks, Consumer<String> onResponse) {
-        return askAgentStreamInternal(prompt, sessionId, model, userId, systemPrompt, tasks, onResponse);
-    }
-
 
     /**
-     * Agent 流式问答核心实现（参考 void-main 的 _runChatAgent）
-     * 
-     * 改进点：
-     * 1. 更清晰的状态管理（idle -> LLM -> tool -> idle）
-     * 2. 重试机制（LLM 请求失败时自动重试）
-     * 3. 更好的错误处理
-     * 4. 统一的中断机制
+     * 普通流式问答核心实现
      */
-    private SseEmitter askAgentStreamInternal(String initialPrompt, String sessionId, String model, Long userId, String initialSystemPrompt, List<Map<String, Object>> initialTasks, Consumer<String> onResponse) {
-        // 创建SSE发射器，设置超时时间为5分钟（Agent 循环可能需要更长时间）
+    private SseEmitter askStreamInternal(String initialPrompt, String sessionId, String model, Long userId) {
+        // 创建SSE发射器，设置超时时间为5分钟
         SseEmitter emitter = new SseEmitter(300_000L);
         
-        log.info("=== askAgentStreamInternal Called ===");
+        log.info("=== askStreamInternal Called ===");
         log.info("Model: {}, SessionId: {}, UserId: {}", model, sessionId, userId);
-        log.info("Initial Prompt: {}", initialPrompt);
-        log.info("System Prompt length: {}", initialSystemPrompt != null ? initialSystemPrompt.length() : 0);
-        if (initialSystemPrompt != null && initialSystemPrompt.length() > 0) {
-            log.info("System Prompt preview (first 500 chars): {}", 
-                initialSystemPrompt.substring(0, Math.min(500, initialSystemPrompt.length())));
-        }
-        
-        // 生成循环 ID
-        String loopId = java.util.UUID.randomUUID().toString();
+        log.info("Prompt: {}", initialPrompt);
         
         new Thread(() -> {
             try {
-                log.info("=== Agent Loop Thread Started ===");
+                log.info("=== Chat Thread Started ===");
                 
-                log.info("Agent 循环开始: sessionId={}, loopId={}, systemPrompt length={}", 
-                    sessionId, loopId, initialSystemPrompt != null ? initialSystemPrompt.length() : 0);
-                
-                // 循环变量
-                String currentPrompt = initialPrompt;
-                String currentSystemPrompt = initialSystemPrompt;
-                List<Map<String, Object>> currentTasks = initialTasks != null ? new ArrayList<>(initialTasks) : new ArrayList<>();
-                int nMessagesSent = 0;
-                boolean shouldSendAnotherMessage = true;
-                
-                // 主循环（参考 void-main 的 while (shouldSendAnotherMessage)）
-                while (shouldSendAnotherMessage && nMessagesSent < MAX_AGENT_LOOPS) {
-                    shouldSendAnotherMessage = false;
-                    nMessagesSent++;
-                    
-                    log.debug("Agent Loop iteration {}: sessionId={}", nMessagesSent, sessionId);
-                    
-                    // LLM 请求重试循环（参考 void-main 的 while (shouldRetryLLM)）
-                    boolean shouldRetryLLM = true;
-                    int nAttempts = 0;
-                    String fullResponse = null;
-                    boolean llmSuccess = false;
-                    
-                    while (shouldRetryLLM && nAttempts < CHAT_RETRIES) {
-                        shouldRetryLLM = false;
-                        nAttempts++;
-                        
-                        try {
-                    // 执行对话并获取完整回复
-                            log.info("准备调用 LLM: prompt length={}, systemPrompt length={}", 
-                                currentPrompt != null ? currentPrompt.length() : 0,
-                                currentSystemPrompt != null ? currentSystemPrompt.length() : 0);
-                            fullResponse = performBlockingChat(currentPrompt, sessionId, model, userId, currentSystemPrompt, emitter);
-                            log.info("LLM 响应完成: response length={}", fullResponse != null ? fullResponse.length() : 0);
-                            llmSuccess = true;
-                    
-                    // Hook for capturing response
-                    if (onResponse != null) {
-                        try {
-                            onResponse.accept(fullResponse);
-                        } catch (Exception e) {
-                                    log.error("Error in onResponse hook: {}", e.getMessage(), e);
-                        }
-                    }
-
-                        } catch (Exception e) {
-                            log.error("LLM 请求失败 (attempt {}/{}): {}", nAttempts, CHAT_RETRIES, e.getMessage(), e);
-                            
-                            // 检查是否需要重试
-                            if (nAttempts < CHAT_RETRIES) {
-                                shouldRetryLLM = true;
-                                
-                                // 等待后重试
-                                try {
-                                    Thread.sleep(RETRY_DELAY_MS);
-                                } catch (InterruptedException ie) {
-                                    Thread.currentThread().interrupt();
-                                    break;
-                                }
-                                continue;
-                            } else {
-                                // 重试次数用尽，发送错误消息
-                                String errorMsg = "LLM 请求失败，已重试 " + CHAT_RETRIES + " 次: " + e.getMessage();
-                                log.error(errorMsg);
-                                emitter.send(SseEmitter.event()
-                                        .name("error")
-                                        .data("{\"message\": \"" + errorMsg + "\"}"));
-                                        break;
-                                    }
-                                }
-                    }
-                    
-                    // 如果 LLM 请求失败，退出循环
-                    if (!llmSuccess || fullResponse == null) {
-                        break;
-                    }
-                    
-                    // 解析回复，检查是否需要继续循环
-                    // 使用 XML 格式解析工具调用（参考 void-main 的 extractXMLToolsWrapper）
-                    try {
-                        // 提取纯文本（移除工具调用部分）
-                        List<String> availableTools = toolsService.getAvailableTools();
-                        log.debug("可用工具列表: {}", availableTools);
-                        log.debug("LLM 完整响应: {}", fullResponse);
-                        
-                        String plainText = toolCallParser.extractPlainText(fullResponse, availableTools);
-                        log.debug("提取的纯文本: {}", plainText);
-                        
-                        // 尝试解析工具调用
-                        ToolCallParser.ParsedToolCall parsedToolCall = toolCallParser.extractToolCall(fullResponse, availableTools);
-                        log.info("[Agent循环] 🔧 工具调用解析结果: {}", parsedToolCall != null ? 
-                            String.format("tool=%s, complete=%s, id=%s, params=%s", 
-                                parsedToolCall.getToolName(), 
-                                parsedToolCall.isComplete(),
-                                parsedToolCall.getToolId(),
-                                parsedToolCall.getRawParams()) : "null");
-                        
-                        if (parsedToolCall != null && parsedToolCall.isComplete()) {
-                            // 工具调用处理（参考 void-main 的 _runToolCall）
-                            String toolName = parsedToolCall.getToolName();
-                            String decisionId = parsedToolCall.getToolId();
-                            Map<String, Object> unvalidatedParams = parsedToolCall.getRawParams();
-                            
-                            log.info("[Agent循环] 📞 准备调用工具 - toolName={}, decisionId={}, iteration={}", 
-                                    toolName, decisionId, nMessagesSent);
-                            
-                            // 调用重构后的工具调用方法
-                            ToolCallResult toolCallResult = runToolCall(
-                                    toolName, 
-                                    decisionId, 
-                                    unvalidatedParams, 
-                                    sessionId, 
-                                    userId, 
-                                    model, 
-                                    emitter, 
-                                    false // preapproved
-                            );
-                            
-                            log.info("[Agent循环] 📞 工具调用完成 - toolName={}, decisionId={}, result={}", 
-                                    toolName, decisionId, 
-                                    toolCallResult.hasError() ? "error" : "success");
-                            
-                            if (toolCallResult.isInterrupted()) {
-                                break;
-                            }
-                            
-                            if (toolCallResult.hasError()) {
-                                shouldSendAnotherMessage = true;
-                                currentPrompt = String.format("工具 '%s' 执行失败: %s。请修正后重试。", toolName, toolCallResult.getError());
-                                continue;
-                            }
-                            
-                            // 工具执行成功，继续循环
-                            log.info("[Agent循环] 工具执行成功，准备继续循环 - toolName={}, decisionId={}, nMessagesSent={}", 
-                                    toolName, decisionId, nMessagesSent);
-                                shouldSendAnotherMessage = true;
-                            currentPrompt = ""; // 空prompt，让LLM基于历史消息继续
-                            log.info("[Agent循环] 已设置 shouldSendAnotherMessage=true，将在下一轮继续");
-                                
-                        } else {
-                            // 没有检测到工具调用，检查是否有纯文本响应
-                            if (plainText != null && !plainText.isEmpty()) {
-                                // 纯文本响应，结束循环
-                                log.info("[Agent循环] LLM 返回纯文本响应，结束循环 - plainTextLength={}", plainText.length());
-                                shouldSendAnotherMessage = false;
-                            } else {
-                                log.info("[Agent循环] 未检测到工具调用和纯文本，结束循环");
-                                shouldSendAnotherMessage = false;
-                            }
-                        }
-                    } catch (Exception e) {
-                        log.error("Error parsing agent response: {}", e.getMessage(), e);
-                        // 解析错误不影响继续，但不再继续循环
-                    }
-                    
-                    // 处理任务更新（保留兼容性）
-                    try {
-                        String jsonStr = extractJson(fullResponse);
-                        if (jsonStr != null) {
-                            JsonNode root = objectMapper.readTree(jsonStr);
-                            String type = root.has("type") ? root.get("type").asText() : "";
-                            
-                            if ("task_update".equals(type)) {
-                                // 任务状态更新
-                                String taskId = root.path("taskId").asText();
-                                String status = root.path("status").asText();
-                                String desc = root.path("desc").asText("");
-                                
-                                boolean taskFound = false;
-                                for (Map<String, Object> task : currentTasks) {
-                                    if (String.valueOf(task.get("id")).equals(taskId)) {
-                                        task.put("status", status);
-                                        desc = (String) task.get("desc");
-                                        taskFound = true;
-                                        break;
-                                    }
-                                }
-                                
-                                if (taskFound) {
-                                    shouldSendAnotherMessage = true;
-                                    currentPrompt = String.format("任务 %s (ID: %s) 状态已更新为 %s。请继续执行该任务的具体操作，或进行下一步。", desc, taskId, status);
-                                    currentSystemPrompt = updateSystemPromptWithTasks(currentSystemPrompt, currentTasks);
-                                }
-                            } else if ("TASK_LIST".equals(type) || "task_list".equals(type)) {
-                                // 任务列表更新
-                                JsonNode tasksNode = root.path("tasks");
-                                if (tasksNode.isArray()) {
-                                    List<Map<String, Object>> newTasks = new ArrayList<>();
-                                    for (JsonNode t : tasksNode) {
-                                        @SuppressWarnings("unchecked")
-                                        Map<String, Object> taskMap = objectMapper.convertValue(t, Map.class);
-                                        newTasks.add(taskMap);
-                                    }
-                                    currentTasks = newTasks;
-                                    currentSystemPrompt = updateSystemPromptWithTasks(currentSystemPrompt, currentTasks);
-                                    
-                                    currentPrompt = "任务列表已接收。请开始执行第一个任务。";
-                                    shouldSendAnotherMessage = true;
-                                }
-                            } else if ("TASK_COMPLETE".equals(type)) {
-                                currentPrompt = "当前任务已完成。请检查是否还有剩余任务，如果有则继续，没有则结束。";
-                                shouldSendAnotherMessage = true;
-                            }
-                        } else {
-                            // 没有 JSON，纯文本响应，结束循环
-                            log.debug("LLM 返回纯文本响应，结束 Agent 循环");
-                        }
-                    } catch (Exception e) {
-                        log.error("Error parsing agent response: {}", e.getMessage(), e);
-                        // 解析错误不影响继续，但不再继续循环
-                    }
-                }
-                
-                // 清理和结束
-                log.info("[Agent循环] 循环结束 - sessionId={}, nMessagesSent={}", 
-                        sessionId, nMessagesSent);
+                // 执行对话并获取完整回复（内部已处理 SSE 发送）
+                performBlockingChat(initialPrompt, sessionId, model, userId, null, emitter);
                 
                 // 发送完成事件
-                log.info("[Agent循环] 发送完成事件 - sessionId={}", sessionId);
+                log.info("对话完成，发送 [DONE] 事件 - sessionId={}", sessionId);
                 try {
                     emitter.send(SseEmitter.event().data("[DONE]"));
                     emitter.complete();
-                    log.info("[Agent循环] 完成事件已发送 - sessionId={}", sessionId);
                 } catch (Exception e) {
-                    log.error("[Agent循环] 发送完成事件失败 - sessionId={}", sessionId, e);
+                    log.error("发送完成事件失败 - sessionId={}", sessionId, e);
                 }
                 
             } catch (Exception e) {
-                log.error("Agent 循环异常: sessionId={}", sessionId, e);
+                log.error("对话异常: sessionId={}", sessionId, e);
                 handleError(emitter, e);
             }
         }).start();
         
         return emitter;
-    }
-
-    /**
-     * 提取 JSON（参考 void-main 的解析机制，支持多种格式）
-     * 改进：更准确地提取工具调用 JSON，支持各种可能的格式
-     */
-    private String extractJson(String content) {
-        if (content == null || content.isEmpty()) return null;
-        
-        // 方式1: 查找 ```json 代码块（最优先，最可靠）
-        int codeBlockStart = content.indexOf("```json");
-        if (codeBlockStart != -1) {
-            int jsonStart = codeBlockStart + 7; // Length of "```json"
-            int codeBlockEnd = content.indexOf("```", jsonStart);
-            if (codeBlockEnd > jsonStart) {
-                String json = content.substring(jsonStart, codeBlockEnd).trim();
-                if (!json.isEmpty()) {
-                    return json;
-                }
-            }
-        }
-        
-        // 方式2: 查找 ``` 代码块（可能是其他语言标记，但内容是 JSON）
-        codeBlockStart = content.indexOf("```");
-        if (codeBlockStart != -1) {
-            int jsonStart = content.indexOf("\n", codeBlockStart);
-            if (jsonStart < 0) jsonStart = codeBlockStart + 3;
-            int codeBlockEnd = content.indexOf("```", jsonStart);
-            if (codeBlockEnd > jsonStart) {
-                String json = content.substring(jsonStart, codeBlockEnd).trim();
-                // 检查是否是 JSON（以 { 或 [ 开头）
-                if ((json.startsWith("{") || json.startsWith("[")) && 
-                    (json.endsWith("}") || json.endsWith("]"))) {
-                    return json;
-                }
-            }
-        }
-        
-        // 方式3: 查找第一个完整的 JSON 对象（从第一个 { 到匹配的 }）
-        // 使用栈来匹配括号，确保提取完整的 JSON
-        int startObj = content.indexOf("{");
-        if (startObj >= 0) {
-            int braceCount = 0;
-            int endObj = startObj;
-            for (int i = startObj; i < content.length(); i++) {
-                char c = content.charAt(i);
-                if (c == '{') braceCount++;
-                else if (c == '}') {
-                    braceCount--;
-                    if (braceCount == 0) {
-                        endObj = i;
-                        break;
-                    }
-                }
-            }
-            if (braceCount == 0 && endObj > startObj) {
-                String json = content.substring(startObj, endObj + 1).trim();
-                // 验证是否是有效的 JSON 格式
-                if (json.startsWith("{") && json.endsWith("}")) {
-                    return json;
-                }
-            }
-        }
-        
-        // 方式4: 查找第一个完整的 JSON 数组（从第一个 [ 到匹配的 ]）
-        int startArr = content.indexOf("[");
-        if (startArr >= 0) {
-            int bracketCount = 0;
-            int endArr = startArr;
-            for (int i = startArr; i < content.length(); i++) {
-                char c = content.charAt(i);
-                if (c == '[') bracketCount++;
-                else if (c == ']') {
-                    bracketCount--;
-                    if (bracketCount == 0) {
-                        endArr = i;
-                        break;
-                    }
-                }
-            }
-            if (bracketCount == 0 && endArr > startArr) {
-                String json = content.substring(startArr, endArr + 1).trim();
-                if (json.startsWith("[") && json.endsWith("]")) {
-                    return json;
-                }
-            }
-        }
-        
-        // 方式5: 如果整个内容看起来像 JSON
-        String trimmed = content.trim();
-        if ((trimmed.startsWith("{") && trimmed.endsWith("}")) ||
-            (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
-            return trimmed;
-        }
-        
-        log.debug("Failed to extract JSON from content (length: {}): {}", 
-                content.length(), 
-                content.length() > 200 ? content.substring(0, 200) + "..." : content);
-        return null;
-    }
-    
-
-    
-    private String updateSystemPromptWithTasks(String systemPrompt, List<Map<String, Object>> tasks) {
-        if (tasks == null || tasks.isEmpty()) return systemPrompt;
-        
-        StringBuilder taskContext = new StringBuilder();
-        taskContext.append("当前任务链状态：\n");
-        for (Map<String, Object> task : tasks) {
-            taskContext.append(String.format("- [%s] %s (ID: %s)\n", 
-                task.get("status"), task.get("desc"), task.get("id")));
-        }
-        
-        String startMarker = "当前任务链状态：";
-        int startIndex = systemPrompt.indexOf(startMarker);
-        if (startIndex == -1) {
-            startMarker = "当前暂无进行中的任务链。";
-            startIndex = systemPrompt.indexOf(startMarker);
-        }
-        
-        if (startIndex != -1) {
-            // 查找 # Current Task Context 标题
-            String sectionHeader = "# Current Task Context";
-            int sectionIndex = systemPrompt.indexOf(sectionHeader);
-            if (sectionIndex != -1) {
-                 int nextSectionIndex = systemPrompt.indexOf("#", sectionIndex + sectionHeader.length());
-                 if (nextSectionIndex == -1) nextSectionIndex = systemPrompt.length();
-                 
-                 String pre = systemPrompt.substring(0, sectionIndex + sectionHeader.length());
-                 String post = systemPrompt.substring(nextSectionIndex);
-                 return pre + "\n" + taskContext.toString() + "\n" + post;
-            }
-        }
-        return systemPrompt;
     }
 
     private String performBlockingChat(String prompt, String sessionId, String model, Long userId, String systemPrompt, SseEmitter emitter) throws IOException {
@@ -1136,189 +753,4 @@ public class AiChatServiceImpl implements AiChatService {
         }
     }
     
-    /**
-     * 工具调用结果类（参考 void-main 的 _runToolCall 返回值）
-     */
-    private static class ToolCallResult {
-        private final boolean interrupted;
-        private final String error;
-        
-        private ToolCallResult(boolean interrupted, String error) {
-            this.interrupted = interrupted;
-            this.error = error;
-        }
-        
-        public static ToolCallResult success() {
-            return new ToolCallResult(false, null);
-        }
-        
-        public static ToolCallResult error(String error) {
-            return new ToolCallResult(false, error);
-        }
-        
-        public boolean isInterrupted() {
-            return interrupted;
-        }
-        
-        public boolean hasError() {
-            return error != null;
-        }
-        
-        public String getError() {
-            return error;
-        }
-    }
-    
-    /**
-     * 执行工具调用
-     * 
-     * 流程：
-     * 1. 参数验证
-     * 2. 执行工具
-     * 3. 处理结果并字符串化
-     * 4. 添加到消息历史
-     * 
-     * @param toolName 工具名称
-     * @param toolId 工具调用ID（decisionId）
-     * @param unvalidatedParams 未验证的参数
-     * @param sessionId 会话ID
-     * @param userId 用户ID
-     * @param model 模型名称
-     * @param emitter SSE发射器
-     * @param preapproved 是否已预批准
-     * @return 工具调用结果
-     */
-    private ToolCallResult runToolCall(
-            String toolName,
-            String toolId,
-            Map<String, Object> unvalidatedParams,
-            String sessionId,
-            Long userId,
-            String model,
-            SseEmitter emitter,
-            boolean preapproved
-    ) {
-        log.info("[工具调用] 开始 - toolName={}, toolId={}, sessionId={}", toolName, toolId, sessionId);
-        
-        Map<String, Object> validatedParams;
-        ToolsService.ToolResult toolResult;
-        String toolResultStr;
-        
-        try {
-            // 步骤 1: 参数验证
-            if (!preapproved) {
-                String validationError = toolsService.validateParams(toolName, unvalidatedParams);
-                if (validationError != null) {
-                    log.warn("[工具调用] 参数验证失败 - toolName={}, error={}", toolName, validationError);
-                    try {
-                        Map<String, Object> errorData = new HashMap<>();
-                        errorData.put("tool", toolName);
-                        errorData.put("toolName", toolName);
-                        errorData.put("error", validationError);
-                        errorData.put("decision_id", toolId);
-                        errorData.put("decisionId", toolId);
-                        errorData.put("type", "invalid_params");
-                        emitter.send(SseEmitter.event()
-                                .name("tool_error")
-                                .data(objectMapper.writeValueAsString(errorData)));
-                    } catch (Exception e) {
-                        log.error("[工具调用] 发送错误事件失败 - toolName={}", toolName, e);
-                    }
-                    return ToolCallResult.error(validationError);
-                }
-                validatedParams = unvalidatedParams;
-            } else {
-                validatedParams = unvalidatedParams;
-            }
-            
-            // 步骤 2: 执行工具
-            // 发送工具运行中事件（前端需要这个事件来显示"执行中"状态）
-            try {
-                Map<String, Object> runningData = new HashMap<>();
-                runningData.put("toolName", toolName);
-                runningData.put("tool", toolName);
-                runningData.put("params", validatedParams);
-                runningData.put("decisionId", toolId);
-                runningData.put("decision_id", toolId);
-                runningData.put("type", "running_now");
-                runningData.put("content", "(执行中...)");
-                emitter.send(SseEmitter.event()
-                        .name("tool_running")
-                        .data(objectMapper.writeValueAsString(runningData)));
-            } catch (Exception e) {
-                log.warn("[工具调用] 发送运行中事件失败（非关键） - toolName={}", toolName);
-            }
-            
-            long startTime = System.currentTimeMillis();
-            try {
-                toolResult = toolsService.callTool(toolName, validatedParams, userId, sessionId);
-                long duration = System.currentTimeMillis() - startTime;
-                log.info("[工具调用] 执行完成 - toolName={}, success={}, duration={}ms", 
-                        toolName, toolResult.isSuccess(), duration);
-            } catch (Exception e) {
-                log.error("[工具调用] 执行异常 - toolName={}, error={}", toolName, e.getMessage(), e);
-                toolResult = ToolsService.ToolResult.error("工具执行异常: " + e.getMessage());
-            }
-            
-            // 步骤 3: 字符串化结果
-            toolResultStr = toolResult.isSuccess() 
-                    ? toolResult.getStringResult() 
-                    : (toolResult.getError() != null ? toolResult.getError() : toolResult.getStringResult());
-            
-            // 步骤 4: 发送工具结果给前端
-            log.info("[工具调用] 准备发送结果事件 - toolName={}, toolId={}, success={}", 
-                    toolName, toolId, toolResult.isSuccess());
-            try {
-                Map<String, Object> toolResultData = new HashMap<>();
-                toolResultData.put("toolName", toolName);
-                toolResultData.put("tool", toolName);
-                toolResultData.put("params", validatedParams);
-                toolResultData.put("decisionId", toolId);
-                toolResultData.put("decision_id", toolId);
-                toolResultData.put("success", toolResult.isSuccess());
-                toolResultData.put("stringResult", toolResultStr);
-                toolResultData.put("result", toolResultStr);
-                toolResultData.put("error", toolResult.getError());
-                toolResultData.put("data", toolResult.getData());
-                toolResultData.put("type", toolResult.isSuccess() ? "success" : "tool_error");
-                
-                String resultJson = objectMapper.writeValueAsString(toolResultData);
-                log.info("[工具调用] 发送结果事件 - toolName={}, toolId={}, jsonLength={}", 
-                        toolName, toolId, resultJson.length());
-                
-                emitter.send(SseEmitter.event()
-                        .name("tool_result")
-                        .data(resultJson));
-                
-                log.info("[工具调用] 结果事件已发送 - toolName={}, toolId={}", toolName, toolId);
-            } catch (Exception e) {
-                log.error("[工具调用] 发送结果事件失败 - toolName={}, toolId={}, error={}", 
-                        toolName, toolId, e.getMessage(), e);
-            }
-            
-            // 步骤 5: 保存到消息历史
-            String toolResultMessage = toolCallParser.formatToolResult(toolName, toolResultStr);
-            try {
-                // ✅ 关键修复：使用 senderType=3（工具结果/系统反馈）而不是 1（用户消息）
-                chatRecordService.createChatRecord(
-                        toolResultMessage, 3, userId, sessionId, model,
-                        "completed", "chat", null,
-                        toolResult.isSuccess() ? 0 : -1,
-                        toolResult.getStringResult(),
-                        toolResult.getError()
-                );
-                log.info("[工具调用] 工具结果已保存到历史 - toolName={}, toolId={}, senderType=3", toolName, toolId);
-            } catch (Exception e) {
-                log.error("[工具调用] 保存历史失败 - toolName={}, toolId={}", toolName, toolId, e);
-            }
-            
-            log.info("[工具调用] 工具调用完成，返回成功 - toolName={}, toolId={}, success={}", 
-                    toolName, toolId, toolResult.isSuccess());
-            return ToolCallResult.success();
-            
-        } catch (Exception e) {
-            log.error("[工具调用] 异常 - toolName={}, error={}", toolName, e.getMessage(), e);
-            return ToolCallResult.error("工具调用异常: " + e.getMessage());
-        }
-    }
 }

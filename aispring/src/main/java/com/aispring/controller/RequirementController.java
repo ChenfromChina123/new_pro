@@ -87,8 +87,8 @@ public class RequirementController {
     @PreAuthorize("isAuthenticated()")
     public SseEmitter generateDocStream(@AuthenticationPrincipal CustomUserDetails currentUser, @RequestBody Map<String, String> request) {
         String prompt = request.get("prompt");
-        String fullPrompt = "请根据以下需求，生成一份详细的需求文档（Markdown格式）：\n" + prompt;
+        String fullPrompt = "You are a professional Product Manager.\n请根据以下需求，生成一份详细的需求文档（Markdown格式）：\n" + prompt;
         // Use a generic model or specific one. Assuming 'deepseek-chat' as default.
-        return aiChatService.askAgentStream(fullPrompt, null, "deepseek-chat", currentUser.getUser().getId(), "You are a professional Product Manager.", null, null);
+        return aiChatService.askStream(fullPrompt, null, "deepseek-chat", currentUser.getUser().getId());
     }
 }
