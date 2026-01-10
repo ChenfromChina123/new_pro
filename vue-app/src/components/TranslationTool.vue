@@ -105,7 +105,7 @@ const handleTranslate = async () => {
       sourceLanguage: sourceLanguage.value
     })
     
-  if (response.success) {
+    if (response.code === 200) {
       translatedText.value = response.data
     } else {
       alert(response.message || '翻译失败')

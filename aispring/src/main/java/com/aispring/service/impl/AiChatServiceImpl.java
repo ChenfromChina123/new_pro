@@ -564,8 +564,6 @@ public class AiChatServiceImpl implements AiChatService {
         if (systemPrompt != null && !systemPrompt.isEmpty()) {
             log.debug("添加系统提示词到消息列表: length={}", systemPrompt.length());
             messages.add(new org.springframework.ai.chat.messages.SystemMessage(systemPrompt));
-        } else {
-            log.warn("系统提示词为空或null！这可能导致 AI 不使用工具！");
         }
 
         // 获取历史消息
