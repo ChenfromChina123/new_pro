@@ -45,6 +45,16 @@
 
 ##### 🚀 最近更新
 
+### 🛠️ AI 对话逻辑简化 (2026-01-10)
+- **移除 Agent 循环**:
+  - 取消了所有基于 Agent 循环的工具调用和任务自动更新逻辑，回归纯粹的普通对话模式。
+  - 移除了 `AiChatService` 中的 `askAgentStream` 接口，统一使用 `askStream` 进行流式问答。
+  - 清理了不再使用的 `ToolsService`、`ToolCallParser` 等相关类和方法，减少了系统复杂度。
+  - 优化了对话核心实现，移除了不必要的 JSON 解析和任务上下文维护逻辑，提升了响应速度。
+- **配置安全性增强**:
+  - 对 `application.yml` 中的 DeepSeek 和 豆包 API Key 进行了 Jasypt 加密处理。
+  - 支持通过环境变量 `JASYPT_ENCRYPTOR_PASSWORD` 注入解密密钥，避免敏感信息明文泄露。
+
 ### 🛠️ 管理后台文件预览与下载修复 (2026-01-06)
 - **PDF & 图片预览修复**:
   - 修复了 PDF 预览显示“获取内容失败”的问题，通过在前端请求中添加 `transformResponse: [(data) => data]` 成功获取并解析了原始 Blob 数据。
