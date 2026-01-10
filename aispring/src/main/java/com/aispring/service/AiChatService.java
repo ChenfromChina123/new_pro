@@ -24,7 +24,15 @@ public interface AiChatService {
      * @param sessionId 会话ID
      * @param model 模型名称
      * @param userId 用户ID
+     * @param systemPrompt 系统提示词
      * @return 非流式响应
      */
-    String ask(String prompt, String sessionId, String model, Long userId);
+    String ask(String prompt, String sessionId, String model, Long userId, String systemPrompt);
+    
+    /**
+     * AI非流式问答（默认系统提示词）
+     */
+    default String ask(String prompt, String sessionId, String model, Long userId) {
+        return ask(prompt, sessionId, model, userId, null);
+    }
 }

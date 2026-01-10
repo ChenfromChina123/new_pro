@@ -34,22 +34,22 @@ public class TranslationServiceImpl implements TranslationService {
         log.info("开始翻译文本: targetLanguage={}, text={}", targetLang, 
                 request.getText().length() > 20 ? request.getText().substring(0, 20) + "..." : request.getText());
 
-        // 构建翻译提示词
+        // 构建系统提示词和用户提示词
         String sourceLangInfo = (request.getSourceLanguage() != null && !request.getSourceLanguage().isEmpty()) 
                 ? " from " + request.getSourceLanguage() 
                 : "";
         
-        String prompt = String.format(
-                "You are a professional translator. Please translate the following text%s to %s.\n" +
+        String systemPrompt = "You are a professional translator. Your task is to translate text accurately while maintaining the original meaning and tone.";
+        String userPrompt = String.format(
+                "Please translate the following text%s to %s.\n" +
                 "Only provide the translated text, no explanations or additional content.\n\n" +
                 "Text to translate:\n%s",
                 sourceLangInfo, targetLang, request.getText()
         );
-
-        // 使用默认模型进行翻译
-        // 这里 session_id 传 null，model 传 null 使用默认模型
+        
+        // 使用系统提示词进行翻译
         try {
-            String translatedText = aiChatService.ask(prompt, null, null, null);
+            String translatedText = aiChatService.ask(userPrompt, null, null, null, systemPrompt);
             return translatedText != null ? translatedText.trim() : "";
         } catch (Exception e) {
             log.error("翻译过程中出现错误: ", e);
