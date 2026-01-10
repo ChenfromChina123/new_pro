@@ -1,5 +1,6 @@
 package com.aispring.exception;
 
+import com.aispring.dto.response.ApiResponse;
 import com.aispring.dto.response.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -19,34 +20,25 @@ import java.util.Map;
 public class GlobalExceptionHandler {
     
     @ExceptionHandler(CustomException.class)
-    public ResponseEntity<ErrorResponse> handleCustomException(CustomException ex) {
+    public ResponseEntity<ApiResponse<Void>> handleCustomException(CustomException ex) {
         log.error("业务异常: {}", ex.getMessage());
-        ErrorResponse error = ErrorResponse.builder()
-                .detail(ex.getMessage())
-                .build();
-        return ResponseEntity.badRequest().body(error);
+        return ResponseEntity.badRequest().body(ApiResponse.error(400, ex.getMessage()));
     }
     
     @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<ErrorResponse> handleBadCredentials(BadCredentialsException ex) {
+    public ResponseEntity<ApiResponse<Void>> handleBadCredentials(BadCredentialsException ex) {
         log.error("认证失败: {}", ex.getMessage());
-        ErrorResponse error = ErrorResponse.builder()
-                .detail("用户名或密码错误")
-                .build();
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error(401, "用户名或密码错误"));
     }
     
     @ExceptionHandler(UsernameNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleUsernameNotFound(UsernameNotFoundException ex) {
+    public ResponseEntity<ApiResponse<Void>> handleUsernameNotFound(UsernameNotFoundException ex) {
         log.error("用户不存在: {}", ex.getMessage());
-        ErrorResponse error = ErrorResponse.builder()
-                .detail("用户不存在")
-                .build();
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(404, "用户不存在"));
     }
     
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleValidationExceptions(
+    public ResponseEntity<ApiResponse<Void>> handleValidationExceptions(
             MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach((error) -> {
@@ -58,19 +50,14 @@ public class GlobalExceptionHandler {
         
         // 拼接错误消息
         String message = "参数验证失败: " + errors.values().stream().findFirst().orElse("格式不正确");
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .detail(message)
-                .build();
-        return ResponseEntity.badRequest().body(errorResponse);
+        return ResponseEntity.badRequest().body(ApiResponse.error(400, message));
     }
     
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
+    public ResponseEntity<ApiResponse<Void>> handleGenericException(Exception ex) {
         log.error("系统异常: {}", ex.getMessage(), ex);
-        ErrorResponse error = ErrorResponse.builder()
-                .detail("服务器内部错误: " + ex.getMessage())
-                .build();
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(500, "服务器内部错误: " + ex.getMessage()));
     }
 }
 
