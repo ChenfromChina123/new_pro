@@ -25,7 +25,13 @@ public class TranslationServiceImpl implements TranslationService {
      */
     @Override
     public String translate(TranslationRequest request) {
-        log.info("开始翻译文本: targetLanguage={}, text={}", request.getTargetLanguage(), 
+        // 设置默认目标语言
+        String targetLang = request.getTargetLanguage();
+        if (targetLang == null || targetLang.trim().isEmpty()) {
+            targetLang = "English";
+        }
+
+        log.info("开始翻译文本: targetLanguage={}, text={}", targetLang, 
                 request.getText().length() > 20 ? request.getText().substring(0, 20) + "..." : request.getText());
 
         // 构建翻译提示词
@@ -37,7 +43,7 @@ public class TranslationServiceImpl implements TranslationService {
                 "You are a professional translator. Please translate the following text%s to %s.\n" +
                 "Only provide the translated text, no explanations or additional content.\n\n" +
                 "Text to translate:\n%s",
-                sourceLangInfo, request.getTargetLanguage(), request.getText()
+                sourceLangInfo, targetLang, request.getText()
         );
 
         // 使用默认模型进行翻译
