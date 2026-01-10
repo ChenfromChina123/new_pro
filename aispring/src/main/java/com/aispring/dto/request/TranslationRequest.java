@@ -18,7 +18,6 @@ public class TranslationRequest {
     /**
      * 目标语言 (如: English, Chinese, Japanese, etc.)
      */
-    @NotBlank(message = "目标语言不能为空")
     private String targetLanguage;
 
     /**

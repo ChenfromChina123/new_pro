@@ -101,7 +101,7 @@ const handleTranslate = async () => {
   try {
     const response = await request.post(API_ENDPOINTS.translation.translate, {
       text: sourceText.value,
-      targetLanguage: targetLanguage.value,
+      targetLanguage: targetLanguage.value || 'English',
       sourceLanguage: sourceLanguage.value
     })
     
