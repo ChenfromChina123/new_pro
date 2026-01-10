@@ -1,9 +1,12 @@
 package com.aispring.controller;
 
 import com.aispring.config.StorageProperties;
+import com.aispring.dto.request.ProfileUpdateRequest;
 import com.aispring.dto.response.ApiResponse;
+import com.aispring.entity.User;
 import com.aispring.security.CustomUserDetails;
 import com.aispring.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
@@ -30,6 +33,30 @@ import java.util.UUID;
 public class UserController {
     private final UserService userService;
     private final StorageProperties storageProperties;
+
+    /**
+     * 更新用户资料
+     */
+    @PutMapping("/profile")
+    public ResponseEntity<ApiResponse<User>> updateProfile(
+            @Valid @RequestBody ProfileUpdateRequest request,
+            @AuthenticationPrincipal CustomUserDetails customUserDetails) {
+        
+        try {
+            if (customUserDetails == null || customUserDetails.getUser() == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error(401, "请先登录"));
+            }
+            
+            Long userId = customUserDetails.getUser().getId();
+            User updatedUser = userService.updateUsername(userId, request.getUsername());
+            
+            return ResponseEntity.ok(ApiResponse.success("资料更新成功", updatedUser));
+        } catch (Exception e) {
+            log.error("更新资料失败: ", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error(500, "更新失败: " + e.getMessage()));
+        }
+    }
 
     /**
      * 上传用户头像

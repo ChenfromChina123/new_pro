@@ -184,6 +184,28 @@ export const useAuthStore = defineStore('auth', () => {
       }
     }
   }
+
+  // 更新用户资料
+  async function updateProfile(data) {
+    try {
+      const response = await request.put('/api/users/profile', data)
+      const updatedUser = response.data
+      
+      if (updatedUser) {
+        updateUserInfo({
+          username: updatedUser.username
+        })
+      }
+      
+      return { success: true, message: '个人资料更新成功' }
+    } catch (error) {
+      console.error('Update profile error:', error)
+      return { 
+        success: false, 
+        message: error.response?.data?.message || '更新失败' 
+      }
+    }
+  }
   
   // 退出登录
   function logout() {
@@ -225,6 +247,7 @@ export const useAuthStore = defineStore('auth', () => {
     sendVerificationCode,
     sendResetCode,
     resetPassword,
+    updateProfile,
     logout,
     updateUserInfo,
     forceRefreshUserInfo

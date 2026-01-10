@@ -33,6 +33,18 @@ public class UserService {
         user.setAvatar(avatarPath);
         return userRepository.save(user);
     }
+
+    /**
+     * 更新用户名
+     * @param userId 用户ID
+     * @param username 新用户名
+     * @return 更新后的用户对象
+     */
+    public User updateUsername(Long userId, String username) {
+        User user = getUserById(userId);
+        user.setUsername(username);
+        return userRepository.save(user);
+    }
     
     /**
      * 根据邮箱获取用户
