@@ -75,8 +75,7 @@ public class AiChatServiceImpl implements AiChatService {
     private ChatClient deepseekChatClient;
     private StreamingChatClient deepseekStreamingChatClient;
     
-    // 上下文最大消息数
-    private static final int MAX_CONTEXT_MESSAGES = 10;
+    // 上下文消息处理已修改为保留全部，不再受限
     
     public AiChatServiceImpl(ObjectProvider<ChatClient> chatClientProvider,
                              ObjectProvider<StreamingChatClient> streamingChatClientProvider,
@@ -320,9 +319,7 @@ public class AiChatServiceImpl implements AiChatService {
          
          if (sessionId != null && !sessionId.isEmpty()) {
              List<ChatRecord> history = chatRecordRepository.findByUserIdAndSessionIdOrderByMessageOrderAsc(userId, sessionId);
-             int start = Math.max(0, history.size() - MAX_CONTEXT_MESSAGES);
-             for (int i = start; i < history.size(); i++) {
-                 ChatRecord record = history.get(i);
+             for (ChatRecord record : history) {
                  Map<String, String> msg = new HashMap<>();
                  // 参考 void-main：工具结果（senderType=3）作为用户消息反馈给 LLM
                  if (record.getSenderType() == 1 || record.getSenderType() == 3) {
@@ -576,11 +573,7 @@ public class AiChatServiceImpl implements AiChatService {
         if (sessionId != null && !sessionId.isEmpty()) {
             List<ChatRecord> history = chatRecordRepository.findByUserIdAndSessionIdOrderByMessageOrderAsc(userId, sessionId);
             
-            // 截取最近的N条消息
-            int start = Math.max(0, history.size() - MAX_CONTEXT_MESSAGES);
-            List<ChatRecord> recentHistory = history.subList(start, history.size());
-            
-            for (ChatRecord record : recentHistory) {
+            for (ChatRecord record : history) {
                 if (record.getSenderType() == 1) { // User
                     messages.add(new UserMessage(record.getContent()));
                 } else if (record.getSenderType() == 2) { // AI
