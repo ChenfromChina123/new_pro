@@ -1,7 +1,6 @@
 package com.aispring.exception;
 
 import com.aispring.dto.response.ApiResponse;
-import com.aispring.dto.response.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

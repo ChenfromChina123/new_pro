@@ -61,7 +61,10 @@
           class="btn btn-secondary guest-btn"
           @click="handleGuestLogin"
         >
-          <i class="fas fa-user-secret" style="margin-right: 8px;"></i>
+          <i 
+            class="fas fa-user-secret" 
+            style="margin-right: 8px;" 
+          />
           游客试用
         </button>
         

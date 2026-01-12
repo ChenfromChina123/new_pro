@@ -12,8 +12,8 @@ spring:
     show-sql: true
     properties:
       hibernate:
-        format_sql: true
+        format-sql: true
 
 logging:
   level:
-    com.aispring: DEBUG
+    "[com.aispring]": DEBUG
