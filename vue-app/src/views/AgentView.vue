@@ -14,16 +14,41 @@
           <span>AI 智能学习助手</span>
         </div>
         <div class="nav-links">
-          <router-link to="/chat" class="nav-link">AI 问答</router-link>
-          <router-link to="/public-files" class="nav-link">公共资源</router-link>
+          <router-link 
+            to="/chat" 
+            class="nav-link"
+          >
+            AI 问答
+          </router-link>
+          <router-link 
+            to="/public-files" 
+            class="nav-link"
+          >
+            公共资源
+          </router-link>
           
           <div class="nav-actions">
             <template v-if="!authStore.isAuthenticated">
-              <router-link to="/login" class="btn-login">登录</router-link>
-              <router-link to="/register" class="btn-register">立即加入</router-link>
+              <router-link 
+                to="/login" 
+                class="btn-login"
+              >
+                登录
+              </router-link>
+              <router-link 
+                to="/register" 
+                class="btn-register"
+              >
+                立即加入
+              </router-link>
             </template>
             <template v-else>
-              <router-link to="/chat" class="btn-register">进入工作台</router-link>
+              <router-link 
+                to="/chat" 
+                class="btn-register"
+              >
+                进入工作台
+              </router-link>
             </template>
             <button 
               class="theme-toggle-btn" 
@@ -45,32 +70,62 @@
 
       <!-- 移动端侧边栏菜单 -->
       <transition name="slide">
-        <div v-if="isMobileMenuOpen" class="mobile-menu-overlay" @click="isMobileMenuOpen = false">
-          <div class="mobile-menu" @click.stop>
+        <div 
+          v-if="isMobileMenuOpen" 
+          class="mobile-menu-overlay" 
+          @click="isMobileMenuOpen = false"
+        >
+          <div 
+            class="mobile-menu" 
+            @click.stop
+          >
             <div class="mobile-menu-links">
-              <router-link to="/chat" class="mobile-nav-link" @click="isMobileMenuOpen = false">
+              <router-link 
+                to="/chat" 
+                class="mobile-nav-link" 
+                @click="isMobileMenuOpen = false"
+              >
                 <i class="fas fa-comments" /> AI 问答
               </router-link>
-              <router-link to="/public-files" class="mobile-nav-link" @click="isMobileMenuOpen = false">
+              <router-link 
+                to="/public-files" 
+                class="mobile-nav-link" 
+                @click="isMobileMenuOpen = false"
+              >
                 <i class="fas fa-folder-open" /> 公共资源
               </router-link>
               <div class="mobile-menu-divider" />
               <template v-if="!authStore.isAuthenticated">
-                <router-link to="/login" class="mobile-nav-link" @click="isMobileMenuOpen = false">
+                <router-link 
+                  to="/login" 
+                  class="mobile-nav-link" 
+                  @click="isMobileMenuOpen = false"
+                >
                   <i class="fas fa-sign-in-alt" /> 登录
                 </router-link>
-                <router-link to="/register" class="mobile-nav-link highlight" @click="isMobileMenuOpen = false">
+                <router-link 
+                  to="/register" 
+                  class="mobile-nav-link highlight" 
+                  @click="isMobileMenuOpen = false"
+                >
                   <i class="fas fa-user-plus" /> 立即加入
                 </router-link>
               </template>
               <template v-else>
-                <router-link to="/chat" class="mobile-nav-link highlight" @click="isMobileMenuOpen = false">
+                <router-link 
+                  to="/chat" 
+                  class="mobile-nav-link highlight" 
+                  @click="isMobileMenuOpen = false"
+                >
                   <i class="fas fa-rocket" /> 进入工作台
                 </router-link>
               </template>
             </div>
             <div class="mobile-menu-footer">
-              <button class="mobile-theme-toggle" @click="themeStore.toggleDarkMode()">
+              <button 
+                class="mobile-theme-toggle" 
+                @click="themeStore.toggleDarkMode()"
+              >
                 <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" />
                 {{ themeStore.isDarkMode ? '切换浅色模式' : '切换深色模式' }}
               </button>
@@ -91,25 +146,32 @@
           一个强大的 AI 终端助手，支持多种 LLM 模型，提供智能的命令行交互体验。专为开发者打造的生产力工具。
         </p>
         <div class="hero-actions">
-          <a href="/xiaochen_terminal.zip" download class="btn-primary-lg">
-            <i class="fas fa-download"></i> 立即下载
+          <a 
+            href="/xiaochen_terminal.zip" 
+            download 
+            class="btn-primary-lg"
+          >
+            <i class="fas fa-download" /> 立即下载
           </a>
-          <button class="btn-secondary-lg" @click="scrollToFeatures">
+          <button 
+            class="btn-secondary-lg" 
+            @click="scrollToFeatures"
+          >
             了解功能 <i class="fas fa-chevron-down" />
           </button>
         </div>
         <div class="hero-stats">
           <div class="stat-item">
-            <span class="stat-number">LLM</span>
-            <span class="stat-label">多模型支持</span>
+            <span class="stat-number">5000+</span>
+            <span class="stat-label">活跃用户</span>
           </div>
           <div class="stat-item">
-            <span class="stat-number">Undo</span>
-            <span class="stat-label">多级回滚系统</span>
+            <span class="stat-number">20+</span>
+            <span class="stat-label">支持模型</span>
           </div>
           <div class="stat-item">
-            <span class="stat-number">OCR</span>
-            <span class="stat-label">智能视觉识别</span>
+            <span class="stat-number">99%</span>
+            <span class="stat-label">好评率</span>
           </div>
         </div>
       </div>
@@ -117,9 +179,9 @@
         <div class="visual-card terminal-mockup-wrapper">
           <div class="terminal-mockup">
             <div class="terminal-header">
-              <span class="dot red"></span>
-              <span class="dot yellow"></span>
-              <span class="dot green"></span>
+              <span class="dot red" />
+              <span class="dot yellow" />
+              <span class="dot green" />
               <span class="terminal-title">xiaochen-agent --bash</span>
             </div>
             <div class="terminal-body">
@@ -140,8 +202,12 @@
     <!-- Features Grid -->
     <section id="features" class="features-section">
       <div class="section-header reveal">
-        <h2 class="section-title">核心特性</h2>
-        <p class="section-subtitle">集成多项前沿技术，重塑您的终端使用体验</p>
+        <h2 class="section-title">
+          核心特性
+        </h2>
+        <p class="section-subtitle">
+          集成多项前沿技术，重塑您的终端使用体验
+        </p>
       </div>
       <div class="features-grid">
         <div 
@@ -150,14 +216,24 @@
           class="feature-card reveal"
           :style="{ transitionDelay: `${index * 150}ms` }"
         >
-          <div class="feature-icon" :style="{ backgroundColor: feature.color }">
-            <i :class="feature.icon"></i>
+          <div 
+            class="feature-icon" 
+            :style="{ backgroundColor: feature.color }"
+          >
+            <i :class="feature.icon" />
           </div>
-          <h3 class="feature-title">{{ feature.title }}</h3>
-          <p class="feature-desc">{{ feature.description }}</p>
+          <h3 class="feature-title">
+            {{ feature.title }}
+          </h3>
+          <p class="feature-desc">
+            {{ feature.description }}
+          </p>
           <ul class="feature-list">
-            <li v-for="item in feature.items" :key="item">
-              <i class="fas fa-check-circle"></i> {{ item }}
+            <li 
+              v-for="item in feature.items" 
+              :key="item"
+            >
+              <i class="fas fa-check-circle" /> {{ item }}
             </li>
           </ul>
         </div>
@@ -174,24 +250,36 @@
         
         <div class="guide-steps">
           <div class="step-item reveal">
-            <div class="step-number">01</div>
+            <div class="step-number">
+              01
+            </div>
             <div class="step-content">
               <h3>快速安装</h3>
               <p>下载压缩包并解压，根据您的操作系统运行 <code>scripts/install</code> 目录下的安装脚本。</p>
             </div>
           </div>
-          <div class="step-item reveal" style="transition-delay: 150ms;">
-            <div class="step-number">02</div>
+          <div 
+            class="step-item reveal" 
+            style="transition-delay: 150ms;"
+          >
+            <div class="step-number">
+              02
+            </div>
             <div class="step-content">
               <h3>配置模型</h3>
               <p>首次启动程序会提示输入 API Key，支持 DeepSeek、豆包等主流模型。配置自动保存至 <code>config.json</code>。</p>
             </div>
           </div>
-          <div class="step-item reveal" style="transition-delay: 300ms;">
-            <div class="step-number">03</div>
+          <div 
+            class="step-item reveal" 
+            style="transition-delay: 300ms;"
+          >
+            <div class="step-number">
+              03
+            </div>
             <div class="step-content">
-              <h3>开始对话</h3>
-              <p>在终端直接输入需求，AI 将智能理解意图并调用工具执行任务，如文件读写、命令执行等。</p>
+              <h3>开始使用</h3>
+              <p>在终端输入 <code>agent</code> 即可启动。输入 <code>agent --help</code> 查看详细命令说明。</p>
             </div>
           </div>
         </div>
@@ -365,12 +453,16 @@ onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll)
 })
 
+/**
+ * 核心功能特性配置
+ * 定义了在特性网格中展示的所有功能模块，包含标题、描述、图标及主题色
+ */
 const features = [
   {
     title: 'AI 智能核心',
     description: '深度集成 DeepSeek、豆包等大模型，智能理解复杂指令并执行任务。',
     icon: 'fas fa-robot',
-    color: 'rgba(59, 130, 246, 0.1)',
+    color: 'rgba(6, 182, 212, 0.1)',
     items: ['多模型无缝切换', '长文本上下文压缩', '工具调用可视化']
   },
   {
@@ -391,7 +483,7 @@ const features = [
     title: '智能 OCR 工具',
     description: '内置高性能 OCR 识别，支持图片和多页 PDF 文档内容提取。',
     icon: 'fas fa-eye',
-    color: 'rgba(139, 92, 246, 0.1)',
+    color: 'rgba(16, 185, 129, 0.1)',
     items: ['多并发识别', 'PDF 页码指定', '结果自动存储']
   }
 ]
@@ -479,19 +571,19 @@ const features = [
 
 .btn-register {
   text-decoration: none;
-  background: var(--gradient-primary);
+  background: linear-gradient(135deg, #06b6d4 0%, #10b981 100%);
   color: white;
   padding: 0.6rem 1.5rem;
   border-radius: 12px;
   font-weight: 700;
   font-size: 0.95rem;
-  transition: all 0.3s;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 8px 25px rgba(6, 182, 212, 0.25);
 }
 
 .btn-register:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 12px 30px rgba(6, 182, 212, 0.35);
 }
 
 .theme-toggle-btn {
@@ -544,7 +636,7 @@ const features = [
   right: -5%;
   width: 600px;
   height: 600px;
-  background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.15) 0%, transparent 70%);
   filter: blur(80px);
   z-index: -1;
 }
@@ -570,7 +662,7 @@ const features = [
 }
 
 .gradient-text {
-  background: linear-gradient(135deg, #3b82f6 0%, #2dd4bf 100%);
+  background: linear-gradient(135deg, #06b6d4 0%, #10b981 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -605,13 +697,13 @@ const features = [
   display: flex;
   align-items: center;
   gap: 10px;
-  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.25);
+  box-shadow: 0 8px 25px rgba(6, 182, 212, 0.25);
   text-decoration: none;
 }
 
 .btn-primary-lg:hover {
   transform: translateY(-3px);
-  box-shadow: 0 12px 30px rgba(59, 130, 246, 0.35);
+  box-shadow: 0 12px 30px rgba(6, 182, 212, 0.35);
 }
 
 .btn-secondary-lg {
@@ -656,13 +748,14 @@ const features = [
 
 .badge {
   display: inline-block;
-  padding: 0.5rem 1rem;
-  background-color: rgba(59, 130, 246, 0.1);
-  color: #3b82f6;
-  border-radius: 9999px;
+  padding: 0.5rem 1.25rem;
+  background-color: rgba(6, 182, 212, 0.1);
+  color: #06b6d4;
+  border-radius: 99px;
   font-size: 0.875rem;
-  font-weight: 600;
+  font-weight: 700;
   margin-bottom: 1.5rem;
+  border: 1px solid rgba(6, 182, 212, 0.2);
 }
 
 /* Hero Visual - Terminal Mockup */
@@ -723,7 +816,7 @@ const features = [
   margin-bottom: 4px;
 }
 
-.prompt { color: #3b82f6; font-weight: bold; margin-right: 8px; }
+.prompt { color: #06b6d4; font-weight: bold; margin-right: 8px; }
 .success { color: #4ade80; }
 .info { color: #60a5fa; }
 .cursor {
@@ -1013,7 +1106,7 @@ code {
   font-size: 0.95rem;
 }
 
-.c-prompt { color: #3b82f6; }
+.c-prompt { color: #06b6d4; }
 .c-success { color: #4ade80; }
 
 /* Reveal Animation */
@@ -1220,6 +1313,10 @@ code {
     gap: 2.5rem;
   }
 }
+
+.terminal-header {
+  display: flex;
+  align-items: center;
   gap: 0.5rem;
 }
 
@@ -1246,9 +1343,9 @@ code {
   line-height: 1.6;
 }
 
-.prompt { color: #3b82f6; font-weight: bold; }
+.prompt { color: #06b6d4; font-weight: bold; }
 .success { color: #4ade80; }
-.info { color: #60a5fa; }
+.info { color: #22d3ee; }
 .cursor {
   display: inline-block;
   width: 8px;
@@ -1532,7 +1629,7 @@ td code {
 
 .r-item i {
   font-size: 1.5rem;
-  color: #3b82f6;
+  color: #06b6d4;
 }
 
 .r-item span {
