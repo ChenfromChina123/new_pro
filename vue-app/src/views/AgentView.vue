@@ -1,5 +1,84 @@
 <template>
-  <div class="agent-view">
+  <div class="agent-standalone-page">
+    <!-- 导航栏 -->
+    <nav 
+      class="landing-nav" 
+      :class="{ 'scrolled': isScrolled }"
+    >
+      <div class="nav-container">
+        <div 
+          class="logo" 
+          @click="router.push('/')"
+        >
+          <i class="fas fa-brain" />
+          <span>AI 智能学习助手</span>
+        </div>
+        <div class="nav-links">
+          <router-link to="/chat" class="nav-link">AI 问答</router-link>
+          <router-link to="/public-files" class="nav-link">公共资源</router-link>
+          <div class="nav-actions">
+            <template v-if="!authStore.isAuthenticated">
+              <router-link to="/login" class="btn-login">登录</router-link>
+              <router-link to="/register" class="btn-register">立即加入</router-link>
+            </template>
+            <template v-else>
+              <router-link to="/chat" class="btn-register">进入工作台</router-link>
+            </template>
+            <button 
+              class="theme-toggle-btn" 
+              @click="themeStore.toggleDarkMode()"
+            >
+              <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" />
+            </button>
+          </div>
+        </div>
+
+        <!-- 移动端菜单按钮 -->
+        <button 
+          class="mobile-menu-btn"
+          @click="isMobileMenuOpen = !isMobileMenuOpen"
+        >
+          <i :class="isMobileMenuOpen ? 'fas fa-times' : 'fas fa-bars'" />
+        </button>
+      </div>
+
+      <!-- 移动端侧边栏菜单 -->
+      <transition name="slide">
+        <div v-if="isMobileMenuOpen" class="mobile-menu-overlay" @click="isMobileMenuOpen = false">
+          <div class="mobile-menu" @click.stop>
+            <div class="mobile-menu-links">
+              <router-link to="/chat" class="mobile-nav-link" @click="isMobileMenuOpen = false">
+                <i class="fas fa-comments" /> AI 问答
+              </router-link>
+              <router-link to="/public-files" class="mobile-nav-link" @click="isMobileMenuOpen = false">
+                <i class="fas fa-folder-open" /> 公共资源
+              </router-link>
+              <div class="mobile-menu-divider" />
+              <template v-if="!authStore.isAuthenticated">
+                <router-link to="/login" class="mobile-nav-link" @click="isMobileMenuOpen = false">
+                  <i class="fas fa-sign-in-alt" /> 登录
+                </router-link>
+                <router-link to="/register" class="mobile-nav-link highlight" @click="isMobileMenuOpen = false">
+                  <i class="fas fa-user-plus" /> 立即加入
+                </router-link>
+              </template>
+              <template v-else>
+                <router-link to="/chat" class="mobile-nav-link highlight" @click="isMobileMenuOpen = false">
+                  <i class="fas fa-rocket" /> 进入工作台
+                </router-link>
+              </template>
+            </div>
+            <div class="mobile-menu-footer">
+              <button class="mobile-theme-toggle" @click="themeStore.toggleDarkMode()">
+                <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" />
+                {{ themeStore.isDarkMode ? '切换浅色模式' : '切换深色模式' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </transition>
+    </nav>
+
     <!-- Hero Section -->
     <header class="hero-section">
       <div class="container">
@@ -117,7 +196,7 @@
                 </tr>
                 <tr>
                   <td><code>rollback</code></td>
-                  <td>撤销上一次文件修改操作</td>
+                  <td>撤销上一次文件操作</td>
                 </tr>
                 <tr>
                   <td><code>ps</code> / <code>watch</code></td>
@@ -165,25 +244,62 @@
       </div>
     </section>
 
-    <!-- Footer CTA -->
-    <section class="cta-section">
-      <div class="container">
-        <h2>准备好提升您的终端效率了吗？</h2>
-        <p>立即下载小晨终端助手，体验 AI 驱动的新一代开发环境。</p>
-        <div class="cta-actions">
-          <a href="/xiaochen_terminal.zip" download class="btn btn-primary btn-lg">立即下载</a>
-          <router-link to="/" class="btn btn-outline btn-lg">返回首页</router-link>
+    <!-- Footer -->
+    <footer class="landing-footer">
+      <div class="footer-container">
+        <div class="footer-brand">
+          <div class="logo" @click="router.push('/')">
+            <i class="fas fa-brain"></i>
+            <span>AI 智能学习助手</span>
+          </div>
+          <p>让科技服务于学习，打造您的第二大脑。</p>
+        </div>
+        <div class="link-group">
+          <h4>产品</h4>
+          <router-link to="/chat">AI 问答</router-link>
+          <router-link to="/cloud-disk">云盘管理</router-link>
+          <router-link to="/language-learning">语言学习</router-link>
+        </div>
+        <div class="link-group">
+          <h4>支持</h4>
+          <router-link to="/public-files">公共资源</router-link>
+          <router-link to="/agent">Agent 终端助手</router-link>
+          <a href="#">使用文档</a>
+          <a href="#">常见问题</a>
         </div>
       </div>
-    </section>
+      <div class="footer-bottom">
+        <p>&copy; 2026 AI 智能学习助手. All rights reserved.</p>
+      </div>
+    </footer>
   </div>
 </template>
 
 <script setup>
-/**
- * AgentView.vue - Agent 终端助手介绍页面
- * 展示 Agent 的主要功能、使用指南及命令参考
- */
+import { ref, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import { useThemeStore } from '@/stores/theme'
+
+const router = useRouter()
+const authStore = useAuthStore()
+const themeStore = useThemeStore()
+
+const isScrolled = ref(false)
+const isMobileMenuOpen = ref(false)
+
+const handleScroll = () => {
+  isScrolled.value = window.scrollY > 50
+}
+
+onMounted(() => {
+  window.addEventListener('scroll', handleScroll)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll)
+})
+
 const features = [
   {
     title: 'AI 智能核心',
@@ -217,38 +333,181 @@ const features = [
 </script>
 
 <style scoped>
-.agent-view {
+.agent-standalone-page {
   color: var(--text-primary);
   background-color: var(--bg-primary);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   overflow-x: hidden;
+  padding-top: 80px; /* 为固定导航栏留出空间 */
 }
 
+/* 复用 LandingView 的导航栏样式 */
+.landing-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  z-index: 1000;
+  transition: all 0.3s ease;
+  padding: 0 2rem;
+  background-color: transparent;
+}
+
+.landing-nav.scrolled {
+  background-color: rgba(var(--bg-primary-rgb), 0.8);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  height: 70px;
+}
+
+.nav-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1.5rem;
+  font-weight: 800;
+  cursor: pointer;
+  color: var(--primary-color);
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 2.5rem;
+}
+
+.nav-link {
+  text-decoration: none;
+  color: var(--text-primary);
+  font-weight: 600;
+  transition: color 0.3s;
+  font-size: 1rem;
+}
+
+.nav-link:hover {
+  color: var(--primary-color);
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.btn-login {
+  padding: 0.6rem 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: all 0.3s;
+}
+
+.btn-register {
+  padding: 0.6rem 1.5rem;
+  background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%);
+  color: white;
+  border-radius: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.3s;
+  box-shadow: 0 10px 20px -5px rgba(29, 78, 216, 0.3);
+}
+
+.theme-toggle-btn {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-primary);
+  transition: all 0.3s;
+}
+
+/* 移动端样式复用 */
+.mobile-menu-btn {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  z-index: 1001;
+}
+
+@media (max-width: 768px) {
+  .nav-links {
+    display: none;
+  }
+  .mobile-menu-btn {
+    display: block;
+  }
+}
+
+.mobile-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+}
+
+.mobile-menu {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 280px;
+  height: 100%;
+  background: var(--bg-primary);
+  padding: 80px 1.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 1rem;
+  text-decoration: none;
+  color: var(--text-primary);
+  font-weight: 600;
+  border-radius: 12px;
+}
+
+.mobile-nav-link.highlight {
+  background: var(--primary-color);
+  color: white;
+  margin-top: 1rem;
+}
+
+/* Hero Section */
 .container {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 2rem;
 }
 
-.badge {
-  display: inline-block;
-  padding: 0.5rem 1rem;
-  background-color: rgba(59, 130, 246, 0.1);
-  color: #3b82f6;
-  border-radius: 9999px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  margin-bottom: 1.5rem;
-}
-
-.badge.dark {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: #fff;
-}
-
-/* Hero Section */
 .hero-section {
-  padding: 8rem 0 6rem;
+  padding: 6rem 0;
   background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
 }
 
@@ -270,6 +529,17 @@ const features = [
   background: linear-gradient(to right, #3b82f6, #8b5cf6);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  background-color: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
 }
 
 .subtitle {
@@ -428,11 +698,6 @@ const features = [
   margin-bottom: 0.5rem;
 }
 
-.feature-list li i {
-  color: #10b981;
-  font-size: 0.75rem;
-}
-
 /* Guide Section */
 .guide-section {
   padding: 8rem 0;
@@ -461,12 +726,6 @@ const features = [
   font-size: 1.5rem;
   font-weight: 600;
   margin-bottom: 1rem;
-  position: relative;
-}
-
-.step-content p {
-  color: var(--text-secondary);
-  line-height: 1.6;
 }
 
 .commands-table {
@@ -497,7 +756,6 @@ th {
   padding: 1rem;
   border-bottom: 2px solid var(--border-color);
   color: var(--text-secondary);
-  font-weight: 600;
 }
 
 td {
@@ -510,7 +768,6 @@ code {
   color: #3b82f6;
   padding: 0.2rem 0.4rem;
   border-radius: 4px;
-  font-family: monospace;
 }
 
 /* Rollback Section */
@@ -575,32 +832,62 @@ code {
   color: #e5e7eb;
   background: none;
   padding: 0;
-  font-size: 0.95rem;
-  line-height: 1.6;
 }
 
-/* CTA Section */
-.cta-section {
-  padding: 10rem 0;
-  text-align: center;
+/* Footer 复用 LandingView 样式 */
+.landing-footer {
+  padding: 80px 2rem 40px;
+  background-color: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
 }
 
-.cta-section h2 {
-  font-size: 3rem;
-  font-weight: 800;
-  margin-bottom: 1.5rem;
+.footer-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 2fr repeat(2, 1fr);
+  gap: 4rem;
+  margin-bottom: 60px;
 }
 
-.cta-section p {
-  font-size: 1.25rem;
+.footer-brand p {
+  margin-top: 1.5rem;
   color: var(--text-secondary);
-  margin-bottom: 3rem;
+  max-width: 300px;
 }
 
-.cta-actions {
+.link-group h4 {
+  font-size: 1.1rem;
+  margin-bottom: 2rem;
+  font-weight: 700;
+}
+
+.link-group {
   display: flex;
-  justify-content: center;
+  flex-direction: row; /* 横向排列 */
   gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.link-group a {
+  text-decoration: none;
+  color: var(--text-secondary);
+  transition: color 0.3s;
+  font-weight: 500;
+}
+
+.link-group a:hover {
+  color: var(--primary-color);
+}
+
+.footer-bottom {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-top: 40px;
+  border-top: 1px solid var(--border-color);
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
 }
 
 /* Buttons */
@@ -614,11 +901,6 @@ code {
   transition: all 0.2s ease;
   cursor: pointer;
   text-decoration: none;
-}
-
-.btn-lg {
-  padding: 1rem 2.5rem;
-  font-size: 1.1rem;
 }
 
 .btn-primary {
@@ -641,15 +923,6 @@ code {
   background-color: var(--border-color);
 }
 
-.btn-outline {
-  border: 2px solid var(--border-color);
-  color: var(--text-primary);
-}
-
-.btn-outline:hover {
-  background-color: var(--border-color);
-}
-
 /* Responsive */
 @media (max-width: 992px) {
   .hero-section .container,
@@ -658,11 +931,7 @@ code {
     text-align: center;
   }
   
-  .hero-content h1 {
-    font-size: 3rem;
-  }
-  
-  .hero-actions, .cta-actions {
+  .hero-actions {
     justify-content: center;
   }
   
@@ -673,19 +942,19 @@ code {
   .rollback-features {
     align-items: center;
   }
-}
-
-@media (max-width: 640px) {
-  .hero-content h1 {
-    font-size: 2.5rem;
+  
+  .footer-container {
+    grid-template-columns: 1fr;
+    text-align: center;
   }
   
-  .hero-actions, .cta-actions {
+  .footer-brand {
+    display: flex;
     flex-direction: column;
+    align-items: center;
   }
   
-  .btn {
-    width: 100%;
+  .link-group {
     justify-content: center;
   }
 }
