@@ -76,6 +76,13 @@
           >
             <i class="fas fa-rocket" /> 免费开始使用
           </button>
+          <a 
+            href="/xiaochen_terminal.zip" 
+            download
+            class="btn-agent-download"
+          >
+            <i class="fas fa-terminal" /> 下载 Agent 终端助手
+          </a>
           <button 
             class="btn-secondary-lg" 
             @click="scrollToFeatures"
@@ -208,6 +215,7 @@
           <div class="link-group">
             <h4>支持</h4>
             <router-link to="/public-files">公共资源</router-link>
+            <a href="/xiaochen_terminal.zip" download>下载终端助手</a>
             <a href="#">使用文档</a>
             <a href="#">常见问题</a>
           </div>
@@ -255,6 +263,13 @@ const features = [
     icon: 'fas fa-language',
     color: 'rgba(245, 158, 11, 0.1)',
     items: ['智能单词库', 'AI 文章生成', '阅读进度追踪']
+  },
+  {
+    title: 'Agent 终端助手',
+    description: '功能强大的本地终端助手，提供更深度的系统集成与自动化处理能力。',
+    icon: 'fas fa-terminal',
+    color: 'rgba(139, 92, 246, 0.1)',
+    items: ['本地文件处理', '自动化脚本运行', '高效命令行交互']
   }
 ]
 
@@ -481,6 +496,29 @@ onUnmounted(() => {
 .btn-primary-lg:hover {
   transform: translateY(-3px);
   box-shadow: 0 12px 30px rgba(59, 130, 246, 0.35);
+}
+
+.btn-agent-download {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  padding: 1.1rem 2rem;
+  border-radius: 14px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.btn-agent-download:hover {
+  transform: translateY(-3px);
+  background: var(--bg-tertiary);
+  border-color: var(--primary-color);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
 }
 
 .btn-secondary-lg {
