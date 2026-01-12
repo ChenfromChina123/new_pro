@@ -81,19 +81,39 @@
 
     <!-- Hero Section -->
     <header class="hero-section">
-      <div class="container">
-        <div class="hero-content">
-          <div class="badge">智能终端体</div>
-          <h1>小晨终端助手</h1>
-          <p class="subtitle">一个强大的 AI 终端助手，支持多种 LLM 模型，提供智能的命令行交互体验。专为开发者打造的生产力工具。</p>
-          <div class="hero-actions">
-            <a href="/xiaochen_terminal.zip" download class="btn btn-primary">
-              <i class="fas fa-download"></i> 立即下载
-            </a>
-            <a href="#features" class="btn btn-secondary">了解功能</a>
+      <div class="hero-content animate-fade-in-up">
+        <div class="badge">智能终端体</div>
+        <h1 class="hero-title">
+          小晨 <span class="gradient-text">终端助手</span>
+        </h1>
+        <p class="hero-subtitle">
+          一个强大的 AI 终端助手，支持多种 LLM 模型，提供智能的命令行交互体验。专为开发者打造的生产力工具。
+        </p>
+        <div class="hero-actions">
+          <a href="/xiaochen_terminal.zip" download class="btn-primary-lg">
+            <i class="fas fa-download"></i> 立即下载
+          </a>
+          <button class="btn-secondary-lg" @click="scrollToFeatures">
+            了解功能 <i class="fas fa-chevron-down" />
+          </button>
+        </div>
+        <div class="hero-stats">
+          <div class="stat-item">
+            <span class="stat-number">LLM</span>
+            <span class="stat-label">多模型支持</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-number">Undo</span>
+            <span class="stat-label">多级回滚系统</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-number">OCR</span>
+            <span class="stat-label">智能视觉识别</span>
           </div>
         </div>
-        <div class="hero-image">
+      </div>
+      <div class="hero-visual animate-float">
+        <div class="visual-card terminal-mockup-wrapper">
           <div class="terminal-mockup">
             <div class="terminal-header">
               <span class="dot red"></span>
@@ -112,29 +132,33 @@
             </div>
           </div>
         </div>
+        <div class="visual-blob" />
       </div>
     </header>
 
     <!-- Features Grid -->
     <section id="features" class="features-section">
-      <div class="container">
-        <div class="section-header">
-          <h2>核心特性</h2>
-          <p>集成多项前沿技术，重塑您的终端使用体验</p>
-        </div>
-        <div class="features-grid">
-          <div v-for="(feature, index) in features" :key="index" class="feature-card">
-            <div class="icon-box" :style="{ backgroundColor: feature.color }">
-              <i :class="feature.icon"></i>
-            </div>
-            <h3>{{ feature.title }}</h3>
-            <p>{{ feature.description }}</p>
-            <ul class="feature-list">
-              <li v-for="item in feature.items" :key="item">
-                <i class="fas fa-check"></i> {{ item }}
-              </li>
-            </ul>
+      <div class="section-header reveal">
+        <h2 class="section-title">核心特性</h2>
+        <p class="section-subtitle">集成多项前沿技术，重塑您的终端使用体验</p>
+      </div>
+      <div class="features-grid">
+        <div 
+          v-for="(feature, index) in features" 
+          :key="index" 
+          class="feature-card reveal"
+          :style="{ transitionDelay: `${index * 150}ms` }"
+        >
+          <div class="feature-icon" :style="{ backgroundColor: feature.color }">
+            <i :class="feature.icon"></i>
           </div>
+          <h3 class="feature-title">{{ feature.title }}</h3>
+          <p class="feature-desc">{{ feature.description }}</p>
+          <ul class="feature-list">
+            <li v-for="item in feature.items" :key="item">
+              <i class="fas fa-check-circle"></i> {{ item }}
+            </li>
+          </ul>
         </div>
       </div>
     </section>
@@ -142,104 +166,114 @@
     <!-- Usage Guide -->
     <section class="guide-section">
       <div class="container">
-        <div class="section-header">
-          <h2>使用指南</h2>
-          <p>简单几步，即可开启智能开发之旅</p>
+        <div class="section-header reveal">
+          <h2 class="section-title">使用指南</h2>
+          <p class="section-subtitle">简单几步，即可开启智能开发之旅</p>
         </div>
         
         <div class="guide-steps">
-          <div class="step-item">
+          <div class="step-item reveal">
             <div class="step-number">01</div>
             <div class="step-content">
               <h3>快速安装</h3>
-              <p>下载压缩包并解压，Windows 用户运行 <code>scripts/install.bat</code>，Linux/Mac 用户运行 <code>scripts/install.sh</code>。</p>
+              <p>下载压缩包并解压，运行 <code>scripts/install.bat</code> (Win) 或 <code>scripts/install.sh</code> (Linux/Mac)。</p>
             </div>
           </div>
-          <div class="step-item">
+          <div class="step-item reveal" style="transition-delay: 150ms;">
             <div class="step-number">02</div>
             <div class="step-content">
               <h3>配置模型</h3>
-              <p>首次启动程序会提示输入 API Key，支持 DeepSeek、豆包等多种主流大模型。配置将自动保存至 <code>config.json</code>。</p>
+              <p>首次启动程序会提示输入 API Key，支持 DeepSeek、豆包等主流模型。配置自动保存至 <code>config.json</code>。</p>
             </div>
           </div>
-          <div class="step-item">
+          <div class="step-item reveal" style="transition-delay: 300ms;">
             <div class="step-number">03</div>
             <div class="step-content">
               <h3>开始对话</h3>
-              <p>在终端直接输入您的需求，AI 将智能理解意图并调用相关工具执行任务，如文件读写、命令执行等。</p>
+              <p>在终端直接输入需求，AI 将智能理解意图并调用工具执行任务，如文件读写、命令执行等。</p>
             </div>
           </div>
         </div>
 
-        <div class="commands-table">
-          <h3>常用命令</h3>
-          <div class="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th>命令</th>
-                  <th>描述</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><code>save [name]</code></td>
-                  <td>保存当前会话，支持自定义名称</td>
-                </tr>
-                <tr>
-                  <td><code>load &lt;id&gt;</code></td>
-                  <td>加载指定的历史会话</td>
-                </tr>
-                <tr>
-                  <td><code>sessions</code></td>
-                  <td>列出最近的历史会话记录</td>
-                </tr>
-                <tr>
-                  <td><code>rollback</code></td>
-                  <td>撤销上一次文件操作</td>
-                </tr>
-                <tr>
-                  <td><code>ps</code> / <code>watch</code></td>
-                  <td>查看和监控后台运行的任务进程</td>
-                </tr>
-                <tr>
-                  <td><code>help</code></td>
-                  <td>显示完整的命令帮助手册</td>
-                </tr>
-              </tbody>
-            </table>
+        <div class="commands-table-container reveal">
+          <div class="commands-table">
+            <h3>常用命令参考</h3>
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>命令</th>
+                    <th>功能描述</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>save [name]</code></td>
+                    <td>保存当前会话，支持自定义名称以便后续加载</td>
+                  </tr>
+                  <tr>
+                    <td><code>load &lt;id&gt;</code></td>
+                    <td>加载指定的历史会话，恢复上下文环境</td>
+                  </tr>
+                  <tr>
+                    <td><code>sessions</code></td>
+                    <td>列出所有历史会话记录及其 ID</td>
+                  </tr>
+                  <tr>
+                    <td><code>rollback</code> / <code>undo</code></td>
+                    <td>智能撤销上一次文件系统操作，支持多级回退</td>
+                  </tr>
+                  <tr>
+                    <td><code>ps</code> / <code>watch</code></td>
+                    <td>实时监控后台异步任务进程的运行状态</td>
+                  </tr>
+                  <tr>
+                    <td><code>help</code></td>
+                    <td>获取详细的命令使用手册与参数说明</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
     <!-- Rollback System Highlight -->
-    <section class="rollback-section">
+    <section class="rollback-section reveal">
       <div class="container">
-        <div class="rollback-content">
-          <div class="badge dark">特色功能</div>
-          <h2>专业级回滚系统</h2>
-          <p>小晨终端助手内置了强大的版本控制模块，为您提供多级文件回滚、快照管理和版本对比功能。即使 AI 误操作，您也可以一键恢复项目状态。</p>
-          <div class="rollback-features">
-            <div class="r-item">
-              <i class="fas fa-history"></i>
-              <span>多级版本历史</span>
-            </div>
-            <div class="r-item">
-              <i class="fas fa-code-branch"></i>
-              <span>快照管理</span>
-            </div>
-            <div class="r-item">
-              <i class="fas fa-search-plus"></i>
-              <span>差异对比 (Diff)</span>
+        <div class="rollback-layout">
+          <div class="rollback-content">
+            <div class="badge-dark">特色功能</div>
+            <h2 class="gradient-text">专业级回退系统</h2>
+            <p>内置强大的版本控制模块，为您提供多级文件回退、快照管理和版本对比功能。即使 AI 误操作，您也可以一键恢复项目状态。</p>
+            <div class="rollback-features">
+              <div class="r-item">
+                <i class="fas fa-history"></i>
+                <span>多级历史</span>
+              </div>
+              <div class="r-item">
+                <i class="fas fa-code-branch"></i>
+                <span>自动快照</span>
+              </div>
+              <div class="r-item">
+                <i class="fas fa-search-plus"></i>
+                <span>差异对比</span>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="rollback-code">
-          <pre><code># 示例：一键回退
-小晨助手 > undo
-✓ 已撤销上一次对话涉及的所有 3 个文件修改
-✓ 已恢复到对话前的状态</code></pre>
+          <div class="rollback-visual">
+            <div class="code-window">
+              <div class="code-header">
+                <span class="dot red"></span>
+                <span class="dot yellow"></span>
+                <span class="dot green"></span>
+              </div>
+              <pre><code><span class="c-prompt">小晨助手 ></span> undo
+<span class="c-success">✓ 已撤销上一次对话涉及的所有 3 个文件修改</span>
+<span class="c-success">✓ 已恢复到对话前的快照状态 [ID: snap_20260113]</span></code></pre>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -290,10 +324,31 @@ const isMobileMenuOpen = ref(false)
 
 const handleScroll = () => {
   isScrolled.value = window.scrollY > 50
+  revealOnScroll()
+}
+
+const revealOnScroll = () => {
+  const reveals = document.querySelectorAll('.reveal')
+  reveals.forEach(el => {
+    const windowHeight = window.innerHeight
+    const elementTop = el.getBoundingClientRect().top
+    const elementVisible = 150
+    if (elementTop < windowHeight - elementVisible) {
+      el.classList.add('active')
+    }
+  })
+}
+
+const scrollToFeatures = () => {
+  const el = document.getElementById('features')
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth' })
+  }
 }
 
 onMounted(() => {
   window.addEventListener('scroll', handleScroll)
+  setTimeout(revealOnScroll, 100)
 })
 
 onUnmounted(() => {
@@ -334,52 +389,50 @@ const features = [
 
 <style scoped>
 .agent-standalone-page {
-  color: var(--text-primary);
+  min-height: 100vh;
   background-color: var(--bg-primary);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--text-primary);
   overflow-x: hidden;
-  padding-top: 80px; /* 为固定导航栏留出空间 */
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-/* 复用 LandingView 的导航栏样式 */
+/* 导航栏复用 LandingView */
 .landing-nav {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  height: 80px;
-  display: flex;
-  align-items: center;
+  height: 72px;
   z-index: 1000;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   padding: 0 2rem;
-  background-color: transparent;
 }
 
 .landing-nav.scrolled {
-  background-color: rgba(var(--bg-primary-rgb), 0.8);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-  height: 70px;
+  background-color: var(--bg-primary-transparent, rgba(255, 255, 255, 0.8));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-color);
+  height: 64px;
 }
 
 .nav-container {
-  max-width: 1400px;
+  max-width: 1200px;
   margin: 0 auto;
-  width: 100%;
+  height: 100%;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
 }
 
 .logo {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 800;
-  cursor: pointer;
   color: var(--primary-color);
+  cursor: pointer;
 }
 
 .nav-links {
@@ -390,10 +443,10 @@ const features = [
 
 .nav-link {
   text-decoration: none;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   font-weight: 600;
-  transition: color 0.3s;
-  font-size: 1rem;
+  font-size: 0.95rem;
+  transition: all 0.2s;
 }
 
 .nav-link:hover {
@@ -403,132 +456,171 @@ const features = [
 .nav-actions {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 1.25rem;
 }
 
 .btn-login {
-  padding: 0.6rem 1.5rem;
-  font-weight: 700;
-  color: var(--text-primary);
   text-decoration: none;
-  transition: all 0.3s;
+  color: var(--text-primary);
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  font-size: 0.95rem;
 }
 
 .btn-register {
-  padding: 0.6rem 1.5rem;
-  background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%);
+  text-decoration: none;
+  background: var(--gradient-primary);
   color: white;
+  padding: 0.6rem 1.5rem;
   border-radius: 12px;
   font-weight: 700;
-  text-decoration: none;
+  font-size: 0.95rem;
   transition: all 0.3s;
-  box-shadow: 0 10px 20px -5px rgba(29, 78, 216, 0.3);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
 }
 
 .theme-toggle-btn {
-  background: var(--bg-secondary);
+  background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 1.1rem;
   width: 40px;
   height: 40px;
-  border-radius: 12px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  color: var(--text-primary);
-  transition: all 0.3s;
-}
-
-/* 移动端样式复用 */
-.mobile-menu-btn {
-  display: none;
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  color: var(--text-primary);
-  cursor: pointer;
-  z-index: 1001;
-}
-
-@media (max-width: 768px) {
-  .nav-links {
-    display: none;
-  }
-  .mobile-menu-btn {
-    display: block;
-  }
-}
-
-.mobile-menu-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-  z-index: 2000;
-}
-
-.mobile-menu {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 280px;
-  height: 100%;
-  background: var(--bg-primary);
-  padding: 80px 1.5rem 2rem;
-  display: flex;
-  flex-direction: column;
-}
-
-.mobile-nav-link {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 1rem;
-  text-decoration: none;
-  color: var(--text-primary);
-  font-weight: 600;
-  border-radius: 12px;
-}
-
-.mobile-nav-link.highlight {
-  background: var(--primary-color);
-  color: white;
-  margin-top: 1rem;
+  transition: all 0.2s;
 }
 
 /* Hero Section */
-.container {
+.hero-section {
+  padding: 180px 2rem 120px;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 2rem;
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 5rem;
+  align-items: center;
+  position: relative;
 }
 
-.hero-section {
-  padding: 6rem 0;
-  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+.hero-section::before {
+  content: '';
+  position: absolute;
+  top: -10%;
+  right: -5%;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.2) 0%, transparent 70%);
+  filter: blur(80px);
+  z-index: -1;
 }
 
-.hero-section .container {
+.hero-section::after {
+  content: '';
+  position: absolute;
+  bottom: 0%;
+  left: -5%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, transparent 70%);
+  filter: blur(60px);
+  z-index: -1;
+}
+
+.hero-title {
+  font-size: 4.5rem;
+  line-height: 1.1;
+  margin-bottom: 2rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #d946ef 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+}
+
+.hero-subtitle {
+  font-size: 1.4rem;
+  color: var(--text-secondary);
+  margin-bottom: 3.5rem;
+  line-height: 1.6;
+  max-width: 560px;
+  opacity: 0.9;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 1.25rem;
+  margin-bottom: 4rem;
+}
+
+.btn-primary-lg {
+  background: var(--gradient-primary);
+  color: white;
+  border: none;
+  padding: 1.1rem 2.5rem;
+  border-radius: 14px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
   display: flex;
   align-items: center;
-  gap: 4rem;
+  gap: 10px;
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.25);
+  text-decoration: none;
 }
 
-.hero-content {
-  flex: 1;
+.btn-primary-lg:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px rgba(59, 130, 246, 0.35);
 }
 
-.hero-content h1 {
-  font-size: 4rem;
+.btn-secondary-lg {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  padding: 1.1rem 2.2rem;
+  border-radius: 14px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-secondary-lg:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--primary-color);
+}
+
+.hero-stats {
+  display: flex;
+  gap: 3rem;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-number {
+  font-size: 1.75rem;
   font-weight: 800;
-  line-height: 1.1;
-  margin-bottom: 1.5rem;
-  background: linear-gradient(to right, #3b82f6, #8b5cf6);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--primary-color);
+}
+
+.stat-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
 }
 
 .badge {
@@ -542,28 +634,27 @@ const features = [
   margin-bottom: 1.5rem;
 }
 
-.subtitle {
-  font-size: 1.25rem;
-  color: var(--text-secondary);
-  margin-bottom: 2.5rem;
-  line-height: 1.6;
-}
-
-.hero-actions {
+/* Hero Visual */
+.hero-visual {
+  position: relative;
   display: flex;
-  gap: 1rem;
+  justify-content: center;
+  align-items: center;
 }
 
-.hero-image {
-  flex: 1;
+.terminal-mockup-wrapper {
+  width: 100%;
+  max-width: 500px;
+  z-index: 2;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+  background: #1e1e1e;
+  border: 1px solid #333;
 }
 
 .terminal-mockup {
-  background-color: #1e1e1e;
-  border-radius: 12px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-  overflow: hidden;
-  border: 1px solid #333;
+  font-family: 'Fira Code', 'Consolas', monospace;
 }
 
 .terminal-header {
@@ -580,20 +671,18 @@ const features = [
   border-radius: 50%;
 }
 
-.red { background-color: #ff5f56; }
-.yellow { background-color: #ffbd2e; }
-.green { background-color: #27c93f; }
+.dot.red { background-color: #ff5f56; }
+.dot.yellow { background-color: #ffbd2e; }
+.dot.green { background-color: #27c93f; }
 
 .terminal-title {
   color: #999;
   font-size: 0.75rem;
   margin-left: 0.5rem;
-  font-family: monospace;
 }
 
 .terminal-body {
   padding: 1.5rem;
-  font-family: 'Fira Code', 'Consolas', monospace;
   font-size: 0.9rem;
   color: #d4d4d4;
   line-height: 1.6;
@@ -611,30 +700,23 @@ const features = [
   vertical-align: middle;
 }
 
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+.visual-blob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 140%;
+  height: 140%;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, transparent 70%);
+  z-index: 1;
+  pointer-events: none;
 }
 
-/* Features Section */
+/* Features Grid */
 .features-section {
-  padding: 8rem 0;
-}
-
-.section-header {
-  text-align: center;
-  margin-bottom: 4rem;
-}
-
-.section-header h2 {
-  font-size: 2.5rem;
-  font-weight: 700;
-  margin-bottom: 1rem;
-}
-
-.section-header p {
-  color: var(--text-secondary);
-  font-size: 1.1rem;
+  padding: 100px 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .features-grid {
@@ -644,236 +726,212 @@ const features = [
 }
 
 .feature-card {
-  padding: 2.5rem;
-  background-color: var(--bg-secondary);
-  border-radius: 16px;
+  background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  padding: 2.5rem;
+  border-radius: 24px;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  overflow: hidden;
+}
+
+.feature-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--gradient-primary);
+  opacity: 0;
+  transition: opacity 0.3s;
 }
 
 .feature-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
+  transform: translateY(-12px);
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.1);
+  border-color: var(--primary-color);
 }
 
-.icon-box {
-  width: 60px;
-  height: 60px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 1.5rem;
+.feature-card:hover::before {
+  opacity: 1;
 }
 
-.icon-box i {
-  font-size: 1.5rem;
-  color: #3b82f6;
-}
-
-.feature-card h3 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin-bottom: 1rem;
-}
-
-.feature-card p {
-  color: var(--text-secondary);
-  font-size: 0.95rem;
-  margin-bottom: 1.5rem;
-  line-height: 1.5;
-}
-
-.feature-list {
-  list-style: none;
-  padding: 0;
-}
-
-.feature-list li {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-  margin-bottom: 0.5rem;
-}
-
-/* Guide Section */
-.guide-section {
-  padding: 8rem 0;
-  background-color: var(--bg-secondary);
-}
-
-.guide-steps {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 3rem;
-  margin-bottom: 6rem;
-}
-
-.step-item {
-  position: relative;
-}
-
-.step-number {
-  font-size: 3rem;
-  font-weight: 800;
-  color: rgba(59, 130, 246, 0.1);
-  margin-bottom: -1.5rem;
-}
-
-.step-content h3 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin-bottom: 1rem;
-}
-
-.commands-table {
-  background-color: var(--bg-primary);
+.feature-icon {
+  width: 64px;
+  height: 64px;
   border-radius: 16px;
-  padding: 3rem;
-  border: 1px solid var(--border-color);
-}
-
-.commands-table h3 {
-  font-size: 1.75rem;
-  font-weight: 700;
-  margin-bottom: 2rem;
-  text-align: center;
-}
-
-.table-wrapper {
-  overflow-x: auto;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th {
-  text-align: left;
-  padding: 1rem;
-  border-bottom: 2px solid var(--border-color);
-  color: var(--text-secondary);
-}
-
-td {
-  padding: 1.25rem 1rem;
-  border-bottom: 1px solid var(--border-color);
-}
-
-code {
-  background-color: rgba(59, 130, 246, 0.1);
-  color: #3b82f6;
-  padding: 0.2rem 0.4rem;
-  border-radius: 4px;
-}
-
-/* Rollback Section */
-.rollback-section {
-  padding: 8rem 0;
-  background-color: #111827;
-  color: #fff;
-}
-
-.rollback-section .container {
   display: flex;
   align-items: center;
-  gap: 6rem;
+  grid-template-columns: 1fr 1fr;
+  gap: 5rem;
+  align-items: center;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 2rem;
 }
 
-.rollback-content {
-  flex: 1;
+.badge-dark {
+  display: inline-block;
+  padding: 0.5rem 1.25rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 2rem;
 }
 
 .rollback-content h2 {
-  font-size: 2.5rem;
-  font-weight: 700;
-  margin-bottom: 1.5rem;
+  font-size: 3.5rem;
+  font-weight: 850;
+  margin-bottom: 2rem;
 }
 
 .rollback-content p {
-  color: #9ca3af;
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   line-height: 1.7;
-  margin-bottom: 2.5rem;
+  color: #94a3b8;
+  margin-bottom: 3rem;
 }
 
 .rollback-features {
   display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
+  gap: 2.5rem;
 }
 
 .r-item {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 1rem;
+  gap: 12px;
 }
 
 .r-item i {
+  font-size: 1.5rem;
   color: #3b82f6;
 }
 
-.rollback-code {
-  flex: 1;
-  background-color: #1f2937;
-  border-radius: 12px;
+.r-item span {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.code-window {
+  background: #1e293b;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid #334155;
+  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.4);
+}
+
+.code-header {
+  background: #334155;
+  padding: 12px 18px;
+  display: flex;
+  gap: 8px;
+}
+
+.code-header .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.dot.red { background-color: #ff5f56; }
+.dot.yellow { background-color: #ffbd2e; }
+.dot.green { background-color: #27c93f; }
+
+.code-window pre {
   padding: 2rem;
-  border: 1px solid #374151;
-}
-
-.rollback-code pre {
   margin: 0;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.95rem;
+  line-height: 1.7;
 }
 
-.rollback-code code {
-  color: #e5e7eb;
-  background: none;
-  padding: 0;
+.c-prompt { color: #94a3b8; }
+.c-success { color: #4ade80; }
+
+/* Animations */
+.animate-fade-in-up {
+  animation: fadeInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
-/* Footer 复用 LandingView 样式 */
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-20px); }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Scroll Reveal */
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.reveal.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Footer 复用 LandingView */
 .landing-footer {
+  background-color: var(--bg-primary);
   padding: 80px 2rem 40px;
-  background-color: var(--bg-secondary);
   border-top: 1px solid var(--border-color);
 }
 
 .footer-container {
   max-width: 1200px;
   margin: 0 auto;
-  display: grid;
-  grid-template-columns: 2fr repeat(2, 1fr);
+  display: flex;
+  justify-content: space-between;
   gap: 4rem;
   margin-bottom: 60px;
 }
 
-.footer-brand p {
-  margin-top: 1.5rem;
-  color: var(--text-secondary);
+.footer-brand {
   max-width: 300px;
+}
+
+.footer-brand p {
+  color: var(--text-secondary);
+  margin-top: 1.5rem;
+  line-height: 1.6;
 }
 
 .link-group h4 {
   font-size: 1.1rem;
-  margin-bottom: 2rem;
   font-weight: 700;
+  margin-bottom: 1.5rem;
 }
 
 .link-group {
   display: flex;
-  flex-direction: row; /* 横向排列 */
-  gap: 1.5rem;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 .link-group a {
   text-decoration: none;
   color: var(--text-secondary);
-  transition: color 0.3s;
-  font-weight: 500;
+  transition: color 0.2s;
 }
 
 .link-group a:hover {
@@ -886,76 +944,63 @@ code {
   padding-top: 40px;
   border-top: 1px solid var(--border-color);
   text-align: center;
-  color: var(--text-secondary);
+  color: var(--text-tertiary);
   font-size: 0.9rem;
 }
 
-/* Buttons */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  font-weight: 600;
-  transition: all 0.2s ease;
-  cursor: pointer;
-  text-decoration: none;
-}
-
-.btn-primary {
-  background-color: #3b82f6;
-  color: #fff;
-}
-
-.btn-primary:hover {
-  background-color: #2563eb;
-  transform: translateY(-2px);
-}
-
-.btn-secondary {
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-}
-
-.btn-secondary:hover {
-  background-color: var(--border-color);
-}
-
-/* Responsive */
-@media (max-width: 992px) {
-  .hero-section .container,
-  .rollback-section .container {
-    flex-direction: column;
+/* Mobile Responsive */
+@media (max-width: 1024px) {
+  .hero-section {
+    grid-template-columns: 1fr;
     text-align: center;
+    padding-top: 140px;
+    gap: 4rem;
+  }
+  
+  .hero-subtitle {
+    margin-left: auto;
+    margin-right: auto;
   }
   
   .hero-actions {
     justify-content: center;
   }
   
-  .guide-steps {
-    grid-template-columns: 1fr;
+  .hero-stats {
+    justify-content: center;
   }
   
-  .rollback-features {
-    align-items: center;
-  }
-  
-  .footer-container {
+  .rollback-layout {
     grid-template-columns: 1fr;
     text-align: center;
   }
   
-  .footer-brand {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+  .rollback-features {
+    justify-content: center;
   }
   
-  .link-group {
-    justify-content: center;
+  .hero-title {
+    font-size: 3.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .guide-steps {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+  
+  .hero-title {
+    font-size: 2.8rem;
+  }
+  
+  .rollback-section {
+    margin: 0 1rem 60px;
+    padding: 60px 1.5rem;
+  }
+  
+  .rollback-content h2 {
+    font-size: 2.2rem;
   }
 }
 </style>
