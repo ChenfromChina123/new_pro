@@ -6,12 +6,14 @@ const router = createRouter({
   routes: [
     {
       path: '/',
+      name: 'Landing',
+      component: () => import('@/views/LandingView.vue'),
+      meta: { requiresAuth: false, allowGuest: true }
+    },
+    {
+      path: '/',
       component: () => import('@/components/AppLayout.vue'),
       children: [
-        {
-          path: '',
-          redirect: '/chat'
-        },
         {
           path: 'chat',
           name: 'Chat',
