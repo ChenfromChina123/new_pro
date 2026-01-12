@@ -57,7 +57,51 @@
             </button>
           </div>
         </div>
+
+        <!-- 移动端菜单按钮 -->
+        <button 
+          class="mobile-menu-btn"
+          @click="isMobileMenuOpen = !isMobileMenuOpen"
+        >
+          <i :class="isMobileMenuOpen ? 'fas fa-times' : 'fas fa-bars'" />
+        </button>
       </div>
+
+      <!-- 移动端侧边栏菜单 -->
+      <transition name="slide">
+        <div v-if="isMobileMenuOpen" class="mobile-menu-overlay" @click="isMobileMenuOpen = false">
+          <div class="mobile-menu" @click.stop>
+            <div class="mobile-menu-links">
+              <router-link to="/chat" class="mobile-nav-link" @click="isMobileMenuOpen = false">
+                <i class="fas fa-comments" /> AI 问答
+              </router-link>
+              <router-link to="/public-files" class="mobile-nav-link" @click="isMobileMenuOpen = false">
+                <i class="fas fa-folder-open" /> 公共资源
+              </router-link>
+              <div class="mobile-menu-divider" />
+              <template v-if="!authStore.isAuthenticated">
+                <router-link to="/login" class="mobile-nav-link" @click="isMobileMenuOpen = false">
+                  <i class="fas fa-sign-in-alt" /> 登录
+                </router-link>
+                <router-link to="/register" class="mobile-nav-link highlight" @click="isMobileMenuOpen = false">
+                  <i class="fas fa-user-plus" /> 立即加入
+                </router-link>
+              </template>
+              <template v-else>
+                <router-link to="/chat" class="mobile-nav-link highlight" @click="isMobileMenuOpen = false">
+                  <i class="fas fa-rocket" /> 进入工作台
+                </router-link>
+              </template>
+            </div>
+            <div class="mobile-menu-footer">
+              <button class="mobile-theme-toggle" @click="themeStore.toggleDarkMode()">
+                <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" />
+                {{ themeStore.isDarkMode ? '切换浅色模式' : '切换深色模式' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </transition>
     </nav>
 
     <!-- Hero 区域 -->
@@ -237,6 +281,7 @@ const authStore = useAuthStore()
 const themeStore = useThemeStore()
 
 const isScrolled = ref(false)
+const isMobileMenuOpen = ref(false)
 const typingText = ref('')
 const fullText = '正在为您生成个性化建议...'
 
@@ -967,7 +1012,130 @@ onUnmounted(() => {
   50% { opacity: 0; }
 }
 
-/* 响应式 */
+/* 响应式样式 */
+.mobile-menu-btn {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  cursor: pointer;
+  z-index: 1001;
+}
+
+.mobile-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+}
+
+.mobile-menu {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 280px;
+  height: 100vh;
+  background: var(--bg-primary);
+  padding: 80px 1.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
+}
+
+.mobile-menu-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.mobile-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 1rem;
+  text-decoration: none;
+  color: var(--text-primary);
+  font-weight: 600;
+  border-radius: 12px;
+  transition: all 0.2s;
+}
+
+.mobile-nav-link i {
+  width: 20px;
+  color: var(--primary-color);
+}
+
+.mobile-nav-link:hover {
+  background: var(--bg-secondary);
+}
+
+.mobile-nav-link.highlight {
+  background: var(--gradient-primary);
+  color: white;
+  margin-top: 0.5rem;
+}
+
+.mobile-nav-link.highlight i {
+  color: white;
+}
+
+.mobile-menu-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 1rem 0;
+}
+
+.mobile-menu-footer {
+  margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.mobile-theme-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 1rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  color: var(--text-primary);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* 动画 */
+.slide-enter-active, .slide-leave-active {
+  transition: all 0.3s ease;
+}
+
+.slide-enter-from, .slide-leave-to {
+  opacity: 0;
+}
+
+.slide-enter-active .mobile-menu {
+  transition: transform 0.3s ease;
+}
+
+.slide-enter-from .mobile-menu {
+  transform: translateX(100%);
+}
+
+.slide-leave-active .mobile-menu {
+  transition: transform 0.3s ease;
+}
+
+.slide-leave-to .mobile-menu {
+  transform: translateX(100%);
+}
+
+/* 响应式适配 */
 @media (max-width: 1024px) {
   .hero-section {
     grid-template-columns: 1fr;
@@ -1000,12 +1168,37 @@ onUnmounted(() => {
 }
 
 @media (max-width: 768px) {
+  .mobile-menu-btn {
+    display: block;
+  }
+
   .nav-links {
     display: none;
   }
   
   .hero-title {
-    font-size: 2.8rem;
+    font-size: 2.5rem;
+  }
+
+  .hero-actions {
+    flex-direction: column;
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto;
+  }
+
+  .btn-primary-lg,
+  .btn-secondary-lg,
+  .btn-agent-download {
+    width: 100%;
+    justify-content: center;
+    padding: 1rem;
+    font-size: 1rem;
+  }
+
+  .hero-stats {
+    flex-direction: column;
+    gap: 1.5rem;
   }
   
   .features-grid {
@@ -1023,7 +1216,17 @@ onUnmounted(() => {
   
   .footer-container {
     grid-template-columns: 1fr;
-    gap: 3rem;
+    gap: 2.5rem;
+    text-align: center;
+  }
+
+  .link-group {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .footer-brand {
+    align-items: center;
   }
 }
 </style>
