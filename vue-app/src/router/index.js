@@ -55,14 +55,14 @@ const router = createRouter({
           name: 'Settings',
           component: () => import('@/views/SettingsView.vue'),
           meta: { requiresAuth: true }
-        },
-        {
-          path: 'agent',
-          name: 'Agent',
-          component: () => import('@/views/AgentView.vue'),
-          meta: { requiresAuth: false, allowGuest: true }
         }
       ]
+    },
+    {
+      path: '/agent',
+      name: 'Agent',
+      component: () => import('@/views/AgentView.vue'),
+      meta: { requiresAuth: false, allowGuest: true }
     },
     {
       path: '/login',
