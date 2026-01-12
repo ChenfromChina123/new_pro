@@ -3,7 +3,6 @@ package com.aispring.controller;
 import com.aispring.dto.request.TranslationRequest;
 import com.aispring.dto.response.ApiResponse;
 import com.aispring.service.TranslationService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;

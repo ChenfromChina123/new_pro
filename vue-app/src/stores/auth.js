@@ -16,25 +16,6 @@ export const useAuthStore = defineStore('auth', () => {
   const username = computed(() => userInfo.value?.username)
   const email = computed(() => userInfo.value?.email)
   
-  // 初始化用户信息
-  function initUserInfo() {
-    const storedToken = localStorage.getItem('token')
-    const storedUserInfo = localStorage.getItem('userInfo')
-    
-    if (storedToken) {
-      token.value = storedToken
-    }
-    
-    if (storedUserInfo) {
-      try {
-        userInfo.value = JSON.parse(storedUserInfo)
-      } catch (e) {
-        console.error('Failed to parse userInfo:', e)
-        localStorage.removeItem('userInfo')
-      }
-    }
-  }
-  
   // 登录
   async function login(email, password) {
     try {

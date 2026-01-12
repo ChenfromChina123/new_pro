@@ -1,25 +1,59 @@
 <template>
   <div class="landing-page">
     <!-- 导航栏 -->
-    <nav class="landing-nav" :class="{ 'scrolled': isScrolled }">
+    <nav 
+      class="landing-nav" 
+      :class="{ 'scrolled': isScrolled }"
+    >
       <div class="nav-container">
-        <div class="logo" @click="router.push('/')">
-          <i class="fas fa-brain"></i>
+        <div 
+          class="logo" 
+          @click="router.push('/')"
+        >
+          <i class="fas fa-brain" />
           <span>AI 智能学习助手</span>
         </div>
         <div class="nav-links">
-          <router-link to="/chat" class="nav-link">AI 问答</router-link>
-          <router-link to="/public-files" class="nav-link">公共资源</router-link>
+          <router-link 
+            to="/chat" 
+            class="nav-link"
+          >
+            AI 问答
+          </router-link>
+          <router-link 
+            to="/public-files" 
+            class="nav-link"
+          >
+            公共资源
+          </router-link>
           <div class="nav-actions">
             <template v-if="!authStore.isAuthenticated">
-              <router-link to="/login" class="btn-login">登录</router-link>
-              <router-link to="/register" class="btn-register">立即加入</router-link>
+              <router-link 
+                to="/login" 
+                class="btn-login"
+              >
+                登录
+              </router-link>
+              <router-link 
+                to="/register" 
+                class="btn-register"
+              >
+                立即加入
+              </router-link>
             </template>
             <template v-else>
-              <router-link to="/chat" class="btn-register">进入工作台</router-link>
+              <router-link 
+                to="/chat" 
+                class="btn-register"
+              >
+                进入工作台
+              </router-link>
             </template>
-            <button class="theme-toggle-btn" @click="themeStore.toggleDarkMode()">
-              <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'"></i>
+            <button 
+              class="theme-toggle-btn" 
+              @click="themeStore.toggleDarkMode()"
+            >
+              <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" />
             </button>
           </div>
         </div>
@@ -36,11 +70,17 @@
           集成 AI 问答、个人云盘、语言学习于一体的智能化全方位学习平台。
         </p>
         <div class="hero-actions">
-          <button class="btn-primary-lg" @click="router.push('/chat')">
-            <i class="fas fa-rocket"></i> 免费开始使用
+          <button 
+            class="btn-primary-lg" 
+            @click="router.push('/chat')"
+          >
+            <i class="fas fa-rocket" /> 免费开始使用
           </button>
-          <button class="btn-secondary-lg" @click="scrollToFeatures">
-            了解更多 <i class="fas fa-chevron-down"></i>
+          <button 
+            class="btn-secondary-lg" 
+            @click="scrollToFeatures"
+          >
+            了解更多 <i class="fas fa-chevron-down" />
           </button>
         </div>
         <div class="hero-stats">
@@ -61,60 +101,92 @@
       <div class="hero-visual animate-float">
         <div class="visual-card chat-preview">
           <div class="card-header">
-            <div class="dot"></div>
-            <div class="dot"></div>
-            <div class="dot"></div>
+            <div class="dot" />
+            <div class="dot" />
+            <div class="dot" />
           </div>
           <div class="card-body">
-            <div class="message ai">您好！我是您的 AI 学习助手。有什么我可以帮您的吗？</div>
-            <div class="message user">我想制定一个学习计划。</div>
-            <div class="message ai typing">{{ typingText }}</div>
+            <div class="message ai">
+              您好！我是您的 AI 学习助手。有什么我可以帮您的吗？
+            </div>
+            <div class="message user">
+              我想制定一个学习计划。
+            </div>
+            <div class="message ai typing">
+              {{ typingText }}
+            </div>
           </div>
         </div>
-        <div class="visual-blob"></div>
+        <div class="visual-blob" />
       </div>
     </section>
 
-    <!-- 特性展示 -->
-    <section id="features" class="features-section">
-      <div class="section-header">
-        <h2 class="section-title">核心功能</h2>
-        <p class="section-subtitle">为您提供全方位的学习生产力工具</p>
-      </div>
+  <!-- 特性展示 -->
+  <section 
+    id="features" 
+    class="features-section"
+  >
+    <div class="section-header reveal">
+      <h2 class="section-title">
+        核心功能
+      </h2>
+      <p class="section-subtitle">为您提供全方位的学习生产力工具</p>
+    </div>
 
-      <div class="features-grid">
-        <div class="feature-card" v-for="(feature, index) in features" :key="index">
-          <div class="feature-icon" :style="{ backgroundColor: feature.color }">
-            <i :class="feature.icon"></i>
-          </div>
-          <h3 class="feature-title">{{ feature.title }}</h3>
-          <p class="feature-desc">{{ feature.description }}</p>
-          <ul class="feature-list">
-            <li v-for="item in feature.items" :key="item">
-              <i class="fas fa-check-circle"></i> {{ item }}
-            </li>
-          </ul>
+    <div class="features-grid">
+      <div 
+        v-for="(feature, index) in features" 
+        :key="index"
+        class="feature-card reveal"
+        :style="{ transitionDelay: `${index * 150}ms` }"
+      >
+        <div 
+          class="feature-icon" 
+          :style="{ backgroundColor: feature.color }"
+        >
+          <i :class="feature.icon" />
+        </div>
+        <h3 class="feature-title">
+          {{ feature.title }}
+        </h3>
+        <p class="feature-desc">
+          {{ feature.description }}
+        </p>
+        <ul class="feature-list">
+          <li 
+            v-for="item in feature.items" 
+            :key="item"
+          >
+            <i class="fas fa-check-circle" /> {{ item }}
+          </li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 交互区域：体验 AI -->
+  <section class="cta-section reveal">
+    <div class="cta-container">
+      <div class="cta-content">
+        <h2>准备好提升您的效率了吗？</h2>
+        <p>加入成千上万的学习者，利用 AI 的力量改变您的学习方式。</p>
+        <div class="cta-btns">
+          <button 
+            class="btn-white" 
+            @click="router.push('/register')"
+          >
+            立即注册账号
+          </button>
+          <button 
+            class="btn-outline-white" 
+            @click="router.push('/chat')"
+          >
+            以游客身份试用
+          </button>
         </div>
       </div>
-    </section>
-
-    <!-- 交互区域：体验 AI -->
-    <section class="cta-section">
-      <div class="cta-container">
-        <div class="cta-content">
-          <h2>准备好提升您的效率了吗？</h2>
-          <p>加入成千上万的学习者，利用 AI 的力量改变您的学习方式。</p>
-          <div class="cta-btns">
-            <button class="btn-white" @click="router.push('/register')">
-              立即注册账号
-            </button>
-            <button class="btn-outline-white" @click="router.push('/chat')">
-              以游客身份试用
-            </button>
-          </div>
-        </div>
-      </div>
-    </section>
+    </div>
+  </section>
 
     <!-- 页脚 -->
     <footer class="landing-footer">
@@ -201,6 +273,19 @@ const startTyping = () => {
 
 const handleScroll = () => {
   isScrolled.value = window.scrollY > 50
+  revealOnScroll()
+}
+
+const revealOnScroll = () => {
+  const reveals = document.querySelectorAll('.reveal')
+  reveals.forEach(el => {
+    const windowHeight = window.innerHeight
+    const elementTop = el.getBoundingClientRect().top
+    const elementVisible = 150
+    if (elementTop < windowHeight - elementVisible) {
+      el.classList.add('active')
+    }
+  })
 }
 
 const scrollToFeatures = () => {
@@ -210,6 +295,7 @@ const scrollToFeatures = () => {
 onMounted(() => {
   window.addEventListener('scroll', handleScroll)
   startTyping()
+  setTimeout(revealOnScroll, 100) // 初始检查
 })
 
 onUnmounted(() => {
@@ -358,6 +444,7 @@ onUnmounted(() => {
 .gradient-text {
   background: linear-gradient(135deg, #3b82f6 0%, #2dd4bf 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -803,8 +890,19 @@ onUnmounted(() => {
 }
 
 /* 动画 */
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.reveal.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .animate-fade-in-up {
-  animation: fadeInUp 1s cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: fadeInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 .animate-float {
@@ -812,8 +910,14 @@ onUnmounted(() => {
 }
 
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(40px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes float {

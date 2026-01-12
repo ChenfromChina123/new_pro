@@ -148,13 +148,22 @@
           历史对话
         </div>
         <div class="session-list-wrapper">
-          <div v-if="!authStore.isAuthenticated" class="guest-sidebar-tip">
+          <div 
+            v-if="!authStore.isAuthenticated" 
+            class="guest-sidebar-tip"
+          >
             <p>登录后可保存历史对话</p>
-            <button class="btn btn-secondary btn-small" @click="router.push('/login')">
+            <button 
+              class="btn btn-secondary btn-small" 
+              @click="router.push('/login')"
+            >
               立即登录
             </button>
           </div>
-          <div v-else class="session-list">
+          <div 
+            v-else 
+            class="session-list"
+          >
             <div
               v-for="session in chatStore.sessions"
               :key="session.id"
@@ -222,7 +231,10 @@
         </div>
         <div class="sidebar-info-text">
           <p>这里提供常用的公共文件供大家下载使用。</p>
-          <p v-if="authStore.isAdmin" class="admin-tip">
+          <p 
+            v-if="authStore.isAdmin" 
+            class="admin-tip"
+          >
             您是管理员，可以上传文件。
           </p>
         </div>
@@ -371,7 +383,6 @@ import { useThemeStore } from '@/stores/theme'
 import { useUIStore } from '@/stores/ui'
 import { useCloudDiskStore } from '@/stores/cloudDisk'
 import { useSettingsStore } from '@/stores/settings'
-import { storeToRefs } from 'pinia'
 import { API_CONFIG } from '@/config/api'
 import FolderTreeItem from '@/components/FolderTreeItem.vue'
 import ConflictResolutionDialog from '@/components/ConflictResolutionDialog.vue'

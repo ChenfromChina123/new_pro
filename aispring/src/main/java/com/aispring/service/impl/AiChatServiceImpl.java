@@ -696,10 +696,6 @@ public class AiChatServiceImpl implements AiChatService {
         return sb.toString();
     }
 
-    private Prompt buildPrompt(String promptText, String sessionId, Long userId, OpenAiChatOptions options) {
-        return buildPrompt(promptText, sessionId, userId, null, options, null);
-    }
-
     private Prompt buildPrompt(String promptText, String sessionId, Long userId, String ipAddress, OpenAiChatOptions options, String systemPrompt) {
         List<Message> messages = new ArrayList<>();
         
