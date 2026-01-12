@@ -12,10 +12,10 @@
           >
           <i 
             v-else 
-            class="fas fa-user default-avatar-icon" 
+            class="fas fa-user-secret default-avatar-icon" 
           />
         </div>
-        <span class="sidebar-user-name">{{ authStore.username || '用户' }}</span>
+        <span class="sidebar-user-name">{{ authStore.username || '游客' }}</span>
       </div>
       
       <div class="sidebar-actions">
@@ -28,11 +28,21 @@
         </div>
         
         <div 
+          v-if="authStore.isAuthenticated"
           class="sidebar-action-btn settings-btn"
           title="设置"
           @click.stop="router.push('/settings')"
         >
           <i class="fas fa-cog" />
+        </div>
+        
+        <div 
+          v-else
+          class="sidebar-action-btn login-btn"
+          title="登录"
+          @click.stop="router.push('/login')"
+        >
+          <i class="fas fa-sign-in-alt" />
         </div>
       </div>
     </div>
@@ -48,6 +58,7 @@
         <span>AI问答</span>
       </router-link>
       <router-link
+        v-if="authStore.isAuthenticated"
         to="/cloud-disk"
         class="nav-item"
         active-class="active"
@@ -56,6 +67,7 @@
         <span>云盘</span>
       </router-link>
       <router-link
+        v-if="authStore.isAuthenticated"
         to="/language-learning"
         class="nav-item"
         active-class="active"
@@ -136,7 +148,13 @@
           历史对话
         </div>
         <div class="session-list-wrapper">
-          <div class="session-list">
+          <div v-if="!authStore.isAuthenticated" class="guest-sidebar-tip">
+            <p>登录后可保存历史对话</p>
+            <button class="btn btn-secondary btn-small" @click="router.push('/login')">
+              立即登录
+            </button>
+          </div>
+          <div v-else class="session-list">
             <div
               v-for="session in chatStore.sessions"
               :key="session.id"
@@ -379,9 +397,9 @@ const handleToggleDarkMode = async () => {
   themeStore.toggleDarkMode()
   
   // 同步到后端设置 (如果已登录)
-  if (authStore.isLoggedIn) {
-    await settingsStore.updateSettings({ 
-      theme: themeStore.isDarkMode ? 'dark' : 'light' 
+  if (authStore.isAuthenticated) {
+    await settingsStore.updateSettings({
+      theme: themeStore.isDarkMode ? 'dark' : 'light'
     })
   }
 }
@@ -915,6 +933,26 @@ onMounted(() => {
 .session-list-wrapper {
   flex: 1;
   overflow-y: auto;
+}
+
+.guest-sidebar-tip {
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--text-secondary);
+  background-color: var(--bg-secondary);
+  border-radius: 12px;
+  margin: 16px 8px;
+  border: 1px dashed var(--border-color);
+}
+
+.guest-sidebar-tip p {
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.guest-sidebar-tip .btn-small {
+  padding: 6px 16px;
+  font-size: 12px;
 }
 
 .session-list {

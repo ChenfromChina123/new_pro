@@ -60,8 +60,8 @@ const route = useRoute()
 const uiStore = useUIStore()
 
 const showSidebar = computed(() => {
-  // 只有需要认证的路由才显示侧边栏
-  return route.meta.requiresAuth
+  // 认证路由或允许游客访问的路由都显示侧边栏
+  return route.meta.requiresAuth || route.meta.allowGuest
 })
 </script>
 

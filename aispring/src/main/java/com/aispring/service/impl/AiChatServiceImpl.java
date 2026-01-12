@@ -25,21 +25,27 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.net.ssl.*;
 import java.security.cert.CertificateException;
+import jakarta.annotation.PreDestroy;
 
 /**
  * AI聊天服务实现类
@@ -71,14 +77,72 @@ public class AiChatServiceImpl implements AiChatService {
     
     @Value("${ai.deepseek.api-url:}")
     private String deepseekApiUrl;
+
+    @Value("${ai.context.max-history-messages:30}")
+    private Integer maxHistoryMessages;
+
+    @Value("${ai.context.max-history-chars:20000}")
+    private Integer maxHistoryChars;
+
+    @Value("${ai.context.max-tool-result-chars:8000}")
+    private Integer maxToolResultChars;
+
+    @Value("${ai.context.max-saved-chars:200000}")
+    private Integer maxSavedChars;
+
+    @Value("${ai.context.max-saved-reasoning-chars:200000}")
+    private Integer maxSavedReasoningChars;
     
     private ChatClient doubaoChatClient;
     private StreamingChatClient doubaoStreamingChatClient;
     
     private ChatClient deepseekChatClient;
     private StreamingChatClient deepseekStreamingChatClient;
-    
-    // 上下文消息处理已修改为保留全部，不再受限
+
+    private static final AtomicInteger CHAT_THREAD_SEQ = new AtomicInteger(1);
+    private static final AtomicInteger BG_THREAD_SEQ = new AtomicInteger(1);
+
+    private final ExecutorService chatExecutor = Executors.newFixedThreadPool(8, r -> {
+        Thread t = new Thread(r);
+        t.setName("ai-chat-" + CHAT_THREAD_SEQ.getAndIncrement());
+        t.setDaemon(true);
+        return t;
+    });
+
+    private final ExecutorService backgroundExecutor = Executors.newFixedThreadPool(2, r -> {
+        Thread t = new Thread(r);
+        t.setName("ai-bg-" + BG_THREAD_SEQ.getAndIncrement());
+        t.setDaemon(true);
+        return t;
+    });
+
+    @PreDestroy
+    public void shutdownExecutors() {
+        chatExecutor.shutdownNow();
+        backgroundExecutor.shutdownNow();
+    }
+
+    private String safePreview(String s, int maxChars) {
+        if (s == null) return "";
+        String t = s.replaceAll("\\s+", " ").trim();
+        if (t.length() <= maxChars) return t;
+        return t.substring(0, maxChars);
+    }
+
+    private void appendWithLimit(StringBuilder sb, String part, int maxChars) {
+        if (part == null || part.isEmpty()) return;
+        int remain = maxChars - sb.length();
+        if (remain <= 0) return;
+        if (part.length() <= remain) sb.append(part);
+        else sb.append(part, 0, remain);
+    }
+
+    private String truncateToMax(String s, int maxChars) {
+        if (s == null) return null;
+        if (maxChars <= 0) return "";
+        if (s.length() <= maxChars) return s;
+        return s.substring(0, maxChars);
+    }
     
     public AiChatServiceImpl(ObjectProvider<ChatClient> chatClientProvider,
                              ObjectProvider<StreamingChatClient> streamingChatClientProvider,
@@ -103,17 +167,10 @@ public class AiChatServiceImpl implements AiChatService {
         // Initialize OkHttpClient with custom timeouts and unsafe SSL
         this.okHttpClient = createUnsafeOkHttpClient();
 
-        // Initialize Doubao Client
-
-        // Initialize Doubao Client
-        System.out.println("[Doubao] Initializing Doubao AI client...");
-        System.out.println("[Doubao] API Key length: " + (doubaoApiKey != null ? doubaoApiKey.length() : 0));
-        System.out.println("[Doubao] API Key: " + (doubaoApiKey != null && !doubaoApiKey.isEmpty() ? "********" : "NOT SET"));
-        System.out.println("[Doubao] API URL: " + (doubaoApiUrl != null ? doubaoApiUrl : "NOT SET"));
+        log.info("Initializing Doubao AI client");
         
         if (doubaoApiKey != null && !doubaoApiKey.isEmpty() && doubaoApiUrl != null && !doubaoApiUrl.isEmpty()) {
             try {
-                System.out.println("[Doubao] Creating OpenAiApi instance for Doubao...");
                 // Doubao requires /api/v3 appended to base URL for OpenAiApi
                 String doubaoBaseUrl = doubaoApiUrl;
                 if (!doubaoBaseUrl.endsWith("/api/v3") && !doubaoBaseUrl.endsWith("/api/v3/")) {
@@ -123,36 +180,23 @@ public class AiChatServiceImpl implements AiChatService {
                         doubaoBaseUrl += "/api/v3";
                     }
                 }
-                System.out.println("[Doubao] OpenAiApi constructor params - URL: " + doubaoBaseUrl + ", Key length: " + doubaoApiKey.length());
                 OpenAiApi doubaoApi = new OpenAiApi(doubaoBaseUrl, doubaoApiKey);
-                System.out.println("[Doubao] OpenAiApi instance created successfully");
                 
-                System.out.println("[Doubao] Creating OpenAiChatOptions for Doubao...");
                 OpenAiChatOptions doubaoOptions = OpenAiChatOptions.builder()
                         .withModel("doubao-pro-32k") // 设置豆包模型名称
                         .withTemperature(0.7f)
                         .withMaxTokens(maxTokens)
                         .build();
-                System.out.println("[Doubao] OpenAiChatOptions created with model: " + doubaoOptions.getModel());
                 
-                System.out.println("[Doubao] Creating OpenAiChatClient instance for Doubao...");
                 OpenAiChatClient client = new OpenAiChatClient(doubaoApi, doubaoOptions);
                 this.doubaoChatClient = client;
                 this.doubaoStreamingChatClient = client;
-                System.out.println("[Doubao] Doubao AI client initialized successfully!");
-                System.out.println("[Doubao] doubaoChatClient: " + (this.doubaoChatClient != null ? this.doubaoChatClient.getClass().getSimpleName() : "null"));
-                System.out.println("[Doubao] doubaoStreamingChatClient: " + (this.doubaoStreamingChatClient != null ? this.doubaoStreamingChatClient.getClass().getSimpleName() : "null"));
+                log.info("Doubao AI client initialized successfully");
             } catch (Exception e) {
-                System.err.println("[Doubao ERROR] Failed to initialize Doubao AI client: " + e.getMessage());
-                System.err.println("[Doubao ERROR] Stack trace:");
-                e.printStackTrace();
-                System.err.println("[Doubao ERROR] API URL: " + doubaoApiUrl);
-                System.err.println("[Doubao ERROR] API Key length: " + (doubaoApiKey != null ? doubaoApiKey.length() : 0));
+                log.warn("Failed to initialize Doubao AI client: {}", e.getMessage());
             }
         } else {
-            System.err.println("[Doubao ERROR] Initialization skipped: missing API key or URL");
-            System.err.println("[Doubao ERROR] API Key provided: " + (doubaoApiKey != null && !doubaoApiKey.isEmpty()));
-            System.err.println("[Doubao ERROR] API URL provided: " + (doubaoApiUrl != null && !doubaoApiUrl.isEmpty()));
+            log.info("Doubao client initialization skipped (missing api-key or api-url)");
         }
         
         // Initialize DeepSeek Client
@@ -218,35 +262,26 @@ public class AiChatServiceImpl implements AiChatService {
         
         log.info("=== askStreamInternal Called ===");
         log.info("Model: {}, SessionId: {}, UserId: {}, IP: {}", model, sessionId, userId, ipAddress);
-        log.info("Prompt: {}", initialPrompt);
+        log.info("Prompt: {} chars, preview={}", initialPrompt == null ? 0 : initialPrompt.length(), safePreview(initialPrompt, 200));
         
-        new Thread(() -> {
+        // 提前生成会话ID（针对匿名用户）
+        final String finalSessionId = (sessionId == null || sessionId.isEmpty())
+                ? java.util.UUID.randomUUID().toString().replace("-", "")
+                : sessionId;
+
+        chatExecutor.execute(() -> {
             try {
                 log.info("=== Chat Thread Started ===");
                 
                 StringBuilder fullReasoning = new StringBuilder();
                 // 执行对话并获取完整回复（内部已处理 SSE 发送）
-                String fullContent = performBlockingChat(initialPrompt, sessionId, model, userId, null, emitter, ipAddress, fullReasoning);
+                String fullContent = performBlockingChat(initialPrompt, finalSessionId, model, userId, null, emitter, ipAddress, fullReasoning);
                 
                 // 异步保存聊天记录
                 if (userId != null) {
-                    // 已登录用户，保存到 chat_records (注意：此处需要确保不重复保存，如果Controller已经保存了User消息)
-                    // 目前看来Controller没有保存Streaming的User消息，所以这里应该保存
-                    // 但是ChatRecordService.createChatRecord会分配messageOrder，如果Controller也没保存，我们需要保存User和AI消息
-                    // 为了保险，我们假设Controller没保存（代码显示确实没保存），所以这里保存User和AI
-                    
-                    // 保存用户消息
-                    // chatRecordService.createChatRecord(initialPrompt, 1, userId, sessionId, model, "completed");
-                    // 保存AI消息
-                    // chatRecordService.createChatRecord(fullContent, 2, userId, sessionId, model, "completed", "chat", fullReasoning.toString());
-                    
-                    // 暂时不启用自动保存已登录用户的Streaming记录，以免与潜在的前端保存逻辑冲突
-                    // 用户只要求"做好隔离"，所以我们重点处理匿名用户
+                    // 已登录用户逻辑保持不变
                 } else {
                     // 匿名用户，保存到 anonymous_chat_records
-                    String finalSessionId = (sessionId == null || sessionId.isEmpty())
-                        ? java.util.UUID.randomUUID().toString().replace("-", "")
-                        : sessionId;
                     String finalIp = (ipAddress == null || ipAddress.isEmpty()) ? "unknown" : ipAddress;
 
                     // 保存用户消息
@@ -265,8 +300,8 @@ public class AiChatServiceImpl implements AiChatService {
                         .sessionId(finalSessionId)
                         .ipAddress(finalIp)
                         .role("assistant")
-                        .content(fullContent)
-                        .reasoningContent(fullReasoning.toString())
+                        .content(truncateToMax(fullContent, maxSavedChars))
+                        .reasoningContent(truncateToMax(fullReasoning.toString(), maxSavedReasoningChars))
                         .model(model)
                         .createdAt(java.time.LocalDateTime.now())
                         .build();
@@ -274,7 +309,7 @@ public class AiChatServiceImpl implements AiChatService {
                 }
 
                 // 发送完成事件
-                log.info("对话完成，发送 [DONE] 事件 - sessionId={}", sessionId);
+                log.info("对话完成，发送 [DONE] 事件 - sessionId={}", finalSessionId);
                 try {
                     emitter.send(SseEmitter.event().data("[DONE]"));
                     emitter.complete();
@@ -286,7 +321,7 @@ public class AiChatServiceImpl implements AiChatService {
                 // log.error("对话异常: sessionId={}", sessionId, e); // Removed to avoid duplicate logging, handled in handleError
                 handleError(emitter, e);
             }
-        }).start();
+        });
         
         return emitter;
     }
@@ -337,7 +372,7 @@ public class AiChatServiceImpl implements AiChatService {
                 String content = chatResponse.getResult().getOutput().getContent();
                 if (content != null && !content.isEmpty()) {
                     sendChatResponse(emitter, content, null);
-                    fullContent.append(content);
+                    appendWithLimit(fullContent, content, maxSavedChars);
                 }
             })
             .doOnError(e -> {
@@ -378,33 +413,55 @@ public class AiChatServiceImpl implements AiChatService {
          }
          
         if (sessionId != null && !sessionId.isEmpty()) {
+            int budget = maxHistoryChars == null ? 0 : Math.max(0, maxHistoryChars);
+            List<Map<String, String>> reversedIncluded = new ArrayList<>();
+
             if (userId != null) {
-                List<ChatRecord> history = chatRecordRepository.findByUserIdAndSessionIdOrderByMessageOrderAsc(userId, sessionId);
+                List<ChatRecord> history = chatRecordRepository.findByUserIdAndSessionIdOrderByMessageOrderDesc(
+                    userId,
+                    sessionId,
+                    PageRequest.of(0, maxHistoryMessages == null ? 0 : Math.max(0, maxHistoryMessages))
+                );
                 for (ChatRecord record : history) {
-                    Map<String, String> msg = new HashMap<>();
-                    if (record.getSenderType() == 1 || record.getSenderType() == 3) {
-                        msg.put("role", "user");
-                    } else {
-                        msg.put("role", "assistant");
+                    if (budget <= 0) break;
+                    String role = (record.getSenderType() == 1 || record.getSenderType() == 3) ? "user" : "assistant";
+                    String content = record.getContent();
+                    if (record.getSenderType() != null && record.getSenderType() == 3) {
+                        content = truncateToMax(content, maxToolResultChars);
                     }
-                    msg.put("content", record.getContent());
-                    messages.add(msg);
+                    if (content == null || content.isEmpty()) continue;
+                    budget -= content.length();
+                    Map<String, String> msg = new HashMap<>();
+                    msg.put("role", role);
+                    msg.put("content", content);
+                    reversedIncluded.add(msg);
                 }
             } else {
                 List<AnonymousChatRecord> history = (ipAddress == null || ipAddress.isEmpty())
-                    ? anonymousChatRecordRepository.findBySessionIdOrderByCreatedAtAsc(sessionId)
-                    : anonymousChatRecordRepository.findBySessionIdAndIpAddressOrderByCreatedAtAsc(sessionId, ipAddress);
+                    ? anonymousChatRecordRepository.findBySessionIdOrderByCreatedAtDesc(
+                        sessionId,
+                        PageRequest.of(0, maxHistoryMessages == null ? 0 : Math.max(0, maxHistoryMessages))
+                    )
+                    : anonymousChatRecordRepository.findBySessionIdAndIpAddressOrderByCreatedAtDesc(
+                        sessionId,
+                        ipAddress,
+                        PageRequest.of(0, maxHistoryMessages == null ? 0 : Math.max(0, maxHistoryMessages))
+                    );
                 for (AnonymousChatRecord record : history) {
+                    if (budget <= 0) break;
+                    String role = "user".equalsIgnoreCase(record.getRole()) ? "user" : "assistant";
+                    String content = record.getContent();
+                    if (content == null || content.isEmpty()) continue;
+                    budget -= content.length();
                     Map<String, String> msg = new HashMap<>();
-                    if ("user".equalsIgnoreCase(record.getRole())) {
-                        msg.put("role", "user");
-                    } else {
-                        msg.put("role", "assistant");
-                    }
-                    msg.put("content", record.getContent());
-                    messages.add(msg);
+                    msg.put("role", role);
+                    msg.put("content", content);
+                    reversedIncluded.add(msg);
                 }
             }
+
+            Collections.reverse(reversedIncluded);
+            messages.addAll(reversedIncluded);
         }
          
          Map<String, String> currentMsg = new HashMap<>();
@@ -453,9 +510,9 @@ public class AiChatServiceImpl implements AiChatService {
                                     // 立即发送，不等待累积
                                     if (!reasoningContent.isEmpty() || !content.isEmpty()) {
                                         sendChatResponse(emitter, content, reasoningContent);
-                                        fullContent.append(content);
+                                        appendWithLimit(fullContent, content, maxSavedChars);
                                         if (!reasoningContent.isEmpty()) {
-                                            fullReasoning.append(reasoningContent);
+                                            appendWithLimit(fullReasoning, reasoningContent, maxSavedReasoningChars);
                                         }
                                     }
                                 }
@@ -472,7 +529,7 @@ public class AiChatServiceImpl implements AiChatService {
      * 异步生成会话标题和建议问题
      */
     private void generateTitleAndSuggestionsAsync(String userPrompt, String sessionId, Long userId, SseEmitter emitter) {
-        new Thread(() -> {
+        backgroundExecutor.execute(() -> {
             try {
                 if (deepseekChatClient == null) return;
 
@@ -564,6 +621,7 @@ public class AiChatServiceImpl implements AiChatService {
                     if (emitter != null) {
                         Map<String, Object> sseData = new HashMap<>();
                         sseData.put("type", "session_update");
+                        sseData.put("session_id", sessionId); // 始终包含当前会话ID
                         if (title != null) sseData.put("title", title);
                         sseData.put("suggestions", suggestionsList);
                         try {
@@ -576,7 +634,7 @@ public class AiChatServiceImpl implements AiChatService {
             } catch (Exception e) {
                 System.err.println("Error generating title and suggestions: " + e.getMessage());
             }
-        }).start();
+        });
     }
 
     /**
@@ -653,39 +711,64 @@ public class AiChatServiceImpl implements AiChatService {
 
         // 获取历史消息
         if (sessionId != null && !sessionId.isEmpty()) {
+            int budget = maxHistoryChars == null ? 0 : Math.max(0, maxHistoryChars);
             if (userId != null) {
                 // 已登录用户：查询 ChatRecord
-                List<ChatRecord> history = chatRecordRepository.findByUserIdAndSessionIdOrderByMessageOrderAsc(userId, sessionId);
+                List<ChatRecord> history = chatRecordRepository.findByUserIdAndSessionIdOrderByMessageOrderDesc(
+                    userId,
+                    sessionId,
+                    PageRequest.of(0, maxHistoryMessages == null ? 0 : Math.max(0, maxHistoryMessages))
+                );
+                List<Message> reversedIncluded = new ArrayList<>();
                 for (ChatRecord record : history) {
-                    if (record.getSenderType() == 1) { // User
-                        messages.add(new UserMessage(record.getContent()));
-                    } else if (record.getSenderType() == 2) { // AI
-                        messages.add(new AssistantMessage(record.getContent()));
-                    } else if (record.getSenderType() == 3) { // Tool Result
-                        String toolResultContent = record.getContent();
-                        if (record.getExitCode() != null && record.getExitCode() == 0) {
-                            messages.add(new UserMessage(toolResultContent));
-                        } else {
-                            String errorMsg = toolResultContent;
-                            if (record.getStderr() != null && !record.getStderr().isEmpty()) {
-                                errorMsg = toolResultContent + "\n错误信息: " + record.getStderr();
+                    if (budget <= 0) break;
+                    String content = record.getContent();
+                    if (record.getSenderType() != null && record.getSenderType() == 3) {
+                        String toolResultContent = truncateToMax(content, maxToolResultChars);
+                        if (record.getExitCode() != null && record.getExitCode() != 0) {
+                            String stderr = record.getStderr();
+                            if (stderr != null && !stderr.isEmpty()) {
+                                toolResultContent = toolResultContent + "\n错误信息: " + truncateToMax(stderr, maxToolResultChars);
                             }
-                            messages.add(new UserMessage(errorMsg));
                         }
+                        content = toolResultContent;
+                    }
+                    if (content == null || content.isEmpty()) continue;
+                    budget -= content.length();
+                    if (record.getSenderType() != null && record.getSenderType() == 2) {
+                        reversedIncluded.add(new AssistantMessage(content));
+                    } else {
+                        reversedIncluded.add(new UserMessage(content));
                     }
                 }
+                Collections.reverse(reversedIncluded);
+                messages.addAll(reversedIncluded);
             } else {
                 // 匿名用户：查询 AnonymousChatRecord
                 List<AnonymousChatRecord> history = (ipAddress == null || ipAddress.isEmpty())
-                    ? anonymousChatRecordRepository.findBySessionIdOrderByCreatedAtAsc(sessionId)
-                    : anonymousChatRecordRepository.findBySessionIdAndIpAddressOrderByCreatedAtAsc(sessionId, ipAddress);
+                    ? anonymousChatRecordRepository.findBySessionIdOrderByCreatedAtDesc(
+                        sessionId,
+                        PageRequest.of(0, maxHistoryMessages == null ? 0 : Math.max(0, maxHistoryMessages))
+                    )
+                    : anonymousChatRecordRepository.findBySessionIdAndIpAddressOrderByCreatedAtDesc(
+                        sessionId,
+                        ipAddress,
+                        PageRequest.of(0, maxHistoryMessages == null ? 0 : Math.max(0, maxHistoryMessages))
+                    );
+                List<Message> reversedIncluded = new ArrayList<>();
                 for (AnonymousChatRecord record : history) {
-                    if ("user".equalsIgnoreCase(record.getRole())) {
-                        messages.add(new UserMessage(record.getContent()));
-                    } else if ("assistant".equalsIgnoreCase(record.getRole())) {
-                        messages.add(new AssistantMessage(record.getContent()));
+                    if (budget <= 0) break;
+                    String content = record.getContent();
+                    if (content == null || content.isEmpty()) continue;
+                    budget -= content.length();
+                    if ("assistant".equalsIgnoreCase(record.getRole())) {
+                        reversedIncluded.add(new AssistantMessage(content));
+                    } else {
+                        reversedIncluded.add(new UserMessage(content));
                     }
                 }
+                Collections.reverse(reversedIncluded);
+                messages.addAll(reversedIncluded);
             }
         }
         

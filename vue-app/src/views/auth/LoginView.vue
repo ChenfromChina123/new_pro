@@ -51,6 +51,19 @@
           />
           {{ isLoading ? '登录中...' : '登录' }}
         </button>
+
+        <div class="guest-login-divider">
+          <span>或</span>
+        </div>
+
+        <button
+          type="button"
+          class="btn btn-secondary guest-btn"
+          @click="handleGuestLogin"
+        >
+          <i class="fas fa-user-secret" style="margin-right: 8px;"></i>
+          游客试用
+        </button>
         
         <div class="auth-links">
           <router-link to="/register">
@@ -111,6 +124,17 @@ const handleLogin = async () => {
   }
   
   isLoading.value = false
+}
+
+/**
+ * 处理游客登录
+ * 游客模式下不需要 token，直接进入聊天页面
+ */
+const handleGuestLogin = () => {
+  // 清除之前的登录信息
+  authStore.logout()
+  // 进入聊天页面
+  router.push('/chat')
 }
 </script>
 
@@ -173,6 +197,43 @@ const handleLogin = async () => {
   padding: 14px;
   font-size: 16px;
   margin-top: 8px;
+}
+
+.guest-login-divider {
+  display: flex;
+  align-items: center;
+  margin: 8px 0;
+  color: var(--text-secondary);
+}
+
+.guest-login-divider::before,
+.guest-login-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background-color: var(--border-color);
+}
+
+.guest-login-divider span {
+  padding: 0 12px;
+  font-size: 14px;
+}
+
+.guest-btn {
+  background-color: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.guest-btn:hover {
+  background-color: var(--bg-tertiary);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
 }
 
 .auth-links {

@@ -1,6 +1,7 @@
 package com.aispring.repository;
 
 import com.aispring.entity.ChatRecord;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -35,6 +36,8 @@ public interface ChatRecordRepository extends JpaRepository<ChatRecord, Long> {
      * 根据用户ID和会话ID查找聊天记录
      */
     List<ChatRecord> findByUserIdAndSessionIdOrderByMessageOrderAsc(Long userId, String sessionId);
+
+    List<ChatRecord> findByUserIdAndSessionIdOrderByMessageOrderDesc(Long userId, String sessionId, Pageable pageable);
     
     /**
      * 根据会话ID和用户ID删除聊天记录

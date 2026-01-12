@@ -70,6 +70,29 @@ public class CloudDiskService {
         while (s.endsWith("/")) s = s.substring(0, s.length() - 1);
         return s;
     }
+
+    private String normalizeFolderPathForDb(String folderPath) {
+        if (folderPath == null) return "/";
+        String s = folderPath.trim();
+        if (s.isEmpty() || s.equals("-") || s.equalsIgnoreCase("null")) return "/";
+        if (!s.startsWith("/")) s = "/" + s;
+        if (s.length() > 1 && s.endsWith("/")) s = s.substring(0, s.length() - 1);
+        return s;
+    }
+
+    private List<String> buildFolderPathCandidates(String folderPath) {
+        String db = normalizeFolderPathForDb(folderPath);
+        String norm = normalizePath(folderPath);
+        List<String> candidates = new ArrayList<>();
+        candidates.add(db);
+        if (!norm.isEmpty()) {
+            candidates.add("/" + norm);
+            candidates.add(norm);
+        } else {
+            candidates.add("");
+        }
+        return candidates.stream().distinct().toList();
+    }
     
     /**
      * 获取用户存储配额信息
@@ -288,24 +311,13 @@ public class CloudDiskService {
         String originalFilename = file.getOriginalFilename();
         if (originalFilename == null) originalFilename = "unknown_file";
         
-        // 规范化 folderPath (用于保存到数据库)
-        String saveFolderPath = (folderPath != null && !folderPath.isEmpty()) 
-            ? (folderPath.startsWith("/") ? folderPath : "/" + folderPath) 
-            : "/";
-        // 确保不以 / 结尾（除了根目录）
-        if (saveFolderPath.length() > 1 && saveFolderPath.endsWith("/")) {
-            saveFolderPath = saveFolderPath.substring(0, saveFolderPath.length() - 1);
-        }
+        String saveFolderPath = normalizeFolderPathForDb(folderPath);
+        List<String> folderPathCandidates = buildFolderPathCandidates(saveFolderPath);
 
-        // 检查文件是否存在 (使用更稳健的内存匹配，兼容不同的路径格式)
-        String checkPath = normalizePath(folderPath);
-        List<UserFile> allFiles = userFileRepository.findByUser_IdOrderByUploadTimeDesc(userId);
-        
         String currentFilename = originalFilename;
-        Optional<UserFile> existingFileOpt = allFiles.stream()
-            .filter(f -> normalizePath(f.getFolderPath()).equals(checkPath) && 
-                         (f.getFilename() != null && f.getFilename().equals(currentFilename)))
-            .findFirst();
+        Optional<UserFile> existingFileOpt = userFileRepository.findFirstByUser_IdAndFolderPathInAndFilename(
+            userId, folderPathCandidates, currentFilename
+        );
 
         if (existingFileOpt.isPresent()) {
             if ("OVERWRITE".equalsIgnoreCase(conflictStrategy)) {
@@ -356,14 +368,9 @@ public class CloudDiskService {
                 int counter = 1;
                 String newName = originalFilename;
                 
-                // 在内存中检查重名
                 while (true) {
                     String candidate = newName;
-                    boolean exists = allFiles.stream().anyMatch(f -> 
-                        normalizePath(f.getFolderPath()).equals(checkPath) && 
-                        (f.getFilename() != null && f.getFilename().equals(candidate))
-                    );
-                    if (!exists) break;
+                    if (!userFileRepository.existsByUser_IdAndFolderPathInAndFilename(userId, folderPathCandidates, candidate)) break;
                     
                     newName = nameWithoutExt + "(" + counter + ")" + ext;
                     counter++;
@@ -415,7 +422,7 @@ public class CloudDiskService {
             }
         }
         userFile.setFileType(contentType);
-        userFile.setFolderPath(folderPath);
+        userFile.setFolderPath(saveFolderPath);
         return userFileRepository.save(userFile);
     }
     
@@ -426,17 +433,9 @@ public class CloudDiskService {
         if (folderId != null) {
             UserFolder folder = userFolderRepository.findByIdAndUser_Id(folderId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("文件夹不存在"));
-            String targetPath = folder.getFolderPath();
-            List<UserFile> all = userFileRepository.findByUser_IdOrderByUploadTimeDesc(userId);
-            return all.stream().filter(f -> targetPath.equals(f.getFolderPath())).toList();
+            return userFileRepository.findByUser_IdAndFolderPathOrderByUploadTimeDesc(userId, folder.getFolderPath());
         } else if (folderPath != null) {
-            // 直接根据folderPath过滤文件
-            String norm = normalizePath(folderPath);
-            List<UserFile> all = userFileRepository.findByUser_IdOrderByUploadTimeDesc(userId);
-            return all.stream().filter(f -> {
-                String fp = normalizePath(f.getFolderPath());
-                return fp.equals(norm);
-            }).toList();
+            return userFileRepository.findByUser_IdAndFolderPathOrderByUploadTimeDesc(userId, normalizeFolderPathForDb(folderPath));
         }
         return userFileRepository.findByUser_IdOrderByUploadTimeDesc(userId);
     }
@@ -449,14 +448,10 @@ public class CloudDiskService {
         UserFile file = userFileRepository.findByIdAndUserId(fileId, userId)
             .orElseThrow(() -> new IllegalArgumentException("文件不存在"));
         String folderPath = file.getFolderPath();
-        List<UserFile> siblings = userFileRepository.findByUser_IdOrderByUploadTimeDesc(userId);
-        boolean exists = siblings.stream().anyMatch(f -> {
-            boolean sameFolder = normalizePath(f.getFolderPath()).equals(normalizePath(folderPath));
-            String a = f.getFilename() != null ? f.getFilename().trim() : "";
-            String b = newName.trim();
-            boolean sameName = a.equalsIgnoreCase(b);
-            return sameFolder && sameName && !f.getId().equals(file.getId());
-        });
+        List<String> folderPathCandidates = buildFolderPathCandidates(folderPath);
+        boolean exists = userFileRepository.existsByUser_IdAndFolderPathInAndFilenameIgnoreCaseAndIdNot(
+            userId, folderPathCandidates, newName.trim(), file.getId()
+        );
         if (exists) {
             String rel = file.getFilepath();
             String unique = rel != null && rel.contains("/") ? rel.substring(rel.lastIndexOf('/') + 1) : rel;
@@ -548,7 +543,9 @@ public class CloudDiskService {
             // 遍历源目录下的文件和文件夹
             if (Files.exists(sourceDir)) {
                 try (java.util.stream.Stream<Path> stream = Files.list(sourceDir)) {
-                    for (Path sourceChild : stream.toList()) {
+                    java.util.Iterator<Path> it = stream.iterator();
+                    while (it.hasNext()) {
+                        Path sourceChild = it.next();
                         Path targetChild = targetDir.resolve(sourceChild.getFileName());
                         if (Files.exists(targetChild)) {
                             // 冲突：如果是文件，覆盖；如果是文件夹，合并（递归？太复杂，这里简化为：如果目标是文件夹，源也是文件夹，则不移动源文件夹本身，而是进入下一层？

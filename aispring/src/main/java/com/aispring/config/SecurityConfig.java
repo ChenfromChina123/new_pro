@@ -39,7 +39,7 @@ public class SecurityConfig {
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/users/avatar/**").permitAll()
                 .requestMatchers("/api/resources/public").permitAll()
-                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/public-files/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/public-files", "/api/public-files/**").permitAll()
                 .requestMatchers("/api/ask", "/api/ask-stream").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/chat-records/save").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/chat-records/new-session").permitAll()

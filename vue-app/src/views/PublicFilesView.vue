@@ -41,11 +41,14 @@
           
           <div
             v-else-if="publicFilesStore.files.length === 0"
-            class="empty-state"
+            class="empty-state animate-fade-in"
           >
-            <div class="empty-icon">📭</div>
+            <div class="empty-illustration">
+              <i class="fas fa-folder-open"></i>
+            </div>
             <h3>暂无公共文件</h3>
-            <p v-if="authStore.isAdmin">作为管理员，您可以上传第一个文件</p>
+            <p class="empty-tip">这里目前还没有公开资源，请稍后再来查看</p>
+            <p v-if="authStore.isAdmin" class="admin-action-tip">作为管理员，您可以上传第一个文件</p>
           </div>
           
           <div
@@ -322,8 +325,53 @@ const handleDelete = async (filename) => {
   background-color: rgba(59, 130, 246, 0.1);
 }
 
-.loading-state,
 .empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--text-secondary);
+  height: 100%;
+}
+
+.empty-illustration {
+  font-size: 4rem;
+  margin-bottom: 20px;
+  color: var(--border-color);
+  opacity: 0.5;
+}
+
+.empty-state h3 {
+  margin: 0 0 10px;
+  font-size: 1.25rem;
+  color: var(--text-primary);
+}
+
+.empty-tip {
+  margin: 0;
+  font-size: 0.95rem;
+  max-width: 300px;
+}
+
+.admin-action-tip {
+  margin-top: 20px;
+  font-size: 0.875rem;
+  color: var(--accent-color);
+  font-weight: 500;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.loading-state {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -331,11 +379,6 @@ const handleDelete = async (filename) => {
   padding: 40px;
   color: var(--text-secondary);
   height: 100%;
-}
-
-.empty-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
 }
 
 .loading-spinner {

@@ -858,6 +858,14 @@ const triggerScrollToBottom = (delay = 100) => {
 }
 
 onMounted(async () => {
+  // 如果是游客，不加载会话
+  if (!authStore.isAuthenticated) {
+    chatStore.clearMessages()
+    chatStore.currentSessionId = null
+    triggerScrollToBottom(100)
+    return
+  }
+
   // 0. 确保会话列表已加载
   if (chatStore.sessions.length === 0) {
     await chatStore.fetchSessions()
@@ -1086,8 +1094,9 @@ const createNewSession = async () => {
 const sendMessage = async () => {
   if (!inputMessage.value.trim() || chatStore.isLoading) return
   
-  // 如果没有当前会话，先创建一个
-  if (!chatStore.currentSessionId) {
+  // 如果没有当前会话，先创建一个（仅针对已登录用户）
+  // 游客模式下不需要预先创建会话，由后端在发送第一条消息时自动生成
+  if (!chatStore.currentSessionId && authStore.isAuthenticated) {
     await createNewSession()
   }
   

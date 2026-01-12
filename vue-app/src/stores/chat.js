@@ -181,8 +181,13 @@ export const useChatStore = defineStore('chat', () => {
     isLoading.value = true
     suggestions.value = [] // 清除之前的建议问题
     abortController.value = new AbortController()
+    const authStore = useAuthStore()
 
-    if (!currentSessionId.value) {
+    // 游客模式允许没有会话ID，由后端生成
+    if (!authStore.isAuthenticated) {
+      // 游客模式下，如果当前没有会话ID，后端会自动生成一个 UUID
+      // 这里不需要强制报错
+    } else if (!currentSessionId.value) {
       isLoading.value = false
       return { success: false, message: '缺少会话ID' }
     }
@@ -234,16 +239,22 @@ export const useChatStore = defineStore('chat', () => {
     // 获取响应式对象
     const activeAiMessage = messages.value[messages.value.length - 1]
     
+    // 准备请求头
+    const headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'text/event-stream'
+    }
+    
+    // 如果已登录，添加 token
+    if (authStore.isAuthenticated && authStore.token) {
+      headers['Authorization'] = `Bearer ${authStore.token}`
+    }
+    
     try {
-      const authStore = useAuthStore()
       const response = await fetch(`${request.defaults.baseURL}${API_ENDPOINTS.chat.askStream}`, {
         method: 'POST',
         signal: abortController.value.signal,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'text/event-stream',
-          'Authorization': `Bearer ${authStore.token}`
-        },
+        headers,
         body: JSON.stringify({
           prompt: content,
           session_id: currentSessionId.value,
@@ -292,6 +303,9 @@ export const useChatStore = defineStore('chat', () => {
               if (parsed.type === 'session_update') {
                 if (parsed.suggestions) {
                   suggestions.value = parsed.suggestions
+                }
+                if (parsed.session_id && (!currentSessionId.value || currentSessionId.value === 'null')) {
+                  currentSessionId.value = parsed.session_id
                 }
                 if (parsed.title) {
                   const session = sessions.value.find(s => s.id === currentSessionId.value)
@@ -351,6 +365,9 @@ export const useChatStore = defineStore('chat', () => {
             if (parsed.type === 'session_update') {
               if (parsed.suggestions) {
                 suggestions.value = parsed.suggestions
+              }
+              if (parsed.session_id && (!currentSessionId.value || currentSessionId.value === 'null')) {
+                currentSessionId.value = parsed.session_id
               }
               if (parsed.title) {
                 const session = sessions.value.find(s => s.id === currentSessionId.value)
