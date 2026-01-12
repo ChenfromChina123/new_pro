@@ -471,23 +471,34 @@ onUnmounted(() => {
 
 .hero-actions {
   display: flex;
+  align-items: stretch;
   gap: 1.25rem;
   margin-bottom: 4rem;
+}
+
+.btn-primary-lg,
+.btn-agent-download,
+.btn-secondary-lg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 2rem;
+  height: 60px;
+  border-radius: 14px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+  white-space: nowrap;
+  text-decoration: none;
+  box-sizing: border-box;
 }
 
 .btn-primary-lg {
   background: var(--gradient-primary);
   color: white;
   border: none;
-  padding: 1.1rem 2.5rem;
-  border-radius: 14px;
-  font-size: 1.15rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s;
-  display: flex;
-  align-items: center;
-  gap: 10px;
   box-shadow: 0 8px 25px rgba(59, 130, 246, 0.25);
 }
 
@@ -496,44 +507,19 @@ onUnmounted(() => {
   box-shadow: 0 12px 30px rgba(59, 130, 246, 0.35);
 }
 
-.btn-agent-download {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  padding: 1.1rem 2rem;
-  border-radius: 14px;
-  font-size: 1.15rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  text-decoration: none;
-}
-
-.btn-agent-download:hover {
-  transform: translateY(-3px);
-  background: var(--bg-tertiary);
-  border-color: var(--primary-color);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-}
-
+.btn-agent-download,
 .btn-secondary-lg {
   background: var(--bg-secondary);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
-  padding: 1.1rem 2.2rem;
-  border-radius: 14px;
-  font-size: 1.15rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s;
 }
 
+.btn-agent-download:hover,
 .btn-secondary-lg:hover {
+  transform: translateY(-3px);
   background: var(--bg-tertiary);
   border-color: var(--primary-color);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.05);
 }
 
 .hero-stats {
@@ -985,6 +971,10 @@ onUnmounted(() => {
     justify-content: center;
   }
   
+  .hero-actions {
+    flex-wrap: wrap;
+  }
+  
   .hero-visual {
     max-width: 480px;
     margin: 0 auto;
@@ -1006,6 +996,18 @@ onUnmounted(() => {
   
   .hero-title {
     font-size: 2.8rem;
+  }
+
+  .hero-actions {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0 1rem;
+  }
+
+  .btn-primary-lg,
+  .btn-agent-download,
+  .btn-secondary-lg {
+    width: 100%;
   }
   
   .features-grid {
