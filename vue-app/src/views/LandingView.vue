@@ -205,20 +205,18 @@
           </div>
           <p>让科技服务于学习，打造您的第二大脑。</p>
         </div>
-        <div class="footer-links">
-          <div class="link-group">
-            <h4>产品</h4>
-            <router-link to="/chat">AI 问答</router-link>
-            <router-link to="/cloud-disk">云盘管理</router-link>
-            <router-link to="/language-learning">语言学习</router-link>
-          </div>
-          <div class="link-group">
-            <h4>支持</h4>
-            <router-link to="/public-files">公共资源</router-link>
-            <a href="/xiaochen_terminal.zip" download>下载终端助手 (Win)</a>
-            <a href="#">使用文档</a>
-            <a href="#">常见问题</a>
-          </div>
+        <div class="link-group">
+          <h4>产品</h4>
+          <router-link to="/chat">AI 问答</router-link>
+          <router-link to="/cloud-disk">云盘管理</router-link>
+          <router-link to="/language-learning">语言学习</router-link>
+        </div>
+        <div class="link-group">
+          <h4>支持</h4>
+          <router-link to="/public-files">公共资源</router-link>
+          <a href="/xiaochen_terminal.zip" download>下载终端助手 (Win)</a>
+          <a href="#">使用文档</a>
+          <a href="#">常见问题</a>
         </div>
       </div>
       <div class="footer-bottom">
