@@ -36,6 +36,12 @@ public interface UserFileRepository extends JpaRepository<UserFile, Long> {
      * 根据用户ID和文件夹ID查找文件
      */
     List<UserFile> findByUser_IdAndFolderPathOrderByUploadTimeDesc(Long userId, String folderPath);
+
+    Optional<UserFile> findFirstByUser_IdAndFolderPathInAndFilename(Long userId, List<String> folderPaths, String filename);
+
+    boolean existsByUser_IdAndFolderPathInAndFilename(Long userId, List<String> folderPaths, String filename);
+
+    boolean existsByUser_IdAndFolderPathInAndFilenameIgnoreCaseAndIdNot(Long userId, List<String> folderPaths, String filename, Long id);
     
     /**
      * 根据用户ID和文件ID查找

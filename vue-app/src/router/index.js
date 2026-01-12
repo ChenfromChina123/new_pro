@@ -16,7 +16,7 @@ const router = createRouter({
           path: 'chat',
           name: 'Chat',
           component: () => import('@/views/ChatView.vue'),
-          meta: { requiresAuth: true }
+          meta: { requiresAuth: false, allowGuest: true }
         },
         {
           path: 'cloud-disk',
@@ -34,7 +34,7 @@ const router = createRouter({
           path: 'public-files',
           name: 'PublicFiles',
           component: () => import('@/views/PublicFilesView.vue'),
-          meta: { requiresAuth: true }
+          meta: { requiresAuth: false, allowGuest: true }
         },
         {
           path: 'chat-management',

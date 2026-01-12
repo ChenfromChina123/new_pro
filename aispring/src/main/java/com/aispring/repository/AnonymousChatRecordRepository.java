@@ -1,6 +1,7 @@
 package com.aispring.repository;
 
 import com.aispring.entity.AnonymousChatRecord;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -21,6 +22,10 @@ public interface AnonymousChatRecordRepository extends JpaRepository<AnonymousCh
      * 根据会话ID与IP查询聊天记录（用于匿名用户隔离）
      */
     List<AnonymousChatRecord> findBySessionIdAndIpAddressOrderByCreatedAtAsc(String sessionId, String ipAddress);
+
+    List<AnonymousChatRecord> findBySessionIdOrderByCreatedAtDesc(String sessionId, Pageable pageable);
+
+    List<AnonymousChatRecord> findBySessionIdAndIpAddressOrderByCreatedAtDesc(String sessionId, String ipAddress, Pageable pageable);
     
     /**
      * 根据IP地址查询最近的聊天记录（可选，用于审计）
