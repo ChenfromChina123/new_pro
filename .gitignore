@@ -40,3 +40,6 @@ aispring/public_files/*.rar
 *.iws
 .vscode/*
 !.vscode/settings.json
+
+# Ignored directories
+v2/
