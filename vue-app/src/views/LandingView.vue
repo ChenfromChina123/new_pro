@@ -81,7 +81,7 @@
             download
             class="btn-agent-download"
           >
-            <i class="fas fa-terminal" /> 下载 Agent 终端助手
+            <i class="fas fa-terminal" /> 下载 Agent 终端助手 (Windows)
           </a>
           <button 
             class="btn-secondary-lg" 
@@ -215,7 +215,7 @@
           <div class="link-group">
             <h4>支持</h4>
             <router-link to="/public-files">公共资源</router-link>
-            <a href="/xiaochen_terminal.zip" download>下载终端助手</a>
+            <a href="/xiaochen_terminal.zip" download>下载终端助手 (Win)</a>
             <a href="#">使用文档</a>
             <a href="#">常见问题</a>
           </div>
@@ -265,8 +265,8 @@ const features = [
     items: ['智能单词库', 'AI 文章生成', '阅读进度追踪']
   },
   {
-    title: 'Agent 终端助手',
-    description: '功能强大的本地终端助手，提供更深度的系统集成与自动化处理能力。',
+    title: 'Agent 终端助手 (Windows)',
+    description: '功能强大的本地终端助手，专为 Windows 环境优化，提供更深度的系统集成与自动化处理能力。',
     icon: 'fas fa-terminal',
     color: 'rgba(139, 92, 246, 0.1)',
     items: ['本地文件处理', '自动化脚本运行', '高效命令行交互']
