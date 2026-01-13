@@ -54,18 +54,18 @@
               @click="themeStore.toggleDarkMode()"
             >
               <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'"></i>
-          </button>
+            </button>
+          </div>
         </div>
-      </div>
 
-      <!-- 移动端菜单按钮 -->
-      <button 
-      class="mobile-menu-btn"
-      @click="isMobileMenuOpen = !isMobileMenuOpen"
-    >
-      <i :class="isMobileMenuOpen ? 'fas fa-times' : 'fas fa-bars'"></i>
-    </button>
-    </div>
+        <!-- 移动端菜单按钮 -->
+        <button 
+          class="mobile-menu-btn"
+          @click="isMobileMenuOpen = !isMobileMenuOpen"
+        >
+          <i :class="isMobileMenuOpen ? 'fas fa-times' : 'fas fa-bars'"></i>
+        </button>
+      </div>
 
     <!-- 移动端侧边栏菜单 -->
     <transition name="slide">
@@ -510,6 +510,10 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 1.25rem;
+}
+
+.mobile-menu-btn {
+  display: none;
 }
 
 /* 按钮样式 */
@@ -1133,11 +1137,19 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: none;
-    border: none;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
     color: var(--text-primary);
-    font-size: 1.25rem;
+    font-size: 1.2rem;
     cursor: pointer;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    transition: all 0.2s;
+  }
+  
+  .mobile-menu-btn:hover {
+    background: var(--bg-tertiary);
   }
   
   .hero-section {
