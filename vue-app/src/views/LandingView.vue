@@ -53,138 +53,138 @@
               class="theme-toggle-btn" 
               @click="themeStore.toggleDarkMode()"
             >
-              <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" />
+              <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- 移动端菜单按钮 -->
+      <button 
+      class="mobile-menu-btn"
+      @click="isMobileMenuOpen = !isMobileMenuOpen"
+    >
+      <i :class="isMobileMenuOpen ? 'fas fa-times' : 'fas fa-bars'"></i>
+    </button>
+    </div>
+
+    <!-- 移动端侧边栏菜单 -->
+    <transition name="slide">
+      <div 
+        v-if="isMobileMenuOpen" 
+        class="mobile-menu-overlay" 
+        @click="isMobileMenuOpen = false"
+      >
+        <div 
+          class="mobile-menu" 
+          @click.stop
+        >
+          <div class="mobile-menu-links">
+            <router-link 
+              to="/chat" 
+              class="mobile-nav-link" 
+              @click="isMobileMenuOpen = false"
+            >
+              <i class="fas fa-comments"></i> AI 问答
+            </router-link>
+            <router-link 
+              to="/public-files" 
+              class="mobile-nav-link" 
+              @click="isMobileMenuOpen = false"
+            >
+              <i class="fas fa-folder-open"></i> 公共资源
+            </router-link>
+            <div class="mobile-menu-divider"></div>
+            <template v-if="!authStore.isAuthenticated">
+              <router-link 
+                to="/login" 
+                class="mobile-nav-link" 
+                @click="isMobileMenuOpen = false"
+              >
+                <i class="fas fa-sign-in-alt"></i> 登录
+              </router-link>
+              <router-link 
+                to="/register" 
+                class="mobile-nav-link highlight" 
+                @click="isMobileMenuOpen = false"
+              >
+                <i class="fas fa-user-plus"></i> 立即加入
+              </router-link>
+            </template>
+            <template v-else>
+              <router-link 
+                to="/chat" 
+                class="mobile-nav-link highlight" 
+                @click="isMobileMenuOpen = false"
+              >
+                <i class="fas fa-rocket"></i> 进入工作台
+              </router-link>
+            </template>
+          </div>
+          <div class="mobile-menu-footer">
+            <button 
+              class="mobile-theme-toggle" 
+              @click="themeStore.toggleDarkMode()"
+            >
+              <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'"></i>
+              {{ themeStore.isDarkMode ? '切换浅色模式' : '切换深色模式' }}
             </button>
           </div>
         </div>
+      </div>
+    </transition>
+  </nav>
 
-        <!-- 移动端菜单按钮 -->
+  <!-- Hero 区域 -->
+  <section class="hero-section">
+    <div class="hero-content animate-fade-in-up">
+      <h1 class="hero-title">
+        开启您的 <span class="gradient-text">智能学习</span> 之旅
+      </h1>
+      <p class="hero-subtitle">
+        集成 AI 问答、个人云盘、语言学习于一体的智能化全方位学习平台。
+      </p>
+      <div class="hero-actions">
         <button 
-        class="mobile-menu-btn"
-        @click="isMobileMenuOpen = !isMobileMenuOpen"
-      >
-        <i :class="isMobileMenuOpen ? 'fas fa-times' : 'fas fa-bars'"></i>
-      </button>
-      </div>
-
-      <!-- 移动端侧边栏菜单 -->
-      <transition name="slide">
-        <div 
-          v-if="isMobileMenuOpen" 
-          class="mobile-menu-overlay" 
-          @click="isMobileMenuOpen = false"
+          class="btn-primary-lg" 
+          @click="router.push('/chat')"
         >
-          <div 
-            class="mobile-menu" 
-            @click.stop
-          >
-            <div class="mobile-menu-links">
-              <router-link 
-                to="/chat" 
-                class="mobile-nav-link" 
-                @click="isMobileMenuOpen = false"
-              >
-                <i class="fas fa-comments" /> AI 问答
-              </router-link>
-              <router-link 
-                to="/public-files" 
-                class="mobile-nav-link" 
-                @click="isMobileMenuOpen = false"
-              >
-                <i class="fas fa-folder-open" /> 公共资源
-              </router-link>
-              <div class="mobile-menu-divider" />
-              <template v-if="!authStore.isAuthenticated">
-                <router-link 
-                  to="/login" 
-                  class="mobile-nav-link" 
-                  @click="isMobileMenuOpen = false"
-                >
-                  <i class="fas fa-sign-in-alt" /> 登录
-                </router-link>
-                <router-link 
-                  to="/register" 
-                  class="mobile-nav-link highlight" 
-                  @click="isMobileMenuOpen = false"
-                >
-                  <i class="fas fa-user-plus" /> 立即加入
-                </router-link>
-              </template>
-              <template v-else>
-                <router-link 
-                  to="/chat" 
-                  class="mobile-nav-link highlight" 
-                  @click="isMobileMenuOpen = false"
-                >
-                  <i class="fas fa-rocket" /> 进入工作台
-                </router-link>
-              </template>
-            </div>
-            <div class="mobile-menu-footer">
-              <button 
-                class="mobile-theme-toggle" 
-                @click="themeStore.toggleDarkMode()"
-              >
-                <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" />
-                {{ themeStore.isDarkMode ? '切换浅色模式' : '切换深色模式' }}
-              </button>
-            </div>
-          </div>
+          <i class="fas fa-rocket"></i> 免费开始使用
+        </button>
+        <button 
+          class="btn-agent-download"
+          @click="router.push('/agent')"
+        >
+          <i class="fas fa-terminal"></i> Agent 终端助手
+        </button>
+        <button 
+          class="btn-secondary-lg" 
+          @click="scrollToFeatures"
+        >
+          了解更多 <i class="fas fa-chevron-down"></i>
+        </button>
+      </div>
+      <div class="hero-stats">
+        <div class="stat-item">
+          <span class="stat-number">24/7</span>
+          <span class="stat-label">AI 在线支持</span>
         </div>
-      </transition>
-    </nav>
-
-    <!-- Hero 区域 -->
-    <section class="hero-section">
-      <div class="hero-content animate-fade-in-up">
-        <h1 class="hero-title">
-          开启您的 <span class="gradient-text">智能学习</span> 之旅
-        </h1>
-        <p class="hero-subtitle">
-          集成 AI 问答、个人云盘、语言学习于一体的智能化全方位学习平台。
-        </p>
-        <div class="hero-actions">
-          <button 
-            class="btn-primary-lg" 
-            @click="router.push('/chat')"
-          >
-            <i class="fas fa-rocket" /> 免费开始使用
-          </button>
-          <button 
-            class="btn-agent-download"
-            @click="router.push('/agent')"
-          >
-            <i class="fas fa-terminal" /> Agent 终端助手
-          </button>
-          <button 
-            class="btn-secondary-lg" 
-            @click="scrollToFeatures"
-          >
-            了解更多 <i class="fas fa-chevron-down" />
-          </button>
+        <div class="stat-item">
+          <span class="stat-number">100%</span>
+          <span class="stat-label">数据安全加密</span>
         </div>
-        <div class="hero-stats">
-          <div class="stat-item">
-            <span class="stat-number">24/7</span>
-            <span class="stat-label">AI 在线支持</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-number">100%</span>
-            <span class="stat-label">数据安全加密</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-number">Multi</span>
-            <span class="stat-label">多语言学习</span>
-          </div>
+        <div class="stat-item">
+          <span class="stat-number">Multi</span>
+          <span class="stat-label">多语言学习</span>
         </div>
       </div>
-      <div class="hero-visual animate-float">
-        <div class="visual-card chat-preview">
-          <div class="card-header">
-            <div class="dot" />
-            <div class="dot" />
-            <div class="dot" />
-          </div>
+    </div>
+    <div class="hero-visual animate-float">
+      <div class="visual-card chat-preview">
+        <div class="card-header">
+          <div class="dot"></div>
+          <div class="dot"></div>
+          <div class="dot"></div>
+        </div>
           <div class="card-body">
             <div class="message ai">
               您好！我是您的 AI 学习助手。有什么我可以帮您的吗？
@@ -197,7 +197,7 @@
             </div>
           </div>
         </div>
-        <div class="visual-blob" />
+        <div class="visual-blob"></div>
       </div>
     </section>
 
@@ -226,7 +226,7 @@
             class="feature-icon" 
             :style="{ backgroundColor: feature.color }"
           >
-            <i :class="feature.icon" />
+            <i :class="feature.icon"></i>
           </div>
           <h3 class="feature-title">
             {{ feature.title }}
@@ -239,7 +239,7 @@
               v-for="item in feature.items" 
               :key="item"
             >
-              <i class="fas fa-check-circle" /> {{ item }}
+              <i class="fas fa-check-circle"></i> {{ item }}
             </li>
           </ul>
           <div 
@@ -250,7 +250,7 @@
               class="btn-text" 
               @click="router.push(feature.link)"
             >
-              了解详情 <i class="fas fa-arrow-right" />
+              了解详情 <i class="fas fa-arrow-right"></i>
             </button>
           </div>
         </div>
@@ -286,7 +286,7 @@
       <div class="footer-container">
         <div class="footer-brand">
           <div class="logo">
-            <i class="fas fa-brain" />
+            <i class="fas fa-brain"></i>
             <span>AI 智能学习助手</span>
           </div>
           <p>让科技服务于学习，打造您的第二大脑。</p>
@@ -691,6 +691,7 @@ onUnmounted(() => {
   position: relative;
   z-index: 2;
   backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 
 .card-header {

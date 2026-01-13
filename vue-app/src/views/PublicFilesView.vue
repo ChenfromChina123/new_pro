@@ -25,7 +25,7 @@
                 :disabled="isUploading"
                 @click="$refs.fileInput.click()"
               >
-                <i class="fas fa-upload" />
+                <i class="fas fa-upload"></i>
                 {{ isUploading ? '上传中...' : '上传文件 (管理员)' }}
               </button>
             </div>
@@ -37,7 +37,7 @@
             v-if="publicFilesStore.isLoading"
             class="loading-state"
           >
-            <div class="loading-spinner" />
+            <div class="loading-spinner"></div>
             <p>加载中...</p>
           </div>
           
@@ -46,7 +46,7 @@
             class="empty-state animate-fade-in"
           >
             <div class="empty-illustration">
-              <i class="fas fa-folder-open" />
+              <i class="fas fa-folder-open"></i>
             </div>
             <h3>暂无公共文件</h3>
             <p class="empty-tip">
@@ -90,7 +90,7 @@
                   <td class="name-column">
                     <div class="file-cell">
                       <span class="file-icon">
-                        <i class="fas fa-file-alt" />
+                        <i class="fas fa-file-alt"></i>
                       </span>
                       <span
                         class="file-name"
@@ -110,7 +110,7 @@
                       title="下载"
                       @click="handleDownload(file.name)"
                     >
-                      <i class="fas fa-download" />
+                      <i class="fas fa-download"></i>
                     </button>
                     <button
                       v-if="authStore.isAdmin"
@@ -118,7 +118,7 @@
                       title="删除"
                       @click="handleDelete(file.name)"
                     >
-                      <i class="fas fa-trash" />
+                      <i class="fas fa-trash"></i>
                     </button>
                   </td>
                 </tr>

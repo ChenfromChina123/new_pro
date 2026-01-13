@@ -63,7 +63,7 @@
                     <div class="header-left">
                       <!-- 移除以匹配图 2 风格 -->
                       <!-- <div class="reasoning-icon-wrapper">
-                        <i class="fas fa-brain reasoning-icon" />
+                        <i class="fas fa-brain reasoning-icon"></i>
                       </div> -->
                       <div class="header-text">
                         <span class="reasoning-title">深度思考</span>
@@ -83,7 +83,7 @@
                       <i 
                         class="fas toggle-icon"
                         :class="message.isReasoningCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'" 
-                      />
+                      ></i>
                     </div>
                   </div>
                 
@@ -95,7 +95,7 @@
                       <div 
                         class="markdown-body"
                         v-html="formatReasoningCached(message)" 
-                      />
+                      ></div>
                     </div>
                   </transition>
                 </div>
@@ -106,7 +106,7 @@
                   class="message-text error-state"
                 >
                   <div class="error-content">
-                    <i class="fas fa-exclamation-triangle error-icon" />
+                    <i class="fas fa-exclamation-triangle error-icon"></i>
                     <span>{{ message.content || '响应异常，请稍后重试' }}</span>
                   </div>
                 </div>
@@ -115,20 +115,20 @@
                   v-else-if="message.content && !message.isStreaming"
                   class="message-text"
                   v-html="formatMessageCached(message, 'content')"
-                />
+                ></div>
                 <div
                   v-else-if="message.content && message.isStreaming"
                   class="message-text"
                 >
-                  <span v-html="formatMessage(sanitizeNullRuns(message.content))" />
-                  <span class="typing-cursor" />
+                  <span v-html="formatMessage(sanitizeNullRuns(message.content))"></span>
+                  <span class="typing-cursor"></span>
                 </div>
                 <!-- 如果流式进行中且没有内容，显示输入状态 -->
                 <div
                   v-else-if="message.isStreaming"
                   class="message-text"
                 >
-                  <span class="typing-cursor" />
+                  <span class="typing-cursor"></span>
                 </div>
                 <!-- 如果流式结束但内容为空，显示空状态提示 -->
                 <div
@@ -136,7 +136,7 @@
                   class="message-text empty-response"
                 >
                   <div class="empty-content">
-                    <i class="fas fa-info-circle info-icon" />
+                    <i class="fas fa-info-circle info-icon"></i>
                     <span>AI 未返回内容，请重试或检查配置。</span>
                   </div>
                 </div>
@@ -151,7 +151,7 @@
                 title="复制这条消息"
                 @click="copyMessage(message.content)"
               >
-                <i class="fas fa-copy" />
+                <i class="fas fa-copy"></i>
                 <span class="copy-text">复制</span>
               </button>
 
@@ -168,7 +168,7 @@
                     @click="sendSuggestion(suggestion)"
                   >
                     <span class="suggestion-text">{{ suggestion }}</span>
-                    <i class="fas fa-arrow-right suggestion-arrow" />
+                    <i class="fas fa-arrow-right suggestion-arrow"></i>
                   </button>
                 </div>
               </div>
@@ -195,7 +195,7 @@
                 title="返回底部"
                 @click="scrollToBottom('smooth')"
               >
-                <i class="fas fa-arrow-down" />
+                <i class="fas fa-arrow-down"></i>
                 <span>最新消息</span>
               </button>
             </div>
@@ -210,7 +210,7 @@
               rows="1"
               @input="adjustTextareaHeight"
               @keydown.enter.exact.prevent="sendMessage"
-            />
+            ></textarea>
             
             <div class="input-toolbar">
               <div class="toolbar-left">
@@ -220,7 +220,7 @@
                   :class="{ active: chatStore.selectedModel.includes('reasoner') }"
                   @click="toggleDeepThinking"
                 >
-                  <i class="fas fa-atom" />
+                  <i class="fas fa-atom"></i>
                   <span>深度思考</span>
                 </button>
                 <div 
@@ -258,7 +258,7 @@
                         <i 
                           v-if="currentBrand.id === brand.id" 
                           class="fas fa-check check-icon" 
-                        />
+                        ></i>
                       </div>
                     </div>
                   </transition>
@@ -275,7 +275,7 @@
                   @click="chatStore.stopGeneration"
                 >
                   <div class="stop-icon-wrapper">
-                    <i class="fas fa-stop" />
+                    <i class="fas fa-stop"></i>
                   </div>
                 </button>
                 <button
@@ -286,7 +286,7 @@
                   @click="sendMessage"
                 >
                   <div class="send-icon-wrapper">
-                    <i class="fas fa-arrow-up" />
+                    <i class="fas fa-arrow-up"></i>
                   </div>
                 </button>
               </div>
@@ -310,7 +310,7 @@
           title="上一条对话"
           @click="scrollToPrevMessage"
         >
-          <i class="fas fa-chevron-up" />
+          <i class="fas fa-chevron-up"></i>
         </button>
         <button 
           v-show="canScrollDown"
@@ -318,7 +318,7 @@
           title="下一条对话"
           @click="scrollToNextMessage"
         >
-          <i class="fas fa-chevron-down" />
+          <i class="fas fa-chevron-down"></i>
         </button>
       </div>
 
@@ -329,7 +329,7 @@
           title="提问历史"
           @click="showHistoryPanel = !showHistoryPanel"
         >
-          <i class="fas fa-list-ul" />
+          <i class="fas fa-list-ul"></i>
         </button>
         
         <transition name="slide-fade">
@@ -343,7 +343,7 @@
                 class="close-btn"
                 @click="showHistoryPanel = false"
               >
-                <i class="fas fa-times" />
+                <i class="fas fa-times"></i>
               </button>
             </div>
             <div class="panel-content">
@@ -1998,6 +1998,7 @@ body.dark-mode .message-text.empty-response {
   align-items: center;
   gap: 4px;
   backdrop-filter: blur(4px); /* 背景模糊效果 */
+  -webkit-backdrop-filter: blur(4px);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
@@ -2284,6 +2285,7 @@ body.dark-mode .message-copy-button:hover {
   cursor: pointer;
   transition: all 0.2s ease;
   backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2492,6 +2494,7 @@ body.dark-mode .message-copy-button:hover {
   z-index: 100;
   transform-origin: bottom left;
   backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .model-menu-item {
@@ -2880,6 +2883,7 @@ body.dark-mode .message-copy-button:hover {
   padding: 8px;
   background-color: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-radius: 30px;
   border: 1px solid var(--border-color);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
@@ -2963,6 +2967,7 @@ body.dark-mode .nav-arrows {
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   pointer-events: auto;
   white-space: nowrap;
 }
@@ -3537,6 +3542,7 @@ body.dark-mode .reasoning-block .reasoning-content :deep(li) {
     gap: 12px;
     background-color: rgba(255, 255, 255, 0.9);
     backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
   }
   
   body.dark-mode .nav-arrows {

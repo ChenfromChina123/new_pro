@@ -31,7 +31,7 @@
           :class="{ active: strategy === 'RENAME' }"
           @click="selectStrategy('RENAME')"
         >
-          <div class="radio" />
+          <div class="radio"></div>
           <div class="text">
             <strong>智能重命名</strong>
             <small>保留两个{{ isFolder ? '文件夹' : '文件' }}，新{{ isFolder ? '文件夹' : '文件' }}将自动重命名 (例如: {{ isFolder ? 'folder(1)' : 'file(1).txt' }})</small>
@@ -43,7 +43,7 @@
           :class="{ active: strategy === 'OVERWRITE' }"
           @click="selectStrategy('OVERWRITE')"
         >
-          <div class="radio" />
+          <div class="radio"></div>
           <div class="text">
             <strong>覆盖</strong>
             <small>替换现有{{ isFolder ? '文件夹' : '文件' }} (不可撤销)</small>
@@ -129,6 +129,7 @@ const formatSize = (bytes) => {
   align-items: center;
   z-index: 1000;
   backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 .modal-content {

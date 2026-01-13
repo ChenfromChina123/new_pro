@@ -308,7 +308,7 @@
               v-if="isLoading"
               class="loading-state"
             >
-              <div class="spinner" />
+              <div class="spinner"></div>
               <p>正在获取词汇...</p>
             </div>
             <div
@@ -676,7 +676,7 @@
                 v-if="isLoadingArticles"
                 class="loading-state"
               >
-                <div class="spinner" />
+                <div class="spinner"></div>
                 <p>正在加载文章列表...</p>
               </div>
 
@@ -810,7 +810,7 @@
         v-if="articleGenerationInProgress"
         class="generation-progress"
       >
-        <div class="spinner small" />
+        <div class="spinner small"></div>
         <span>正在生成文章...</span>
       </div>
       <div
@@ -2346,6 +2346,7 @@ const formatDuration = (seconds) => {
   align-items: center;
   gap: 4px;
   backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
@@ -3545,6 +3546,7 @@ select {
   justify-content: center;
   z-index: 1000;
   backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 .modal-card.modal-xxl {

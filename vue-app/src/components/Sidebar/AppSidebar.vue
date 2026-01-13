@@ -12,8 +12,8 @@
           >
           <i 
             v-else 
-            class="fas fa-user-secret default-avatar-icon" 
-          />
+            class="fas fa-user-secret default-avatar-icon"
+          ></i>
         </div>
         <span class="sidebar-user-name">{{ authStore.username || '游客' }}</span>
       </div>
@@ -25,7 +25,7 @@
           title="返回首页"
           @click.stop="router.push('/')"
         >
-          <i class="fas fa-home" />
+          <i class="fas fa-home"></i>
         </div>
 
         <div 
@@ -33,7 +33,7 @@
           :title="themeStore.isDarkMode ? '切换到浅色模式' : '切换到深色模式'" 
           @click.stop="handleToggleDarkMode"
         >
-          <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" />
+          <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'"></i>
         </div>
         
         <div 
@@ -42,7 +42,7 @@
           title="设置"
           @click.stop="router.push('/settings')"
         >
-          <i class="fas fa-cog" />
+          <i class="fas fa-cog"></i>
         </div>
         
         <div 
@@ -51,7 +51,7 @@
           title="登录"
           @click.stop="router.push('/login')"
         >
-          <i class="fas fa-sign-in-alt" />
+          <i class="fas fa-sign-in-alt"></i>
         </div>
       </div>
     </div>
@@ -63,7 +63,7 @@
         class="nav-item"
         active-class="active"
       >
-        <i class="fas fa-comments" />
+        <i class="fas fa-comments"></i>
         <span>AI问答</span>
       </router-link>
       <router-link
@@ -72,7 +72,7 @@
         class="nav-item"
         active-class="active"
       >
-        <i class="fas fa-cloud" />
+        <i class="fas fa-cloud"></i>
         <span>云盘</span>
       </router-link>
       <router-link
@@ -81,7 +81,7 @@
         class="nav-item"
         active-class="active"
       >
-        <i class="fas fa-book" />
+        <i class="fas fa-book"></i>
         <span>语言学习</span>
       </router-link>
       <router-link
@@ -89,7 +89,7 @@
         class="nav-item"
         active-class="active"
       >
-        <i class="fas fa-folder-open" />
+        <i class="fas fa-folder-open"></i>
         <span>公共资源</span>
       </router-link>
       <router-link
@@ -98,7 +98,7 @@
         class="nav-item"
         active-class="active"
       >
-        <i class="fas fa-cog" />
+        <i class="fas fa-cog"></i>
         <span>管理</span>
       </router-link>
     </div>
@@ -125,7 +125,7 @@
           class="quota-progress-fill" 
           :style="{ width: Math.min(100, (cloudDiskStore.quota.usedSize / cloudDiskStore.quota.limitSize) * 100) + '%' }"
           :class="{ 'warning': (cloudDiskStore.quota.usedSize / cloudDiskStore.quota.limitSize) > 0.8, 'danger': (cloudDiskStore.quota.usedSize / cloudDiskStore.quota.limitSize) > 0.9 }"
-        />
+        ></div>
       </div>
       <div 
         v-else 
@@ -135,7 +135,7 @@
       </div>
     </div>
 
-    <div class="sidebar-divider" />
+    <div class="sidebar-divider"></div>
 
     <!-- 动态内容区域：根据当前路由显示不同内容 -->
     <div class="dynamic-sidebar-content">
@@ -147,7 +147,7 @@
             @click="handleNewChat"
           >
             <span class="btn-icon">
-              <i class="fas fa-plus" />
+              <i class="fas fa-plus"></i>
             </span>
             <span class="btn-text">新建对话</span>
           </button>
@@ -193,7 +193,7 @@
                 title="删除会话"
                 @click.stop="handleDeleteSession(session.id)"
               >
-                <i class="fas fa-trash" />
+                <i class="fas fa-trash"></i>
               </button>
             </div>
           </div>
@@ -457,6 +457,10 @@ watch(
 )
 
 // 聊天逻辑
+/**
+ * 创建新对话
+ * 检查当前会house是否为空，若为空则提示用户，否则创建新会话并跳转
+ */
 const handleNewChat = async () => {
   // 检查当前会话是否为空（无消息且无草稿）
   const isCurrentEmpty = chatStore.messages.length === 0 && !chatStore.getDraft(chatStore.currentSessionId)
@@ -472,10 +476,18 @@ const handleNewChat = async () => {
   }
 }
 
+/**
+ * 加载指定的会话
+ * @param {string} sessionId 会话 ID
+ */
 const loadSession = (sessionId) => {
   router.push(`/chat?session=${sessionId}`)
 }
 
+/**
+ * 删除指定的会话
+ * @param {string} sessionId 会话 ID
+ */
 const handleDeleteSession = async (sessionId) => {
   if (confirm('确定要删除这条会话吗？')) {
     const result = await chatStore.deleteSession(sessionId)
@@ -485,6 +497,11 @@ const handleDeleteSession = async (sessionId) => {
   }
 }
 
+/**
+ * 格式化会话日期
+ * @param {string} dateStr 日期字符串
+ * @returns {string} 格式化后的日期描述（如：今天、昨天、N天前）
+ */
 const formatSessionDate = (dateStr) => {
   if (!dateStr) return ''
   const date = new Date(dateStr)
@@ -501,6 +518,10 @@ const formatSessionDate = (dateStr) => {
 const folderIndentPx = 20
 const expandedFolders = ref(new Set())
 
+/**
+ * 处理新建文件夹逻辑
+ * 检查层级限制并显示创建对话框
+ */
 const handleNewFolder = () => {
   // 检查层级限制
   if (!cloudDiskStore.canCreateSubFolder()) {
@@ -512,6 +533,9 @@ const handleNewFolder = () => {
   cloudDiskStore.showCreateFolderDialog = true
 }
 
+/**
+ * 计算文件夹树的最大深度
+ */
 const maxFolderDepth = computed(() => {
   let max = 0
   const walk = (node, depth) => {
@@ -524,11 +548,20 @@ const maxFolderDepth = computed(() => {
   return max
 })
 
+/**
+ * 检查文件夹是否已展开
+ * @param {string|object} folderId 文件夹 ID 或对象
+ * @returns {boolean} 是否已展开
+ */
 const isFolderExpanded = (folderId) => {
   const id = typeof folderId === 'object' ? folderId.id : folderId
   return expandedFolders.value.has(id)
 }
 
+/**
+ * 切换文件夹的展开/折叠状态
+ * @param {string|object} folderId 文件夹 ID 或对象
+ */
 const toggleFolderExpand = (folderId) => {
   const id = typeof folderId === 'object' ? folderId.id : folderId
   if (expandedFolders.value.has(id)) {
@@ -538,6 +571,11 @@ const toggleFolderExpand = (folderId) => {
   }
 }
 
+/**
+ * 格式化文件大小
+ * @param {number} bytes 字节数
+ * @returns {string} 格式化后的文件大小（如：KB, MB, GB）
+ */
 const formatFileSize = (bytes) => {
   if (!bytes) return '0 B'
   const k = 1024
@@ -546,11 +584,20 @@ const formatFileSize = (bytes) => {
   return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
 }
 
+/**
+ * 选择文件夹并加载其内容
+ * @param {string} folderPath 文件夹路径
+ * @param {string} folderId 文件夹 ID
+ */
 const selectFolder = (folderPath, folderId) => {
   cloudDiskStore.fetchFiles(folderPath)
   cloudDiskStore.setActiveFolder({ folderId, folderPath })
 }
 
+/**
+ * 处理删除文件夹操作
+ * @param {object|string} folderOrId 文件夹对象或 ID
+ */
 const deleteFolderAction = async (folderOrId) => {
   const folder = typeof folderOrId === 'object' ? folderOrId : { id: folderOrId, folderName: '文件夹', folderPath: '' }
   if (confirm(`确定要删除文件夹 "${folder.folderName || '该文件夹'}" 及其所有内容吗？`)) {
@@ -559,6 +606,10 @@ const deleteFolderAction = async (folderOrId) => {
   }
 }
 
+/**
+ * 触发重命名文件夹对话框
+ * @param {object} folder 文件夹对象
+ */
 const renameFolderAction = (folder) => {
   cloudDiskStore.renamingFolder = folder
   cloudDiskStore.renameFolderName = folder.folderName
@@ -1180,6 +1231,7 @@ onMounted(() => {
   justify-content: center !important;
   z-index: 9999 !important;
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   margin: 0 !important;
   padding: 0 !important;
 }
