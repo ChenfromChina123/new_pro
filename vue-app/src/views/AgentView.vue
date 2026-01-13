@@ -146,13 +146,12 @@
           一个强大的 AI 终端助手，支持多种 LLM 模型，提供智能的命令行交互体验。专为开发者打造的生产力工具。
         </p>
         <div class="hero-actions">
-          <a 
-            href="/xiaochen_terminal.zip" 
-            download 
+          <button 
             class="btn-primary-lg"
+            @click="scrollToDownload"
           >
             <i class="fas fa-download" /> 立即下载
-          </a>
+          </button>
           <button 
             class="btn-secondary-lg" 
             @click="scrollToFeatures"
@@ -367,6 +366,9 @@
       </div>
     </section>
 
+    <!-- 下载中心 -->
+    <AgentDownloadCenter />
+
     <!-- Footer -->
     <footer class="landing-footer">
       <div class="footer-container">
@@ -403,6 +405,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
+import AgentDownloadCenter from '@/components/agent/AgentDownloadCenter.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -439,6 +442,16 @@ const revealOnScroll = () => {
  */
 const scrollToFeatures = () => {
   const el = document.getElementById('features')
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth' })
+  }
+}
+
+/**
+ * 平滑滚动到下载中心区域
+ */
+const scrollToDownload = () => {
+  const el = document.getElementById('download-center')
   if (el) {
     el.scrollIntoView({ behavior: 'smooth' })
   }
