@@ -481,7 +481,7 @@ onUnmounted(() => {
 }
 
 .logo i {
-  background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+  background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -523,19 +523,19 @@ onUnmounted(() => {
 
 .btn-register {
   text-decoration: none;
-  background: var(--gradient-primary);
+  background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
   color: white;
-  padding: 0.6rem 1.5rem;
+  padding: 0.75rem 1.75rem;
   border-radius: 12px;
-  font-weight: 700;
+  font-weight: 600;
   font-size: 0.95rem;
   transition: all 0.3s;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.2);
 }
 
 .btn-register:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 12px 25px rgba(16, 185, 129, 0.3);
 }
 
 .theme-toggle-btn {
@@ -578,7 +578,7 @@ onUnmounted(() => {
 }
 
 .gradient-text {
-  background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+  background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -608,7 +608,7 @@ onUnmounted(() => {
 }
 
 .btn-primary-lg {
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: white;
   border: none;
   padding: 1rem 2.5rem;
@@ -620,23 +620,23 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 10px;
-  box-shadow: 0 10px 25px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
 }
 
 .btn-primary-lg:hover {
   transform: translateY(-3px) scale(1.02);
-  box-shadow: 0 15px 30px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 15px 30px rgba(16, 185, 129, 0.4);
   filter: brightness(1.1);
 }
 
 .btn-agent-download {
-  background: var(--bg-secondary);
+  background: var(--bg-primary);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
-  padding: 1.1rem 2rem;
+  padding: 1rem 2.5rem;
   border-radius: 14px;
-  font-size: 1.15rem;
-  font-weight: 700;
+  font-size: 1.1rem;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.3s;
   display: flex;
@@ -647,8 +647,9 @@ onUnmounted(() => {
 
 .btn-agent-download:hover {
   transform: translateY(-3px);
-  background: var(--bg-tertiary);
-  border-color: var(--primary-color);
+  border-color: #10b981;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.05);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
 }
 
@@ -835,7 +836,7 @@ onUnmounted(() => {
 .feature-card:hover {
   transform: translateY(-10px);
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
-  border-color: #6366f1;
+  border-color: #10b981;
 }
 
 .feature-icon {
@@ -846,9 +847,9 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   font-size: 1.5rem;
-  color: #6366f1;
+  color: #10b981;
   margin-bottom: 1.5rem;
-  background: rgba(99, 102, 241, 0.1) !important;
+  background: rgba(16, 185, 129, 0.1) !important;
   transition: all 0.3s;
 }
 
@@ -918,14 +919,14 @@ onUnmounted(() => {
 .cta-container {
   max-width: 1100px;
   margin: 0 auto;
-  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
   border-radius: 32px;
   padding: 80px 60px;
   text-align: center;
   color: white;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.4);
+  box-shadow: 0 25px 50px -12px rgba(16, 185, 129, 0.4);
 }
 
 .cta-content {
