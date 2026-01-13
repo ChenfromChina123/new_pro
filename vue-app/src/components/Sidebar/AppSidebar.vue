@@ -19,6 +19,15 @@
       </div>
       
       <div class="sidebar-actions">
+        <!-- 返回首页 -->
+        <div 
+          class="sidebar-action-btn home-btn"
+          title="返回首页"
+          @click.stop="router.push('/')"
+        >
+          <i class="fas fa-home" />
+        </div>
+
         <div 
           class="sidebar-action-btn theme-toggle" 
           :title="themeStore.isDarkMode ? '切换到浅色模式' : '切换到深色模式'" 
