@@ -48,6 +48,8 @@
 ##### 🚀 最近更新
 
 ### 🛠️ 代码质量与 CSS 兼容性优化 (2026-01-13)
+- **Agent 助手使用流程优化**:
+  - **安装说明简化**: 更新了 `AgentView.vue` 中的安装步骤。现在明确标注 Agent 助手为 **免安装绿色版**，用户下载解压后即可直接运行，无需执行安装脚本。
 - **全站 Linter 规范化**:
   - **组件清理**: 对 `AgentView.vue` 和 `LandingView.vue` 进行了代码审查，移除了冗余逻辑。
   - **标签规范化**: 修复了 `ChatView.vue`、`AppHeader.vue`、`Settings.vue` 等 13 个组件中共 48 处非自闭合 HTML 标签（如 `<i>`, `<span>`, `<textarea>`）的自闭合问题，确保符合 HTML5 标准与 Linter 规范。
