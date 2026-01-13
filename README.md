@@ -50,10 +50,11 @@
 ### 🛠️ 代码质量与 CSS 兼容性优化 (2026-01-13)
 - **全站 Linter 规范化**:
   - **组件清理**: 对 `AgentView.vue` 和 `LandingView.vue` 进行了代码审查，移除了冗余逻辑。
-  - **标签规范化**: 修复了 Vue 组件中非自闭合 HTML 标签（如 `<i>`, `<span>`, `<textarea>`）的自闭合问题，确保符合 HTML5 标准与 Linter 规范。
+  - **标签规范化**: 修复了 `ChatView.vue`、`AppHeader.vue`、`Settings.vue` 等 13 个组件中共 48 处非自闭合 HTML 标签（如 `<i>`, `<span>`, `<textarea>`）的自闭合问题，确保符合 HTML5 标准与 Linter 规范。
+  - **文字修正**: 修正了 `AgentView.vue` 中“专业级回退系统”的文字错误。
   - **代码文档化**: 为 `LandingView.vue` 等核心页面的关键函数添加了详细的中文函数级注释。
 - **CSS 兼容性增强**:
-  - **跨浏览器支持**: 在 `RequirementManager.vue` 的弹窗遮罩层中新增了 `-webkit-backdrop-filter` 属性，确保在 Safari 及旧版 WebKit 浏览器下的毛玻璃效果一致性。
+  - **跨浏览器支持**: 在 `RequirementManager.vue`、`AdminView.vue`、`ChatView.vue` 等全站组件的毛玻璃效果中全面补齐了 `-webkit-backdrop-filter` 属性，确保在 Safari 及旧版 WebKit 浏览器下的视觉一致性。
 - **交互细节微调**:
   - 统一了移动端菜单图标的渲染逻辑，提升了在弱网环境下的加载稳定性。
 

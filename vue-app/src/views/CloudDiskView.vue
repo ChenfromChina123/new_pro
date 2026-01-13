@@ -87,7 +87,7 @@
             v-if="cloudDiskStore.isLoading"
             class="loading-state"
           >
-            <div class="loading" />
+            <div class="loading"></div>
             <p>加载中...</p>
           </div>
           
@@ -260,7 +260,7 @@
               v-if="!previewUrl"
               class="loading-preview"
             >
-              <div class="loading" />
+              <div class="loading"></div>
               <p>正在加载预览...</p>
             </div>
             <template v-else>
@@ -275,13 +275,13 @@
                 :src="previewUrl" 
                 controls 
                 class="preview-content preview-video"
-              />
+              ></video>
               <audio 
                 v-else-if="getFileType(previewFileData.filename) === 'audio'" 
                 :src="previewUrl" 
                 controls 
                 class="preview-content preview-audio"
-              />
+              ></audio>
               <div
                 v-else-if="getFileType(previewFileData.filename) === 'text'"
                 class="preview-content preview-text"
@@ -292,7 +292,7 @@
                   v-model="editingText"
                   class="text-editor"
                   :disabled="isSaving"
-                />
+                ></textarea>
                 <!-- 预览模式 -->
                 <pre v-else><code>{{ previewText }}</code></pre>
               </div>
@@ -309,7 +309,7 @@
                 :src="previewUrl"
                 class="preview-frame"
                 title="文件预览"
-              />
+              ></iframe>
             </template>
           </div>
           <div
@@ -329,7 +329,7 @@
               class="btn btn-primary"
               @click="downloadFile(previewFileData.id)"
             >
-              <i class="fas fa-download" /> 下载文件
+              <i class="fas fa-download"></i> 下载文件
             </button>
           </div>
         </div>
@@ -366,7 +366,7 @@
         <div
           class="progress-fill"
           :style="{ width: uploadProgress + '%' }"
-        />
+        ></div>
       </div>
       <p>上传中... {{ uploadProgress }}%</p>
     </div>
@@ -1503,6 +1503,7 @@ input[type="checkbox"] {
   justify-content: center !important;
   z-index: 9999 !important;
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   margin: 0 !important;
   padding: 0 !important;
 }

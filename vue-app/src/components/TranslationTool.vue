@@ -29,7 +29,7 @@
           v-model="sourceText"
           placeholder="请输入需要翻译的文本..."
           class="text-area"
-        />
+        ></textarea>
         <div class="char-count">
           {{ sourceText.length }} / 5000
         </div>
@@ -42,7 +42,7 @@
           title="交换语言"
           @click="swapLanguages"
         >
-          <i class="fas fa-exchange-alt" />
+          <i class="fas fa-exchange-alt"></i>
         </button>
         <button 
           class="translate-btn" 
@@ -53,7 +53,7 @@
           <span
             v-else
             class="loading-spinner"
-          />
+          ></span>
         </button>
       </div>
 
@@ -93,7 +93,7 @@
             title="复制内容"
             @click="copyResult"
           >
-            <i class="far fa-copy" />
+            <i class="far fa-copy"></i>
           </button>
         </div>
       </div>

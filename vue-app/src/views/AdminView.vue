@@ -255,7 +255,7 @@
                 v-if="isLoadingPreview"
                 class="preview-loading"
               >
-                <div class="loading-spinner" />
+                <div class="loading-spinner"></div>
                 <span>正在加载预览内容...</span>
               </div>
 
@@ -264,7 +264,7 @@
                 v-else-if="editContent && editContent !== '加载中...'"
                 class="preview-error"
               >
-                <i class="fas fa-exclamation-circle" />
+                <i class="fas fa-exclamation-circle"></i>
                 <span>{{ editContent }}</span>
               </div>
 
@@ -287,7 +287,7 @@
                     width="100%" 
                     height="100%"
                     style="border: none;"
-                  />
+                  ></iframe>
                 </div>
                 <div
                   v-else-if="previewType === 'word' || previewType === 'other'"
@@ -326,12 +326,12 @@
                 spellcheck="false"
                 placeholder="文件内容加载中..."
                 :disabled="editContent === '加载中...'"
-              />
+              ></textarea>
               <div
                 v-if="editContent === '加载中...'"
                 class="editor-loading-overlay"
               >
-                <div class="loading" />
+                <div class="loading"></div>
                 <span>内容加载中...</span>
               </div>
             </div>
@@ -352,7 +352,7 @@
               <span
                 v-if="saving"
                 class="loading-spinner"
-              />
+              ></span>
               {{ saving ? '保存中...' : '保存' }}
             </button>
           </div>
@@ -1146,6 +1146,7 @@ const formatSize = (bytes) => {
   justify-content: center;
   z-index: 1000;
   backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 .modal-content {

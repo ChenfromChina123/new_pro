@@ -54,7 +54,7 @@
               class="theme-toggle-btn" 
               @click="themeStore.toggleDarkMode()"
             >
-              <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" />
+              <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'"></i>
             </button>
           </div>
         </div>
@@ -64,7 +64,7 @@
           class="mobile-menu-btn"
           @click="isMobileMenuOpen = !isMobileMenuOpen"
         >
-          <i :class="isMobileMenuOpen ? 'fas fa-times' : 'fas fa-bars'" />
+          <i :class="isMobileMenuOpen ? 'fas fa-times' : 'fas fa-bars'"></i>
         </button>
       </div>
 
@@ -85,30 +85,30 @@
                 class="mobile-nav-link" 
                 @click="isMobileMenuOpen = false"
               >
-                <i class="fas fa-comments" /> AI 问答
+                <i class="fas fa-comments"></i> AI 问答
               </router-link>
               <router-link 
                 to="/public-files" 
                 class="mobile-nav-link" 
                 @click="isMobileMenuOpen = false"
               >
-                <i class="fas fa-folder-open" /> 公共资源
+                <i class="fas fa-folder-open"></i> 公共资源
               </router-link>
-              <div class="mobile-menu-divider" />
+              <div class="mobile-menu-divider"></div>
               <template v-if="!authStore.isAuthenticated">
                 <router-link 
                   to="/login" 
                   class="mobile-nav-link" 
                   @click="isMobileMenuOpen = false"
                 >
-                  <i class="fas fa-sign-in-alt" /> 登录
+                  <i class="fas fa-sign-in-alt"></i> 登录
                 </router-link>
                 <router-link 
                   to="/register" 
                   class="mobile-nav-link highlight" 
                   @click="isMobileMenuOpen = false"
                 >
-                  <i class="fas fa-user-plus" /> 立即加入
+                  <i class="fas fa-user-plus"></i> 立即加入
                 </router-link>
               </template>
               <template v-else>
@@ -117,7 +117,7 @@
                   class="mobile-nav-link highlight" 
                   @click="isMobileMenuOpen = false"
                 >
-                  <i class="fas fa-rocket" /> 进入工作台
+                  <i class="fas fa-rocket"></i> 进入工作台
                 </router-link>
               </template>
             </div>
@@ -126,7 +126,7 @@
                 class="mobile-theme-toggle" 
                 @click="themeStore.toggleDarkMode()"
               >
-                <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" />
+                <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'"></i>
                 {{ themeStore.isDarkMode ? '切换浅色模式' : '切换深色模式' }}
               </button>
             </div>
@@ -153,14 +153,14 @@
             download 
             class="btn-primary-lg"
           >
-            <i class="fab fa-windows" /> Windows 全量版 (v1.0.0)
+            <i class="fab fa-windows"></i> Windows 全量版 (v1.0.0)
           </a>
           <a 
             href="/downloads/xiaochen-agent-linux" 
             download 
             class="btn-secondary-lg"
           >
-            <i class="fab fa-linux" /> Linux 独立版
+            <i class="fab fa-linux"></i> Linux 独立版
           </a>
         </div>
         <div class="hero-stats">
@@ -182,9 +182,9 @@
         <div class="visual-card terminal-mockup-wrapper">
           <div class="terminal-mockup">
             <div class="terminal-header">
-              <span class="dot red" />
-              <span class="dot yellow" />
-              <span class="dot green" />
+              <span class="dot red"></span>
+              <span class="dot yellow"></span>
+              <span class="dot green"></span>
               <span class="terminal-title">xiaochen-agent --bash</span>
             </div>
             <div class="terminal-body">
@@ -212,7 +212,7 @@
             </div>
           </div>
         </div>
-        <div class="visual-blob" />
+        <div class="visual-blob"></div>
       </div>
     </header>
 
@@ -239,7 +239,7 @@
             class="feature-icon" 
             :style="{ backgroundColor: feature.color }"
           >
-            <i :class="feature.icon" />
+            <i :class="feature.icon"></i>
           </div>
           <h3 class="feature-title">
             {{ feature.title }}
@@ -252,7 +252,7 @@
               v-for="item in feature.items" 
               :key="item"
             >
-              <i class="fas fa-check-circle" /> {{ item }}
+              <i class="fas fa-check-circle"></i> {{ item }}
             </li>
           </ul>
         </div>
@@ -365,15 +365,15 @@
             <p>内置强大的版本控制模块，为您提供多级文件回退、快照管理和版本对比功能。即使 AI 误操作，您也可以一键恢复项目状态。</p>
             <div class="rollback-features">
               <div class="r-item">
-                <i class="fas fa-history" />
+                <i class="fas fa-history"></i>
                 <span>多级历史</span>
               </div>
               <div class="r-item">
-                <i class="fas fa-code-branch" />
+                <i class="fas fa-code-branch"></i>
                 <span>自动快照</span>
               </div>
               <div class="r-item">
-                <i class="fas fa-search-plus" />
+                <i class="fas fa-search-plus"></i>
                 <span>差异对比</span>
               </div>
             </div>
@@ -381,9 +381,9 @@
           <div class="rollback-visual">
             <div class="code-window">
               <div class="code-header">
-                <span class="dot red" />
-                <span class="dot yellow" />
-                <span class="dot green" />
+                <span class="dot red"></span>
+                <span class="dot yellow"></span>
+                <span class="dot green"></span>
               </div>
               <pre><code><span class="c-prompt">小晨助手 ></span> undo
 <span class="c-success">✓ 已撤销上一次对话涉及的所有 3 个文件修改</span>
@@ -402,7 +402,7 @@
             class="logo" 
             @click="router.push('/')"
           >
-            <i class="fas fa-brain" />
+            <i class="fas fa-brain"></i>
             <span>AI 智能学习助手</span>
           </div>
           <p>让科技服务于学习，打造您的第二大脑。</p>
@@ -1260,6 +1260,7 @@ code {
     bottom: 0;
     background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
     z-index: 2000;
   }
 
