@@ -1810,7 +1810,7 @@ const adjustTextareaHeight = (event) => {
 }
 
 .message.assistant .message-avatar {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #06b6d4 0%, #10b981 100%);
 }
 
 .message-content {
@@ -3150,15 +3150,15 @@ body.dark-mode .nav-arrows {
   border-radius: 12px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-left: 3px solid #6366f1;
+  border-left: 3px solid #10b981;
   overflow: hidden;
   transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 body.dark-mode .reasoning-block {
-  background: rgba(30, 41, 59, 0.5);
+  background: rgba(16, 185, 129, 0.05);
   border-color: rgba(255, 255, 255, 0.1);
-  border-left-color: #818cf8;
+  border-left-color: #06b6d4;
 }
 
 .reasoning-block:hover {
@@ -3167,18 +3167,18 @@ body.dark-mode .reasoning-block {
 }
 
 body.dark-mode .reasoning-block:hover {
-  background: rgba(30, 41, 59, 0.8);
+  background: rgba(16, 185, 129, 0.1);
   border-color: rgba(255, 255, 255, 0.2);
 }
 
 .reasoning-block.streaming {
-  border-left-color: #8b5cf6;
-  background: #f5f3ff;
+  border-left-color: #06b6d4;
+  background: #f0fdfa;
   animation: reasoning-border-pulse 2s infinite;
 }
 
 body.dark-mode .reasoning-block.streaming {
-  background: rgba(139, 92, 246, 0.1);
+  background: rgba(6, 182, 212, 0.1);
 }
 
 .reasoning-block.collapsed {
@@ -3232,9 +3232,9 @@ body.dark-mode .reasoning-block.collapsed:hover {
 }
 
 @keyframes reasoning-border-pulse {
-  0% { border-left-color: #6366f1; }
-  50% { border-left-color: #8b5cf6; }
-  100% { border-left-color: #6366f1; }
+  0% { border-left-color: #10b981; }
+  50% { border-left-color: #06b6d4; }
+  100% { border-left-color: #10b981; }
 }
 
 .reasoning-preview {
@@ -3285,7 +3285,7 @@ body.dark-mode .reasoning-preview {
   justify-content: center;
   width: 24px;
   height: 24px;
-  color: #6366f1;
+  color: #06b6d4;
 }
 
 .reasoning-icon {
@@ -3340,7 +3340,7 @@ body.dark-mode .reasoning-count {
 }
 
 .reasoning-block .reasoning-header:hover .toggle-icon {
-  color: #6366f1;
+  color: #06b6d4;
 }
 
 .reasoning-block.collapsed .toggle-icon {

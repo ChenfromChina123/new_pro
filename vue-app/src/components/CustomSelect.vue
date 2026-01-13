@@ -96,29 +96,32 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
   cursor: pointer;
   transition: all 0.2s;
-  font-size: 0.9rem;
-  color: #334155;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  color: var(--text-primary);
 }
 
 .select-trigger:hover {
-  border-color: #cbd5e1;
-  background: #f8fafc;
+  border-color: var(--primary-color);
+  background: var(--bg-tertiary);
 }
 
 .select-trigger.active {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1);
+}
+
+.selected-text {
+  font-size: 0.95rem;
+  color: var(--text-primary);
 }
 
 .chevron {
-  font-size: 0.7rem;
-  color: #94a3b8;
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
   transition: transform 0.2s;
 }
 
@@ -128,16 +131,16 @@ onUnmounted(() => {
 
 .options-menu {
   position: absolute;
-  bottom: calc(100% + 5px);
+  top: calc(100% + 8px);
   left: 0;
   right: 0;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  box-shadow: 0 -10px 15px -3px rgba(0, 0, 0, 0.1), 0 -4px 6px -2px rgba(0, 0, 0, 0.05);
-  z-index: 100;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: 1000;
   overflow: hidden;
-  min-width: 200px;
+  padding: 4px;
 }
 
 .option-item {
@@ -146,37 +149,38 @@ onUnmounted(() => {
   align-items: center;
   padding: 10px 12px;
   cursor: pointer;
-  transition: background 0.2s;
+  border-radius: var(--border-radius-md);
+  transition: all 0.2s;
 }
 
 .option-item:hover {
-  background: #f1f5f9;
+  background: var(--bg-tertiary);
 }
 
 .option-item.selected {
-  background: #eff6ff;
+  background: rgba(6, 182, 212, 0.1);
+  color: var(--primary-color);
 }
 
 .option-content {
   display: flex;
   flex-direction: column;
+  gap: 2px;
 }
 
 .option-label {
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   font-weight: 500;
-  color: #1e293b;
 }
 
 .option-desc {
-  font-size: 0.75rem;
-  color: #64748b;
-  margin-top: 2px;
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
 }
 
 .check-icon {
-  color: #3b82f6;
-  font-weight: bold;
+  font-size: 0.9rem;
+  color: var(--primary-color);
 }
 
 /* Transitions */
