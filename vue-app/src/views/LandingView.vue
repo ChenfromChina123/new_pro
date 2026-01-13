@@ -10,7 +10,7 @@
           class="logo" 
           @click="router.push('/')"
         >
-          <i class="fas fa-brain" />
+          <i class="fas fa-brain"></i>
           <span>AI 智能学习助手</span>
         </div>
         <div class="nav-links">
@@ -60,41 +60,71 @@
 
         <!-- 移动端菜单按钮 -->
         <button 
-          class="mobile-menu-btn"
-          @click="isMobileMenuOpen = !isMobileMenuOpen"
-        >
-          <i :class="isMobileMenuOpen ? 'fas fa-times' : 'fas fa-bars'" />
-        </button>
+        class="mobile-menu-btn"
+        @click="isMobileMenuOpen = !isMobileMenuOpen"
+      >
+        <i :class="isMobileMenuOpen ? 'fas fa-times' : 'fas fa-bars'"></i>
+      </button>
       </div>
 
       <!-- 移动端侧边栏菜单 -->
       <transition name="slide">
-        <div v-if="isMobileMenuOpen" class="mobile-menu-overlay" @click="isMobileMenuOpen = false">
-          <div class="mobile-menu" @click.stop>
+        <div 
+          v-if="isMobileMenuOpen" 
+          class="mobile-menu-overlay" 
+          @click="isMobileMenuOpen = false"
+        >
+          <div 
+            class="mobile-menu" 
+            @click.stop
+          >
             <div class="mobile-menu-links">
-              <router-link to="/chat" class="mobile-nav-link" @click="isMobileMenuOpen = false">
+              <router-link 
+                to="/chat" 
+                class="mobile-nav-link" 
+                @click="isMobileMenuOpen = false"
+              >
                 <i class="fas fa-comments" /> AI 问答
               </router-link>
-              <router-link to="/public-files" class="mobile-nav-link" @click="isMobileMenuOpen = false">
+              <router-link 
+                to="/public-files" 
+                class="mobile-nav-link" 
+                @click="isMobileMenuOpen = false"
+              >
                 <i class="fas fa-folder-open" /> 公共资源
               </router-link>
               <div class="mobile-menu-divider" />
               <template v-if="!authStore.isAuthenticated">
-                <router-link to="/login" class="mobile-nav-link" @click="isMobileMenuOpen = false">
+                <router-link 
+                  to="/login" 
+                  class="mobile-nav-link" 
+                  @click="isMobileMenuOpen = false"
+                >
                   <i class="fas fa-sign-in-alt" /> 登录
                 </router-link>
-                <router-link to="/register" class="mobile-nav-link highlight" @click="isMobileMenuOpen = false">
+                <router-link 
+                  to="/register" 
+                  class="mobile-nav-link highlight" 
+                  @click="isMobileMenuOpen = false"
+                >
                   <i class="fas fa-user-plus" /> 立即加入
                 </router-link>
               </template>
               <template v-else>
-                <router-link to="/chat" class="mobile-nav-link highlight" @click="isMobileMenuOpen = false">
+                <router-link 
+                  to="/chat" 
+                  class="mobile-nav-link highlight" 
+                  @click="isMobileMenuOpen = false"
+                >
                   <i class="fas fa-rocket" /> 进入工作台
                 </router-link>
               </template>
             </div>
             <div class="mobile-menu-footer">
-              <button class="mobile-theme-toggle" @click="themeStore.toggleDarkMode()">
+              <button 
+                class="mobile-theme-toggle" 
+                @click="themeStore.toggleDarkMode()"
+              >
                 <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" />
                 {{ themeStore.isDarkMode ? '切换浅色模式' : '切换深色模式' }}
               </button>
@@ -171,104 +201,116 @@
       </div>
     </section>
 
-  <!-- 特性展示 -->
-  <section 
-    id="features" 
-    class="features-section"
-  >
-    <div class="section-header reveal">
-      <h2 class="section-title">
-        核心功能
-      </h2>
-      <p class="section-subtitle">为您提供全方位的学习生产力工具</p>
-    </div>
-
-    <div class="features-grid">
-      <div 
-        v-for="(feature, index) in features" 
-        :key="index"
-        class="feature-card reveal"
-        :style="{ transitionDelay: `${index * 150}ms` }"
-      >
-        <div 
-          class="feature-icon" 
-          :style="{ backgroundColor: feature.color }"
-        >
-          <i :class="feature.icon" />
-        </div>
-        <h3 class="feature-title">
-          {{ feature.title }}
-        </h3>
-        <p class="feature-desc">
-          {{ feature.description }}
+    <!-- 特性展示 -->
+    <section 
+      id="features" 
+      class="features-section"
+    >
+      <div class="section-header reveal">
+        <h2 class="section-title">
+          核心功能
+        </h2>
+        <p class="section-subtitle">
+          为您提供全方位的学习生产力工具
         </p>
-        <ul class="feature-list">
-          <li 
-            v-for="item in feature.items" 
-            :key="item"
-          >
-            <i class="fas fa-check-circle" /> {{ item }}
-          </li>
-        </ul>
-        <div 
-          v-if="feature.link" 
-          class="feature-action"
-        >
-          <button 
-            class="btn-text" 
-            @click="router.push(feature.link)"
-          >
-            了解详情 <i class="fas fa-arrow-right" />
-          </button>
-        </div>
       </div>
-    </div>
-  </section>
 
-  <!-- 交互区域：体验 AI -->
-  <section class="cta-section reveal">
-    <div class="cta-container">
-      <div class="cta-content">
-        <h2>准备好提升您的效率了吗？</h2>
-        <p>加入成千上万的学习者，利用 AI 的力量改变您的学习方式。</p>
-        <div class="cta-btns">
-          <button 
-            class="btn-white" 
-            @click="router.push('/register')"
+      <div class="features-grid">
+        <div 
+          v-for="(feature, index) in features" 
+          :key="index"
+          class="feature-card reveal"
+          :style="{ transitionDelay: `${index * 150}ms` }"
+        >
+          <div 
+            class="feature-icon" 
+            :style="{ backgroundColor: feature.color }"
           >
-            立即注册账号
-          </button>
-          <button 
-            class="btn-outline-white" 
-            @click="router.push('/chat')"
+            <i :class="feature.icon" />
+          </div>
+          <h3 class="feature-title">
+            {{ feature.title }}
+          </h3>
+          <p class="feature-desc">
+            {{ feature.description }}
+          </p>
+          <ul class="feature-list">
+            <li 
+              v-for="item in feature.items" 
+              :key="item"
+            >
+              <i class="fas fa-check-circle" /> {{ item }}
+            </li>
+          </ul>
+          <div 
+            v-if="feature.link" 
+            class="feature-action"
           >
-            以游客身份试用
-          </button>
+            <button 
+              class="btn-text" 
+              @click="router.push(feature.link)"
+            >
+              了解详情 <i class="fas fa-arrow-right" />
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
+
+    <!-- 交互区域：体验 AI -->
+    <section class="cta-section reveal">
+      <div class="cta-container">
+        <div class="cta-content">
+          <h2>准备好提升您的效率了吗？</h2>
+          <p>加入成千上万的学习者，利用 AI 的力量改变您的学习方式。</p>
+          <div class="cta-btns">
+            <button 
+              class="btn-white" 
+              @click="router.push('/register')"
+            >
+              立即注册账号
+            </button>
+            <button 
+              class="btn-outline-white" 
+              @click="router.push('/chat')"
+            >
+              以游客身份试用
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <!-- 页脚 -->
     <footer class="landing-footer">
       <div class="footer-container">
         <div class="footer-brand">
           <div class="logo">
-            <i class="fas fa-brain"></i>
+            <i class="fas fa-brain" />
             <span>AI 智能学习助手</span>
           </div>
           <p>让科技服务于学习，打造您的第二大脑。</p>
         </div>
         <div class="link-group">
           <h4>产品</h4>
-          <router-link to="/chat">AI 问答</router-link>
-          <router-link to="/cloud-disk">云盘管理</router-link>
-          <router-link to="/language-learning">语言学习</router-link>
+          <router-link to="/chat">
+            AI 问答
+          </router-link>
+          <router-link to="/cloud-disk">
+            云盘管理
+          </router-link>
+          <router-link to="/language-learning">
+            语言学习
+          </router-link>
         </div>
         <div class="link-group">
           <h4>支持</h4>
-          <router-link to="/public-files">公共资源</router-link>
-          <router-link to="/agent">Agent 终端助手</router-link>
+          <router-link to="/public-files">
+            公共资源
+          </router-link>
+          <router-link to="/agent">
+            Agent 终端助手
+          </router-link>
           <a href="#">使用文档</a>
           <a href="#">常见问题</a>
         </div>
@@ -329,6 +371,10 @@ const features = [
 
 let typingInterval = null
 
+/**
+ * 开启打字机效果动画
+ * 定期更新 typingText 变量以模拟打字过程，并在完成后循环播放
+ */
 const startTyping = () => {
   let i = 0
   typingInterval = setInterval(() => {
@@ -340,11 +386,19 @@ const startTyping = () => {
   }, 150)
 }
 
+/**
+ * 处理窗口滚动事件
+ * 更新导航栏的滚动状态并检查页面元素的可见性以触发动画
+ */
 const handleScroll = () => {
   isScrolled.value = window.scrollY > 50
   revealOnScroll()
 }
 
+/**
+ * 检查页面上的 .reveal 元素是否进入可视区域
+ * 如果元素进入视野，则为其添加 active 类以触发 CSS 动画
+ */
 const revealOnScroll = () => {
   const reveals = document.querySelectorAll('.reveal')
   reveals.forEach(el => {
@@ -357,6 +411,9 @@ const revealOnScroll = () => {
   })
 }
 
+/**
+ * 平滑滚动至特性介绍区域
+ */
 const scrollToFeatures = () => {
   document.getElementById('features').scrollIntoView({ behavior: 'smooth' })
 }
@@ -848,36 +905,20 @@ onUnmounted(() => {
 
 /* CTA 区域 */
 .cta-section {
-  padding: 120px 2rem;
+  padding: 80px 2rem;
 }
 
 .cta-container {
   max-width: 1200px;
   margin: 0 auto;
-  background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 50%, #60a5fa 100%);
-  border-radius: 40px;
-  padding: 6rem 4rem;
+  background: var(--gradient-primary);
+  border-radius: 32px;
+  padding: 80px 60px;
   text-align: center;
   color: white;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 30px 60px -12px rgba(29, 78, 216, 0.4);
-}
-
-.cta-container::after {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-  animation: rotate 20s linear infinite;
-}
-
-@keyframes rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  box-shadow: 0 20px 40px rgba(59, 130, 246, 0.3);
 }
 
 .cta-content {
@@ -886,54 +927,51 @@ onUnmounted(() => {
 }
 
 .cta-content h2 {
-  font-size: 3.5rem;
+  font-size: 3rem;
   font-weight: 850;
   margin-bottom: 1.5rem;
-  letter-spacing: -0.02em;
 }
 
 .cta-content p {
-  font-size: 1.4rem;
-  margin-bottom: 3.5rem;
+  font-size: 1.25rem;
   opacity: 0.9;
-  max-width: 700px;
+  margin-bottom: 3rem;
+  max-width: 600px;
   margin-left: auto;
   margin-right: auto;
-  line-height: 1.5;
 }
 
 .cta-btns {
   display: flex;
+  gap: 1.5rem;
   justify-content: center;
-  gap: 2rem;
 }
 
 .btn-white {
   background: white;
   color: var(--primary-color);
   border: none;
-  padding: 1.2rem 3rem;
-  border-radius: 16px;
-  font-weight: 800;
-  font-size: 1.2rem;
+  padding: 1.1rem 2.5rem;
+  border-radius: 14px;
+  font-size: 1.15rem;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.3s;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
 }
 
 .btn-white:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
 }
 
 .btn-outline-white {
   background: transparent;
   color: white;
-  border: 2px solid rgba(255, 255, 255, 0.5);
-  padding: 1.2rem 3rem;
-  border-radius: 16px;
-  font-weight: 800;
-  font-size: 1.2rem;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  padding: 1.1rem 2.5rem;
+  border-radius: 14px;
+  font-size: 1.15rem;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.3s;
 }
@@ -941,13 +979,12 @@ onUnmounted(() => {
 .btn-outline-white:hover {
   background: rgba(255, 255, 255, 0.1);
   border-color: white;
-  transform: translateY(-5px);
 }
 
 /* 页脚 */
 .landing-footer {
-  background: var(--bg-primary);
   padding: 100px 2rem 50px;
+  background: var(--bg-secondary);
   border-top: 1px solid var(--border-color);
 }
 
@@ -955,7 +992,7 @@ onUnmounted(() => {
   max-width: 1200px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: 1.5fr 1fr 1fr;
+  grid-template-columns: 2fr repeat(2, 1fr);
   gap: 4rem;
   margin-bottom: 80px;
 }
@@ -965,48 +1002,49 @@ onUnmounted(() => {
 }
 
 .footer-brand p {
-  color: var(--text-secondary);
-  max-width: 320px;
-  line-height: 1.7;
-  font-size: 1.05rem;
+  color: var(--text-tertiary);
+  line-height: 1.6;
+  max-width: 300px;
 }
 
 .link-group h4 {
-  margin-bottom: 2rem;
   font-size: 1.1rem;
-  font-weight: 800;
-  color: var(--text-primary);
+  font-weight: 700;
+  margin-bottom: 2rem;
 }
 
 .link-group {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.25rem;
 }
 
 .link-group a {
   text-decoration: none;
   color: var(--text-secondary);
-  transition: all 0.2s;
-  font-size: 1rem;
-  font-weight: 500;
+  transition: color 0.2s;
 }
 
 .link-group a:hover {
   color: var(--primary-color);
-  padding-left: 5px;
 }
 
 .footer-bottom {
-  text-align: center;
-  padding-top: 50px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-top: 40px;
   border-top: 1px solid var(--border-color);
+  text-align: center;
   color: var(--text-tertiary);
-  font-size: 0.95rem;
-  font-weight: 500;
+  font-size: 0.9rem;
 }
 
 /* 动画 */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
 .reveal {
   opacity: 0;
   transform: translateY(30px);
@@ -1018,166 +1056,21 @@ onUnmounted(() => {
   transform: translateY(0);
 }
 
-.animate-fade-in-up {
-  animation: fadeInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-.animate-float {
-  animation: float 8s ease-in-out infinite;
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  33% { transform: translateY(-20px) rotate(2deg); }
-  66% { transform: translateY(10px) rotate(-1deg); }
-}
-
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
-}
-
-/* 响应式样式 */
-.mobile-menu-btn {
-  display: none;
-  background: none;
-  border: none;
-  color: var(--text-primary);
-  font-size: 1.5rem;
-  cursor: pointer;
-  z-index: 1001;
-}
-
-.mobile-menu-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(4px);
-  z-index: 1000;
-}
-
-.mobile-menu {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 280px;
-  height: 100vh;
-  background: var(--bg-primary);
-  padding: 80px 1.5rem 2rem;
-  display: flex;
-  flex-direction: column;
-  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
-}
-
-.mobile-menu-links {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.mobile-nav-link {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 1rem;
-  text-decoration: none;
-  color: var(--text-primary);
-  font-weight: 600;
-  border-radius: 12px;
-  transition: all 0.2s;
-}
-
-.mobile-nav-link i {
-  width: 20px;
-  color: var(--primary-color);
-}
-
-.mobile-nav-link:hover {
-  background: var(--bg-secondary);
-}
-
-.mobile-nav-link.highlight {
-  background: var(--gradient-primary);
-  color: white;
-  margin-top: 0.5rem;
-}
-
-.mobile-nav-link.highlight i {
-  color: white;
-}
-
-.mobile-menu-divider {
-  height: 1px;
-  background: var(--border-color);
-  margin: 1rem 0;
-}
-
-.mobile-menu-footer {
-  margin-top: auto;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border-color);
-}
-
-.mobile-theme-toggle {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 1rem;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  color: var(--text-primary);
-  font-weight: 600;
-  cursor: pointer;
-}
-
-/* 动画 */
-.slide-enter-active, .slide-leave-active {
-  transition: all 0.3s ease;
-}
-
-.slide-enter-from, .slide-leave-to {
-  opacity: 0;
-}
-
-.slide-enter-active .mobile-menu {
-  transition: transform 0.3s ease;
-}
-
-.slide-enter-from .mobile-menu {
-  transform: translateX(100%);
-}
-
-.slide-leave-active .mobile-menu {
-  transition: transform 0.3s ease;
-}
-
-.slide-leave-to .mobile-menu {
-  transform: translateX(100%);
-}
-
-/* 响应式适配 */
 @media (max-width: 1024px) {
   .hero-section {
     grid-template-columns: 1fr;
+    padding: 140px 2rem 80px;
     text-align: center;
-    padding-top: 140px;
-    gap: 4rem;
+  }
+  
+  .hero-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .hero-title {
+    font-size: 3.5rem;
   }
   
   .hero-subtitle {
@@ -1185,84 +1078,57 @@ onUnmounted(() => {
     margin-right: auto;
   }
   
-  .hero-actions, .hero-stats {
+  .hero-actions {
     justify-content: center;
   }
   
-  .hero-visual {
-    max-width: 480px;
-    margin: 0 auto;
+  .hero-stats {
+    justify-content: center;
   }
   
   .features-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  
-  .footer-container {
-    grid-template-columns: 1fr 1fr;
-  }
 }
 
 @media (max-width: 768px) {
-  .mobile-menu-btn {
-    display: block;
-  }
-
   .nav-links {
     display: none;
   }
   
-  .hero-title {
-    font-size: 2.5rem;
+  .mobile-menu-btn {
+    display: block;
   }
-
+  
+  .hero-title {
+    font-size: 2.75rem;
+  }
+  
   .hero-actions {
     flex-direction: column;
     width: 100%;
-    max-width: 400px;
-    margin: 0 auto;
-  }
-
-  .btn-primary-lg,
-  .btn-secondary-lg,
-  .btn-agent-download {
-    width: 100%;
-    justify-content: center;
-    padding: 1rem;
-    font-size: 1rem;
-  }
-
-  .hero-stats {
-    flex-direction: column;
-    gap: 1.5rem;
+    max-width: 320px;
   }
   
   .features-grid {
     grid-template-columns: 1fr;
   }
   
-  .cta-btns {
-    flex-direction: column;
-    padding: 0 2rem;
+  .cta-container {
+    padding: 60px 30px;
   }
   
   .cta-content h2 {
-    font-size: 2.5rem;
+    font-size: 2.25rem;
+  }
+  
+  .cta-btns {
+    flex-direction: column;
   }
   
   .footer-container {
     grid-template-columns: 1fr;
-    gap: 2.5rem;
-    text-align: center;
-  }
-
-  .link-group {
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-
-  .footer-brand {
-    align-items: center;
+    gap: 3rem;
   }
 }
 </style>

@@ -200,6 +200,7 @@ onMounted(fetchDocs)
   font-weight: 600;
   font-size: 1.1rem;
   background: var(--primary-gradient);
+  background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -303,6 +304,7 @@ body.dark-mode .doc-item.active {
   justify-content: center;
   z-index: 1000;
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 .modal-content {
   background: var(--bg-primary);

@@ -116,7 +116,12 @@
                 </td>
               </tr>
               <tr v-if="filteredUsers.length === 0">
-                <td colspan="5" class="empty-row">未找到匹配的用户</td>
+                <td
+                  colspan="5"
+                  class="empty-row"
+                >
+                  未找到匹配的用户
+                </td>
               </tr>
             </tbody>
           </table>
@@ -132,9 +137,18 @@
           <h2>文件管理</h2>
           <div class="filter-group">
             <div class="user-select-wrapper">
-              <select v-model="selectedUserEmail" class="user-select">
-                <option value="">所有用户</option>
-                <option v-for="user in users" :key="user.id" :value="user.email">
+              <select
+                v-model="selectedUserEmail"
+                class="user-select"
+              >
+                <option value="">
+                  所有用户
+                </option>
+                <option
+                  v-for="user in users"
+                  :key="user.id"
+                  :value="user.email"
+                >
                   {{ user.email }}
                 </option>
               </select>
@@ -186,7 +200,12 @@
                 </td>
               </tr>
               <tr v-if="filteredFiles.length === 0">
-                <td colspan="5" class="empty-row">未找到匹配的文件</td>
+                <td
+                  colspan="5"
+                  class="empty-row"
+                >
+                  未找到匹配的文件
+                </td>
               </tr>
             </tbody>
           </table>
@@ -214,7 +233,9 @@
               v-if="editContent === '获取内容失败'" 
               class="error-state"
             >
-              <div class="error-icon">⚠️</div>
+              <div class="error-icon">
+                ⚠️
+              </div>
               <p>获取文件内容失败</p>
               <button 
                 class="btn btn-secondary btn-small" 
@@ -225,40 +246,68 @@
             </div>
 
             <!-- 二进制文件预览 (PDF/图片) -->
-            <div v-else-if="isBinaryFile" class="preview-container">
+            <div
+              v-else-if="isBinaryFile"
+              class="preview-container"
+            >
               <!-- 加载状态 -->
-              <div v-if="isLoadingPreview" class="preview-loading">
-                <div class="loading-spinner"></div>
+              <div
+                v-if="isLoadingPreview"
+                class="preview-loading"
+              >
+                <div class="loading-spinner" />
                 <span>正在加载预览内容...</span>
               </div>
 
               <!-- 错误提示 -->
-              <div v-else-if="editContent && editContent !== '加载中...'" class="preview-error">
-                <i class="fas fa-exclamation-circle"></i>
+              <div
+                v-else-if="editContent && editContent !== '加载中...'"
+                class="preview-error"
+              >
+                <i class="fas fa-exclamation-circle" />
                 <span>{{ editContent }}</span>
               </div>
 
               <template v-else-if="previewUrl && !isLoadingPreview">
-                <div v-if="previewType === 'image'" class="image-preview">
-                  <img :src="previewUrl" :alt="editingFile?.filename">
+                <div
+                  v-if="previewType === 'image'"
+                  class="image-preview"
+                >
+                  <img
+                    :src="previewUrl"
+                    :alt="editingFile?.filename"
+                  >
                 </div>
-                <div v-else-if="previewType === 'pdf'" class="pdf-preview">
+                <div
+                  v-else-if="previewType === 'pdf'"
+                  class="pdf-preview"
+                >
                   <iframe 
                     :src="previewUrl" 
                     width="100%" 
                     height="100%"
                     style="border: none;"
-                  ></iframe>
+                  />
                 </div>
-                <div v-else-if="previewType === 'word' || previewType === 'other'" class="download-preview">
+                <div
+                  v-else-if="previewType === 'word' || previewType === 'other'"
+                  class="download-preview"
+                >
                   <div class="file-icon-large">
                     {{ previewType === 'word' ? '📄' : '📁' }}
                   </div>
                   <div class="file-info-text">
-                    <p class="filename">{{ editingFile?.filename }}</p>
-                    <p class="tip">该文件类型不支持直接在线预览，请点击下方按钮下载后查看。</p>
+                    <p class="filename">
+                      {{ editingFile?.filename }}
+                    </p>
+                    <p class="tip">
+                      该文件类型不支持直接在线预览，请点击下方按钮下载后查看。
+                    </p>
                   </div>
-                  <button class="btn btn-primary" @click="downloadFile">
+                  <button
+                    class="btn btn-primary"
+                    @click="downloadFile"
+                  >
                     下载查看
                   </button>
                 </div>
@@ -278,8 +327,11 @@
                 placeholder="文件内容加载中..."
                 :disabled="editContent === '加载中...'"
               />
-              <div v-if="editContent === '加载中...'" class="editor-loading-overlay">
-                <div class="loading"></div>
+              <div
+                v-if="editContent === '加载中...'"
+                class="editor-loading-overlay"
+              >
+                <div class="loading" />
                 <span>内容加载中...</span>
               </div>
             </div>
@@ -297,7 +349,10 @@
               :disabled="saving || editContent === '加载中...' || editContent === '获取内容失败'"
               @click="saveFileContent"
             >
-              <span v-if="saving" class="loading-spinner"></span>
+              <span
+                v-if="saving"
+                class="loading-spinner"
+              />
               {{ saving ? '保存中...' : '保存' }}
             </button>
           </div>

@@ -10,7 +10,7 @@
           class="logo" 
           @click="router.push('/')"
         >
-          <i class="fas fa-brain" />
+          <i class="fas fa-brain"></i>
           <span>AI 智能学习助手</span>
         </div>
         <div class="nav-links">
@@ -138,7 +138,9 @@
     <!-- Hero Section -->
     <header class="hero-section">
       <div class="hero-content animate-fade-in-up">
-        <div class="badge">v1.0.0 | 已支持 Linux & Windows</div>
+        <div class="badge">
+          v1.0.0 | 已支持 Linux & Windows
+        </div>
         <h1 class="hero-title">
           小晨 <span class="gradient-text">终端助手</span>
         </h1>
@@ -186,13 +188,27 @@
               <span class="terminal-title">xiaochen-agent --bash</span>
             </div>
             <div class="terminal-body">
-              <div class="line"><span class="prompt">$</span> agent</div>
-              <div class="line success">✓ 已加载会话: 20260113_项目优化.json</div>
-              <div class="line">小晨助手 > 请帮我分析当前目录下的项目结构并生成 README。</div>
-              <div class="line info">正在扫描目录...</div>
-              <div class="line">AI > 好的，我已经识别到这是一个 Vue 3 项目。正在为您生成 README.md...</div>
-              <div class="line success">[1/1] ✍️ 写入: README.md</div>
-              <div class="line"><span class="prompt">$</span> <span class="cursor">_</span></div>
+              <div class="line">
+                <span class="prompt">$</span> agent
+              </div>
+              <div class="line success">
+                ✓ 已加载会话: 20260113_项目优化.json
+              </div>
+              <div class="line">
+                小晨助手 > 请帮我分析当前目录下的项目结构并生成 README。
+              </div>
+              <div class="line info">
+                正在扫描目录...
+              </div>
+              <div class="line">
+                AI > 好的，我已经识别到这是一个 Vue 3 项目。正在为您生成 README.md...
+              </div>
+              <div class="line success">
+                [1/1] ✍️ 写入: README.md
+              </div>
+              <div class="line">
+                <span class="prompt">$</span> <span class="cursor">_</span>
+              </div>
             </div>
           </div>
         </div>
@@ -200,8 +216,10 @@
       </div>
     </header>
 
-    <!-- Features Grid -->
-    <section id="features" class="features-section">
+    <section 
+      id="features" 
+      class="features-section"
+    >
       <div class="section-header reveal">
         <h2 class="section-title">
           核心特性
@@ -245,8 +263,12 @@
     <section class="guide-section">
       <div class="container">
         <div class="section-header reveal">
-          <h2 class="section-title">使用指南</h2>
-          <p class="section-subtitle">简单几步，即可开启智能开发之旅</p>
+          <h2 class="section-title">
+            使用指南
+          </h2>
+          <p class="section-subtitle">
+            简单几步，即可开启智能开发之旅
+          </p>
         </div>
         
         <div class="guide-steps">
@@ -334,20 +356,24 @@
       <div class="container">
         <div class="rollback-layout">
           <div class="rollback-content">
-            <div class="badge-dark">特色功能</div>
-            <h2 class="gradient-text">专业级回退系统</h2>
+            <div class="badge-dark">
+              特色功能
+            </div>
+            <h2 class="gradient-text">
+              专业级回退系统
+            </h2>
             <p>内置强大的版本控制模块，为您提供多级文件回退、快照管理和版本对比功能。即使 AI 误操作，您也可以一键恢复项目状态。</p>
             <div class="rollback-features">
               <div class="r-item">
-                <i class="fas fa-history"></i>
+                <i class="fas fa-history" />
                 <span>多级历史</span>
               </div>
               <div class="r-item">
-                <i class="fas fa-code-branch"></i>
+                <i class="fas fa-code-branch" />
                 <span>自动快照</span>
               </div>
               <div class="r-item">
-                <i class="fas fa-search-plus"></i>
+                <i class="fas fa-search-plus" />
                 <span>差异对比</span>
               </div>
             </div>
@@ -355,9 +381,9 @@
           <div class="rollback-visual">
             <div class="code-window">
               <div class="code-header">
-                <span class="dot red"></span>
-                <span class="dot yellow"></span>
-                <span class="dot green"></span>
+                <span class="dot red" />
+                <span class="dot yellow" />
+                <span class="dot green" />
               </div>
               <pre><code><span class="c-prompt">小晨助手 ></span> undo
 <span class="c-success">✓ 已撤销上一次对话涉及的所有 3 个文件修改</span>
@@ -372,22 +398,35 @@
     <footer class="landing-footer">
       <div class="footer-container">
         <div class="footer-brand">
-          <div class="logo" @click="router.push('/')">
-            <i class="fas fa-brain"></i>
+          <div 
+            class="logo" 
+            @click="router.push('/')"
+          >
+            <i class="fas fa-brain" />
             <span>AI 智能学习助手</span>
           </div>
           <p>让科技服务于学习，打造您的第二大脑。</p>
         </div>
         <div class="link-group">
           <h4>产品</h4>
-          <router-link to="/chat">AI 问答</router-link>
-          <router-link to="/cloud-disk">云盘管理</router-link>
-          <router-link to="/language-learning">语言学习</router-link>
+          <router-link to="/chat">
+            AI 问答
+          </router-link>
+          <router-link to="/cloud-disk">
+            云盘管理
+          </router-link>
+          <router-link to="/language-learning">
+            语言学习
+          </router-link>
         </div>
         <div class="link-group">
           <h4>支持</h4>
-          <router-link to="/public-files">公共资源</router-link>
-          <router-link to="/agent">Agent 终端助手</router-link>
+          <router-link to="/public-files">
+            公共资源
+          </router-link>
+          <router-link to="/agent">
+            Agent 终端助手
+          </router-link>
           <a href="#">使用文档</a>
           <a href="#">常见问题</a>
         </div>
@@ -433,16 +472,6 @@ const revealOnScroll = () => {
       el.classList.add('active')
     }
   })
-}
-
-/**
- * 平滑滚动到特性展示区域
- */
-const scrollToFeatures = () => {
-  const el = document.getElementById('features')
-  if (el) {
-    el.scrollIntoView({ behavior: 'smooth' })
-  }
 }
 
 onMounted(() => {
