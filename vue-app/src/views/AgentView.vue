@@ -151,7 +151,7 @@
             download 
             class="btn-primary-lg"
           >
-            <i class="fas fa-download" /> 立即下载 (v1.0.0)
+            <i class="fab fa-windows" /> Windows 全量版 (v1.0.0)
           </a>
           <a 
             href="/downloads/xiaochen-agent-linux" 
