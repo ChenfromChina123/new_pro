@@ -7,32 +7,39 @@
       </div>
 
       <div class="download-grid">
-        <!-- Linux 版本 (当前主推) -->
+        <!-- 全平台完整包 (推荐) -->
         <div class="download-card primary">
+          <div class="platform-icon">
+            <i class="fas fa-box-open"></i>
+          </div>
+          <h3 class="platform-name">全平台完整包</h3>
+          <p class="platform-desc">包含 Windows (.exe) 与 Linux 二进制文件。一包在手，随处部署。</p>
+          <ul class="feature-list">
+            <li><i class="fas fa-check"></i> 包含所有平台可执行文件</li>
+            <li><i class="fas fa-check"></i> 适合多环境开发者</li>
+            <li><i class="fas fa-check"></i> 内置安装与配置说明</li>
+          </ul>
+          <a href="/xiaochen_agent_v1.0.0.zip" download class="download-btn">
+            <i class="fas fa-file-archive"></i> 下载全平台包 (v1.0.0)
+          </a>
+          <div class="version-tag">推荐下载</div>
+        </div>
+
+        <!-- Linux 独立版 -->
+        <div class="download-card">
           <div class="platform-icon">
             <i class="fab fa-linux"></i>
           </div>
-          <h3 class="platform-name">Linux 版本</h3>
-          <p class="platform-desc">适用于 Ubuntu, CentOS, Debian 等主流发行版。支持命令行全功能操作。</p>
+          <h3 class="platform-name">Linux 独立版</h3>
+          <p class="platform-desc">适用于 Ubuntu, CentOS, Debian 等主流发行版。仅包含 Linux 核心程序。</p>
           <ul class="feature-list">
             <li><i class="fas fa-check"></i> 极简二进制安装</li>
             <li><i class="fas fa-check"></i> 完整的系统权限集成</li>
             <li><i class="fas fa-check"></i> 低内存占用 (约 15MB)</li>
           </ul>
-          <a href="/downloads/xiaochen-agent-linux" download class="download-btn">
+          <a href="/downloads/xiaochen-agent-linux" download class="download-btn secondary">
             <i class="fas fa-download"></i> 立即下载 (v1.0.0)
           </a>
-          <div class="version-tag">推荐版本</div>
-        </div>
-
-        <!-- Windows 版本 (敬请期待) -->
-        <div class="download-card disabled">
-          <div class="platform-icon">
-            <i class="fab fa-windows"></i>
-          </div>
-          <h3 class="platform-name">Windows 版本</h3>
-          <p class="platform-desc">正在适配 Windows 10/11 环境，提供原生 PowerShell 与 CMD 支持。</p>
-          <div class="coming-soon">敬请期待</div>
         </div>
 
         <!-- macOS 版本 (敬请期待) -->
@@ -222,6 +229,18 @@
 .download-btn:hover {
   transform: scale(1.02);
   box-shadow: 0 5px 15px rgba(16, 185, 129, 0.3);
+}
+
+.download-btn.secondary {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.download-btn.secondary:hover {
+  background: var(--bg-secondary);
+  border-color: #10b981;
+  color: #10b981;
 }
 
 .version-tag {
