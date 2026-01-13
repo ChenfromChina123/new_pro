@@ -138,26 +138,28 @@
     <!-- Hero Section -->
     <header class="hero-section">
       <div class="hero-content animate-fade-in-up">
-        <div class="badge">智能终端体</div>
+        <div class="badge">v1.0.0 | 已支持 Linux & Windows</div>
         <h1 class="hero-title">
           小晨 <span class="gradient-text">终端助手</span>
         </h1>
         <p class="hero-subtitle">
-          一个强大的 AI 终端助手，支持多种 LLM 模型，提供智能的命令行交互体验。专为开发者打造的生产力工具。
+          一个强大的 AI 终端助手，支持多种 LLM 模型，提供智能的命令行交互体验。<strong>现已全面适配 Linux 发行版</strong>，为您提供极致的跨平台开发生产力。
         </p>
         <div class="hero-actions">
-          <button 
+          <a 
+            href="/xiaochen_agent_v1.0.0.zip" 
+            download 
             class="btn-primary-lg"
-            @click="scrollToDownload"
           >
-            <i class="fas fa-download" /> 立即下载
-          </button>
-          <button 
-            class="btn-secondary-lg" 
-            @click="scrollToFeatures"
+            <i class="fas fa-download" /> 立即下载 (v1.0.0)
+          </a>
+          <a 
+            href="/downloads/xiaochen-agent-linux" 
+            download 
+            class="btn-secondary-lg"
           >
-            了解功能 <i class="fas fa-chevron-down" />
-          </button>
+            <i class="fab fa-linux" /> Linux 独立版
+          </a>
         </div>
         <div class="hero-stats">
           <div class="stat-item">
