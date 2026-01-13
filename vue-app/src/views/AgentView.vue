@@ -368,9 +368,6 @@
       </div>
     </section>
 
-    <!-- 下载中心 -->
-    <AgentDownloadCenter />
-
     <!-- Footer -->
     <footer class="landing-footer">
       <div class="footer-container">
@@ -407,7 +404,6 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
-import AgentDownloadCenter from '@/components/agent/AgentDownloadCenter.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -444,16 +440,6 @@ const revealOnScroll = () => {
  */
 const scrollToFeatures = () => {
   const el = document.getElementById('features')
-  if (el) {
-    el.scrollIntoView({ behavior: 'smooth' })
-  }
-}
-
-/**
- * 平滑滚动到下载中心区域
- */
-const scrollToDownload = () => {
-  const el = document.getElementById('download-center')
   if (el) {
     el.scrollIntoView({ behavior: 'smooth' })
   }
@@ -742,11 +728,17 @@ const features = [
   font-weight: 700;
   cursor: pointer;
   transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
 }
 
 .btn-secondary-lg:hover {
   background: var(--bg-tertiary);
   border-color: var(--primary-color);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
 }
 
 .hero-stats {
