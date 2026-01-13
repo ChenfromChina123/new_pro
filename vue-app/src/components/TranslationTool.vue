@@ -12,8 +12,14 @@
           <label>原文</label>
           <div class="language-select">
             <select v-model="sourceLanguage">
-              <option value="">自动检测</option>
-              <option v-for="lang in languages" :key="lang.code" :value="lang.name">
+              <option value="">
+                自动检测
+              </option>
+              <option
+                v-for="lang in languages"
+                :key="lang.code"
+                :value="lang.name"
+              >
                 {{ lang.name }}
               </option>
             </select>
@@ -23,14 +29,20 @@
           v-model="sourceText"
           placeholder="请输入需要翻译的文本..."
           class="text-area"
-        ></textarea>
-        <div class="char-count">{{ sourceText.length }} / 5000</div>
+        />
+        <div class="char-count">
+          {{ sourceText.length }} / 5000
+        </div>
       </div>
 
       <!-- Controls -->
       <div class="controls">
-        <button class="swap-btn" @click="swapLanguages" title="交换语言">
-          <i class="fas fa-exchange-alt"></i>
+        <button
+          class="swap-btn"
+          title="交换语言"
+          @click="swapLanguages"
+        >
+          <i class="fas fa-exchange-alt" />
         </button>
         <button 
           class="translate-btn" 
@@ -38,7 +50,10 @@
           @click="handleTranslate"
         >
           <span v-if="!loading">翻译</span>
-          <span v-else class="loading-spinner"></span>
+          <span
+            v-else
+            class="loading-spinner"
+          />
         </button>
       </div>
 
@@ -48,13 +63,20 @@
           <label>译文</label>
           <div class="language-select">
             <select v-model="targetLanguage">
-              <option v-for="lang in languages" :key="lang.code" :value="lang.name">
+              <option
+                v-for="lang in languages"
+                :key="lang.code"
+                :value="lang.name"
+              >
                 {{ lang.name }}
               </option>
             </select>
           </div>
         </div>
-        <div class="result-area" :class="{ 'is-loading': loading }">
+        <div
+          class="result-area"
+          :class="{ 'is-loading': loading }"
+        >
           <template v-if="translatedText">
             {{ translatedText }}
           </template>
@@ -62,9 +84,16 @@
             <span class="placeholder">翻译结果将在这里显示...</span>
           </template>
         </div>
-        <div class="result-actions" v-if="translatedText">
-          <button class="action-btn" @click="copyResult" title="复制内容">
-            <i class="far fa-copy"></i>
+        <div
+          v-if="translatedText"
+          class="result-actions"
+        >
+          <button
+            class="action-btn"
+            title="复制内容"
+            @click="copyResult"
+          >
+            <i class="far fa-copy" />
           </button>
         </div>
       </div>

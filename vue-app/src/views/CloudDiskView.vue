@@ -158,14 +158,20 @@
                   class="file-row"
                   :class="{ selected: isFileSelected(file.id) }"
                 >
-                  <td class="select-column" @click.stop="toggleFileSelection(file.id)">
+                  <td
+                    class="select-column"
+                    @click.stop="toggleFileSelection(file.id)"
+                  >
                     <input
                       type="checkbox"
                       :checked="isFileSelected(file.id)"
                       @click.stop="toggleFileSelection(file.id)"
                     >
                   </td>
-                  <td class="name-column" @click.stop="toggleFileSelection(file.id)">
+                  <td
+                    class="name-column"
+                    @click.stop="toggleFileSelection(file.id)"
+                  >
                     <div class="file-cell">
                       <span class="file-icon-wrapper">
                         <span class="file-icon-img">{{ getFileIcon(file.filename) }}</span>
@@ -176,10 +182,16 @@
                       >{{ file.filename }}</span>
                     </div>
                   </td>
-                  <td class="date-column" @click.stop="toggleFileSelection(file.id)">
+                  <td
+                    class="date-column"
+                    @click.stop="toggleFileSelection(file.id)"
+                  >
                     {{ formatDate(file.upload_time) }}
                   </td>
-                  <td class="actions-column" @click.stop>
+                  <td
+                    class="actions-column"
+                    @click.stop
+                  >
                     <div class="file-actions">
                       <button
                         class="action-btn"
@@ -226,8 +238,8 @@
             <button
               v-if="getFileType(previewFileData.filename) === 'text' && !isEditMode"
               class="edit-btn"
-              @click="enterEditMode"
               title="编辑文件"
+              @click="enterEditMode"
             >
               ✏️ 编辑
             </button>
@@ -290,7 +302,7 @@
                 :src="previewUrl"
                 type="application/pdf"
                 class="preview-frame"
-              />
+              >
               <!-- 其他文件类型使用 iframe -->
               <iframe
                 v-else
@@ -307,29 +319,36 @@
             <div class="file-icon-large">
               {{ getFileTypeIcon(previewFileData.filename) }}
             </div>
-            <p class="file-name">{{ previewFileData.filename }}</p>
-            <p class="file-info">{{ getNotPreviewableMessage(previewFileData.filename) }}</p>
+            <p class="file-name">
+              {{ previewFileData.filename }}
+            </p>
+            <p class="file-info">
+              {{ getNotPreviewableMessage(previewFileData.filename) }}
+            </p>
             <button
               class="btn btn-primary"
               @click="downloadFile(previewFileData.id)"
             >
-              <i class="fas fa-download"></i> 下载文件
+              <i class="fas fa-download" /> 下载文件
             </button>
           </div>
         </div>
         <!-- 编辑模式的操作按钮 -->
-        <div v-if="isEditMode" class="modal-footer">
+        <div
+          v-if="isEditMode"
+          class="modal-footer"
+        >
           <button
             class="btn btn-secondary"
-            @click="cancelEdit"
             :disabled="isSaving"
+            @click="cancelEdit"
           >
             取消
           </button>
           <button
             class="btn btn-primary"
-            @click="saveFile"
             :disabled="isSaving"
+            @click="saveFile"
           >
             <span v-if="isSaving">保存中...</span>
             <span v-else>💾 保存</span>
@@ -374,8 +393,8 @@
             type="text"
             class="input"
             placeholder="输入文件夹名称"
-            @keyup.enter="confirmCreateFolder"
             autofocus
+            @keyup.enter="confirmCreateFolder"
           >
         </div>
         <div class="modal-footer">

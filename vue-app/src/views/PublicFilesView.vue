@@ -5,7 +5,9 @@
         <div class="files-header">
           <div class="header-title">
             <h2>公共资源下载</h2>
-            <p class="subtitle">这里提供常用的公共文件供大家下载使用</p>
+            <p class="subtitle">
+              这里提供常用的公共文件供大家下载使用
+            </p>
           </div>
           
           <div class="toolbar">
@@ -44,11 +46,18 @@
             class="empty-state animate-fade-in"
           >
             <div class="empty-illustration">
-              <i class="fas fa-folder-open"></i>
+              <i class="fas fa-folder-open" />
             </div>
             <h3>暂无公共文件</h3>
-            <p class="empty-tip">这里目前还没有公开资源，请稍后再来查看</p>
-            <p v-if="authStore.isAdmin" class="admin-action-tip">作为管理员，您可以上传第一个文件</p>
+            <p class="empty-tip">
+              这里目前还没有公开资源，请稍后再来查看
+            </p>
+            <p
+              v-if="authStore.isAdmin"
+              class="admin-action-tip"
+            >
+              作为管理员，您可以上传第一个文件
+            </p>
           </div>
           
           <div
@@ -58,10 +67,18 @@
             <table class="file-table">
               <thead>
                 <tr>
-                  <th class="name-column">文件名</th>
-                  <th class="size-column">大小</th>
-                  <th class="date-column">上传时间</th>
-                  <th class="action-column">操作</th>
+                  <th class="name-column">
+                    文件名
+                  </th>
+                  <th class="size-column">
+                    大小
+                  </th>
+                  <th class="date-column">
+                    上传时间
+                  </th>
+                  <th class="action-column">
+                    操作
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -75,11 +92,18 @@
                       <span class="file-icon">
                         <i class="fas fa-file-alt" />
                       </span>
-                      <span class="file-name" :title="file.name">{{ file.name }}</span>
+                      <span
+                        class="file-name"
+                        :title="file.name"
+                      >{{ file.name }}</span>
                     </div>
                   </td>
-                  <td class="size-column">{{ formatFileSize(file.size) }}</td>
-                  <td class="date-column">{{ formatDate(file.lastModified) }}</td>
+                  <td class="size-column">
+                    {{ formatFileSize(file.size) }}
+                  </td>
+                  <td class="date-column">
+                    {{ formatDate(file.lastModified) }}
+                  </td>
                   <td class="action-column">
                     <button
                       class="btn-icon"
