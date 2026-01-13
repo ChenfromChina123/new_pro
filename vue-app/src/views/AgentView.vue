@@ -277,8 +277,8 @@
               01
             </div>
             <div class="step-content">
-              <h3>快速安装</h3>
-              <p>下载压缩包并解压，根据您的操作系统运行 <code>scripts/install</code> 目录下的安装脚本。</p>
+              <h3>快速启动</h3>
+              <p>下载压缩包并解压，无需安装。直接运行 <code>xiaochen_agent.exe</code> (Windows) 或 <code>xiaochen_agent</code> (Linux) 即可开始使用。</p>
             </div>
           </div>
           <div 
