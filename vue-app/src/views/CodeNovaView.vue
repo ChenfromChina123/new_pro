@@ -39,7 +39,7 @@
         </div>
 
         <div class="action-group">
-          <a :href="downloadUrl" class="btn-download" download>
+          <a :href="downloadUrl" class="btn-download" :download="`CodeNova-${version}.apk`">
             <i class="fas fa-cloud-download-alt"></i> 立即下载 APK ({{ version }})
           </a>
           <a href="https://github.com/ChenfromChina123/CodeNova" target="_blank" class="btn-github">
@@ -142,7 +142,8 @@ const fetchSoftwareInfo = async () => {
     const codenova = softwareList.find(item => item.title.toLowerCase().includes('codenova'));
     if (codenova) {
       version.value = codenova.version || 'v1.1.0';
-      downloadUrl.value = codenova.filePath || codenova.url || '/CodeNova.apk';
+      // 使用专门的下载接口，提供友好的文件名
+      downloadUrl.value = `${request.defaults.baseURL}/api/resources/download/${codenova.id}`;
       const date = new Date(codenova.updatedAt || codenova.created_at);
       updateDate.value = date.toISOString().split('T')[0];
     }

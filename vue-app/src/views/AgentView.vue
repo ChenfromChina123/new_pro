@@ -473,11 +473,11 @@ const fetchSoftwareInfo = async () => {
 
     if (agentWin) {
       version.value = agentWin.version || 'v1.0.0'
-      winDownloadUrl.value = agentWin.filePath || agentWin.url || '#'
+      winDownloadUrl.value = `${request.defaults.baseURL}/api/resources/download/${agentWin.id}`
     }
     
     if (agentLinux) {
-      linuxDownloadUrl.value = agentLinux.filePath || agentLinux.url || '#'
+      linuxDownloadUrl.value = `${request.defaults.baseURL}/api/resources/download/${agentLinux.id}`
     }
   } catch (error) {
     console.error('加载软件信息失败:', error)

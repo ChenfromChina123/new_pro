@@ -84,8 +84,18 @@ public class PublicFileController {
             Resource resource = new UrlResource(file.toUri());
 
             if (resource.exists() || resource.isReadable()) {
+                String contentType;
+                try {
+                    contentType = Files.probeContentType(file);
+                } catch (IOException e) {
+                    contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
+                }
+                if (contentType == null) {
+                    contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
+                }
+
                 return ResponseEntity.ok()
-                        .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                        .contentType(MediaType.parseMediaType(contentType))
                         .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
                         .body(resource);
             } else {
