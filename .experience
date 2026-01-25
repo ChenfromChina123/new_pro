@@ -9,3 +9,8 @@
 9. 更新了 CodeNova 的 GitHub 开源地址为：`https://github.com/ChenfromChina123/CodeNova`。
 10. 移除了 CodeNovaView.vue 中的“用户界面预览”区域。
 11. 修复了首页 Hero 区域按钮在小屏幕或多按钮情况下的挤压变形问题，通过引入 `flex-wrap: wrap`、`min-height` 以及响应式内边距，确保按钮文字可以正常换行且布局整齐。
+12. 为管理后台（AdminView.vue）新增了“软件管理”功能，管理员可以直接在网页端更新首页展示软件的版本信息、下载链接，并支持上传 APK 或压缩包等源文件。
+13. 实现了首页（LandingView.vue）、CodeNova 详情页（CodeNovaView.vue）及 Agent 详情页（AgentView.vue）软件信息的动态加载，确保用户始终能获取到最新版本。
+14. 实现了后端数据初始化逻辑（SoftwareDataInitializer.java），确保系统在首次启动时能自动创建“软件项目”分类并填充 CodeNova 和 Agent 的初始管理记录。
+15. 扩展了软件管理系统以支持多平台（Windows/Linux/Android 等），包括后端实体字段新增、管理后台 UI 适配以及前端展示页面的动态多链接分发。
+16. 修复并优化了管理后台弹窗表单的样式，解决了选择框（select）高度不一致、内边距缺失以及暗色模式下的背景色适配问题，提升了表单的交互体验和视觉一致性。

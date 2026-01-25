@@ -39,8 +39,8 @@
         </div>
 
         <div class="action-group">
-          <a href="/CodeNova.apk" class="btn-download" download>
-            <i class="fas fa-cloud-download-alt"></i> 立即下载 APK (v1.1.0)
+          <a :href="downloadUrl" class="btn-download" download>
+            <i class="fas fa-cloud-download-alt"></i> 立即下载 APK ({{ version }})
           </a>
           <a href="https://github.com/ChenfromChina123/CodeNova" target="_blank" class="btn-github">
             <i class="fab fa-github"></i> GitHub 开源地址
@@ -120,13 +120,35 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useThemeStore } from '@/stores/theme';
+import request from '@/utils/request';
+import { API_ENDPOINTS } from '@/config/api';
 
 const router = useRouter();
 const themeStore = useThemeStore();
 const imgError = ref(false);
 
+const version = ref('v1.1.0');
+const downloadUrl = ref('/CodeNova.apk');
+const updateDate = ref('2024-05-20');
+
 const handleImgError = () => {
   imgError.value = true;
+};
+
+const fetchSoftwareInfo = async () => {
+  try {
+    const response = await request.get(API_ENDPOINTS.admin.publicResources);
+    const softwareList = response.data || [];
+    const codenova = softwareList.find(item => item.title.toLowerCase().includes('codenova'));
+    if (codenova) {
+      version.value = codenova.version || 'v1.1.0';
+      downloadUrl.value = codenova.filePath || codenova.url || '/CodeNova.apk';
+      const date = new Date(codenova.updatedAt || codenova.created_at);
+      updateDate.value = date.toISOString().split('T')[0];
+    }
+  } catch (error) {
+    console.error('加载软件信息失败:', error);
+  }
 };
 
 const coreFeatures = [
@@ -155,6 +177,7 @@ const runtimeFeatures = [
 ];
 
 onMounted(() => {
+  fetchSoftwareInfo();
   document.title = 'CodeNova - 移动端集成开发环境';
   
   // 简单的滚动揭示效果

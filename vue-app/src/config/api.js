@@ -71,13 +71,18 @@ export const API_ENDPOINTS = {
   },
   
   // 管理后台
-    admin: {
+  admin: {
     statistics: '/api/admin/statistics',
     users: '/api/admin/users',
     files: '/api/admin/files',
     getFileContent: (fileId) => `/api/admin/files/content/${fileId}`,
     updateFileContent: (fileId) => `/api/admin/files/content/${fileId}`,
-    downloadFile: (fileId) => `/api/admin/files/download/${fileId}`
+    downloadFile: (fileId) => `/api/admin/files/download/${fileId}`,
+    // 软件版本管理
+    resources: '/api/resources',
+    publicResources: '/api/resources/public',
+    updateResource: (id) => `/api/resources/${id}`,
+    uploadSoftware: (id) => `/api/resources/${id}/upload`
   },
   
   // 自定义模型

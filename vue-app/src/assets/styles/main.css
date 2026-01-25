@@ -15,6 +15,7 @@
 :root {
   /* 企业级主色调 - 深蓝色系 */
   --primary-color: #1d4ed8;
+  --primary-rgb: 29, 78, 216;
   --primary-dark: #1e40af;
   --primary-light: #3b82f6;
   --secondary-color: #64748b;
