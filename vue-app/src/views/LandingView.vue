@@ -240,6 +240,8 @@
           :key="index"
           class="feature-card reveal"
           :style="{ transitionDelay: `${index * 150}ms` }"
+          @click="feature.link ? router.push(feature.link) : null"
+          :class="{ 'clickable': feature.link }"
         >
           <div 
             class="feature-icon" 
@@ -898,6 +900,26 @@ onUnmounted(() => {
   position: relative;
   overflow: hidden;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+}
+
+.feature-card {
+  background: var(--bg-secondary);
+  padding: 2.5rem;
+  border-radius: 24px;
+  border: 1px solid var(--border-color);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+.feature-card.clickable {
+  cursor: pointer;
+}
+
+.feature-card.clickable:hover {
+  transform: translateY(-10px);
+  border-color: var(--primary-color);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05);
 }
 
 .feature-card:hover {
