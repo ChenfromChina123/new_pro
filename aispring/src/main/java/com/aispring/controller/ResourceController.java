@@ -198,8 +198,7 @@ public class ResourceController {
                     .body(ApiResponse.error(500, "下载失败: " + e.getMessage()));
         }
     }
-}
-    
+
     /**
      * 删除资源
      */
