@@ -26,6 +26,12 @@
           >
             公共资源
           </router-link>
+          <router-link 
+            to="/codenova" 
+            class="nav-link"
+          >
+            CodeNova
+          </router-link>
           <div class="nav-actions">
             <template v-if="!authStore.isAuthenticated">
               <router-link 
@@ -93,6 +99,13 @@
             >
               <i class="fas fa-folder-open"></i> 公共资源
             </router-link>
+            <router-link 
+              to="/codenova" 
+              class="mobile-nav-link" 
+              @click="isMobileMenuOpen = false"
+            >
+              <i class="fas fa-mobile-alt"></i> CodeNova
+            </router-link>
             <div class="mobile-menu-divider"></div>
             <template v-if="!authStore.isAuthenticated">
               <router-link 
@@ -155,6 +168,12 @@
           @click="router.push('/agent')"
         >
           <i class="fas fa-terminal"></i> Agent 终端助手
+        </button>
+        <button 
+          class="btn-codenova-download"
+          @click="router.push('/codenova')"
+        >
+          <i class="fas fa-mobile-alt"></i> CodeNova 移动端
         </button>
         <button 
           class="btn-secondary-lg" 
@@ -366,6 +385,14 @@ const features = [
     color: 'rgba(139, 92, 246, 0.1)',
     items: ['本地文件处理', '自动化脚本运行', '高效命令行交互'],
     link: '/agent'
+  },
+  {
+    title: 'CodeNova 移动端 IDE',
+    description: '随时随地写代码，在 Android 设备上构建和管理您的项目。',
+    icon: 'fas fa-mobile-alt',
+    color: 'rgba(16, 185, 129, 0.1)',
+    items: ['全功能编辑器', '内置终端', 'Python/C/C++ 支持'],
+    link: '/codenova'
   }
 ]
 
@@ -654,6 +681,30 @@ onUnmounted(() => {
   border-color: #10b981;
   color: #10b981;
   background: rgba(16, 185, 129, 0.05);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.btn-codenova-download {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  padding: 1rem 2.5rem;
+  border-radius: 14px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.btn-codenova-download:hover {
+  transform: translateY(-3px);
+  border-color: #3b82f6;
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.05);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
 }
 
