@@ -1,2 +1,6 @@
 1. 新增了 CodeNova 移动端 IDE 的下载与介绍页面，路由为 `/codenova`。
 2. 页面包含 APK 下载链接、功能特性介绍及 GitHub Releases 链接。
+3. 在首页（LandingView.vue）的导航栏、Hero 区域和功能特性列表中添加了 CodeNova 的入口和下载按钮。
+4. 重构了 CodeNovaView.vue 的 UI，采用了现代化、美观的玻璃态（Glassmorphism）设计风格，增强了交互体验和视觉吸引力。
+5. 修复了首页 CodeNova 按钮点击无反应的问题，通过将所有的 `button` 跳转逻辑替换为更可靠的 `router-link` 组件，并统一了相关按钮的 CSS 样式。
+6. 成功在本地启动了后端 Spring Boot 服务（端口 5000）和前端 Vue 3 开发服务器（端口 3000）。

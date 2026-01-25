@@ -157,24 +157,24 @@
         集成 AI 问答、个人云盘、语言学习于一体的智能化全方位学习平台。
       </p>
       <div class="hero-actions">
-        <button 
-          class="btn-primary-lg" 
-          @click="router.push('/chat')"
+        <router-link 
+          to="/chat"
+          class="btn-primary-lg"
         >
           <i class="fas fa-rocket"></i> 免费开始使用
-        </button>
-        <button 
+        </router-link>
+        <router-link 
+          to="/agent"
           class="btn-agent-download"
-          @click="router.push('/agent')"
         >
           <i class="fas fa-terminal"></i> Agent 终端助手
-        </button>
-        <button 
+        </router-link>
+        <router-link 
+          to="/codenova" 
           class="btn-codenova-download"
-          @click="router.push('/codenova')"
         >
           <i class="fas fa-mobile-alt"></i> CodeNova 移动端
-        </button>
+        </router-link>
         <button 
           class="btn-secondary-lg" 
           @click="scrollToFeatures"
@@ -265,12 +265,12 @@
             v-if="feature.link" 
             class="feature-action"
           >
-            <button 
-              class="btn-text" 
-              @click="router.push(feature.link)"
+            <router-link 
+              :to="feature.link"
+              class="btn-text"
             >
               了解详情 <i class="fas fa-arrow-right"></i>
-            </button>
+            </router-link>
           </div>
         </div>
       </div>
@@ -283,18 +283,18 @@
           <h2>准备好提升您的效率了吗？</h2>
           <p>加入成千上万的学习者，利用 AI 的力量改变您的学习方式。</p>
           <div class="cta-btns">
-            <button 
-              class="btn-white" 
-              @click="router.push('/register')"
+            <router-link 
+              to="/register"
+              class="btn-white"
             >
               立即注册账号
-            </button>
-            <button 
-              class="btn-outline-white" 
-              @click="router.push('/chat')"
+            </router-link>
+            <router-link 
+              to="/chat"
+              class="btn-outline-white"
             >
               以游客身份试用
-            </button>
+            </router-link>
           </div>
         </div>
       </div>
@@ -636,6 +636,18 @@ onUnmounted(() => {
   display: flex;
   gap: 1.25rem;
   margin-bottom: 4rem;
+}
+
+.btn-primary-lg,
+.btn-agent-download,
+.btn-codenova-download,
+.btn-white,
+.btn-outline-white,
+.btn-text {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .btn-primary-lg {

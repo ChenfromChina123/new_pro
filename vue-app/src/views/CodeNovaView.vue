@@ -1,406 +1,590 @@
 <template>
-  <div class="codenova-container">
-    <div class="header-section">
-      <p align="center">
-        <img src="/docs/assets/icon.png" width="150" alt="CodeNova" class="logo">
-      </p>
-      
-      <h1 align="center">
-        <b>CodeNova</b>
-      </h1>
-      
-      <p align="center" class="tagline">
-        随时随地写代码
-      </p>
-      
-      <p align="center" class="badges">
-        <a href="#"><img src="https://img.shields.io/badge/License-GPLv3-blue" alt="GPLv3 License"></a>
-        <img src="https://img.shields.io/badge/Active%20Users-250%2B-blue" alt="Users">
-        <img src="https://img.shields.io/badge/Api-Android%208%2B-brightgreen" alt="Android">
-      </p>
-
-      <div class="download-area" align="center">
-        <a href="/CodeNova.apk" class="download-btn" download>
-          <i class="fas fa-download"></i> 下载 CodeNova APK (v1.1.0)
-        </a>
-        <p class="download-sub">
-          或者访问 <a href="https://github.com/CodeNova/CodeNova/releases" target="_blank">GitHub Releases</a>
-        </p>
+  <div class="codenova-page" :class="{ 'dark': themeStore.isDarkMode }">
+    <!-- 顶部导航栏 -->
+    <nav class="glass-nav">
+      <div class="nav-content">
+        <div class="logo" @click="router.push('/')">
+          <i class="fas fa-brain"></i>
+          <span>AI 智能学习助手</span>
+        </div>
+        <div class="nav-actions">
+          <button class="btn-back" @click="router.push('/')">
+            <i class="fas fa-arrow-left"></i> 返回首页
+          </button>
+          <button class="theme-toggle" @click="themeStore.toggleDarkMode()">
+            <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'"></i>
+          </button>
+        </div>
       </div>
-    </div>
+    </nav>
 
-    <div class="content-body">
-      <section>
-        <h2>仓库简介</h2>
-        <p>本仓库包含 <strong>CodeNova</strong> 的开源代码 —— 这是一个基于移动端的集成开发环境 (IDE) 和代码编辑器，用于直接在 Android 设备上构建和管理项目。</p>
+    <!-- Hero 区域 -->
+    <header class="hero-section">
+      <div class="hero-bg">
+        <div class="blob"></div>
+        <div class="blob"></div>
+      </div>
+      <div class="hero-content animate-fade-in">
+        <div class="logo-wrapper">
+          <img src="/docs/assets/icon.png" alt="CodeNova Logo" class="app-icon" @error="handleImgError">
+          <div class="icon-placeholder" v-if="imgError"><i class="fas fa-code"></i></div>
+        </div>
+        <h1 class="title">CodeNova</h1>
+        <p class="subtitle">随时随地写代码，开启移动开发新纪元</p>
+        
+        <div class="badge-group">
+          <span class="badge blue"><i class="fas fa-certificate"></i> GPLv3</span>
+          <span class="badge purple"><i class="fas fa-users"></i> 250+ 活跃用户</span>
+          <span class="badge green"><i class="fab fa-android"></i> Android 8+</span>
+        </div>
+
+        <div class="action-group">
+          <a href="/CodeNova.apk" class="btn-download" download>
+            <i class="fas fa-cloud-download-alt"></i> 立即下载 APK (v1.1.0)
+          </a>
+          <a href="https://github.com/CodeNova/CodeNova/releases" target="_blank" class="btn-github">
+            <i class="fab fa-github"></i> GitHub 开源地址
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <!-- 简介卡片 -->
+      <section class="info-section reveal">
+        <div class="glass-card intro-card">
+          <h2><i class="fas fa-info-circle"></i> 仓库简介</h2>
+          <p>CodeNova 是一款专为 Android 打造的集成开发环境 (IDE)。它不仅是一个代码编辑器，更是一个完整的开发工具链，让您能够直接在手机或平板上构建、调试和管理项目。无论是 Python 脚本还是 C/C++ 应用，CodeNova 都能为您提供丝滑的编码体验。</p>
+        </div>
       </section>
 
-      <section>
-        <h2>技术文档</h2>
-        <ul>
-          <li>项目版本信息、技术栈与关键技术细节： <a href="#">项目技术文档</a></li>
-        </ul>
-      </section>
-
-      <section>
-        <h2>用户界面</h2>
-        <div class="screenshots-row">
-          <img src="/docs/assets/intro.png" alt="Intro Screen"/>
-          <img src="/docs/assets/editor.png" alt="Code Editor"/>
-          <img src="/docs/assets/breadcrumbs.png" alt="Breadcrumb Navigation"/>
-        </div>
-        
-        <div class="screenshots-row">
-          <img src="/docs/assets/filetree.png" alt="File Tree Explorer"/>
-          <img src="/docs/assets/jsconsole.png" alt="JS Console"/>
-          <img src="/docs/assets/site_preview.png" alt="Web Preview"/>
-        </div>
-        
-        <div class="screenshots-row">
-          <img src="/docs/assets/bin_dect.png" alt="Binary Detection"/>
-          <img src="/docs/assets/edit_ops.png" alt="Edit Ops"/>
-          <img src="/docs/assets/syntax_var.png" alt="Syntax"/>
+      <!-- 界面预览 -->
+      <section class="preview-section reveal">
+        <h2 class="section-title">用户界面预览</h2>
+        <div class="screenshot-grid">
+          <div class="screenshot-item" v-for="(img, index) in screenshots" :key="index">
+            <div class="img-container">
+              <img :src="img.src" :alt="img.alt" @error="handleScreenshotError">
+              <div class="img-placeholder"><i class="fas fa-image"></i><p>{{ img.alt }}</p></div>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section>
-        <h2>功能特性</h2>
-        
-        <h3>已实现（核心功能）</h3>
-        <ul class="task-list">
-          <li><input type="checkbox" checked disabled> 平板设备支持</li>
-          <li><input type="checkbox" checked disabled> ZIP 项目导入</li>
-          <li><input type="checkbox" checked disabled> 文件系统浏览器</li>
-          <li><input type="checkbox" checked disabled> 面包屑导航</li>
-          <li><input type="checkbox" checked disabled> 多窗格标签界面</li>
-          <li><input type="checkbox" checked disabled> 实时文件监控</li>
-          <li><input type="checkbox" checked disabled> 会话状态持久化</li>
-          <li><input type="checkbox" checked disabled> 全方位持久化架构（集成 UI 状态、Agent 循环、LLM 配置与聊天上下文的深度保存与恢复）</li>
-          <li><input type="checkbox" checked disabled> 编辑器文件异常容错（缺失/不可读文件不闪退）</li>
-          <li><input type="checkbox" checked disabled> 启动阶段第三方运行时初始化容错（异常不阻断启动）</li>
-          <li><input type="checkbox" checked disabled> Python 运行增强（脚本目录作为工作目录、无输出提示、实时日志输出路由）</li>
-          <li><input type="checkbox" checked disabled> Android 10+ 兼容性增强（通过 Linker 绕过 W^X 限制，优化 Python 进程通信）</li>
-          <li><input type="checkbox" checked disabled> Python Pip 包管理支持（自动引导安装 pip，修复 runpy 启动问题）</li>
-          <li><input type="checkbox" checked disabled> Python 运行时升级支持（支持通过 <code>updates/</code> 目录放置新版资源包实现热更新）</li>
-          <li><input type="checkbox" checked disabled> 终端 UI 整合（底部栏第三标签页整合原生 PTY 终端）</li>
-          <li><input type="checkbox" checked disabled> 终端交互增强（新增 ESC, TAB, CTRL, ALT, 方向键等特殊按键栏，支持锁定反馈）</li>
-          <li><input type="checkbox" checked disabled> 终端界面美化（简化提示符 PS1，支持色彩显示，优化移动端布局）</li>
-          <li><input type="checkbox" checked disabled> C/C++ 语言编译运行支持（集成 clang 工具链，支持自动环境引导与权限修复）</li>
-          <li><input type="checkbox" checked disabled> 自动化运行流（点击运行自动弹出半屏终端并执行命令）</li>
-          <li><input type="checkbox" checked disabled> 实时构建输出（Python 执行结果实时同步至"构建输出"面板）</li>
-          <li><input type="checkbox" checked disabled> 虚拟终端 Pane（用于展示运行输出）</li>
-          <li><input type="checkbox" checked disabled> 终端会话重连（复用已有会话，关闭/重开终端 Pane 不丢上下文）</li>
-          <li><input type="checkbox" checked disabled> 终端输出冗余内容清理（通过临时脚本封装执行，简化环境变量展示，保持界面整洁）</li>
-          <li><input type="checkbox" checked disabled> 增强终端管理逻辑（基于窗口检测而非内存 ID 记录，支持应用重启后的会话持久化识别与同步关闭）</li>
-          <li><input type="checkbox" checked disabled> 终端跳转链接（聊天输出/运行卡片支持一键定位到对应终端会话）</li>
-          <li><input type="checkbox" checked disabled> AI 助手聊天（支持流式 Markdown 与代码块复制）</li>
-          <li><input type="checkbox" checked disabled> AI 会话双轨存储（用户可见历史 / 系统完整上下文）</li>
-          <li><input type="checkbox" checked disabled> 用户消息仅展示原始输入（不展示注入上下文头）</li>
-          <li><input type="checkbox" checked disabled> 优化 Agent 工具调用渲染（实现数据分离存储、精简 UI 消息展示）</li>
-          <li><input type="checkbox" checked disabled> 优化 Agent 运行状态显示（文件夹创建显示为 "Create" 等）</li>
-          <li><input type="checkbox" checked disabled> 设置界面 UI 优化（分组配置、图标展示与全屏 Overlay）</li>
-          <li><input type="checkbox" checked disabled> 首次启动引导：支持选择默认工作区路径</li>
-          <li><input type="checkbox" checked disabled> 欢迎页面增强：新增"新建工作区"与"最近工作区"列表，支持一键创建空目录并实时同步历史记录</li>
-          <li><input type="checkbox" checked disabled> Agent 功能增强：支持文件夹创建、结构化多处编辑工具（<code>&lt;edit_lines&gt;</code>）、Token 动态压缩策略与自动偏移校准</li>
-          <li><input type="checkbox" checked disabled> Agent 上下文优化：路径变更按需注入、压缩后保留完整本地历史并精简发送内容</li>
-          <li><input type="checkbox" checked disabled> Agent 交互增强：新增"停止循环"功能，实时控制自主执行流程</li>
-          <li><input type="checkbox" checked disabled> Agent 交互优化：优化聊天界面布局，实现统一滚动与圆角 UI 联动</li>
-          <li><input type="checkbox" checked disabled> Agent 交互动画优化：实现工具调用与 LLM 思考期间的动态加载动画（ProgressBar 与 "Thinking..." 状态提示），引入异常容错机制确保状态同步，提升 UI 响应感知度</li>
-          <li><input type="checkbox" checked disabled> Agent 消息精准更新：基于全局唯一 ID 的消息定位机制，确保工具执行状态（如 Spinner 隐藏）能准确同步到对应的 UI 卡片，避免高频调用下的状态错乱</li>
-          <li><input type="checkbox" checked disabled> Agent 选中提问功能（支持单次携带多处代码片段，自动注入文件路径与行号上下文）</li>
-          <li><input type="checkbox" checked disabled> Agent 工具增强：新增 <code>&lt;check_syntax&gt;</code> 工具，支持对 Python 代码进行静态语法校验（支持文件修改后自动触发）</li>
-          <li><input type="checkbox" checked disabled> Agent 性能优化：工具输出结果按需 JSON 化，读取文件保持行号与缩进清晰（支持动态行号对齐），优先使用结构化精确编辑支持</li>
-          <li><input type="checkbox" checked disabled> Markdown 增强：支持表格渲染与高级排版优化（集成 Markwon Table/Strikethrough/TaskList 插件，自定义表格主题与间距，统一 commonmark 0.17.1 解决崩溃问题，修复流式渲染表格错乱问题）</li>
-          <li><input type="checkbox" checked disabled> 交互反馈优化：Agent 执行工具（写入、读取、运行、思考）时增加动态 Emoji 循环图案与打点动画，显著提升运行感知度</li>
-          <li><input type="checkbox" checked disabled> Agent 循环连续性优化：支持在路由到终端进行交互时保持 Agent 循环不中断，并在终端会话结束后（用户完成交互）自动恢复 Agent 运行流程，支持交互式任务的超时自动延长</li>
-          <li><input type="checkbox" checked disabled> Agent 代码变更管理：新增专门的变更展示组件，支持多文件变更列表化查看、Diff 预览与一键撤销功能</li>
-          <li>
-             Agent 交互与历史管理增强：
-             <ul class="task-list">
-               <li><input type="checkbox" checked disabled> 消息回撤与上下文栈回滚（支持撤销代码修改与对话分支清理）</li>
-               <li><input type="checkbox" checked disabled> 会话历史快速导航（支持展示所有用户消息摘要并一键跳转）</li>
-               <li><input type="checkbox" checked disabled> Agent 任务 UI 重构：支持未开始、进行中、已完成三种状态，优化视觉边界</li>
-               <li><input type="checkbox" checked disabled> 用户自定义规则注入：支持在设置中配置 1000 字符上限的开发规范，并按需（首次对话、路由切换、上下文压缩）自动注入上下文</li>
-             </ul>
-          </li>
-          <li><input type="checkbox" checked disabled> 构建排查与依赖管理</li>
-          <li><input type="checkbox" checked disabled> 跨存储卷访问</li>
-          <li><input type="checkbox" checked disabled> 二进制/文本启发式检测</li>
-          <li><input type="checkbox" checked disabled> 多语言语法高亮</li>
-          <li><input type="checkbox" checked disabled> 高级代码编辑功能</li>
-          <li><input type="checkbox" checked disabled> 强大的离线编辑功能</li>
-          <li><input type="checkbox" checked disabled> 全面优化启动速度（异步化耗时初始化任务，UI 线程安全更新）</li>
-          <li><input type="checkbox" checked disabled> QPython 运行时全面集成（自动软链接、环境变量动态注入、预加载优化）</li>
-          <li><input type="checkbox" checked disabled> Android 10+ Linker 包装器方案（绕过 W^X 执行限制，确保 Python 运行时在私有目录正常运行）</li>
-        </ul>
-
-        <h3>已实现（Web 与服务器）</h3>
-        <ul class="task-list">
-          <li><input type="checkbox" checked disabled> 本地服务器测试（localhost/WiFi 热点）</li>
-          <li><input type="checkbox" checked disabled> Web 开发工具</li>
-        </ul>
-
-        <h3>开发中</h3>
-        <ul class="task-list">
-          <li><input type="checkbox" disabled> Git 集成 (部分完成)
-            <ul class="task-list">
-              <li><input type="checkbox" checked disabled> 克隆仓库多策略候选与失败汇总提示</li>
+      <!-- 功能特性 -->
+      <section class="features-section reveal">
+        <h2 class="section-title">功能特性</h2>
+        <div class="features-grid">
+          <div class="feature-category glass-card">
+            <h3><i class="fas fa-star"></i> 核心功能</h3>
+            <ul class="feature-list">
+              <li v-for="feat in coreFeatures" :key="feat"><i class="fas fa-check"></i> {{ feat }}</li>
             </ul>
-          </li>
-          <li><input type="checkbox" disabled> 自动补全 (部分完成)</li>
-          <li><input type="checkbox" checked disabled> 命令面板
-             <ul class="task-list">
-               <li><input type="checkbox" checked disabled> 行号跳转</li>
-               <li><input type="checkbox" disabled> 文件跳转</li>
-               <li><input type="checkbox" disabled> 帮助</li>
-               <li><input type="checkbox" disabled> 动作</li>
-               <li><input type="checkbox" checked disabled> 语法切换</li>
-               <li><input type="checkbox" disabled> 最近文档</li>
-               <li><input type="checkbox" disabled> 符号跳转</li>
-               <li><input type="checkbox" disabled> 命令</li>
-             </ul>
-          </li>
-          <li><input type="checkbox" disabled> 中文界面本地化（已完成）</li>
-        </ul>
-
-        <h3>路线图</h3>
-        <ul class="task-list">
-          <li><input type="checkbox" disabled> 调试工具</li>
-          <li><input type="checkbox" disabled> 插件生态</li>
-          <li><input type="checkbox" disabled> 完整 Git 集成</li>
-          <li><input type="checkbox" checked disabled> 终端集成（基于 Termux）</li>
-          <li><input type="checkbox" checked disabled> Termux Shared 基础库集成（termux-shared）</li>
-          <li><input type="checkbox" disabled> AI 助手集成</li>
-          <li><input type="checkbox" disabled> 智能代码补全</li>
-        </ul>
-      </section>
-
-      <section>
-        <h2>快速开始</h2>
-        <p>当前软件版本：<code>v1.1.0</code></p>
-        
-        <div class="alert alert-important">
-          <p><strong>IMPORTANT</strong></p>
-          <ul>
-            <li>安装前，请确保您的设备设置中已启用 <strong>允许安装来自未知来源的应用</strong>。</li>
-            <li>请务必仅从受信任的来源安装 CodeNova。</li>
-          </ul>
+          </div>
+          <div class="feature-category glass-card">
+            <h3><i class="fas fa-robot"></i> AI & Agent 增强</h3>
+            <ul class="feature-list">
+              <li v-for="feat in aiFeatures" :key="feat"><i class="fas fa-magic"></i> {{ feat }}</li>
+            </ul>
+          </div>
+          <div class="feature-category glass-card">
+            <h3><i class="fas fa-terminal"></i> 运行环境</h3>
+            <ul class="feature-list">
+              <li v-for="feat in runtimeFeatures" :key="feat"><i class="fas fa-microchip"></i> {{ feat }}</li>
+            </ul>
+          </div>
         </div>
-        
-        <p><a href="/CodeNova.apk" download>https://github.com/CodeNova/CodeNova/releases/download/v1.1.0/CodeNova.v1.1.0.apk</a></p>
-
-        <h3>安装步骤</h3>
-        <ol>
-          <li>访问 <a href="https://github.com/CodeNova/CodeNova/releases">https://github.com/CodeNova/CodeNova/releases</a> 页面</li>
-          <li>下载最新的 CodeNova APK</li>
-          <li>在您的设备上安装 APK</li>
-          <li>随时随地开始编码</li>
-        </ol>
       </section>
 
-      <section>
-        <h2>构建与签名</h2>
-        <ul>
-          <li>本地构建：使用 <code>./gradlew assembleDebug</code> 或 <code>./gradlew assemble</code>。</li>
-          <li>Release 签名：CI 会从 <code>app/codenova.keystore.enc</code> 解密输出到 <code>app/codenova.keystore</code>，并通过环境变量/<code>secrets.properties</code> 提供签名密码与别名。</li>
-        </ul>
-      </section>
-
-      <section>
-        <h2>贡献指南</h2>
-        <div class="alert alert-note">
-          <p><strong>NOTE</strong></p>
-          <ul>
-            <li>Pull requests 应提交至：<code>dev</code> 分支</li>
-          </ul>
+      <!-- 快速开始 -->
+      <section class="quickstart-section reveal">
+        <div class="glass-card">
+          <h2><i class="fas fa-bolt"></i> 快速开始</h2>
+          <div class="steps">
+            <div class="step">
+              <div class="step-num">1</div>
+              <p>确保设备已开启“允许安装未知来源应用”权限。</p>
+            </div>
+            <div class="step">
+              <div class="step-num">2</div>
+              <p>点击上方按钮下载最新版 CodeNova APK。</p>
+            </div>
+            <div class="step">
+              <div class="step-num">3</div>
+              <p>安装并启动，选择您的工作空间，开始编码！</p>
+            </div>
+          </div>
         </div>
-        <p>请参考 <a href="#">贡献指南</a> 了解如何贡献的详细说明。</p>
       </section>
+    </main>
 
-      <section>
-        <h2>许可</h2>
-        <p>版权所有 (c) CodeNova Team. 保留所有权利。</p>
-        <p>基于 <a href="#">GNU GPLv3</a> 许可。</p>
-      </section>
-
-      <section>
-        <h2>致谢</h2>
-        <p>非常感谢所有贡献者、测试人员和开源社区让 CodeNova 成为可能。</p>
-      </section>
-    </div>
-    
-    <div class="footer">
-      <p>&copy; 2024 CodeNova. All rights reserved.</p>
-    </div>
+    <footer class="page-footer">
+      <p>版权所有 (c) CodeNova Team. 基于 GNU GPLv3 许可.</p>
+      <div class="footer-links">
+        <a href="#">项目技术文档</a>
+        <a href="#">贡献指南</a>
+        <a href="#">许可说明</a>
+      </div>
+    </footer>
   </div>
 </template>
 
 <script setup>
-import { onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+import { useThemeStore } from '@/stores/theme';
+
+const router = useRouter();
+const themeStore = useThemeStore();
+const imgError = ref(false);
+
+const handleImgError = () => {
+  imgError.value = true;
+};
+
+const handleScreenshotError = (e) => {
+  e.target.style.display = 'none';
+  e.target.nextElementSibling.style.display = 'flex';
+};
+
+const screenshots = [
+  { src: '/docs/assets/intro.png', alt: '引导界面' },
+  { src: '/docs/assets/editor.png', alt: '代码编辑器' },
+  { src: '/docs/assets/breadcrumbs.png', alt: '面包屑导航' },
+  { src: '/docs/assets/filetree.png', alt: '文件浏览器' },
+  { src: '/docs/assets/jsconsole.png', alt: 'JS 控制台' },
+  { src: '/docs/assets/site_preview.png', alt: '网页预览' }
+];
+
+const coreFeatures = [
+  '平板设备完美支持',
+  'ZIP 项目一键导入',
+  '实时文件监控系统',
+  '多窗格标签页界面',
+  '会话状态深度持久化',
+  '二进制/文本启发式检测'
+];
+
+const aiFeatures = [
+  'AI 助手聊天（流式 Markdown）',
+  'Agent 自动化工具调用',
+  '代码变更 Diff 预览与回滚',
+  '智能语法校验（Python）',
+  '选中代码提问（携带上下文）'
+];
+
+const runtimeFeatures = [
+  'QPython 运行时深度集成',
+  'C/C++ Clang 工具链支持',
+  '原生 PTY 终端集成',
+  'Android 10+ 兼容性增强',
+  'Pip 包管理与热更新支持'
+];
 
 onMounted(() => {
-  document.title = 'CodeNova - 随时随地写代码';
+  document.title = 'CodeNova - 移动端集成开发环境';
+  
+  // 简单的滚动揭示效果
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('active');
+      }
+    });
+  }, { threshold: 0.1 });
+
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 });
 </script>
 
 <style scoped>
-.codenova-container {
-  max-width: 900px;
+.codenova-page {
+  --primary: #2da44e;
+  --primary-hover: #2c974b;
+  --bg: #f6f8fa;
+  --text: #24292f;
+  --card-bg: rgba(255, 255, 255, 0.7);
+  --border: rgba(210, 215, 222, 0.5);
+  
+  min-height: 100vh;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  transition: all 0.3s ease;
+}
+
+.codenova-page.dark {
+  --bg: #0d1117;
+  --text: #c9d1d9;
+  --card-bg: rgba(22, 27, 34, 0.7);
+  --border: rgba(48, 54, 61, 0.5);
+}
+
+/* 导航栏 */
+.glass-nav {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  height: 64px;
+  background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  z-index: 1000;
+}
+
+.nav-content {
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  color: #24292f;
-  line-height: 1.6;
-}
-
-.header-section {
-  margin-bottom: 2rem;
-  border-bottom: 1px solid #eaecef;
-  padding-bottom: 2rem;
-}
-
-.tagline {
-  font-size: 1.5rem;
-  color: #57606a;
-  margin-bottom: 1rem;
-}
-
-.badges {
+  height: 100%;
   display: flex;
-  justify-content: center;
-  gap: 5px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2rem;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: var(--primary);
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.btn-back {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-back:hover {
+  background: var(--border);
+}
+
+.theme-toggle {
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 5px;
+}
+
+/* Hero 区域 */
+.hero-section {
+  position: relative;
+  padding: 120px 2rem 60px;
+  text-align: center;
+  overflow: hidden;
+}
+
+.hero-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+}
+
+.blob {
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(45, 164, 78, 0.15) 0%, transparent 70%);
+  filter: blur(40px);
+  border-radius: 50%;
+}
+
+.blob:nth-child(1) { top: -100px; left: -100px; }
+.blob:nth-child(2) { bottom: -100px; right: -100px; }
+
+.app-icon {
+  width: 120px;
+  height: 120px;
+  border-radius: 28px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.1);
   margin-bottom: 1.5rem;
 }
 
-.download-area {
-  margin-top: 2rem;
-  padding: 1.5rem;
-  background-color: #f6f8fa;
-  border-radius: 6px;
-  border: 1px solid #d0d7de;
-}
-
-.download-btn {
-  display: inline-block;
-  background-color: #2da44e;
+.icon-placeholder {
+  width: 120px;
+  height: 120px;
+  background: linear-gradient(135deg, #2da44e, #059669);
+  border-radius: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
   color: white;
-  padding: 12px 24px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  border-radius: 6px;
-  text-decoration: none;
-  transition: background-color 0.2s;
+  margin: 0 auto 1.5rem;
 }
 
-.download-btn:hover {
-  background-color: #2c974b;
+.title {
+  font-size: 3.5rem;
+  font-weight: 850;
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, var(--text) 30%, var(--primary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-.download-sub {
-  margin-top: 10px;
-  font-size: 0.9rem;
-  color: #57606a;
-}
-
-h1 {
-  font-size: 2.5rem;
-  margin-bottom: 0.5rem;
-}
-
-h2 {
-  border-bottom: 1px solid #eaecef;
-  padding-bottom: 0.3em;
-  margin-top: 24px;
-  margin-bottom: 16px;
-  font-weight: 600;
-  line-height: 1.25;
-}
-
-h3 {
-  margin-top: 24px;
-  margin-bottom: 16px;
-  font-weight: 600;
-  line-height: 1.25;
-}
-
-section {
+.subtitle {
+  font-size: 1.25rem;
+  color: var(--text);
+  opacity: 0.8;
   margin-bottom: 2rem;
 }
 
-.screenshots-row {
+.badge-group {
   display: flex;
   justify-content: center;
-  gap: 2%;
-  margin-bottom: 1rem;
+  gap: 10px;
+  margin-bottom: 2.5rem;
+  flex-wrap: wrap;
 }
 
-.screenshots-row img {
-  max-width: 100%;
-  height: auto;
-  width: 32%;
-  border: 1px solid #d0d7de;
-  border-radius: 6px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
-}
-
-.task-list {
-  list-style-type: none;
-  padding-left: 0;
-}
-
-.task-list-item {
+.badge {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
   display: flex;
-  align-items: flex-start;
-  margin-bottom: 0.25rem;
+  align-items: center;
+  gap: 6px;
 }
 
-.task-list-item input {
-  margin-right: 0.5em;
-  margin-top: 0.3em;
+.badge.blue { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+.badge.purple { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
+.badge.green { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+
+.action-group {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
 }
 
-.alert {
-  padding: 1rem;
-  margin-bottom: 1rem;
-  border-left: 0.25rem solid transparent;
-  background-color: #fff;
-  border: 1px solid #d0d7de;
-  border-radius: 6px;
+.btn-download {
+  background: var(--primary);
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 10px 20px rgba(45, 164, 78, 0.3);
+  transition: all 0.3s;
 }
 
-.alert-important {
-  border-left-color: #8250df;
-  background-color: #f6f8fa;
+.btn-download:hover {
+  transform: translateY(-3px);
+  background: var(--primary-hover);
+  box-shadow: 0 15px 30px rgba(45, 164, 78, 0.4);
 }
 
-.alert-note {
-  border-left-color: #0969da;
-  background-color: #f6f8fa;
+.btn-github {
+  background: var(--card-bg);
+  color: var(--text);
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--border);
+  transition: all 0.3s;
 }
 
-code {
-  padding: 0.2em 0.4em;
-  margin: 0;
-  font-size: 85%;
-  background-color: rgba(175, 184, 193, 0.2);
-  border-radius: 6px;
-  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
+.btn-github:hover {
+  background: var(--border);
+  transform: translateY(-3px);
 }
 
-a {
-  color: #0969da;
+/* 内容区域 */
+.main-content {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.glass-card {
+  background: var(--card-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2rem;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.05);
+}
+
+.section-title {
+  text-align: center;
+  font-size: 2rem;
+  margin: 4rem 0 2rem;
+}
+
+/* 截图网格 */
+.screenshot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.img-container {
+  aspect-ratio: 16/9;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  position: relative;
+}
+
+.img-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.img-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--border);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+  opacity: 0.5;
+}
+
+/* 特性网格 */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.feature-category h3 {
+  margin-bottom: 1.5rem;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.feature-list {
+  list-style: none;
+  padding: 0;
+}
+
+.feature-list li {
+  margin-bottom: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.95rem;
+}
+
+.feature-list li i {
+  color: var(--primary);
+  font-size: 0.8rem;
+}
+
+/* 快速开始步骤 */
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.step-num {
+  width: 32px;
+  height: 32px;
+  background: var(--primary);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* 动画 */
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.6s ease-out;
+}
+
+.reveal.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.animate-fade-in {
+  animation: fadeIn 1s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.page-footer {
+  text-align: center;
+  padding: 4rem 2rem;
+  border-top: 1px solid var(--border);
+  margin-top: 4rem;
+  color: var(--text);
+  opacity: 0.7;
+}
+
+.footer-links {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  margin-top: 1rem;
+}
+
+.footer-links a {
+  color: var(--text);
   text-decoration: none;
 }
 
-a:hover {
+.footer-links a:hover {
   text-decoration: underline;
 }
 
-.footer {
-  margin-top: 3rem;
-  padding-top: 2rem;
-  border-top: 1px solid #eaecef;
-  text-align: center;
-  color: #57606a;
+@media (max-width: 768px) {
+  .title { font-size: 2.5rem; }
+  .action-group { flex-direction: column; align-items: stretch; }
+  .nav-content { padding: 0 1rem; }
+  .nav-actions .btn-back span { display: none; }
 }
 </style>
