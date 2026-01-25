@@ -57,6 +57,7 @@
                 class="upload-loading"
               >
                 <div class="loading-spinner-small"></div>
+                <span class="upload-percent">{{ uploadProgress }}%</span>
               </div>
             </div>
             
@@ -293,6 +294,7 @@ const authStore = useAuthStore()
 const router = useRouter()
 const localSettings = ref({})
 const isUploading = ref(false)
+const uploadProgress = ref(0)
 const avatarPreviewUrl = ref(null)
 
 const isEditingUsername = ref(false)
@@ -353,6 +355,7 @@ onMounted(async () => {
 
 /**
  * 处理头像上传
+ * @param {Event} event - 文件选择事件
  */
 const onFileChange = async (event) => {
   const file = event.target.files[0]
@@ -374,10 +377,19 @@ const onFileChange = async (event) => {
   formData.append('file', file)
 
   isUploading.value = true
+  uploadProgress.value = 0
+  
   try {
     const response = await request.post(API_ENDPOINTS.auth.uploadAvatar, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
+      },
+      timeout: 600000, // 10 minutes
+      onUploadProgress: (progressEvent) => {
+        if (progressEvent.total) {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+          uploadProgress.value = percentCompleted
+        }
       }
     })
 
@@ -394,9 +406,14 @@ const onFileChange = async (event) => {
     }
   } catch (error) {
     console.error('Avatar upload error:', error)
-    uiStore.showToast(error.response?.data?.message || '上传过程中发生错误', 'error')
+    if (error.code === 'ECONNABORTED') {
+      uiStore.showToast('上传超时，请稍后重试', 'error')
+    } else {
+      uiStore.showToast(error.response?.data?.message || '上传过程中发生错误', 'error')
+    }
   } finally {
     isUploading.value = false
+    uploadProgress.value = 0
     // 清除 input 值，允许重复上传同一张图
     event.target.value = ''
   }
@@ -598,12 +615,21 @@ const handleLogout = () => {
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
+  right: 0;
+  bottom: 0;
   background-color: rgba(0, 0, 0, 0.5);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  border-radius: 50%;
+  gap: 4px;
+}
+
+.upload-percent {
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .loading-spinner-small {

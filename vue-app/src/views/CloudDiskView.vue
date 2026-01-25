@@ -357,18 +357,23 @@
       </div>
     </div>
     
-    <!-- 上传进度 -->
-    <div
-      v-if="uploadProgress > 0 && uploadProgress < 100"
-      class="upload-progress"
-    >
-      <div class="progress-bar">
-        <div
-          class="progress-fill"
-          :style="{ width: uploadProgress + '%' }"
-        ></div>
+    <!-- 上传进度对话框 -->
+    <div v-if="isUploading" class="modal-overlay upload-progress-overlay">
+      <div class="modal-content progress-modal">
+        <div class="modal-header">
+          <h3>正在上传...</h3>
+        </div>
+        <div class="modal-body">
+          <div class="progress-info">
+            <span class="filename" :title="uploadingFileName">{{ uploadingFileName }}</span>
+            <span class="percentage">{{ uploadProgress }}%</span>
+          </div>
+          <div class="progress-bar-container">
+            <div class="progress-bar" :style="{ width: uploadProgress + '%' }"></div>
+          </div>
+          <p class="upload-tip">请勿关闭页面，等待上传完成...</p>
+        </div>
       </div>
-      <p>上传中... {{ uploadProgress }}%</p>
     </div>
 
     <!-- 新建文件夹对话框 -->
@@ -440,6 +445,8 @@ const previewFileData = ref(null)
 const previewUrl = ref('')
 const previewText = ref('')
 const uploadProgress = ref(0)
+const uploadingFileName = ref('')
+const isUploading = ref(false)
 const viewportWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1024)
 
 // 编辑相关状态
@@ -636,20 +643,41 @@ const processUploadQueue = async () => {
     }
 }
 
+/**
+ * 执行文件上传
+ * @param {File} file - 要上传的文件对象
+ * @param {string} strategy - 冲突处理策略 (RENAME, OVERWRITE, SKIP)
+ */
 const performUpload = async (file, strategy) => {
   uploadProgress.value = 0
+  uploadingFileName.value = file.name
+  isUploading.value = true
   const folderPath = cloudDiskStore.currentFolder
-  const result = await cloudDiskStore.uploadFile(
-    file, 
-    folderPath, 
-    (progress) => { uploadProgress.value = progress },
-    strategy
-  )
   
-  if (result.success) {
-    console.log('文件上传成功:', file.name)
-  } else {
-    uiStore.showToast(`上传失败: ${result.message}`)
+  try {
+    const result = await cloudDiskStore.uploadFile(
+      file, 
+      folderPath, 
+      (progress) => { uploadProgress.value = progress },
+      strategy
+    )
+    
+    if (result.success) {
+      console.log('文件上传成功:', file.name)
+    } else {
+      uiStore.showToast(`上传失败: ${result.message}`)
+    }
+  } catch (error) {
+    console.error('上传过程出错:', error)
+    if (error.code === 'ECONNABORTED') {
+      uiStore.showToast('上传超时，文件可能过大，请稍后重试')
+    } else {
+      uiStore.showToast('上传出错，请检查网络连接')
+    }
+  } finally {
+    isUploading.value = false
+    uploadProgress.value = 0
+    uploadingFileName.value = ''
   }
 }
 
@@ -676,29 +704,45 @@ const onConflictCancelled = () => {
     processUploadQueue()
 }
 
-// 处理文件夹上传
+/**
+ * 处理文件夹上传
+ * @param {Event} event - 文件选择事件
+ */
 const handleFolderSelect = async (event) => {
   const files = event.target.files
   if (!files || files.length === 0) return
   
   uploadProgress.value = 0
+  uploadingFileName.value = `文件夹: ${files[0].webkitRelativePath.split('/')[0]}`
+  isUploading.value = true
   
-  const result = await cloudDiskStore.uploadFolderStream(
-    files,
-    cloudDiskStore.currentFolder,
-    (progress) => {
-      uploadProgress.value = progress
+  try {
+    const result = await cloudDiskStore.uploadFolderStream(
+      files,
+      cloudDiskStore.currentFolder,
+      (progress) => {
+        uploadProgress.value = progress
+      }
+    )
+    
+    if (result.success) {
+      console.log('文件夹上传成功')
+    } else {
+      uiStore.showToast(`上传失败: ${result.message}`)
     }
-  )
-  
-  if (result.success) {
-    console.log('文件夹上传成功')
-  } else {
-    uiStore.showToast(`上传失败: ${result.message}`)
+  } catch (error) {
+    console.error('文件夹上传出错:', error)
+    if (error.code === 'ECONNABORTED') {
+      uiStore.showToast('上传超时，文件夹可能过大，请稍后重试')
+    } else {
+      uiStore.showToast('上传出错，请检查网络连接')
+    }
+  } finally {
+    isUploading.value = false
+    uploadProgress.value = 0
+    uploadingFileName.value = ''
+    event.target.value = '' // 重置input
   }
-  
-  uploadProgress.value = 0
-  event.target.value = '' // 重置input
 }
 
 const isFileSelected = (fileId) => {
@@ -1771,14 +1815,6 @@ input[type="checkbox"] {
     display: flex;
     flex-direction: column;
   }
-  
-  .upload-progress {
-    min-width: unset;
-    width: 90vw;
-    padding: 16px;
-    bottom: 16px;
-    right: 5vw;
-  }
 }
 
 /* 预览容器样式 */
@@ -1989,5 +2025,58 @@ input[type="checkbox"] {
   .not-previewable .file-name {
     font-size: 16px;
   }
+}
+/* 上传进度对话框 */
+.upload-progress-overlay {
+  z-index: 10000 !important;
+}
+
+.progress-modal {
+  min-width: 400px;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.progress-info .filename {
+  font-size: 14px;
+  color: var(--text-primary);
+  max-width: 70%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.progress-info .percentage {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 10px;
+  background-color: var(--bg-tertiary);
+  border-radius: 5px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.progress-bar {
+  height: 100%;
+  background: var(--gradient-primary);
+  border-radius: 5px;
+  transition: width 0.3s ease;
+}
+
+.upload-tip {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  text-align: center;
+  margin: 0;
 }
 </style>

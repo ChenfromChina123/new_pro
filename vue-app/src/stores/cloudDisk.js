@@ -373,6 +373,7 @@ export const useCloudDiskStore = defineStore('cloudDisk', () => {
     try {
       const response = await request.post(API_ENDPOINTS.cloudDisk.upload, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 600000, // 增加到 10 分钟超时
         onUploadProgress: (progressEvent) => {
           if (onProgress && progressEvent.total) {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
@@ -423,6 +424,7 @@ export const useCloudDiskStore = defineStore('cloudDisk', () => {
     try {
       const response = await request.post(API_ENDPOINTS.cloudDisk.uploadFolder, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 600000, // 增加到 10 分钟超时
         onUploadProgress: (progressEvent) => {
           if (onProgress && progressEvent.total) {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
@@ -449,6 +451,7 @@ export const useCloudDiskStore = defineStore('cloudDisk', () => {
     try {
       const response = await request.post(API_ENDPOINTS.cloudDisk.uploadFolderStream, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 600000, // 增加到 10 分钟超时
         onUploadProgress: (progressEvent) => {
           if (onProgress && progressEvent.total) {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
