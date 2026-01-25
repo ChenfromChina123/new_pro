@@ -164,16 +164,17 @@
           <i class="fas fa-rocket"></i> 免费开始使用
         </router-link>
         <router-link 
-          to="/agent"
+          :to="agentDownloadUrl"
           class="btn-agent-download"
         >
-          <i class="fas fa-terminal"></i> Agent 终端助手
+          <i class="fas fa-terminal"></i> Agent {{ agentVersion }}
+          <span v-if="hasLinuxVersion" class="platform-badge">Win/Linux</span>
         </router-link>
         <router-link 
-          to="/codenova" 
+          :to="codenovaDownloadUrl" 
           class="btn-codenova-download"
         >
-          <i class="fas fa-mobile-alt"></i> CodeNova 移动端
+          <i class="fas fa-mobile-alt"></i> 下载 CodeNova {{ codenovaVersion }}
         </router-link>
         <button 
           class="btn-secondary-lg" 
@@ -348,8 +349,49 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
+import request from '@/utils/request'
+import { API_ENDPOINTS } from '@/config/api'
 
 const router = useRouter()
+const codenovaVersion = ref('v1.0.0')
+const codenovaDownloadUrl = ref('/codenova')
+const agentVersion = ref('v1.0.0')
+const agentDownloadUrl = ref('/agent')
+const hasLinuxVersion = ref(false)
+
+const fetchSoftwareInfo = async () => {
+  try {
+    const response = await request.get(API_ENDPOINTS.admin.publicResources)
+    const softwareList = response.data || []
+    
+    const codenova = softwareList.find(item => item.title.toLowerCase().includes('codenova'))
+    if (codenova) {
+      codenovaVersion.value = codenova.version || 'v1.0.0'
+      codenovaDownloadUrl.value = codenova.filePath || codenova.url || '/codenova'
+    }
+
+    // 查找 Windows 版或通用版作为主展示
+    const agentWin = softwareList.find(item => 
+      item.title.toLowerCase().includes('agent') && 
+      (item.platform === 'Windows' || !item.platform)
+    )
+    if (agentWin) {
+      agentVersion.value = agentWin.version || 'v1.0.0'
+      agentDownloadUrl.value = agentWin.filePath || agentWin.url || '/agent'
+    }
+
+    // 检查是否有 Linux 版
+    hasLinuxVersion.value = softwareList.some(item => 
+      item.title.toLowerCase().includes('agent') && item.platform === 'Linux'
+    )
+  } catch (error) {
+    console.error('加载软件信息失败:', error)
+  }
+}
+
+const navigateToCodeNova = () => {
+  router.push('/codenova')
+}
 const authStore = useAuthStore()
 const themeStore = useThemeStore()
 
@@ -451,6 +493,7 @@ onMounted(() => {
   window.addEventListener('scroll', handleScroll)
   startTyping()
   setTimeout(revealOnScroll, 100) // 初始检查
+  fetchSoftwareInfo()
 })
 
 onUnmounted(() => {
@@ -688,6 +731,7 @@ onUnmounted(() => {
 }
 
 .btn-agent-download {
+  position: relative;
   background: var(--bg-primary);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
@@ -701,6 +745,16 @@ onUnmounted(() => {
   align-items: center;
   gap: 10px;
   text-decoration: none;
+}
+
+.platform-badge {
+  font-size: 0.7rem;
+  background: var(--primary-color);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 4px;
+  opacity: 0.9;
 }
 
 .btn-agent-download:hover {

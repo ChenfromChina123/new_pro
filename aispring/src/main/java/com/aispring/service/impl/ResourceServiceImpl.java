@@ -60,6 +60,9 @@ public class ResourceServiceImpl implements ResourceService {
         existingResource.setUrl(resource.getUrl());
         existingResource.setDescription(resource.getDescription());
         existingResource.setIsPublic(resource.getIsPublic());
+        existingResource.setVersion(resource.getVersion());
+        existingResource.setFilePath(resource.getFilePath());
+        existingResource.setType(resource.getType());
         
         // 更新分类
         if (categoryName != null && !categoryName.isEmpty()) {

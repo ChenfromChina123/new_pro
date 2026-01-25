@@ -18,4 +18,8 @@ public class ResourceRequest {
     private String categoryName;
     
     private Integer isPublic = 1;
+
+    private String version;
+
+    private String type;
 }

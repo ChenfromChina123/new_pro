@@ -4,11 +4,21 @@ import com.aispring.dto.request.ResourceRequest;
 import com.aispring.dto.response.ApiResponse;
 import com.aispring.entity.Resource;
 import com.aispring.service.ResourceService;
+import com.aispring.config.StorageProperties;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * 资源控制器
@@ -20,6 +30,7 @@ import java.util.List;
 public class ResourceController {
     
     private final ResourceService resourceService;
+    private final StorageProperties storageProperties;
     
     /**
      * 添加资源
@@ -37,11 +48,56 @@ public class ResourceController {
                 .url(request.getUrl())
                 .description(request.getDescription())
                 .isPublic(request.getIsPublic())
-                .type("article")
+                .type(request.getType() != null ? request.getType() : "article")
+                .version(request.getVersion())
                 .build();
         
         Resource createdResource = resourceService.createResource(resource, request.getCategoryName());
         return ResponseEntity.ok(ApiResponse.success("资源添加成功", createdResource));
+    }
+
+    /**
+     * 上传软件源文件
+     * 仅限管理员使用 (实际项目中需添加 @PreAuthorize("hasRole('ADMIN')"))
+     */
+    @PostMapping(value = "/{id}/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<Resource>> uploadSoftwareFile(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file) throws IOException {
+        
+        Resource resource = resourceService.getResourceById(id);
+        
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(400, "上传文件不能为空"));
+        }
+
+        // 确保存储目录存在
+        String uploadDir = storageProperties.getPublicFilesAbsolute();
+        Path uploadPath = Paths.get(uploadDir).resolve("software");
+        if (!Files.exists(uploadPath)) {
+            Files.createDirectories(uploadPath);
+        }
+
+        // 生成唯一文件名
+        String originalFilename = StringUtils.cleanPath(file.getOriginalFilename());
+        String extension = "";
+        int lastDotIndex = originalFilename.lastIndexOf(".");
+        if (lastDotIndex != -1) {
+            extension = originalFilename.substring(lastDotIndex);
+        }
+        String fileName = UUID.randomUUID().toString() + extension;
+        Path targetLocation = uploadPath.resolve(fileName);
+
+        // 保存文件
+        Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+
+        // 更新资源文件路径 (返回相对路径供前端下载)
+        String relativePath = "/api/public-files/download/software/" + fileName;
+        resource.setFilePath(relativePath);
+        
+        Resource updatedResource = resourceService.updateResource(id, resource, null);
+        
+        return ResponseEntity.ok(ApiResponse.success("文件上传成功", updatedResource));
     }
     
     /**

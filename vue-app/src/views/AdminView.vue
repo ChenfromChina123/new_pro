@@ -359,6 +359,85 @@
         </div>
       </div>
       
+      <!-- 软件管理 -->
+      <div
+        v-if="currentTab === 'software'"
+        class="tab-content card"
+      >
+        <div class="content-header">
+          <h2>软件版本管理</h2>
+          <button class="btn btn-primary" @click="openSoftwareModal()">
+            添加软件
+          </button>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>软件名称</th>
+                <th>平台</th>
+                <th>版本号</th>
+                <th>类型</th>
+                <th>下载链接/路径</th>
+                <th>更新时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="item in softwareList"
+                :key="item.id"
+              >
+                <td>{{ item.title }}</td>
+                <td>
+                  <span class="badge" :class="item.platform?.toLowerCase() || 'general'">{{ item.platform || '通用' }}</span>
+                </td>
+                <td>{{ item.version || '未设置' }}</td>
+                <td>
+                  <span class="badge secondary">{{ item.type }}</span>
+                </td>
+                <td>
+                  <span class="file-path-cell" :title="item.filePath || item.url">
+                    {{ item.filePath || item.url || '-' }}
+                  </span>
+                </td>
+                <td>{{ formatDate(item.updatedAt || item.created_at) }}</td>
+                <td>
+                  <button 
+                    class="btn-small btn-secondary"
+                    style="margin-right: 8px;"
+                    @click="openSoftwareModal(item)"
+                  >
+                    编辑
+                  </button>
+                  <button 
+                    class="btn-small btn-primary"
+                    style="margin-right: 8px;"
+                    @click="triggerFileUpload(item)"
+                  >
+                    上传源文件
+                  </button>
+                  <button 
+                    class="btn-small btn-danger"
+                    @click="handleDeleteSoftware(item.id)"
+                  >
+                    删除
+                  </button>
+                </td>
+              </tr>
+              <tr v-if="softwareList.length === 0">
+                <td
+                  colspan="6"
+                  class="empty-row"
+                >
+                  暂无软件信息
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- 反馈管理 -->
       <div
         v-if="currentTab === 'feedback'"
@@ -384,6 +463,68 @@
           </div>
         </div>
       </div>
+
+      <!-- 软件编辑弹窗 -->
+      <div 
+        v-if="showSoftwareModal" 
+        class="modal-overlay"
+      >
+        <div class="modal-content animate-slideIn">
+          <div class="modal-header">
+            <h3>{{ isEdit ? '编辑软件' : '添加软件' }}</h3>
+            <button class="close-btn" @click="showSoftwareModal = false">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label>软件名称</label>
+              <input v-model="editingSoftware.title" type="text" class="form-input" placeholder="例如: CodeNova">
+            </div>
+            <div class="form-group">
+              <label>运行平台</label>
+              <select v-model="editingSoftware.platform" class="form-input">
+                <option value="">通用</option>
+                <option value="Windows">Windows</option>
+                <option value="Linux">Linux</option>
+                <option value="Android">Android</option>
+                <option value="iOS">iOS</option>
+                <option value="macOS">macOS</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>版本号</label>
+              <input v-model="editingSoftware.version" type="text" class="form-input" placeholder="例如: v1.0.0">
+            </div>
+            <div class="form-group">
+              <label>类型</label>
+              <select v-model="editingSoftware.type" class="form-input">
+                <option value="software">软件/安装包</option>
+                <option value="source">源代码</option>
+                <option value="article">文档/文章</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>外部链接 (可选)</label>
+              <input v-model="editingSoftware.url" type="text" class="form-input" placeholder="https://...">
+            </div>
+            <div class="form-group">
+              <label>描述</label>
+              <textarea v-model="editingSoftware.description" class="form-input" rows="3"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" @click="showSoftwareModal = false">取消</button>
+            <button class="btn btn-primary" @click="saveSoftware">保存</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 隐藏的文件上传输入框 -->
+      <input 
+        ref="fileInput" 
+        type="file" 
+        style="display: none" 
+        @change="handleFileUpload"
+      >
     </div>
   </div>
 </template>
@@ -425,6 +566,7 @@ const isBinaryFile = computed(() => {
 const tabs = [
   { key: 'users', label: '用户管理' },
   { key: 'files', label: '文件管理' },
+  { key: 'software', label: '软件管理' },
   { key: 'feedback', label: '反馈管理' }
 ]
 
@@ -465,9 +607,115 @@ watch(currentTab, (newTab) => {
   if (newTab === 'feedback') fetchFeedbacks()
 })
 
-onMounted(async () => {
-  await fetchStatistics()
-  await fetchUsers()
+// 软件管理相关
+const softwareList = ref([])
+const showSoftwareModal = ref(false)
+const editingSoftware = ref({
+  title: '',
+  version: '',
+  type: 'software',
+  platform: '',
+  url: '',
+  description: '',
+  categoryName: '软件项目'
+})
+const isEdit = ref(false)
+const fileInput = ref(null)
+const currentSoftwareId = ref(null)
+
+// 加载软件列表
+const fetchSoftwareList = async () => {
+  try {
+    const response = await request.get(API_ENDPOINTS.admin.resources, {
+      params: { categoryName: '软件项目' }
+    })
+    softwareList.value = response.data || []
+  } catch (error) {
+    console.error('加载软件列表失败:', error)
+  }
+}
+
+// 打开软件编辑弹窗
+const openSoftwareModal = (item = null) => {
+  if (item) {
+    editingSoftware.value = { ...item, categoryName: item.category?.name || '软件项目' }
+    isEdit.value = true
+  } else {
+    editingSoftware.value = {
+      title: '',
+      version: '',
+      type: 'software',
+      platform: '',
+      url: '',
+      description: '',
+      categoryName: '软件项目'
+    }
+    isEdit.value = false
+  }
+  showSoftwareModal.value = true
+}
+
+// 保存软件信息
+const saveSoftware = async () => {
+  try {
+    if (isEdit.value) {
+      await request.put(API_ENDPOINTS.admin.updateResource(editingSoftware.value.id), editingSoftware.value)
+    } else {
+      await request.post(API_ENDPOINTS.admin.resources, editingSoftware.value)
+    }
+    showSoftwareModal.value = false
+    fetchSoftwareList()
+  } catch (error) {
+    console.error('保存软件失败:', error)
+    alert('保存失败')
+  }
+}
+
+// 删除软件
+const handleDeleteSoftware = async (id) => {
+  if (!confirm('确定要删除该软件吗？')) return
+  try {
+    await request.delete(API_ENDPOINTS.admin.updateResource(id))
+    fetchSoftwareList()
+  } catch (error) {
+    console.error('删除软件失败:', error)
+  }
+}
+
+// 触发文件上传
+const triggerFileUpload = (item) => {
+  currentSoftwareId.value = item.id
+  fileInput.value.click()
+}
+
+// 处理文件上传
+const handleFileUpload = async (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+
+  const formData = new FormData()
+  formData.append('file', file)
+
+  try {
+    await request.post(API_ENDPOINTS.admin.uploadSoftware(currentSoftwareId.value), formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    alert('上传成功')
+    fetchSoftwareList()
+  } catch (error) {
+    console.error('上传失败:', error)
+    alert('上传失败')
+  } finally {
+    event.target.value = ''
+  }
+}
+
+onMounted(() => {
+  fetchStatistics()
+  fetchUsers()
+  fetchFiles()
+  fetchFeedbacks()
+  fetchSoftwareList()
 })
 
 const fetchStatistics = async () => {
@@ -1040,6 +1288,108 @@ const formatSize = (bytes) => {
   font-style: italic;
 }
 
+.file-path-cell {
+  display: inline-block;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.badge.windows {
+  background-color: rgba(0, 120, 215, 0.1);
+  color: #0078d7;
+}
+
+.badge.linux {
+  background-color: rgba(240, 180, 0, 0.1);
+  color: #f0b400;
+}
+
+.badge.android {
+  background-color: rgba(164, 198, 57, 0.1);
+  color: #a4c639;
+}
+
+.badge.ios {
+  background-color: rgba(0, 0, 0, 0.1);
+  color: var(--text-primary);
+}
+
+.badge.general {
+  background-color: rgba(100, 116, 139, 0.1);
+  color: #64748b;
+}
+
+.badge.secondary {
+  background: rgba(100, 108, 255, 0.1);
+  color: #646cff;
+}
+
+.form-group {
+  margin-bottom: 1.25rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.6rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.form-input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  transition: all 0.2s;
+  box-sizing: border-box;
+  height: 42px;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.1);
+}
+
+select.form-input {
+  appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  padding-right: 40px;
+}
+
+/* 适配不同浏览器的选择框内容垂直居中 */
+select.form-input {
+  display: block;
+  padding-top: 0;
+  padding-bottom: 0;
+  line-height: 42px;
+}
+
+select.form-input option {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+textarea.form-input {
+  height: auto;
+  min-height: 100px;
+  resize: vertical;
+}
+
 .table-container {
   overflow-x: auto;
 }
@@ -1150,15 +1500,20 @@ const formatSize = (bytes) => {
 }
 
 .modal-content {
-  background-color: var(--card-bg);
+  background-color: var(--bg-secondary);
   border-radius: 12px;
   width: 90%;
-  max-width: 900px;
+  max-width: 500px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+
+.edit-modal {
+  max-width: 900px;
 }
 
 .modal-header {
@@ -1196,9 +1551,13 @@ const formatSize = (bytes) => {
 }
 
 .modal-body {
-  padding: 0;
+  padding: 24px;
   flex: 1;
   overflow-y: auto;
+}
+
+.edit-modal .modal-body {
+  padding: 0;
   display: flex;
   flex-direction: column;
   min-height: 400px;

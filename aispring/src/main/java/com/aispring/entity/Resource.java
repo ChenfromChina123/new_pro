@@ -50,7 +50,16 @@ public class Resource {
     @Column(name = "is_favorite", nullable = false)
     @Builder.Default
     private Integer isFavorite = 0;  // 0: 未收藏, 1: 已收藏
-    
+
+    @Column(name = "version", length = 50)
+    private String version;
+
+    @Column(name = "file_path", length = 500)
+    private String filePath;
+
+    @Column(name = "platform", length = 50)
+    private String platform; // 操作系统平台: Windows, Linux, Android, iOS 等
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
     

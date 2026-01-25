@@ -139,7 +139,7 @@
     <header class="hero-section">
       <div class="hero-content animate-fade-in-up">
         <div class="badge">
-          v1.0.0 | 已支持 Linux & Windows
+          {{ version }} | 已支持 Linux & Windows
         </div>
         <h1 class="hero-title">
           小晨 <span class="gradient-text">终端助手</span>
@@ -149,14 +149,14 @@
         </p>
         <div class="hero-actions">
           <a 
-            href="/xiaochen_agent_v1.0.0.zip" 
+            :href="winDownloadUrl" 
             download 
             class="btn-primary-lg"
           >
-            <i class="fab fa-windows"></i> Windows 全量版 (v1.0.0)
+            <i class="fab fa-windows"></i> Windows 全量版 ({{ version }})
           </a>
           <a 
-            href="/downloads/xiaochen-agent-linux" 
+            :href="linuxDownloadUrl" 
             download 
             class="btn-secondary-lg"
           >
@@ -443,6 +443,8 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
+import request from '@/utils/request'
+import { API_ENDPOINTS } from '@/config/api'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -450,6 +452,37 @@ const themeStore = useThemeStore()
 
 const isScrolled = ref(false)
 const isMobileMenuOpen = ref(false)
+const version = ref('v1.0.0')
+const winDownloadUrl = ref('#')
+const linuxDownloadUrl = ref('#')
+
+const fetchSoftwareInfo = async () => {
+  try {
+    const response = await request.get(API_ENDPOINTS.admin.publicResources)
+    const softwareList = response.data || []
+    
+    // 查找 Agent 的不同平台版本
+    const agentWin = softwareList.find(item => 
+      item.title.toLowerCase().includes('agent') && 
+      (item.platform === 'Windows' || !item.platform)
+    )
+    const agentLinux = softwareList.find(item => 
+      item.title.toLowerCase().includes('agent') && 
+      item.platform === 'Linux'
+    )
+
+    if (agentWin) {
+      version.value = agentWin.version || 'v1.0.0'
+      winDownloadUrl.value = agentWin.filePath || agentWin.url || '#'
+    }
+    
+    if (agentLinux) {
+      linuxDownloadUrl.value = agentLinux.filePath || agentLinux.url || '#'
+    }
+  } catch (error) {
+    console.error('加载软件信息失败:', error)
+  }
+}
 
 /**
  * 处理滚动事件，更新导航栏状态并触发元素显现动画
@@ -475,6 +508,7 @@ const revealOnScroll = () => {
 }
 
 onMounted(() => {
+  fetchSoftwareInfo()
   window.addEventListener('scroll', handleScroll)
   setTimeout(revealOnScroll, 100)
 })

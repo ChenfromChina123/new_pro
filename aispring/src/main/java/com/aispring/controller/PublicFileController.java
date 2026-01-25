@@ -68,8 +68,19 @@ public class PublicFileController {
 
     @GetMapping("/download/{filename:.+}")
     public ResponseEntity<Resource> downloadFile(@PathVariable String filename) {
+        return downloadFileFromSubDir(null, filename);
+    }
+
+    @GetMapping("/download/{subdir}/{filename:.+}")
+    public ResponseEntity<Resource> downloadFileFromSubDir(
+            @PathVariable(required = false) String subdir,
+            @PathVariable String filename) {
         try {
-            Path file = Paths.get(storageProperties.getPublicFilesAbsolute()).resolve(filename).normalize();
+            Path base = Paths.get(storageProperties.getPublicFilesAbsolute());
+            if (subdir != null && !subdir.isEmpty()) {
+                base = base.resolve(subdir);
+            }
+            Path file = base.resolve(filename).normalize();
             Resource resource = new UrlResource(file.toUri());
 
             if (resource.exists() || resource.isReadable()) {
