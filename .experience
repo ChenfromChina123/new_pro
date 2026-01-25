@@ -1,0 +1,2 @@
+1. 新增了 CodeNova 移动端 IDE 的下载与介绍页面，路由为 `/codenova`。
+2. 页面包含 APK 下载链接、功能特性介绍及 GitHub Releases 链接。
