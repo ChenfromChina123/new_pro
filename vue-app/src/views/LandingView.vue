@@ -84,6 +84,18 @@
           class="mobile-menu" 
           @click.stop
         >
+          <div class="mobile-menu-header">
+            <div class="logo">
+              <i class="fas fa-brain"></i>
+              <span>AI 学习助手</span>
+            </div>
+            <button 
+              class="close-menu-btn"
+              @click="isMobileMenuOpen = false"
+            >
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
           <div class="mobile-menu-links">
             <router-link 
               to="/chat" 
@@ -1306,6 +1318,150 @@ onUnmounted(() => {
   .mobile-menu-btn:hover {
     background: var(--bg-tertiary);
   }
+
+  /* 移动端侧边栏菜单样式 */
+  .mobile-menu-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    z-index: 2000;
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .mobile-menu {
+    width: 280px;
+    height: 100%;
+    background: var(--bg-primary);
+    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    padding: 2rem 1.5rem;
+    position: relative;
+  }
+
+  .mobile-menu-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+  }
+
+  .mobile-menu-header .logo {
+    font-size: 1rem;
+  }
+
+  .close-menu-btn {
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+
+  .close-menu-btn:hover {
+    color: var(--primary-color);
+    transform: rotate(90deg);
+  }
+
+  .mobile-menu-links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 2rem;
+  }
+
+  .mobile-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 1rem;
+    text-decoration: none;
+    color: var(--text-primary);
+    font-weight: 600;
+    border-radius: 12px;
+    transition: all 0.2s;
+  }
+
+  .mobile-nav-link:hover {
+    background: var(--bg-tertiary);
+    color: var(--primary-color);
+  }
+
+  .mobile-nav-link i {
+    width: 20px;
+    font-size: 1.1rem;
+    color: var(--text-tertiary);
+  }
+
+  .mobile-nav-link.highlight {
+    background: var(--primary-color);
+    color: white;
+    margin-top: 0.5rem;
+  }
+
+  .mobile-nav-link.highlight i {
+    color: white;
+  }
+
+  .mobile-menu-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 1rem 0;
+  }
+
+  .mobile-menu-footer {
+    margin-top: auto;
+    padding-top: 2rem;
+  }
+
+  .mobile-theme-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 1rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    color: var(--text-primary);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .mobile-theme-toggle:hover {
+    background: var(--bg-secondary);
+  }
+
+  /* 动画 */
+  .slide-enter-active,
+  .slide-leave-active {
+    transition: all 0.3s ease;
+  }
+
+  .slide-enter-from,
+  .slide-leave-to {
+    opacity: 0;
+  }
+
+  .slide-enter-from .mobile-menu {
+    transform: translateX(100%);
+  }
+
+  .slide-leave-to .mobile-menu {
+    transform: translateX(100%);
+  }
   
   .hero-section {
     padding: 100px 1.25rem 40px;
@@ -1462,6 +1618,24 @@ onUnmounted(() => {
 
   .link-group {
     gap: 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-title {
+    font-size: 1.85rem;
+  }
+  
+  .hero-subtitle {
+    font-size: 0.9rem;
+  }
+  
+  .hero-actions {
+    max-width: 100%;
+  }
+  
+  .cta-content h2 {
+    font-size: 1.5rem;
   }
 }
 </style>
