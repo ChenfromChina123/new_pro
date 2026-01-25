@@ -26,7 +26,7 @@
       </div>
       <div class="hero-content animate-fade-in">
         <div class="logo-wrapper">
-          <img src="/docs/assets/icon.png" alt="CodeNova Logo" class="app-icon" @error="handleImgError">
+          <img src="https://img.icons8.com/fluency/240/code.png" alt="CodeNova Logo" class="app-icon" v-if="!imgError" @error="handleImgError">
           <div class="icon-placeholder" v-if="imgError"><i class="fas fa-code"></i></div>
         </div>
         <h1 class="title">CodeNova</h1>
@@ -148,12 +148,12 @@ const handleScreenshotError = (e) => {
 };
 
 const screenshots = [
-  { src: '/docs/assets/intro.png', alt: '引导界面' },
-  { src: '/docs/assets/editor.png', alt: '代码编辑器' },
-  { src: '/docs/assets/breadcrumbs.png', alt: '面包屑导航' },
-  { src: '/docs/assets/filetree.png', alt: '文件浏览器' },
-  { src: '/docs/assets/jsconsole.png', alt: 'JS 控制台' },
-  { src: '/docs/assets/site_preview.png', alt: '网页预览' }
+  { src: 'https://img.icons8.com/fluency/240/android-os.png', alt: '引导界面' },
+  { src: 'https://img.icons8.com/fluency/240/code.png', alt: '代码编辑器' },
+  { src: 'https://img.icons8.com/fluency/240/folder-invoices.png', alt: '文件浏览器' },
+  { src: 'https://img.icons8.com/fluency/240/terminal.png', alt: 'PTY 终端' },
+  { src: 'https://img.icons8.com/fluency/240/artificial-intelligence.png', alt: 'AI 助手' },
+  { src: 'https://img.icons8.com/fluency/240/layers.png', alt: '多窗格界面' }
 ];
 
 const coreFeatures = [
