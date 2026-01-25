@@ -638,6 +638,19 @@ onUnmounted(() => {
   display: flex;
   gap: 1.25rem;
   margin-bottom: 4rem;
+  flex-wrap: wrap;
+}
+
+.btn-primary-lg,
+.btn-agent-download,
+.btn-codenova-download,
+.btn-secondary-lg {
+  min-width: fit-content;
+  white-space: normal;
+  text-align: center;
+  word-break: break-word;
+  padding: 1rem 1.5rem;
+  line-height: 1.3;
 }
 
 .btn-primary-lg,
@@ -656,7 +669,7 @@ onUnmounted(() => {
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: white;
   border: none;
-  padding: 1rem 2.5rem;
+  min-height: 3.5rem;
   border-radius: 14px;
   font-size: 1.1rem;
   font-weight: 700;
@@ -678,7 +691,7 @@ onUnmounted(() => {
   background: var(--bg-primary);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
-  padding: 1rem 2.5rem;
+  min-height: 3.5rem;
   border-radius: 14px;
   font-size: 1.1rem;
   font-weight: 600;
@@ -702,7 +715,7 @@ onUnmounted(() => {
   background: var(--bg-primary);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
-  padding: 1rem 2.5rem;
+  min-height: 3.5rem;
   border-radius: 14px;
   font-size: 1.1rem;
   font-weight: 600;
@@ -726,12 +739,15 @@ onUnmounted(() => {
   background: var(--bg-secondary);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
-  padding: 1.1rem 2.2rem;
+  min-height: 3.5rem;
   border-radius: 14px;
   font-size: 1.15rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .btn-secondary-lg:hover {

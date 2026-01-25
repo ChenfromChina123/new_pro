@@ -42,7 +42,7 @@
           <a href="/CodeNova.apk" class="btn-download" download>
             <i class="fas fa-cloud-download-alt"></i> 立即下载 APK (v1.1.0)
           </a>
-          <a href="https://github.com/CodeNova/CodeNova/releases" target="_blank" class="btn-github">
+          <a href="https://github.com/ChenfromChina123/CodeNova" target="_blank" class="btn-github">
             <i class="fab fa-github"></i> GitHub 开源地址
           </a>
         </div>
@@ -55,19 +55,6 @@
         <div class="glass-card intro-card">
           <h2><i class="fas fa-info-circle"></i> 仓库简介</h2>
           <p>CodeNova 是一款专为 Android 打造的集成开发环境 (IDE)。它不仅是一个代码编辑器，更是一个完整的开发工具链，让您能够直接在手机或平板上构建、调试和管理项目。无论是 Python 脚本还是 C/C++ 应用，CodeNova 都能为您提供丝滑的编码体验。</p>
-        </div>
-      </section>
-
-      <!-- 界面预览 -->
-      <section class="preview-section reveal">
-        <h2 class="section-title">用户界面预览</h2>
-        <div class="screenshot-grid">
-          <div class="screenshot-item" v-for="(img, index) in screenshots" :key="index">
-            <div class="img-container">
-              <img :src="img.src" :alt="img.alt" @error="handleScreenshotError">
-              <div class="img-placeholder"><i class="fas fa-image"></i><p>{{ img.alt }}</p></div>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -141,20 +128,6 @@ const imgError = ref(false);
 const handleImgError = () => {
   imgError.value = true;
 };
-
-const handleScreenshotError = (e) => {
-  e.target.style.display = 'none';
-  e.target.nextElementSibling.style.display = 'flex';
-};
-
-const screenshots = [
-  { src: 'https://img.icons8.com/fluency/240/android-os.png', alt: '引导界面' },
-  { src: 'https://img.icons8.com/fluency/240/code.png', alt: '代码编辑器' },
-  { src: 'https://img.icons8.com/fluency/240/folder-invoices.png', alt: '文件浏览器' },
-  { src: 'https://img.icons8.com/fluency/240/terminal.png', alt: 'PTY 终端' },
-  { src: 'https://img.icons8.com/fluency/240/artificial-intelligence.png', alt: 'AI 助手' },
-  { src: 'https://img.icons8.com/fluency/240/layers.png', alt: '多窗格界面' }
-];
 
 const coreFeatures = [
   '平板设备完美支持',

@@ -6,3 +6,6 @@
 6. 成功在本地启动了后端 Spring Boot 服务（端口 5000）和前端 Vue 3 开发服务器（端口 3000）。
 7. 修复了 CodeNovaView.vue 中的静态资源引用错误，通过引入外部图标库（Icons8）确保页面图片正常显示。
 8. 增强了首页（LandingView.vue）功能卡片的交互性，使整个卡片区域均可点击跳转，并修复了部分卡片跳转逻辑失效的问题。
+9. 更新了 CodeNova 的 GitHub 开源地址为：`https://github.com/ChenfromChina123/CodeNova`。
+10. 移除了 CodeNovaView.vue 中的“用户界面预览”区域。
+11. 修复了首页 Hero 区域按钮在小屏幕或多按钮情况下的挤压变形问题，通过引入 `flex-wrap: wrap`、`min-height` 以及响应式内边距，确保按钮文字可以正常换行且布局整齐。
