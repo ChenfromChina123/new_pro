@@ -525,6 +525,25 @@
         style="display: none" 
         @change="handleFileUpload"
       >
+
+      <!-- 上传进度弹窗 -->
+      <div v-if="uploading" class="modal-overlay upload-progress-overlay">
+        <div class="modal-content progress-modal">
+          <div class="modal-header">
+            <h3>正在上传文件...</h3>
+          </div>
+          <div class="modal-body">
+            <div class="progress-info">
+              <span class="filename">{{ uploadingFileName }}</span>
+              <span class="percentage">{{ uploadProgress }}%</span>
+            </div>
+            <div class="progress-bar-container">
+              <div class="progress-bar" :style="{ width: uploadProgress + '%' }"></div>
+            </div>
+            <p class="upload-tip">请勿关闭页面，等待上传完成...</p>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -623,6 +642,11 @@ const isEdit = ref(false)
 const fileInput = ref(null)
 const currentSoftwareId = ref(null)
 
+// 上传进度相关
+const uploading = ref(false)
+const uploadProgress = ref(0)
+const uploadingFileName = ref('')
+
 // 加载软件列表
 const fetchSoftwareList = async () => {
   try {
@@ -688,7 +712,10 @@ const triggerFileUpload = (item) => {
   fileInput.value.click()
 }
 
-// 处理文件上传
+/**
+ * 处理文件上传
+ * @param {Event} event - 文件输入框变更事件
+ */
 const handleFileUpload = async (event) => {
   const file = event.target.files[0]
   if (!file) return
@@ -696,16 +723,32 @@ const handleFileUpload = async (event) => {
   const formData = new FormData()
   formData.append('file', file)
 
+  uploading.value = true
+  uploadProgress.value = 0
+  uploadingFileName.value = file.name
+
   try {
     await request.post(API_ENDPOINTS.admin.uploadSoftware(currentSoftwareId.value), formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 600000, // 设置 10 分钟超时
+      onUploadProgress: (progressEvent) => {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+        uploadProgress.value = percentCompleted
+      }
     })
     alert('上传成功')
     fetchSoftwareList()
   } catch (error) {
     console.error('上传失败:', error)
-    alert('上传失败')
+    if (error.code === 'ECONNABORTED') {
+      alert('上传超时，文件可能过大，请稍后重试或联系管理员')
+    } else {
+      alert('上传失败: ' + (error.response?.data?.message || error.message))
+    }
   } finally {
+    uploading.value = false
+    uploadProgress.value = 0
+    uploadingFileName.value = ''
     event.target.value = ''
   }
 }
@@ -1260,6 +1303,59 @@ const formatSize = (bytes) => {
   to { transform: rotate(360deg); }
 }
 
+/* 上传进度条样式 */
+.upload-progress-overlay {
+  z-index: 2000;
+}
+
+.progress-modal {
+  max-width: 400px;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.progress-info .filename {
+  font-size: 14px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 250px;
+}
+
+.progress-info .percentage {
+  font-weight: 600;
+  color: var(--primary-color);
+  font-size: 16px;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 8px;
+  background-color: var(--border-color);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gradient-start), var(--gradient-end));
+  transition: width 0.3s ease;
+}
+
+.upload-tip {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+</style>
 .search-box {
   width: 250px;
 }

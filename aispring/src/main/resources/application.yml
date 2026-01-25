@@ -120,7 +120,7 @@ server:
       min-spare: 5
     max-connections: 200
     accept-count: 50
-    connection-timeout: 60000
+    connection-timeout: 300000 # 增加到 5 分钟，防止大文件传输中断
     max-http-form-post-size: -1
 
 # Jasypt 加密配置
