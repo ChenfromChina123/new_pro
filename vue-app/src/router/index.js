@@ -65,6 +65,12 @@ const router = createRouter({
       meta: { requiresAuth: false, allowGuest: true }
     },
     {
+      path: '/codenova',
+      name: 'CodeNova',
+      component: () => import('@/views/CodeNovaView.vue'),
+      meta: { requiresAuth: false, allowGuest: true }
+    },
+    {
       path: '/login',
       name: 'Login',
       component: () => import('@/views/auth/LoginView.vue'),
