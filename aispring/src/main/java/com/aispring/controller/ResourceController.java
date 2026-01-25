@@ -147,10 +147,58 @@ public class ResourceController {
                 .description(request.getDescription())
                 .isPublic(request.getIsPublic())
                 .build();
-        
         Resource updatedResource = resourceService.updateResource(id, resource, request.getCategoryName());
-        return ResponseEntity.ok(ApiResponse.success("更新资源成功", updatedResource));
+        return ResponseEntity.ok(ApiResponse.success("资源更新成功", updatedResource));
     }
+
+    /**
+     * 公开下载资源文件，并提供友好的文件名
+     */
+    @GetMapping("/download/{id}")
+    public ResponseEntity<?> downloadResourceFile(@PathVariable Long id) {
+        try {
+            Resource resource = resourceService.getResourceById(id);
+            if (resource.getFilePath() == null || resource.getFilePath().isEmpty()) {
+                return ResponseEntity.badRequest().body(ApiResponse.error(400, "该资源没有可下载的文件"));
+            }
+
+            // 从相对路径解析出物理路径
+            // 相对路径格式通常为: /api/public-files/download/software/uuid.apk
+            String filePathStr = resource.getFilePath();
+            String fileNameOnDisk = filePathStr.substring(filePathStr.lastIndexOf("/") + 1);
+            
+            Path path = Paths.get(storageProperties.getPublicFilesAbsolute()).resolve("software").resolve(fileNameOnDisk);
+            org.springframework.core.io.Resource fileResource = new UrlResource(path.toUri());
+
+            if (!fileResource.exists() || !fileResource.isReadable()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(404, "文件不存在或不可读"));
+            }
+
+            // 构造友好的文件名: 标题 + 原后缀
+            String extension = "";
+            int dotIdx = fileNameOnDisk.lastIndexOf(".");
+            if (dotIdx != -1) {
+                extension = fileNameOnDisk.substring(dotIdx);
+            }
+            String friendlyName = resource.getTitle() + extension;
+            String encodedFilename = URLEncoder.encode(friendlyName, StandardCharsets.UTF_8).replace("+", "%20");
+
+            String contentType = Files.probeContentType(path);
+            if (contentType == null) {
+                contentType = "application/octet-stream";
+            }
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(contentType))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + encodedFilename + "\"; filename*=UTF-8''" + encodedFilename)
+                    .body(fileResource);
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error(500, "下载失败: " + e.getMessage()));
+        }
+    }
+}
     
     /**
      * 删除资源
