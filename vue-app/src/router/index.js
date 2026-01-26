@@ -59,13 +59,13 @@ const router = createRouter({
       ]
     },
     {
-      path: '/agent',
+      path: '/agent/:platform?',
       name: 'Agent',
       component: () => import('@/views/AgentView.vue'),
       meta: { requiresAuth: false, allowGuest: true }
     },
     {
-      path: '/codenova',
+      path: '/codenova/:platform?',
       name: 'CodeNova',
       component: () => import('@/views/CodeNovaView.vue'),
       meta: { requiresAuth: false, allowGuest: true }

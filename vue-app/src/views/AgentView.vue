@@ -162,6 +162,14 @@
           >
             <i class="fab fa-linux"></i> Linux 独立版
           </a>
+          <a 
+            v-if="githubUrl"
+            :href="githubUrl" 
+            target="_blank" 
+            class="btn-github-lg"
+          >
+            <i class="fab fa-github"></i> GitHub
+          </a>
         </div>
         <div class="hero-stats">
           <div class="stat-item">
@@ -455,6 +463,7 @@ const isMobileMenuOpen = ref(false)
 const version = ref('v1.0.0')
 const winDownloadUrl = ref('#')
 const linuxDownloadUrl = ref('#')
+const githubUrl = ref('')
 
 const fetchSoftwareInfo = async () => {
   try {
@@ -473,11 +482,19 @@ const fetchSoftwareInfo = async () => {
 
     if (agentWin) {
       version.value = agentWin.version || 'v1.0.0'
-      winDownloadUrl.value = `${request.defaults.baseURL}/api/resources/download/${agentWin.id}`
+      winDownloadUrl.value = agentWin.filePath ? `${request.defaults.baseURL}/api/resources/download/${agentWin.id}` : '#'
+      // 如果后端返回了 GitHub 链接，则使用它
+      if (agentWin.url && agentWin.url.includes('github.com')) {
+        githubUrl.value = agentWin.url;
+      }
     }
     
     if (agentLinux) {
-      linuxDownloadUrl.value = `${request.defaults.baseURL}/api/resources/download/${agentLinux.id}`
+      linuxDownloadUrl.value = agentLinux.filePath ? `${request.defaults.baseURL}/api/resources/download/${agentLinux.id}` : '#'
+      // 如果 Linux 版有 GitHub 链接且 Win 版没提供，也使用它
+      if (!githubUrl.value && agentLinux.url && agentLinux.url.includes('github.com')) {
+        githubUrl.value = agentLinux.url;
+      }
     }
   } catch (error) {
     console.error('加载软件信息失败:', error)
@@ -802,6 +819,28 @@ const features = [
   border-color: var(--primary-color);
   transform: translateY(-3px);
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+}
+
+.btn-github-lg {
+  background: #24292f;
+  color: white;
+  padding: 1.1rem 2.2rem;
+  border-radius: 14px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  border: 1px solid #24292f;
+}
+
+.btn-github-lg:hover {
+  background: #000;
+  transform: translateY(-3px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
 }
 
 .hero-stats {
