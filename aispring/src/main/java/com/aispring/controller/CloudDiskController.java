@@ -5,6 +5,7 @@ import com.aispring.entity.UserFolder;
 import com.aispring.service.CloudDiskService;
 import com.aispring.dto.response.ApiResponse;
 import com.aispring.security.CustomUserDetails;
+import com.aispring.utils.FileUtils;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import lombok.Data;
 import jakarta.validation.Valid;
@@ -349,10 +350,7 @@ public class CloudDiskController {
             }
             
             // 检测文件的 MIME 类型
-            String contentType = Files.probeContentType(filePath);
-            if (contentType == null) {
-                contentType = "application/octet-stream";
-            }
+            String contentType = FileUtils.getContentType(filePath);
             
             // 根据 mode 参数决定是内联预览还是下载
             String disposition = "attachment";

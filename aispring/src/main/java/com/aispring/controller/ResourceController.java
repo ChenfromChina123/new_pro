@@ -5,6 +5,7 @@ import com.aispring.dto.response.ApiResponse;
 import com.aispring.entity.Resource;
 import com.aispring.service.ResourceService;
 import com.aispring.config.StorageProperties;
+import com.aispring.utils.FileUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
@@ -188,10 +189,7 @@ public class ResourceController {
             String friendlyName = resource.getTitle() + extension;
             String encodedFilename = URLEncoder.encode(friendlyName, StandardCharsets.UTF_8).replace("+", "%20");
 
-            String contentType = Files.probeContentType(path);
-            if (contentType == null) {
-                contentType = "application/octet-stream";
-            }
+            String contentType = FileUtils.getContentType(path);
 
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType(contentType))
