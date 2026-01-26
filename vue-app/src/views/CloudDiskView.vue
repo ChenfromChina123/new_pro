@@ -87,7 +87,7 @@
             v-if="cloudDiskStore.isLoading"
             class="loading-state"
           >
-            <div class="loading"></div>
+            <div class="loading" />
             <p>加载中...</p>
           </div>
           
@@ -260,7 +260,7 @@
               v-if="!previewUrl"
               class="loading-preview"
             >
-              <div class="loading"></div>
+              <div class="loading" />
               <p>正在加载预览...</p>
             </div>
             <template v-else>
@@ -275,13 +275,13 @@
                 :src="previewUrl" 
                 controls 
                 class="preview-content preview-video"
-              ></video>
+              />
               <audio 
                 v-else-if="getFileType(previewFileData.filename) === 'audio'" 
                 :src="previewUrl" 
                 controls 
                 class="preview-content preview-audio"
-              ></audio>
+              />
               <div
                 v-else-if="getFileType(previewFileData.filename) === 'text'"
                 class="preview-content preview-text"
@@ -292,7 +292,7 @@
                   v-model="editingText"
                   class="text-editor"
                   :disabled="isSaving"
-                ></textarea>
+                />
                 <!-- 预览模式 -->
                 <pre v-else><code>{{ previewText }}</code></pre>
               </div>
@@ -309,7 +309,7 @@
                 :src="previewUrl"
                 class="preview-frame"
                 title="文件预览"
-              ></iframe>
+              />
             </template>
           </div>
           <div
@@ -329,7 +329,7 @@
               class="btn btn-primary"
               @click="downloadFile(previewFileData.id)"
             >
-              <i class="fas fa-download"></i> 下载文件
+              <i class="fas fa-download" /> 下载文件
             </button>
           </div>
         </div>
@@ -358,20 +358,31 @@
     </div>
     
     <!-- 上传进度对话框 -->
-    <div v-if="isUploading" class="modal-overlay upload-progress-overlay">
+    <div 
+      v-if="isUploading" 
+      class="modal-overlay upload-progress-overlay"
+    >
       <div class="modal-content progress-modal">
         <div class="modal-header">
           <h3>正在上传...</h3>
         </div>
         <div class="modal-body">
           <div class="progress-info">
-            <span class="filename" :title="uploadingFileName">{{ uploadingFileName }}</span>
+            <span 
+              class="filename" 
+              :title="uploadingFileName"
+            >{{ uploadingFileName }}</span>
             <span class="percentage">{{ uploadProgress }}%</span>
           </div>
           <div class="progress-bar-container">
-            <div class="progress-bar" :style="{ width: uploadProgress + '%' }"></div>
+            <div 
+              class="progress-bar" 
+              :style="{ width: uploadProgress + '%' }"
+            />
           </div>
-          <p class="upload-tip">请勿关闭页面，等待上传完成...</p>
+          <p class="upload-tip">
+            请勿关闭页面，等待上传完成...
+          </p>
         </div>
       </div>
     </div>
@@ -530,12 +541,6 @@ const selectFolder = async (folderPath, folderId, event) => {
   }
   cloudDiskStore.setActiveFolder({ folderPath, folderId })
   await cloudDiskStore.fetchFiles(folderPath)
-  cloudDiskStore.clearSelection()
-}
-
-const goToRoot = async () => {
-  cloudDiskStore.setActiveFolder({ folderPath: '', folderId: null })
-  await cloudDiskStore.fetchFiles('')
   cloudDiskStore.clearSelection()
 }
 
@@ -783,19 +788,6 @@ const deleteSelected = async () => {
       uiStore.showToast('删除成功')
     } else {
       uiStore.showToast(`删除失败: ${result.successCount}/${result.totalCount} 个文件已删除`)
-    }
-  }
-}
-
-// 下载当前文件夹
-const downloadCurrentFolder = async () => {
-  const folderPath = cloudDiskStore.currentFolder
-  const folderName = folderPath || '根目录'
-  
-  if (confirm(`确定要下载文件夹 "${folderName}" 吗？`)) {
-    const result = await cloudDiskStore.downloadFolder(folderPath)
-    if (!result.success) {
-      uiStore.showToast(`下载失败: ${result.message}`)
     }
   }
 }

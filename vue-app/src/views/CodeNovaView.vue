@@ -42,7 +42,7 @@
           <a :href="downloadUrl" class="btn-download" :download="`CodeNova-${version}.apk`">
             <i class="fas fa-cloud-download-alt"></i> 立即下载 APK ({{ version }})
           </a>
-          <a href="https://github.com/ChenfromChina123/CodeNova" target="_blank" class="btn-github">
+          <a :href="githubUrl" target="_blank" class="btn-github">
             <i class="fab fa-github"></i> GitHub 开源地址
           </a>
         </div>
@@ -129,6 +129,7 @@ const imgError = ref(false);
 
 const version = ref('v1.1.0');
 const downloadUrl = ref('/CodeNova.apk');
+const githubUrl = ref('https://github.com/ChenfromChina123/CodeNova');
 const updateDate = ref('2024-05-20');
 
 const handleImgError = () => {
@@ -143,7 +144,11 @@ const fetchSoftwareInfo = async () => {
     if (codenova) {
       version.value = codenova.version || 'v1.1.0';
       // 使用专门的下载接口，提供友好的文件名
-      downloadUrl.value = `${request.defaults.baseURL}/api/resources/download/${codenova.id}`;
+      downloadUrl.value = codenova.filePath ? `${request.defaults.baseURL}/api/resources/download/${codenova.id}` : '/CodeNova.apk';
+      // 如果后端返回了 GitHub 链接，则使用它
+      if (codenova.url && codenova.url.includes('github.com')) {
+        githubUrl.value = codenova.url;
+      }
       const date = new Date(codenova.updatedAt || codenova.created_at);
       updateDate.value = date.toISOString().split('T')[0];
     }

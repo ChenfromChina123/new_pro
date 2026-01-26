@@ -10,7 +10,7 @@
           class="logo" 
           @click="router.push('/')"
         >
-          <i class="fas fa-brain"></i>
+          <i class="fas fa-brain" />
           <span>AI 智能学习助手</span>
         </div>
         <div class="nav-links">
@@ -59,7 +59,7 @@
               class="theme-toggle-btn" 
               @click="themeStore.toggleDarkMode()"
             >
-              <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'"></i>
+              <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" />
             </button>
           </div>
         </div>
@@ -69,7 +69,7 @@
           class="mobile-menu-btn"
           @click="isMobileMenuOpen = !isMobileMenuOpen"
         >
-          <i :class="isMobileMenuOpen ? 'fas fa-times' : 'fas fa-bars'"></i>
+          <i :class="isMobileMenuOpen ? 'fas fa-times' : 'fas fa-bars'" />
         </button>
       </div>
 
@@ -86,14 +86,14 @@
         >
           <div class="mobile-menu-header">
             <div class="logo">
-              <i class="fas fa-brain"></i>
+              <i class="fas fa-brain" />
               <span>AI 学习助手</span>
             </div>
             <button 
               class="close-menu-btn"
               @click="isMobileMenuOpen = false"
             >
-              <i class="fas fa-times"></i>
+              <i class="fas fa-times" />
             </button>
           </div>
           <div class="mobile-menu-links">
@@ -102,37 +102,37 @@
               class="mobile-nav-link" 
               @click="isMobileMenuOpen = false"
             >
-              <i class="fas fa-comments"></i> AI 问答
+              <i class="fas fa-comments" /> AI 问答
             </router-link>
             <router-link 
               to="/public-files" 
               class="mobile-nav-link" 
               @click="isMobileMenuOpen = false"
             >
-              <i class="fas fa-folder-open"></i> 公共资源
+              <i class="fas fa-folder-open" /> 公共资源
             </router-link>
             <router-link 
               to="/codenova" 
               class="mobile-nav-link" 
               @click="isMobileMenuOpen = false"
             >
-              <i class="fas fa-mobile-alt"></i> CodeNova
+              <i class="fas fa-mobile-alt" /> CodeNova
             </router-link>
-            <div class="mobile-menu-divider"></div>
+            <div class="mobile-menu-divider" />
             <template v-if="!authStore.isAuthenticated">
               <router-link 
                 to="/login" 
                 class="mobile-nav-link" 
                 @click="isMobileMenuOpen = false"
               >
-                <i class="fas fa-sign-in-alt"></i> 登录
+                <i class="fas fa-sign-in-alt" /> 登录
               </router-link>
               <router-link 
                 to="/register" 
                 class="mobile-nav-link highlight" 
                 @click="isMobileMenuOpen = false"
               >
-                <i class="fas fa-user-plus"></i> 立即加入
+                <i class="fas fa-user-plus" /> 立即加入
               </router-link>
             </template>
             <template v-else>
@@ -141,7 +141,7 @@
                 class="mobile-nav-link highlight" 
                 @click="isMobileMenuOpen = false"
               >
-                <i class="fas fa-rocket"></i> 进入工作台
+                <i class="fas fa-rocket" /> 进入工作台
               </router-link>
             </template>
           </div>
@@ -150,7 +150,7 @@
               class="mobile-theme-toggle" 
               @click="themeStore.toggleDarkMode()"
             >
-              <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'"></i>
+              <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" />
               {{ themeStore.isDarkMode ? '切换浅色模式' : '切换深色模式' }}
             </button>
           </div>
@@ -173,26 +173,34 @@
           to="/chat"
           class="btn-primary-lg"
         >
-          <i class="fas fa-rocket"></i> 免费开始使用
+          <i class="fas fa-rocket" /> 免费开始使用
         </router-link>
+        
+        <!-- Agent 下载/跳转按钮 -->
         <router-link 
-          :to="agentDownloadUrl"
+          to="/agent"
           class="btn-agent-download"
         >
-          <i class="fas fa-terminal"></i> Agent {{ agentVersion }}
-          <span v-if="hasLinuxVersion" class="platform-badge">Win/Linux</span>
+          <i class="fas fa-terminal" /> Agent {{ agentVersion }}
+          <span 
+            v-if="hasLinuxVersion" 
+            class="platform-badge"
+          >Win/Linux</span>
         </router-link>
+
+        <!-- CodeNova 下载/跳转按钮 -->
         <router-link 
-          :to="codenovaDownloadUrl" 
+          to="/codenova"
           class="btn-codenova-download"
         >
-          <i class="fas fa-mobile-alt"></i> 下载 CodeNova {{ codenovaVersion }}
+          <i class="fas fa-mobile-alt" /> 下载 CodeNova {{ codenovaVersion }}
         </router-link>
+
         <button 
           class="btn-secondary-lg" 
           @click="scrollToFeatures"
         >
-          了解更多 <i class="fas fa-chevron-down"></i>
+          了解更多 <i class="fas fa-chevron-down" />
         </button>
       </div>
       <div class="hero-stats">
@@ -213,83 +221,85 @@
     <div class="hero-visual animate-float">
       <div class="visual-card chat-preview">
         <div class="card-header">
-          <div class="dot"></div>
-          <div class="dot"></div>
-          <div class="dot"></div>
+          <div class="dot" />
+          <div class="dot" />
+          <div class="dot" />
         </div>
-          <div class="card-body">
-            <div class="message ai">
-              您好！我是您的 AI 学习助手。有什么我可以帮您的吗？
-            </div>
-            <div class="message user">
-              我想制定一个学习计划。
-            </div>
-            <div class="message ai typing">
-              {{ typingText }}
-            </div>
+        <div class="card-body">
+          <div class="message ai">
+            您好！我是您的 AI 学习助手。有什么我可以帮您的吗？
+          </div>
+          <div class="message user">
+            我想制定一个学习计划。
+          </div>
+          <div class="message ai typing">
+            {{ typingText }}
           </div>
         </div>
-        <div class="visual-blob"></div>
       </div>
-    </section>
+      <div class="visual-blob" />
+    </div>
+  </section>
 
-    <!-- 特性展示 -->
-    <section 
-      id="features" 
-      class="features-section"
-    >
-      <div class="section-header reveal">
-        <h2 class="section-title">
-          核心功能
-        </h2>
-        <p class="section-subtitle">
-          为您提供全方位的学习生产力工具
-        </p>
-      </div>
+  <!-- 特性展示 -->
+  <section 
+    id="features" 
+    class="features-section"
+  >
+    <div class="section-header reveal">
+      <h2 class="section-title">
+        核心功能
+      </h2>
+      <p class="section-subtitle">
+        为您提供全方位的学习生产力工具
+      </p>
+    </div>
 
-      <div class="features-grid">
+    <div class="features-grid">
+      <div 
+        v-for="(feature, index) in features" 
+        :key="index"
+        class="feature-card reveal"
+        :style="{ transitionDelay: `${index * 150}ms` }"
+        :class="{ 'clickable': feature.link }"
+        @click="feature.link ? handleLinkClick(feature.link) : null"
+      >
         <div 
-          v-for="(feature, index) in features" 
-          :key="index"
-          class="feature-card reveal"
-          :style="{ transitionDelay: `${index * 150}ms` }"
-          @click="feature.link ? router.push(feature.link) : null"
-          :class="{ 'clickable': feature.link }"
+          class="feature-icon" 
+          :style="{ backgroundColor: feature.color }"
         >
-          <div 
-            class="feature-icon" 
-            :style="{ backgroundColor: feature.color }"
+          <i :class="feature.icon" />
+        </div>
+        <h3 class="feature-title">
+          {{ feature.title }}
+        </h3>
+        <p class="feature-desc">
+          {{ feature.description }}
+        </p>
+        <ul class="feature-list">
+          <li 
+            v-for="item in feature.items" 
+            :key="item"
           >
-            <i :class="feature.icon"></i>
-          </div>
-          <h3 class="feature-title">
-            {{ feature.title }}
-          </h3>
-          <p class="feature-desc">
-            {{ feature.description }}
-          </p>
-          <ul class="feature-list">
-            <li 
-              v-for="item in feature.items" 
-              :key="item"
-            >
-              <i class="fas fa-check-circle"></i> {{ item }}
-            </li>
-          </ul>
-          <div 
-            v-if="feature.link" 
-            class="feature-action"
+            <i class="fas fa-check-circle" /> {{ item }}
+          </li>
+        </ul>
+        <div 
+          v-if="feature.link" 
+          class="feature-action"
+        >
+          <component 
+            :is="isInternalRoute(feature.link) ? 'router-link' : 'a'"
+            v-bind="isInternalRoute(feature.link) ? { to: formatUrl(feature.link) } : { href: formatUrl(feature.link) }"
+            :target="!isInternalRoute(feature.link) ? '_blank' : undefined"
+            class="btn-text"
           >
-            <router-link 
-              :to="feature.link"
-              class="btn-text"
-            >
-              了解详情 <i class="fas fa-arrow-right"></i>
-            </router-link>
-          </div>
+            了解详情 <i class="fas fa-arrow-right" />
+          </component>
         </div>
       </div>
-    </section>
+    </div>
+  </section>
 
     <!-- 交互区域：体验 AI -->
     <section class="cta-section reveal">
@@ -320,7 +330,7 @@
       <div class="footer-container">
         <div class="footer-brand">
           <div class="logo">
-            <i class="fas fa-brain"></i>
+            <i class="fas fa-brain" />
             <span>AI 智能学习助手</span>
           </div>
           <p>让科技服务于学习，打造您的第二大脑。</p>
@@ -362,7 +372,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
 import request from '@/utils/request'
-import { API_ENDPOINTS } from '@/config/api'
+import { API_ENDPOINTS, API_CONFIG } from '@/config/api'
 
 const router = useRouter()
 const codenovaVersion = ref('v1.0.0')
@@ -370,6 +380,38 @@ const codenovaDownloadUrl = ref('/codenova')
 const agentVersion = ref('v1.0.0')
 const agentDownloadUrl = ref('/agent')
 const hasLinuxVersion = ref(false)
+
+/**
+ * 判断是否为内部路由
+ * @param {string} url - 待判断的链接
+ * @returns {boolean} 是否为内部路由
+ */
+const isInternalRoute = (url) => {
+  if (!url) return false
+  const internalRoutes = [
+    '/', '/agent', '/codenova', '/chat', '/login', '/register', 
+    '/cloud-disk', '/language-learning', '/public-files', '/admin', '/settings'
+  ]
+  // 检查是否完全匹配
+  if (internalRoutes.includes(url)) return true
+  // 检查是否以某些内部路由开头（处理带参数的子路由）
+  return url.startsWith('/agent/') || url.startsWith('/codenova/')
+}
+
+/**
+ * 格式化 URL
+ * 如果是内部路由则保持不变，如果是后端 API 路径则补全域名，如果是外部链接则保持不变
+ * @param {string} url - 原始 URL
+ * @returns {string} 格式化后的 URL
+ */
+const formatUrl = (url) => {
+  if (!url) return ''
+  if (url.startsWith('http')) return url
+  if (url.startsWith('/api')) {
+    return `${API_CONFIG.baseURL}${url}`
+  }
+  return url
+}
 
 const fetchSoftwareInfo = async () => {
   try {
@@ -398,6 +440,19 @@ const fetchSoftwareInfo = async () => {
     )
   } catch (error) {
     console.error('加载软件信息失败:', error)
+  }
+}
+
+/**
+ * 处理链接点击
+ * @param {string} url - 待跳转的链接
+ */
+const handleLinkClick = (url) => {
+  if (!url) return
+  if (isInternalRoute(url)) {
+    router.push(url)
+  } else {
+    window.open(formatUrl(url), '_blank')
   }
 }
 
