@@ -493,7 +493,17 @@ const fetchSoftwareInfo = async () => {
 
     if (agentWin) {
       version.value = agentWin.version || 'v1.0.0'
-      winDownloadUrl.value = agentWin.filePath ? `${request.defaults.baseURL}/api/resources/download/${agentWin.id}` : '#'
+      if (agentWin.filePath) {
+        let fileName = agentWin.title.trim();
+        // 确保文件名有合适的后缀（如果是 Windows 通常是 .exe 或 .zip，但这里逻辑一致）
+        if (!fileName.toLowerCase().endsWith('.exe') && !fileName.toLowerCase().endsWith('.zip')) {
+          fileName += '.exe';
+        }
+        winDownloadUrl.value = `${request.defaults.baseURL}/api/resources/download/${agentWin.id}/${encodeURIComponent(fileName)}`;
+      } else {
+        winDownloadUrl.value = '#';
+      }
+      
       // 如果后端返回了 GitHub 链接，则使用它
       if (agentWin.url && agentWin.url.includes('github.com')) {
         githubUrl.value = agentWin.url;
@@ -501,7 +511,16 @@ const fetchSoftwareInfo = async () => {
     }
     
     if (agentLinux) {
-      linuxDownloadUrl.value = agentLinux.filePath ? `${request.defaults.baseURL}/api/resources/download/${agentLinux.id}` : '#'
+      if (agentLinux.filePath) {
+        let fileName = agentLinux.title.trim();
+        if (!fileName.toLowerCase().endsWith('.tar.gz') && !fileName.toLowerCase().endsWith('.zip') && !fileName.contains('.')) {
+          fileName += '.tar.gz';
+        }
+        linuxDownloadUrl.value = `${request.defaults.baseURL}/api/resources/download/${agentLinux.id}/${encodeURIComponent(fileName)}`;
+      } else {
+        linuxDownloadUrl.value = '#';
+      }
+      
       // 如果 Linux 版有 GitHub 链接且 Win 版没提供，也使用它
       if (!githubUrl.value && agentLinux.url && agentLinux.url.includes('github.com')) {
         githubUrl.value = agentLinux.url;

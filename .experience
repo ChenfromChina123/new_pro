@@ -34,4 +34,5 @@
 34→34. 在 AgentView.vue 中新增了 GitHub 开源地址入口，并为页面添加了配套的深色系 GitHub 风格按钮样式（btn-github-lg），提升了页面的功能完备性和视觉一致性。
 35→35. 在 CodeNovaView.vue 的“仓库简介”中补充了关于 Agent 终端助手的核心集成说明，强调了其作为智能自动化引擎的能力，帮助用户理解 CodeNova 与 Agent 的协同工作关系。
 36→36. 为 AgentView.vue 页面补全了“软件简介”板块及配套 CSS 样式，统一了软件详情页的展示结构，显著提升了产品介绍的专业度和信息完整性。
-37→37. 修复了移动端下载 APK 文件被错误识别为 ZIP 压缩包的问题。通过引入 `FileUtils` 工具类，手动映射 `.apk` 后缀到 `application/vnd.android.package-archive` MIME 类型，并统一替换了全站（云盘、公共文件、资源下载、头像预览）的 MIME 检测逻辑，确保了 Android 用户下载后的直接安装体验。
+37→37. 修复了移动端下载 APK 文件被错误识别为 ZIP 压缩包的问题。通过引入 `FileUtils` 工具类，手动映射 `.apk` 后缀到 `application/vnd.android.package-archive` MIME 类型，并统一替换了全站（云盘、公共文件、资源下载、头像预览）的 MIME 检测逻辑。
+38. 深度优化了移动端下载兼容性。在后端下载接口中新增了 `X-Content-Type-Options: nosniff` 安全响应头以禁止浏览器进行 MIME 嗅探，修复了文件名编码中的 `+` 替换为 `%20` 的兼容性问题，并设置了明确的 `Content-Length`；同时在前端优化了下载 URL 格式，支持在路径末尾包含文件名（如 `/download/1/CodeNova.apk`），确保了各类手机浏览器能 100% 正确识别并以原始文件名保存 APK。
