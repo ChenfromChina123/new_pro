@@ -55,6 +55,7 @@
         <div class="glass-card intro-card">
           <h2><i class="fas fa-info-circle"></i> 仓库简介</h2>
           <p>CodeNova 是一款专为 Android 打造的集成开发环境 (IDE)。它不仅是一个代码编辑器，更是一个完整的开发工具链，让您能够直接在手机或平板上构建、调试和管理项目。无论是 Python 脚本还是 C/C++ 应用，CodeNova 都能为您提供丝滑的编码体验。</p>
+          <p class="mt-4">此外，CodeNova 深度集成了 <strong>Agent 终端助手</strong> 核心。Agent 是我们的智能自动化引擎，它能理解自然语言指令并自动执行复杂的文件操作、代码分析和终端命令。通过 CodeNova 界面，您可以直接调用 Agent 的能力，实现 AI 驱动的代码编写与项目自动化管理。</p>
         </div>
       </section>
 

@@ -224,6 +224,17 @@
       </div>
     </header>
 
+    <!-- 简介区域 -->
+    <section class="info-section reveal">
+      <div class="container">
+        <div class="glass-card intro-card">
+          <h2><i class="fas fa-info-circle"></i> 软件简介</h2>
+          <p>小晨 Agent 终端助手是一款面向开发者和高级用户的智能自动化工具。它不仅是一个 AI 聊天机器人，更是一个拥有“手脚”的执行引擎。通过与本地文件系统和终端环境的深度集成，Agent 能够根据您的自然语言指令，自动完成代码生成、文件重构、日志分析、环境配置等一系列复杂任务。</p>
+          <p class="mt-4">它支持包括 DeepSeek、豆包在内的多种主流大模型，并内置了完善的权限控制与操作回退机制，确保在提升开发效率的同时，保障您的数据安全与系统稳定。</p>
+        </div>
+      </div>
+    </section>
+
     <section 
       id="features" 
       class="features-section"
@@ -953,7 +964,31 @@ const features = [
   50% { opacity: 0; }
 }
 
-/* Features Grid */
+/* Features Section */
+.info-section {
+  padding: 4rem 2rem;
+  background: var(--bg);
+}
+
+.intro-card h2 {
+  font-size: 1.8rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--primary);
+}
+
+.intro-card p {
+  line-height: 1.8;
+  font-size: 1.1rem;
+  color: var(--text-light);
+}
+
+.mt-4 {
+  margin-top: 1rem;
+}
+
 .features-section {
   padding: 120px 2rem;
   max-width: 1200px;
