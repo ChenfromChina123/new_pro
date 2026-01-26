@@ -28,11 +28,12 @@
 28. 修复了 Vue 模板中动态参数语法的解析错误。Vue 的 `:[arg]` 语法不支持包含空格的复杂三元表达式，通过改用 `v-bind="{ [arg]: value }"` 对象绑定方式，成功解决了因模板编译失败导致的 `Failed to fetch dynamically imported module` 运行时错误。
 29. 深度清理了 Vue 视图组件中的代码冗余与格式问题。在 CloudDiskView.vue 中移除了未使用的 `goToRoot` 和 `downloadCurrentFolder` 函数；同时对 CloudDiskView.vue 和 LandingView.vue 进行了全面的 HTML 规范化处理，将所有空标签（如 `div`、`i`、`video`、`audio` 等）统一修改为更简洁的自闭合格式（Self-closing），并优化了模板缩进与属性排列，显著提升了代码的可读性和维护性。
 30. 将前端 API 的基础地址从 `5000` 端口迁移至 `3000` 端口。通过利用 Vite 的 `server.proxy` 机制，将 `/api` 请求转发至后端，有效解决了开发环境下的跨域问题，并使前端代码与生产环境部署逻辑保持一致。
-31.31→31. 修复了软件详情页因带平台参数访问导致的 404 错误。通过在 Vue Router 中为 `/agent` 和 `/codenova` 路由添加可选参数 `:platform?`，并同步增强首页 `isInternalRoute` 的路径匹配逻辑，确保了如 `/agent/windows` 这样的动态链接能被正确解析并平滑跳转。
-32→32. 优化了首页 Hero 区域的跳转体验，将 Agent 和 CodeNova 的下载按钮统一重定向至应用内的详情页面（/agent 和 /codenova），而非直接跳转至外部 GitHub 仓库，确保用户留在应用生态内并能看到完整的产品介绍。
-33→33. 增强了 AgentView.vue 和 CodeNovaView.vue 的信息同步能力。现在这些页面会优先从后端接口获取 GitHub 开源地址和下载链接，只有在后端未配置时才回退至硬编码的默认值，实现了更灵活的软件版本管理。
-34→34. 在 AgentView.vue 中新增了 GitHub 开源地址入口，并为页面添加了配套的深色系 GitHub 风格按钮样式（btn-github-lg），提升了页面的功能完备性和视觉一致性。
-35→35. 在 CodeNovaView.vue 的“仓库简介”中补充了关于 Agent 终端助手的核心集成说明，强调了其作为智能自动化引擎的能力，帮助用户理解 CodeNova 与 Agent 的协同工作关系。
-36→36. 为 AgentView.vue 页面补全了“软件简介”板块及配套 CSS 样式，统一了软件详情页的展示结构，显著提升了产品介绍的专业度和信息完整性。
-37→37. 修复了移动端下载 APK 文件被错误识别为 ZIP 压缩包的问题。通过引入 `FileUtils` 工具类，手动映射 `.apk` 后缀到 `application/vnd.android.package-archive` MIME 类型，并统一替换了全站（云盘、公共文件、资源下载、头像预览）的 MIME 检测逻辑。
+31. 修复了软件详情页因带平台参数访问导致的 404 错误。通过在 Vue Router 中为 `/agent` 和 `/codenova` 路由添加可选参数 `:platform?`，并同步增强首页 `isInternalRoute` 的路径匹配逻辑，确保了如 `/agent/windows` 这样的动态链接能被正确解析并平滑跳转。
+32. 优化了首页 Hero 区域的跳转体验，将 Agent 和 CodeNova 的下载按钮统一重定向至应用内的详情页面（/agent 和 /codenova），而非直接跳转至外部 GitHub 仓库，确保用户留在应用生态内并能看到完整的产品介绍。
+33. 增强了 AgentView.vue 和 CodeNovaView.vue 的信息同步能力。现在这些页面会优先从后端接口获取 GitHub 开源地址和下载链接，只有在后端未配置时才回退至硬编码的默认值，实现了更灵活的软件版本管理。
+34. 在 AgentView.vue 中新增了 GitHub 开源地址入口，并为页面添加了配套的深色系 GitHub 风格按钮样式（btn-github-lg），提升了页面的功能完备性和视觉一致性。
+35. 在 CodeNovaView.vue 的“仓库简介”中补充了关于 Agent 终端助手的核心集成说明，强调了其作为智能自动化引擎的能力，帮助用户理解 CodeNova 与 Agent 的协同工作关系。
+36. 为 AgentView.vue 页面补全了“软件简介”板块及配套 CSS 样式，统一了软件详情页的展示结构，显著提升了产品介绍的专业度和信息完整性。
+37. 修复了移动端下载 APK 文件被错误识别为 ZIP 压缩包的问题。通过引入 `FileUtils` 工具类，手动映射 `.apk` 后缀到 `application/vnd.android.package-archive` MIME 类型，并统一替换了全站（云盘、公共文件、资源下载、头像预览）的 MIME 检测逻辑。
 38. 深度优化了移动端下载兼容性。在后端下载接口中新增了 `X-Content-Type-Options: nosniff` 安全响应头以禁止浏览器进行 MIME 嗅探，修复了文件名编码中的 `+` 替换为 `%20` 的兼容性问题，并设置了明确的 `Content-Length`；同时在前端优化了下载 URL 格式，支持在路径末尾包含文件名（如 `/download/1/CodeNova.apk`），确保了各类手机浏览器能 100% 正确识别并以原始文件名保存 APK。
+39. 修复了 PublicFileController.java 中的 Java 编译错误。通过在 downloadFileFromSubDir 方法中将 catch MalformedURLException 扩展为 catch IOException，成功解决了 URLEncoder.encode 抛出的 UnsupportedEncodingException 以及 resource.contentLength() 抛出的 IOException 未被捕获的问题。

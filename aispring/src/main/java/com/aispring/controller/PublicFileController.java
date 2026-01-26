@@ -101,8 +101,9 @@ public class PublicFileController {
             } else {
                 return ResponseEntity.notFound().build();
             }
-        } catch (MalformedURLException e) {
-            return ResponseEntity.badRequest().build();
+        } catch (IOException e) {
+            log.error("Failed to download public file: " + filename, e);
+            return ResponseEntity.internalServerError().build();
         }
     }
 
