@@ -7,6 +7,7 @@ import com.aispring.repository.ChatRecordRepository;
 import com.aispring.repository.UserFileRepository;
 import com.aispring.repository.UserRepository;
 import com.aispring.service.CloudDiskService;
+import com.aispring.utils.FileUtils;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
@@ -69,10 +70,7 @@ public class AdminController {
             Resource resource = new UrlResource(filePath.toUri());
 
             if (resource.exists() || resource.isReadable()) {
-                String contentType = Files.probeContentType(filePath);
-                if (contentType == null) {
-                    contentType = "application/octet-stream";
-                }
+                String contentType = FileUtils.getContentType(filePath);
 
                 String disposition = "attachment";
                 if ("inline".equalsIgnoreCase(mode)) {

@@ -6,6 +6,7 @@ import com.aispring.entity.UserFolder;
 import com.aispring.repository.UserFileRepository;
 import com.aispring.repository.UserFolderRepository;
 import com.aispring.repository.UserRepository;
+import com.aispring.utils.FileUtils;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -354,7 +355,7 @@ public class CloudDiskService {
                 
                 String mime = file.getContentType();
                 if (mime == null || mime.isEmpty()) {
-                    try { mime = Files.probeContentType(Paths.get(filePath)); } catch (Exception ignore) {}
+                    mime = FileUtils.getContentType(Paths.get(filePath));
                 }
                 existingFile.setFileType(mime);
                 
@@ -408,9 +409,7 @@ public class CloudDiskService {
         userFile.setFileSize(file.getSize());
         String contentType = file.getContentType();
         if (contentType == null || contentType.isEmpty()) {
-            try {
-                contentType = Files.probeContentType(Paths.get(filePath));
-            } catch (Exception ignore) {}
+            contentType = FileUtils.getContentType(Paths.get(filePath));
         }
         if (contentType != null) {
             int semi = contentType.indexOf(';');
@@ -1244,8 +1243,7 @@ public class CloudDiskService {
                     String relFilePath = fullFolderPath.endsWith("/") ? (fullFolderPath + uniqueFilename) : (fullFolderPath + "/" + uniqueFilename);
                     uf.setFilepath(relFilePath);
                     try { uf.setFileSize(Files.size(physicalTarget)); } catch (Exception e) { uf.setFileSize(0L); }
-                    String mime = null;
-                    try { mime = Files.probeContentType(physicalTarget); } catch (Exception ignore) {}
+                    String mime = FileUtils.getContentType(physicalTarget);
                     if (mime != null) {
                         int semi = mime.indexOf(';');
                         if (semi > 0) mime = mime.substring(0, semi).trim();
@@ -1325,7 +1323,7 @@ public class CloudDiskService {
             try { uf.setFileSize(Files.size(physicalTarget)); } catch (Exception e) { uf.setFileSize(0L); }
             String mime = file.getContentType();
             if (mime == null || mime.isEmpty()) {
-                try { mime = Files.probeContentType(physicalTarget); } catch (Exception ignore) {}
+                mime = FileUtils.getContentType(physicalTarget);
             }
             if (mime != null) {
                 int semi = mime.indexOf(';');

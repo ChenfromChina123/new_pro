@@ -2,6 +2,7 @@ package com.aispring.controller;
 
 import com.aispring.config.StorageProperties;
 import com.aispring.dto.response.ApiResponse;
+import com.aispring.utils.FileUtils;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -84,15 +85,7 @@ public class PublicFileController {
             Resource resource = new UrlResource(file.toUri());
 
             if (resource.exists() || resource.isReadable()) {
-                String contentType;
-                try {
-                    contentType = Files.probeContentType(file);
-                } catch (IOException e) {
-                    contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
-                }
-                if (contentType == null) {
-                    contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
-                }
+                String contentType = FileUtils.getContentType(file);
 
                 return ResponseEntity.ok()
                         .contentType(MediaType.parseMediaType(contentType))

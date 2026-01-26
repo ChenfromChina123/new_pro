@@ -6,6 +6,7 @@ import com.aispring.dto.response.ApiResponse;
 import com.aispring.entity.User;
 import com.aispring.security.CustomUserDetails;
 import com.aispring.service.UserService;
+import com.aispring.utils.FileUtils;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -164,7 +165,7 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, fallback).build();
         }
         Resource resource = new UrlResource(path.toUri());
-        String contentType = Files.probeContentType(path);
+        String contentType = FileUtils.getContentType(path);
         MediaType mediaType = contentType != null ? MediaType.parseMediaType(contentType) : MediaType.IMAGE_JPEG;
         return ResponseEntity.ok()
                 .contentType(mediaType)
