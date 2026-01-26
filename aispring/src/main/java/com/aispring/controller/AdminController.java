@@ -79,11 +79,16 @@ public class AdminController {
 
                 // 获取原始文件名
                 String originalFilename = filePath.getFileName().toString();
-                // 尝试从数据库获取更好的文件名（如果需要）
-                
+                String encodedFilename = java.net.URLEncoder.encode(originalFilename, "UTF-8").replace("+", "%20");
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.set(HttpHeaders.CONTENT_DISPOSITION, disposition + "; filename=\"" + encodedFilename + "\"; filename*=UTF-8''" + encodedFilename);
+                headers.set(HttpHeaders.CONTENT_TYPE, contentType);
+                headers.set("X-Content-Type-Options", "nosniff");
+                headers.setContentLength(resource.contentLength());
+
                 return ResponseEntity.ok()
-                        .contentType(MediaType.parseMediaType(contentType))
-                        .header(HttpHeaders.CONTENT_DISPOSITION, disposition + "; filename=\"" + originalFilename + "\"")
+                        .headers(headers)
                         .body(resource);
             } else {
                 log.warn("File not found or not readable: {}", filePath);

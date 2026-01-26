@@ -86,10 +86,17 @@ public class PublicFileController {
 
             if (resource.exists() || resource.isReadable()) {
                 String contentType = FileUtils.getContentType(file);
+                
+                String encodedFilename = java.net.URLEncoder.encode(resource.getFilename(), "UTF-8").replace("+", "%20");
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + encodedFilename + "\"; filename*=UTF-8''" + encodedFilename);
+                headers.set(HttpHeaders.CONTENT_TYPE, contentType);
+                headers.set("X-Content-Type-Options", "nosniff");
+                headers.setContentLength(resource.contentLength());
 
                 return ResponseEntity.ok()
-                        .contentType(MediaType.parseMediaType(contentType))
-                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
+                        .headers(headers)
                         .body(resource);
             } else {
                 return ResponseEntity.notFound().build();

@@ -144,8 +144,21 @@ const fetchSoftwareInfo = async () => {
     const codenova = softwareList.find(item => item.title.toLowerCase().includes('codenova'));
     if (codenova) {
       version.value = codenova.version || 'v1.1.0';
-      // 使用专门的下载接口，提供友好的文件名
-      downloadUrl.value = codenova.filePath ? `${request.defaults.baseURL}/api/resources/download/${codenova.id}` : '/CodeNova.apk';
+      // 使用增强的下载接口，URL 路径末尾包含文件名，确保移动端正确识别
+      if (codenova.filePath) {
+          // 假设 codenova.title 是 "CodeNova"，我们加上 .apk 后缀
+          // 如果 title 已经包含 .apk，则不重复添加
+          let fileName = codenova.title.trim();
+          if (!fileName.toLowerCase().endsWith('.apk')) {
+              fileName += '.apk';
+          }
+          // 对文件名进行 URL 编码
+          fileName = encodeURIComponent(fileName);
+          downloadUrl.value = `${request.defaults.baseURL}/api/resources/download/${codenova.id}/${fileName}`;
+      } else {
+          downloadUrl.value = '/CodeNova.apk';
+      }
+      
       // 如果后端返回了 GitHub 链接，则使用它
       if (codenova.url && codenova.url.includes('github.com')) {
         githubUrl.value = codenova.url;

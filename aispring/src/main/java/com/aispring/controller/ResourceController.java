@@ -159,9 +159,12 @@ public class ResourceController {
 
     /**
      * 公开下载资源文件，并提供友好的文件名
+     * 支持在 URL 中直接包含文件名，帮助某些移动端浏览器识别文件类型
      */
-    @GetMapping("/download/{id}")
-    public ResponseEntity<?> downloadResourceFile(@PathVariable Long id) {
+    @GetMapping({"/download/{id}", "/download/{id}/{filename:.+}"})
+    public ResponseEntity<?> downloadResourceFile(
+            @PathVariable Long id,
+            @PathVariable(required = false) String filename) {
         try {
             Resource resource = resourceService.getResourceById(id);
             if (resource.getFilePath() == null || resource.getFilePath().isEmpty()) {
@@ -169,7 +172,6 @@ public class ResourceController {
             }
 
             // 从相对路径解析出物理路径
-            // 相对路径格式通常为: /api/public-files/download/software/uuid.apk
             String filePathStr = resource.getFilePath();
             String fileNameOnDisk = filePathStr.substring(filePathStr.lastIndexOf("/") + 1);
             
@@ -180,20 +182,35 @@ public class ResourceController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(404, "文件不存在或不可读"));
             }
 
-            // 构造友好的文件名: 标题 + 原后缀
-            String extension = "";
-            int dotIdx = fileNameOnDisk.lastIndexOf(".");
-            if (dotIdx != -1) {
-                extension = fileNameOnDisk.substring(dotIdx);
+            // 构造友好的文件名: 如果路径中有 filename 则优先使用，否则用 标题 + 原后缀
+            String downloadName;
+            if (filename != null && !filename.isEmpty()) {
+                downloadName = filename;
+            } else {
+                String extension = "";
+                int dotIdx = fileNameOnDisk.lastIndexOf(".");
+                if (dotIdx != -1) {
+                    extension = fileNameOnDisk.substring(dotIdx);
+                }
+                downloadName = resource.getTitle() + extension;
             }
-            String friendlyName = resource.getTitle() + extension;
-            String encodedFilename = URLEncoder.encode(friendlyName, StandardCharsets.UTF_8).replace("+", "%20");
+            
+            String encodedFilename = URLEncoder.encode(downloadName, StandardCharsets.UTF_8).replace("+", "%20");
 
             String contentType = FileUtils.getContentType(path);
 
+            // 增加安全和缓存控制头
+            HttpHeaders headers = new HttpHeaders();
+            headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + encodedFilename + "\"; filename*=UTF-8''" + encodedFilename);
+            headers.set(HttpHeaders.CONTENT_TYPE, contentType);
+            headers.set("X-Content-Type-Options", "nosniff");
+            headers.set(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate");
+            headers.set(HttpHeaders.PRAGMA, "no-cache");
+            headers.set(HttpHeaders.EXPIRES, "0");
+            headers.setContentLength(fileResource.contentLength());
+
             return ResponseEntity.ok()
-                    .contentType(MediaType.parseMediaType(contentType))
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + encodedFilename + "\"; filename*=UTF-8''" + encodedFilename)
+                    .headers(headers)
                     .body(fileResource);
 
         } catch (Exception e) {

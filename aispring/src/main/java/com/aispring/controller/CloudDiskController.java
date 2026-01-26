@@ -359,12 +359,16 @@ public class CloudDiskController {
             }
             
             String filename = filePath.getFileName().toString();
-            String encodedFilename = URLEncoder.encode(filename, StandardCharsets.UTF_8);
+            String encodedFilename = URLEncoder.encode(filename, StandardCharsets.UTF_8).replace("+", "%20");
             
+            HttpHeaders headers = new HttpHeaders();
+            headers.set(HttpHeaders.CONTENT_DISPOSITION, disposition + "; filename=\"" + encodedFilename + "\"; filename*=UTF-8''" + encodedFilename);
+            headers.set(HttpHeaders.CONTENT_TYPE, contentType);
+            headers.set("X-Content-Type-Options", "nosniff");
+            headers.setContentLength(resource.contentLength());
+
             return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(contentType))
-                .header(HttpHeaders.CONTENT_DISPOSITION, 
-                    disposition + "; filename=\"" + encodedFilename + "\"")
+                .headers(headers)
                 .body(resource);
                 
         } catch (IllegalArgumentException e) {
