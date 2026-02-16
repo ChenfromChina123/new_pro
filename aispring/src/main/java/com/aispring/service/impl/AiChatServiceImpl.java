@@ -919,7 +919,7 @@ public class AiChatServiceImpl implements AiChatService {
             
             builder.connectTimeout(60, TimeUnit.SECONDS)
                    .writeTimeout(60, TimeUnit.SECONDS)
-                   .readTimeout(180, TimeUnit.SECONDS);
+                   .readTimeout(300, TimeUnit.SECONDS);
 
             return builder.build();
         } catch (Exception e) {

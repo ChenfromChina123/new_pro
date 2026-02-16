@@ -1355,7 +1355,6 @@ const formatSize = (bytes) => {
   color: var(--text-secondary);
   margin: 0;
 }
-</style>
 .search-box {
   width: 250px;
 }
