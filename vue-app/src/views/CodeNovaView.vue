@@ -39,9 +39,9 @@
         </div>
 
         <div class="action-group">
-          <a :href="downloadUrl" class="btn-download" :download="`CodeNova-${version}.apk`">
+          <button @click="handleDownload" class="btn-download">
             <i class="fas fa-cloud-download-alt"></i> 立即下载 APK ({{ version }})
-          </a>
+          </button>
           <a :href="githubUrl" target="_blank" class="btn-github">
             <i class="fab fa-github"></i> GitHub 开源地址
           </a>
@@ -135,6 +135,62 @@ const updateDate = ref('2024-05-20');
 
 const handleImgError = () => {
   imgError.value = true;
+};
+
+/**
+ * 处理 APK 下载
+ * 针对移动端浏览器的特殊处理，防止 APK 被识别为 ZIP
+ */
+const handleDownload = async () => {
+  try {
+    // 检测是否为移动设备
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+      // 移动端：直接使用后端 URL（已包含正确的 Content-Type 和文件名）
+      // 创建隐藏的 <a> 标签并点击
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = downloadUrl.value;
+      a.download = `CodeNova-${version.value}.apk`;
+      // 添加 type 属性强制指定 MIME 类型
+      a.type = 'application/vnd.android.package-archive';
+      document.body.appendChild(a);
+      a.click();
+      
+      // 清理
+      setTimeout(() => {
+        document.body.removeChild(a);
+      }, 100);
+    } else {
+      // 桌面端：使用 Blob 方式下载
+      const response = await fetch(downloadUrl.value);
+      if (!response.ok) {
+        throw new Error('下载失败');
+      }
+      
+      // 创建 Blob 时明确指定 MIME 类型
+      const blob = await response.blob();
+      const apkBlob = new Blob([blob], { type: 'application/vnd.android.package-archive' });
+      const url = window.URL.createObjectURL(apkBlob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = `CodeNova-${version.value}.apk`;
+      document.body.appendChild(a);
+      a.click();
+      
+      // 清理
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }, 100);
+    }
+  } catch (error) {
+    console.error('下载失败:', error);
+    // 降级方案：直接打开链接
+    window.location.href = downloadUrl.value;
+  }
 };
 
 const fetchSoftwareInfo = async () => {

@@ -351,6 +351,12 @@ public class CloudDiskController {
             
             // 检测文件的 MIME 类型
             String contentType = FileUtils.getContentType(filePath);
+            String filename = filePath.getFileName().toString();
+            
+            // 针对 APK 文件，强制使用正确的 MIME 类型
+            if (filename.toLowerCase().endsWith(".apk")) {
+                contentType = "application/vnd.android.package-archive";
+            }
             
             // 根据 mode 参数决定是内联预览还是下载
             String disposition = "attachment";
@@ -358,14 +364,16 @@ public class CloudDiskController {
                 disposition = "inline";
             }
             
-            String filename = filePath.getFileName().toString();
             String encodedFilename = URLEncoder.encode(filename, StandardCharsets.UTF_8).replace("+", "%20");
             
             HttpHeaders headers = new HttpHeaders();
             headers.set(HttpHeaders.CONTENT_DISPOSITION, disposition + "; filename=\"" + encodedFilename + "\"; filename*=UTF-8''" + encodedFilename);
             headers.set(HttpHeaders.CONTENT_TYPE, contentType);
+            // 禁止浏览器 MIME 嗅探
             headers.set("X-Content-Type-Options", "nosniff");
             headers.setContentLength(resource.contentLength());
+            // 支持断点续传
+            headers.set("Accept-Ranges", "bytes");
 
             return ResponseEntity.ok()
                 .headers(headers)
