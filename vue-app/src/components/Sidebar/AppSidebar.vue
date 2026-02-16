@@ -85,6 +85,15 @@
         <span>语言学习</span>
       </router-link>
       <router-link
+        v-if="authStore.isAuthenticated"
+        to="/requirement"
+        class="nav-item"
+        active-class="active"
+      >
+        <i class="fas fa-project-diagram"></i>
+        <span>需求分析</span>
+      </router-link>
+      <router-link
         to="/public-files"
         class="nav-item"
         active-class="active"
@@ -601,8 +610,8 @@ const selectFolder = (folderPath, folderId) => {
 const deleteFolderAction = async (folderOrId) => {
   const folder = typeof folderOrId === 'object' ? folderOrId : { id: folderOrId, folderName: '文件夹', folderPath: '' }
   if (confirm(`确定要删除文件夹 "${folder.folderName || '该文件夹'}" 及其所有内容吗？`)) {
-    const path = folder.folderPath || ''
-    await cloudDiskStore.deleteFolder(path)
+    // deleteFolder 需要 folderId，传路径会导致后端参数不匹配
+    await cloudDiskStore.deleteFolder(folder.id)
   }
 }
 
@@ -654,7 +663,7 @@ const confirmRenameFolder = async () => {
     uiStore.showToast('请输入文件夹名称')
     return
   }
-  if (cloudDiskStore.renamingFolder.name === cloudDiskStore.renameFolderName) {
+  if (cloudDiskStore.renamingFolder?.folderName === cloudDiskStore.renameFolderName) {
     closeRenameFolderDialog()
     return
   }
@@ -725,8 +734,6 @@ watch(
     } else if (newPath.startsWith('/cloud-disk')) {
       await cloudDiskStore.fetchFolders()
       await cloudDiskStore.fetchQuota()
-    } else if (newPath.startsWith('/terminal')) {
-      await terminalStore.fetchSessions()
     }
   },
   { immediate: true }

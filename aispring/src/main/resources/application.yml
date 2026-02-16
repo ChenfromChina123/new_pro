@@ -1,4 +1,7 @@
 spring:
+  mvc:
+    async:
+      request-timeout: 300000 # 5 minutes
   application:
     name: ai-smart-tutor
   

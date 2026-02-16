@@ -1,19 +1,19 @@
 // API配置
+/**
+ * 获取前端请求的基础地址
+ * 优先使用环境变量；浏览器环境默认走同源相对路径，避免端口/域名不一致导致“无响应”
+ */
 const getBaseURL = () => {
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL;
   }
   
-  // 在浏览器环境中
+  // 浏览器环境统一使用相对路径，由 Vite 代理或 Nginx 反向代理转发
   if (typeof window !== 'undefined') {
-    // 如果是开发环境（localhost 或 127.0.0.1），使用默认的 3000 端口（通过 Vite 代理）
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      return 'http://localhost:3000';
-    }
-    // 如果是生产环境，使用当前协议和主机名（Nginx 转发）
-    return ''; 
+    return '';
   }
   
+  // 非浏览器环境（如脚本测试）保留本地后端默认地址
   return 'http://localhost:5000';
 };
 

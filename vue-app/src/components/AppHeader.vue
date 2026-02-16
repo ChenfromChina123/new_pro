@@ -103,7 +103,7 @@ const handleToggleDarkMode = async () => {
   themeStore.toggleDarkMode()
   
   // 同步到后端设置 (如果已登录)
-  if (authStore.isLoggedIn) {
+  if (authStore.isAuthenticated) {
     await settingsStore.updateSettings({ 
       theme: themeStore.isDarkMode ? 'dark' : 'light' 
     })
