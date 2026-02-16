@@ -86,14 +86,23 @@ public class PublicFileController {
 
             if (resource.exists() || resource.isReadable()) {
                 String contentType = FileUtils.getContentType(file);
+                String resourceFilename = resource.getFilename();
                 
-                String encodedFilename = java.net.URLEncoder.encode(resource.getFilename(), "UTF-8").replace("+", "%20");
+                // 针对 APK 文件，强制使用正确的 MIME 类型
+                if (resourceFilename != null && resourceFilename.toLowerCase().endsWith(".apk")) {
+                    contentType = "application/vnd.android.package-archive";
+                }
+                
+                String encodedFilename = java.net.URLEncoder.encode(resourceFilename, "UTF-8").replace("+", "%20");
 
                 HttpHeaders headers = new HttpHeaders();
                 headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + encodedFilename + "\"; filename*=UTF-8''" + encodedFilename);
                 headers.set(HttpHeaders.CONTENT_TYPE, contentType);
+                // 禁止浏览器 MIME 嗅探
                 headers.set("X-Content-Type-Options", "nosniff");
                 headers.setContentLength(resource.contentLength());
+                // 支持断点续传
+                headers.set("Accept-Ranges", "bytes");
 
                 return ResponseEntity.ok()
                         .headers(headers)

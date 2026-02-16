@@ -198,16 +198,26 @@ public class ResourceController {
             String encodedFilename = URLEncoder.encode(downloadName, StandardCharsets.UTF_8).replace("+", "%20");
 
             String contentType = FileUtils.getContentType(path);
+            
+            // 针对 APK 文件，强制使用正确的 MIME 类型
+            if (downloadName.toLowerCase().endsWith(".apk")) {
+                contentType = "application/vnd.android.package-archive";
+            }
 
             // 增加安全和缓存控制头
             HttpHeaders headers = new HttpHeaders();
             headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + encodedFilename + "\"; filename*=UTF-8''" + encodedFilename);
             headers.set(HttpHeaders.CONTENT_TYPE, contentType);
+            // 禁止浏览器 MIME 嗅探，强制使用服务器指定的 Content-Type
             headers.set("X-Content-Type-Options", "nosniff");
+            // 禁用缓存，确保每次都从服务器获取最新文件
             headers.set(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate");
             headers.set(HttpHeaders.PRAGMA, "no-cache");
             headers.set(HttpHeaders.EXPIRES, "0");
+            // 明确设置 Content-Length，某些移动浏览器需要此头部
             headers.setContentLength(fileResource.contentLength());
+            // 添加 Accept-Ranges 支持断点续传（移动端网络不稳定时有用）
+            headers.set("Accept-Ranges", "bytes");
 
             return ResponseEntity.ok()
                     .headers(headers)

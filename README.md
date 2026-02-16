@@ -47,6 +47,18 @@
 
 ##### 🚀 最近更新
 
+### 🔧 移动端 APK 下载问题修复 (2026-02-16)
+- **问题描述**: 移动端浏览器下载 APK 文件时会自动识别为 ZIP 格式并修改文件后缀
+- **根本原因**: APK 本质是 ZIP 格式，部分移动浏览器会进行 MIME 嗅探并根据文件内容判断类型
+- **前端优化**:
+  - 在 `CodeNovaView.vue` 中实现了智能下载逻辑，区分移动端和桌面端
+  - 移动端直接使用后端 URL 下载，避免 Blob 转换导致的类型丢失
+  - 桌面端使用 Blob 方式并强制指定 `application/vnd.android.package-archive` MIME 类型
+- **后端增强**:
+  - 在 `ResourceController`、`PublicFileController`、`CloudDiskController` 中强制 APK 文件使用正确的 MIME 类型
+  - 添加 `Accept-Ranges: bytes` 响应头支持断点续传，提升移动端网络不稳定时的下载成功率
+  - 强化 `X-Content-Type-Options: nosniff` 禁止浏览器 MIME 嗅探
+
 ### 🛠️ 前后端无响应问题集中修复 (2026-02-16)
 - **后端编译阻断修复**: 修复了 `AgentServiceImpl` 末尾多余的 `}` 语法错误，避免 Spring Boot 启动失败导致全站接口不可用。
 - **前端运行时错误修复**:
