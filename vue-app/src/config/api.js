@@ -78,11 +78,16 @@ export const API_ENDPOINTS = {
     getFileContent: (fileId) => `/api/admin/files/content/${fileId}`,
     updateFileContent: (fileId) => `/api/admin/files/content/${fileId}`,
     downloadFile: (fileId) => `/api/admin/files/download/${fileId}`,
+    // Token 审计
+    tokenAuditStats: '/api/admin/token-audit/stats',
+    tokenAuditRecords: '/api/admin/token-audit/records',
     // 软件版本管理
     resources: '/api/resources',
     publicResources: '/api/resources/public',
     updateResource: (id) => `/api/resources/${id}`,
-    uploadSoftware: (id) => `/api/resources/${id}/upload`
+    uploadSoftware: (id) => `/api/resources/${id}/upload`,
+    // 外部链接管理
+    externalLinks: '/api/admin/external-links'
   },
   
   // 自定义模型

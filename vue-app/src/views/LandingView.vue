@@ -27,6 +27,12 @@
             公共资源
           </router-link>
           <router-link 
+            to="/links" 
+            class="nav-link"
+          >
+            资源推荐
+          </router-link>
+          <router-link 
             to="/codenova" 
             class="nav-link"
           >
@@ -110,6 +116,13 @@
               @click="isMobileMenuOpen = false"
             >
               <i class="fas fa-folder-open" /> 公共资源
+            </router-link>
+            <router-link 
+              to="/links" 
+              class="mobile-nav-link" 
+              @click="isMobileMenuOpen = false"
+            >
+              <i class="fas fa-link" /> 资源推荐
             </router-link>
             <router-link 
               to="/codenova" 

@@ -1,9 +1,11 @@
 package com.aispring.service.impl;
 
 import com.aispring.service.AiChatService;
+import com.aispring.service.TokenUsageAuditService;
 import com.aispring.repository.ChatRecordRepository;
 import com.aispring.repository.AnonymousChatRecordRepository;
 import com.aispring.entity.ChatRecord;
+import com.aispring.util.SensitiveDataMasker;
 import com.aispring.entity.AnonymousChatRecord;
 import com.aispring.entity.ChatSession;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -61,6 +63,7 @@ public class AiChatServiceImpl implements AiChatService {
     private final ChatRecordRepository chatRecordRepository;
     private final AnonymousChatRecordRepository anonymousChatRecordRepository;
     private final com.aispring.service.ChatRecordService chatRecordService; // 注入 ChatRecordService
+    private final TokenUsageAuditService tokenUsageAuditService;
     private final OkHttpClient okHttpClient;
     
     @Value("${ai.max-tokens:4096}")
@@ -148,7 +151,8 @@ public class AiChatServiceImpl implements AiChatService {
                              ObjectProvider<StreamingChatClient> streamingChatClientProvider,
                              ChatRecordRepository chatRecordRepository,
                              AnonymousChatRecordRepository anonymousChatRecordRepository,
-                             com.aispring.service.ChatRecordService chatRecordService, // 添加到构造函数
+                             com.aispring.service.ChatRecordService chatRecordService,
+                             TokenUsageAuditService tokenUsageAuditService,
                              @Value("${ai.doubao.api-key:}") String doubaoApiKey,
                              @Value("${ai.doubao.api-url:}") String doubaoApiUrl,
                              @Value("${ai.deepseek.api-key:}") String deepseekApiKey,
@@ -157,8 +161,8 @@ public class AiChatServiceImpl implements AiChatService {
         this.streamingChatClientProvider = streamingChatClientProvider;
         this.chatRecordRepository = chatRecordRepository;
         this.anonymousChatRecordRepository = anonymousChatRecordRepository;
-        this.chatRecordService = chatRecordService; // 初始化
-        
+        this.chatRecordService = chatRecordService;
+        this.tokenUsageAuditService = tokenUsageAuditService;
         this.doubaoApiKey = doubaoApiKey;
         this.doubaoApiUrl = doubaoApiUrl;
         this.deepseekApiKey = deepseekApiKey;
@@ -327,15 +331,17 @@ public class AiChatServiceImpl implements AiChatService {
     }
 
     private String performBlockingChat(String prompt, String sessionId, String model, Long userId, String systemPrompt, SseEmitter emitter, String ipAddress, StringBuilder fullReasoning) throws IOException {
+        // 敏感信息脱敏：发送给大模型前过滤身份证号、手机号等隐私数据
+        String maskedPrompt = SensitiveDataMasker.mask(prompt);
         StringBuilder fullContent = new StringBuilder();
         
         // 检查是否为推理模型
         boolean isReasoner = "deepseek-reasoner".equals(model) || "doubao-reasoner".equals(model);
         
         if (isReasoner) {
-             performBlockingOkHttpChat(prompt, sessionId, model, userId, systemPrompt, emitter, fullContent, ipAddress, fullReasoning);
+             performBlockingOkHttpChat(maskedPrompt, sessionId, model, userId, systemPrompt, emitter, fullContent, ipAddress, fullReasoning);
         } else {
-             performBlockingSpringAiChat(prompt, sessionId, model, userId, systemPrompt, emitter, fullContent, ipAddress, fullReasoning);
+             performBlockingSpringAiChat(maskedPrompt, sessionId, model, userId, systemPrompt, emitter, fullContent, ipAddress, fullReasoning);
         }
         
         return fullContent.toString();
@@ -349,6 +355,7 @@ public class AiChatServiceImpl implements AiChatService {
         
         String actualModel = (model == null || model.isEmpty()) ? "deepseek-chat" : model;
         if ("deepseek".equals(actualModel)) actualModel = "deepseek-chat";
+        String provider = "doubao".equals(model) ? "doubao" : ("deepseek".equals(model) || "deepseek-chat".equals(actualModel) ? "deepseek" : "default");
         
         OpenAiChatOptions options = OpenAiChatOptions.builder()
                 .withModel(actualModel)
@@ -367,6 +374,7 @@ public class AiChatServiceImpl implements AiChatService {
 
         generateTitleAndSuggestionsAsync(prompt, sessionId, userId, emitter);
 
+        long startMs = System.currentTimeMillis();
         clientToUse.stream(promptObj)
             .doOnNext(chatResponse -> {
                 String content = chatResponse.getResult().getOutput().getContent();
@@ -379,9 +387,12 @@ public class AiChatServiceImpl implements AiChatService {
                 throw new RuntimeException(e);
             })
             .blockLast();
+        long responseTimeMs = System.currentTimeMillis() - startMs;
+        tokenUsageAuditService.recordEstimated(provider, actualModel, userId, sessionId, prompt.length(), fullContent.length(), responseTimeMs, true);
     }
 
     private void performBlockingOkHttpChat(String prompt, String sessionId, String model, Long userId, String systemPrompt, SseEmitter emitter, StringBuilder fullContent, String ipAddress, StringBuilder fullReasoning) throws IOException {
+         long startMs = System.currentTimeMillis();
          if (userId != null) {
              generateTitleAndSuggestionsAsync(prompt, sessionId, userId, emitter);
          }
@@ -430,6 +441,7 @@ public class AiChatServiceImpl implements AiChatService {
                         content = truncateToMax(content, maxToolResultChars);
                     }
                     if (content == null || content.isEmpty()) continue;
+                    if ("user".equals(role)) content = SensitiveDataMasker.mask(content);
                     budget -= content.length();
                     Map<String, String> msg = new HashMap<>();
                     msg.put("role", role);
@@ -452,6 +464,7 @@ public class AiChatServiceImpl implements AiChatService {
                     String role = "user".equalsIgnoreCase(record.getRole()) ? "user" : "assistant";
                     String content = record.getContent();
                     if (content == null || content.isEmpty()) continue;
+                    if ("user".equals(role)) content = SensitiveDataMasker.mask(content);
                     budget -= content.length();
                     Map<String, String> msg = new HashMap<>();
                     msg.put("role", role);
@@ -466,7 +479,7 @@ public class AiChatServiceImpl implements AiChatService {
          
          Map<String, String> currentMsg = new HashMap<>();
          currentMsg.put("role", "user");
-         currentMsg.put("content", prompt);
+         currentMsg.put("content", prompt);  // prompt 已在 performBlockingChat 中脱敏后传入
          messages.add(currentMsg);
 
          Map<String, Object> payload = new HashMap<>();
@@ -522,6 +535,9 @@ public class AiChatServiceImpl implements AiChatService {
                         }
                     }
          }
+         long responseTimeMs = System.currentTimeMillis() - startMs;
+         String provider = "deepseek-reasoner".equals(model) ? "deepseek" : ("doubao-reasoner".equals(model) ? "doubao" : "default");
+         tokenUsageAuditService.recordEstimated(provider, requestModel, userId, sessionId, prompt.length(), fullContent.length(), responseTimeMs, true);
     }
 
 
@@ -806,6 +822,9 @@ public class AiChatServiceImpl implements AiChatService {
     @Override
     public String ask(String prompt, String sessionId, String model, Long userId, String systemPrompt) {
         try {
+            // 敏感信息脱敏
+            String maskedPrompt = SensitiveDataMasker.mask(prompt);
+            
             // 异步生成标题（仅限第一条消息）和建议问题（每条消息）
             generateTitleAndSuggestionsAsync(prompt, sessionId, userId, null);
 
@@ -840,24 +859,33 @@ public class AiChatServiceImpl implements AiChatService {
                 actualModel = "deepseek-chat";
             }
 
+            String provider = "doubao".equals(model) ? "doubao" : ("deepseek".equals(model) || "deepseek-chat".equals(actualModel) ? "deepseek" : "default");
+            
             OpenAiChatOptions options = OpenAiChatOptions.builder()
                     .withModel(actualModel)
                     .withTemperature(0.7f)
                     .withMaxTokens(maxTokens)
                     .build();
             
-            Prompt promptObj = buildPrompt(prompt, sessionId, userId, null, options, systemPrompt);
+            Prompt promptObj = buildPrompt(maskedPrompt, sessionId, userId, null, options, systemPrompt);
             
             final ChatClient finalClient = clientToUse;
-            System.out.println("Sending request to AI. Model: " + actualModel + ", Prompt length: " + prompt.length());
+            log.info("Sending request to AI. Model: {}, Prompt length: {}", actualModel, prompt.length());
             
+            long startMs = System.currentTimeMillis();
             ChatResponse response = finalClient.call(promptObj);
+            long responseTimeMs = System.currentTimeMillis() - startMs;
+            
             String content = response.getResult().getOutput().getContent();
-            System.out.println("AI Response received. Length: " + (content != null ? content.length() : 0));
+            log.info("AI Response received. Length: {}", content != null ? content.length() : 0);
+            
+            // 记录 Token 消耗审计
+            tokenUsageAuditService.recordEstimated(provider, actualModel, userId, sessionId, 
+                    prompt.length(), content != null ? content.length() : 0, responseTimeMs, false);
+            
             return content;
         } catch (Exception e) {
-            System.err.println("AI Chat Error in ask(): " + e.getMessage());
-            e.printStackTrace();
+            log.error("AI Chat Error in ask(): {}", e.getMessage(), e);
             return fallbackAnswer(prompt);
         }
     }
