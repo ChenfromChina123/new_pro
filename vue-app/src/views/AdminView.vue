@@ -464,6 +464,187 @@
         </div>
       </div>
 
+      <!-- 外部链接管理 -->
+      <div
+        v-if="currentTab === 'externalLinks'"
+        class="tab-content card"
+      >
+        <div class="content-header">
+          <h2>🔗 外部链接管理</h2>
+          <button 
+            class="btn-primary" 
+            @click="openLinkModal()"
+          >
+            <i class="fas fa-plus" /> 新增链接
+          </button>
+        </div>
+        
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>标题</th>
+                <th>链接</th>
+                <th>点击次数</th>
+                <th>状态</th>
+                <th>排序</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="link in externalLinks"
+                :key="link.id"
+              >
+                <td>{{ link.id }}</td>
+                <td>{{ link.title }}</td>
+                <td>
+                  <a 
+                    :href="link.url" 
+                    target="_blank" 
+                    class="link-url"
+                  >
+                    {{ truncateUrl(link.url) }}
+                  </a>
+                </td>
+                <td>{{ link.clickCount || 0 }}</td>
+                <td>
+                  <span 
+                    class="status-badge" 
+                    :class="link.isActive ? 'active' : 'inactive'"
+                  >
+                    {{ link.isActive ? '激活' : '禁用' }}
+                  </span>
+                </td>
+                <td>{{ link.sortOrder || '-' }}</td>
+                <td>
+                  <button 
+                    class="btn-small btn-primary" 
+                    @click="openLinkModal(link)"
+                  >
+                    编辑
+                  </button>
+                  <button 
+                    class="btn-small btn-danger" 
+                    @click="deleteLink(link.id)"
+                  >
+                    删除
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Token 审计 -->
+      <div
+        v-if="currentTab === 'tokenAudit'"
+        class="tab-content card"
+      >
+        <div class="content-header">
+          <h2>🔍 Token 消耗审计</h2>
+          <p style="color: var(--text-secondary); margin-top: 8px;">实时监控 AI Token 消耗与成本分析</p>
+        </div>
+
+        <!-- 统计卡片组 -->
+        <div class="token-stats-grid">
+          <div class="token-stat-card">
+            <div class="token-stat-icon">📊</div>
+            <div class="token-stat-info">
+              <h4>总请求数</h4>
+              <p class="token-stat-value">{{ tokenStats.totalRequests || 0 }}</p>
+            </div>
+          </div>
+          <div class="token-stat-card">
+            <div class="token-stat-icon">⬆️</div>
+            <div class="token-stat-info">
+              <h4>输入 Token</h4>
+              <p class="token-stat-value">{{ formatNumber(tokenStats.totalInputTokens) }}</p>
+            </div>
+          </div>
+          <div class="token-stat-card">
+            <div class="token-stat-icon">⬇️</div>
+            <div class="token-stat-info">
+              <h4>输出 Token</h4>
+              <p class="token-stat-value">{{ formatNumber(tokenStats.totalOutputTokens) }}</p>
+            </div>
+          </div>
+          <div class="token-stat-card">
+            <div class="token-stat-icon">💰</div>
+            <div class="token-stat-info">
+              <h4>总 Token 数</h4>
+              <p class="token-stat-value">{{ formatNumber(tokenStats.totalTokens) }}</p>
+            </div>
+          </div>
+          <div class="token-stat-card">
+            <div class="token-stat-icon">⚡</div>
+            <div class="token-stat-info">
+              <h4>平均耗时</h4>
+              <p class="token-stat-value">{{ tokenStats.avgResponseTimeMs || 0 }}ms</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 提供方分布 -->
+        <div class="token-provider-section">
+          <h3>API 提供方分布</h3>
+          <div class="provider-list">
+            <div 
+              v-for="(count, provider) in tokenStats.byProvider" 
+              :key="provider"
+              class="provider-item"
+            >
+              <span class="provider-name">{{ provider }}</span>
+              <div class="provider-bar-container">
+                <div 
+                  class="provider-bar" 
+                  :style="{ width: (count / tokenStats.totalRequests * 100) + '%' }"
+                ></div>
+              </div>
+              <span class="provider-count">{{ count }} 次 ({{ Math.round(count / tokenStats.totalRequests * 100) }}%)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 审计记录 -->
+        <div class="token-records-section">
+          <h3>最近审计记录 (7天)</h3>
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>时间</th>
+                  <th>提供方</th>
+                  <th>模型</th>
+                  <th>输入 Token</th>
+                  <th>输出 Token</th>
+                  <th>总计</th>
+                  <th>耗时(ms)</th>
+                  <th>流式</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="record in tokenRecords" :key="record.id">
+                  <td>{{ formatDateTime(record.createdAt) }}</td>
+                  <td><span class="badge">{{ record.provider }}</span></td>
+                  <td>{{ record.modelName || '-' }}</td>
+                  <td>{{ formatNumber(record.inputTokens) }}</td>
+                  <td>{{ formatNumber(record.outputTokens) }}</td>
+                  <td><strong>{{ formatNumber(record.totalTokens) }}</strong></td>
+                  <td>{{ record.responseTimeMs }}</td>
+                  <td>{{ record.streaming ? '✓' : '✗' }}</td>
+                </tr>
+                <tr v-if="tokenRecords.length === 0">
+                  <td colspan="8" class="empty-row">暂无审计记录</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- 软件编辑弹窗 -->
       <div 
         v-if="showSoftwareModal" 
@@ -544,6 +725,94 @@
           </div>
         </div>
       </div>
+
+      <!-- 外部链接编辑弹窗 -->
+      <div 
+        v-if="showLinkModal" 
+        class="modal-overlay"
+      >
+        <div class="modal-content animate-slideIn">
+          <div class="modal-header">
+            <h3>{{ isEditLink ? '编辑链接' : '新增链接' }}</h3>
+            <button 
+              class="close-btn" 
+              @click="showLinkModal = false"
+            >
+              &times;
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label>标题 <span style="color: red;">*</span></label>
+              <input 
+                v-model="editingLink.title" 
+                type="text" 
+                class="form-input" 
+                placeholder="请输入链接标题"
+              />
+            </div>
+            <div class="form-group">
+              <label>链接地址 <span style="color: red;">*</span></label>
+              <input 
+                v-model="editingLink.url" 
+                type="url" 
+                class="form-input" 
+                placeholder="https://..."
+              />
+            </div>
+            <div class="form-group">
+              <label>描述（可选）</label>
+              <textarea 
+                v-model="editingLink.description" 
+                class="form-input" 
+                rows="3" 
+                placeholder="请输入链接描述"
+              />
+            </div>
+            <div class="form-group">
+              <label>图片URL（可选）</label>
+              <input 
+                v-model="editingLink.imageUrl" 
+                type="url" 
+                class="form-input" 
+                placeholder="https://..."
+              />
+            </div>
+            <div class="form-group">
+              <label>排序顺序（可选）</label>
+              <input 
+                v-model.number="editingLink.sortOrder" 
+                type="number" 
+                class="form-input" 
+                placeholder="数字越小越靠前"
+              />
+            </div>
+            <div class="form-group">
+              <label>
+                <input 
+                  v-model="editingLink.isActive" 
+                  type="checkbox"
+                />
+                激活状态
+              </label>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button 
+              class="btn-secondary" 
+              @click="showLinkModal = false"
+            >
+              取消
+            </button>
+            <button 
+              class="btn-primary" 
+              @click="saveLink"
+            >
+              保存
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -555,6 +824,16 @@ import { API_ENDPOINTS } from '@/config/api'
 import AppLayout from '@/components/AppLayout.vue'
 
 const statistics = ref({})
+const tokenStats = ref({
+  totalRequests: 0,
+  totalInputTokens: 0,
+  totalOutputTokens: 0,
+  totalTokens: 0,
+  avgResponseTimeMs: 0,
+  byProvider: {},
+  byModel: {}
+})
+const tokenRecords = ref([])
 const users = ref([])
 const files = ref([])
 const feedbacks = ref([])
@@ -586,7 +865,9 @@ const tabs = [
   { key: 'users', label: '用户管理' },
   { key: 'files', label: '文件管理' },
   { key: 'software', label: '软件管理' },
-  { key: 'feedback', label: '反馈管理' }
+  { key: 'externalLinks', label: '外部链接' },
+  { key: 'feedback', label: '反馈管理' },
+  { key: 'tokenAudit', label: 'Token 审计' }
 ]
 
 // 过滤用户列表
@@ -624,6 +905,8 @@ watch(currentTab, (newTab) => {
   if (newTab === 'users') fetchUsers()
   if (newTab === 'files') fetchFiles()
   if (newTab === 'feedback') fetchFeedbacks()
+  if (newTab === 'externalLinks') fetchExternalLinks()
+  if (newTab === 'tokenAudit') loadTokenAuditData()
 })
 
 // 软件管理相关
@@ -646,6 +929,94 @@ const currentSoftwareId = ref(null)
 const uploading = ref(false)
 const uploadProgress = ref(0)
 const uploadingFileName = ref('')
+
+// 外部链接管理相关
+const externalLinks = ref([])
+const showLinkModal = ref(false)
+const isEditLink = ref(false)
+const editingLink = ref({
+  id: null,
+  title: '',
+  url: '',
+  description: '',
+  imageUrl: '',
+  sortOrder: null,
+  isActive: true
+})
+
+// 加载外部链接列表
+const fetchExternalLinks = async () => {
+  try {
+    const response = await request.get(API_ENDPOINTS.admin.externalLinks)
+    externalLinks.value = response.data || []
+  } catch (error) {
+    console.error('加载外部链接列表失败:', error)
+    alert('加载外部链接列表失败')
+  }
+}
+
+// 打开链接编辑弹窗
+const openLinkModal = (link = null) => {
+  if (link) {
+    editingLink.value = { ...link }
+    isEditLink.value = true
+  } else {
+    editingLink.value = {
+      id: null,
+      title: '',
+      url: '',
+      description: '',
+      imageUrl: '',
+      sortOrder: null,
+      isActive: true
+    }
+    isEditLink.value = false
+  }
+  showLinkModal.value = true
+}
+
+// 保存链接
+const saveLink = async () => {
+  if (!editingLink.value.title || !editingLink.value.url) {
+    alert('请填写标题和链接地址')
+    return
+  }
+
+  try {
+    if (isEditLink.value) {
+      await request.put(`${API_ENDPOINTS.admin.externalLinks}/${editingLink.value.id}`, editingLink.value)
+      alert('更新成功')
+    } else {
+      await request.post(API_ENDPOINTS.admin.externalLinks, editingLink.value)
+      alert('添加成功')
+    }
+    showLinkModal.value = false
+    fetchExternalLinks()
+  } catch (error) {
+    console.error('保存链接失败:', error)
+    alert('保存失败: ' + (error.response?.data?.message || error.message))
+  }
+}
+
+// 删除链接
+const deleteLink = async (id) => {
+  if (!confirm('确定要删除这个链接吗？')) return
+
+  try {
+    await request.delete(`${API_ENDPOINTS.admin.externalLinks}/${id}`)
+    alert('删除成功')
+    fetchExternalLinks()
+  } catch (error) {
+    console.error('删除链接失败:', error)
+    alert('删除失败: ' + (error.response?.data?.message || error.message))
+  }
+}
+
+// 截断URL显示
+const truncateUrl = (url) => {
+  if (!url) return ''
+  return url.length > 50 ? url.substring(0, 50) + '...' : url
+}
 
 // 加载软件列表
 const fetchSoftwareList = async () => {
@@ -759,6 +1130,7 @@ onMounted(() => {
   fetchFiles()
   fetchFeedbacks()
   fetchSoftwareList()
+  loadTokenAuditData()
 })
 
 const fetchStatistics = async () => {
@@ -1016,6 +1388,58 @@ const formatSize = (bytes) => {
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
 }
+
+const formatNumber = (num) => {
+  if (!num) return '0'
+  return num.toLocaleString()
+}
+
+const formatDateTime = (dateStr) => {
+  if (!dateStr) return '-'
+  const date = new Date(dateStr)
+  return `${date.getMonth() + 1}-${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+// 加载 Token 审计数据
+const loadTokenAuditData = async () => {
+  try {
+    console.log('🔍 开始加载 Token 审计数据...')
+    console.log('📡 API 端点 - stats:', API_ENDPOINTS.admin.tokenAuditStats)
+    console.log('📡 API 端点 - records:', API_ENDPOINTS.admin.tokenAuditRecords)
+    
+    // 获取统计数据
+    const statsRes = await request.get(API_ENDPOINTS.admin.tokenAuditStats)
+    console.log('✅ 统计数据响应:', statsRes)
+    console.log('✅ statsRes.data:', statsRes.data)
+    
+    // 由于响应拦截器返回了 response.data，所以 statsRes 就是 ApiResponse
+    // statsRes = { code: 200, message: "...", data: {...} }
+    if (statsRes && statsRes.data) {
+      tokenStats.value = statsRes.data
+      console.log('✅ tokenStats 更新为:', tokenStats.value)
+    } else {
+      console.warn('⚠️ statsRes.data 为空:', statsRes)
+    }
+    
+    // 获取记录列表
+    const recordsRes = await request.get(API_ENDPOINTS.admin.tokenAuditRecords, {
+      params: { page: 0, size: 50 }
+    })
+    console.log('✅ 记录列表响应:', recordsRes)
+    console.log('✅ recordsRes.data:', recordsRes.data)
+    
+    if (recordsRes && recordsRes.data) {
+      tokenRecords.value = recordsRes.data
+      console.log('✅ tokenRecords 更新为:', tokenRecords.value)
+    } else {
+      console.warn('⚠️ recordsRes.data 为空:', recordsRes)
+    }
+  } catch (error) {
+    console.error('❌ 加载 Token 审计数据失败:', error)
+    console.error('错误详情:', error.response || error.message)
+  }
+}
+
 </script>
 
 <style scoped>
@@ -1801,5 +2225,146 @@ textarea.form-input {
   gap: 12px;
   background-color: var(--bg-secondary);
 }
+
+/* Token 审计样式 */
+.token-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.token-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.token-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.token-stat-icon {
+  font-size: 32px;
+  opacity: 0.8;
+}
+
+.token-stat-info h4 {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0 0 4px 0;
+  font-weight: 500;
+}
+
+.token-stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.token-provider-section,
+.token-records-section {
+  margin-top: 32px;
+}
+
+.token-provider-section h3,
+.token-records-section h3 {
+  font-size: 18px;
+  margin-bottom: 20px;
+  color: var(--text-primary);
+}
+
+.provider-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.provider-item {
+  display: grid;
+  grid-template-columns: 120px 1fr 120px;
+  align-items: center;
+  gap: 16px;
+  padding: 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.provider-name {
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: capitalize;
+}
+
+.provider-bar-container {
+  height: 8px;
+  background: var(--bg-primary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.provider-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.provider-count {
+  text-align: right;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* 外部链接管理样式 */
+.link-url {
+  color: var(--primary-color);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.link-url:hover {
+  color: var(--primary-hover);
+  text-decoration: underline;
+}
+
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-badge.active {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.status-badge.inactive {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+/* 暗色模式适配 */
+@media (prefers-color-scheme: dark) {
+  .status-badge.active {
+    background-color: #1e4620;
+    color: #7dff8a;
+  }
+
+  .status-badge.inactive {
+    background-color: #5a1a1a;
+    color: #ff8a8a;
+  }
+}
+
 </style>
 

@@ -45,6 +45,9 @@ public class SecurityConfig {
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/chat-records/new-session").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/chat-records/sessions").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/chat-records/session/**").permitAll()
+                // 外部链接公开访问（无需登录）
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/external-links").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/external-links/*/click").permitAll()
                 .requestMatchers("/error").permitAll()
                 // 其他需要认证
                 .anyRequest().authenticated()
