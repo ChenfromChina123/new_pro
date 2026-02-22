@@ -38,6 +38,15 @@
           >
             CodeNova
           </router-link>
+          <!-- Earthworm 英语学习外链 -->
+          <a
+            href="http://earthworm.aistudy.icu/"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="nav-link"
+          >
+            Earthworm
+          </a>
           <div class="nav-actions">
             <template v-if="!authStore.isAuthenticated">
               <router-link 
@@ -131,6 +140,16 @@
             >
               <i class="fas fa-mobile-alt" /> CodeNova
             </router-link>
+            <!-- Earthworm 英语学习外链 -->
+            <a
+              href="http://earthworm.aistudy.icu/"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="mobile-nav-link"
+              @click="isMobileMenuOpen = false"
+            >
+              <i class="fas fa-worm" /> Earthworm
+            </a>
             <div class="mobile-menu-divider" />
             <template v-if="!authStore.isAuthenticated">
               <router-link 
