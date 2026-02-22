@@ -10,7 +10,7 @@ module.exports = {
         PORT: 4000,
         NUXT_PUBLIC_API_BASE: "http://earthworm-api.aistudy.icu",
         NUXT_PUBLIC_ENDPOINT: "https://logto.aistudy.icu",
-        NUXT_PUBLIC_APP_ID: "b4vtjjefuw6hh330518kp",
+        NUXT_PUBLIC_APP_ID: "earthworm001",
         NUXT_PUBLIC_SIGN_IN_REDIRECT_URI: "https://earthworm.aistudy.icu/callback",
         NUXT_PUBLIC_SIGN_OUT_REDIRECT_URI: "https://earthworm.aistudy.icu",
         NUXT_PUBLIC_BACKEND_ENDPOINT: "http://earthworm-api.aistudy.icu",
