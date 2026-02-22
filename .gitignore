@@ -1,0 +1,10 @@
+node_modules/
+.output/
+dist/
+.pnpm-store/
+*.otf
+*.ttf
+*.woff
+*.woff2
+packages/xingrong-courses/data/pdf/
+logto_db_init_data.zip
