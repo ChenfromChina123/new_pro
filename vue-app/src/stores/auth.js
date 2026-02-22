@@ -24,12 +24,14 @@ export const useAuthStore = defineStore('auth', () => {
         password
       })
       
-      const payload = response?.data || response
-      const accessToken = payload?.accessToken || payload?.access_token
-      const userIdVal = payload?.userId ?? payload?.user_id ?? payload?.user?.id ?? null
+      // 后端返回结构: { code, message, data: { access_token, user_id, ... } }
+      // request.js 拦截器已返回 response.data，即整个 {code, message, data} 对象
+      const payload = response?.data ?? response
+      const accessToken = payload?.access_token ?? payload?.accessToken
+      const userIdVal = payload?.user_id ?? payload?.userId ?? payload?.user?.id ?? null
       const emailVal = payload?.email ?? payload?.user?.email ?? null
       const usernameVal = payload?.username ?? payload?.user?.username ?? null
-      const isAdminVal = payload?.isAdmin ?? payload?.is_admin ?? payload?.user?.is_admin ?? false
+      const isAdminVal = payload?.is_admin ?? payload?.isAdmin ?? payload?.user?.is_admin ?? false
       const avatarVal = payload?.avatar ?? payload?.user?.avatar ?? null
 
       if (accessToken) {
@@ -82,12 +84,13 @@ export const useAuthStore = defineStore('auth', () => {
         username
       })
       
-      const payload = response?.data || response
-      const accessToken = payload?.accessToken || payload?.access_token
-      const userIdVal = payload?.userId ?? payload?.user_id ?? payload?.user?.id ?? null
+      // 后端返回结构: { code, message, data: { access_token, user_id, ... } }
+      const payload = response?.data ?? response
+      const accessToken = payload?.access_token ?? payload?.accessToken
+      const userIdVal = payload?.user_id ?? payload?.userId ?? payload?.user?.id ?? null
       const emailVal = payload?.email ?? payload?.user?.email ?? null
       const usernameVal = payload?.username ?? payload?.user?.username ?? null
-      const isAdminVal = payload?.isAdmin ?? payload?.is_admin ?? payload?.user?.is_admin ?? false
+      const isAdminVal = payload?.is_admin ?? payload?.isAdmin ?? payload?.user?.is_admin ?? false
       const avatarVal = payload?.avatar ?? payload?.user?.avatar ?? null
 
       if (accessToken) {
