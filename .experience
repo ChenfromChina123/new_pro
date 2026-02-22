@@ -88,3 +88,5 @@
 88. 优化了外部链接页面UI：移除了卡片上的"Top N"排名徽章和"分类标签"覆盖层，使卡片界面更加简洁清爽；修复了点击次数无法实时同步的问题，通过改用响应式数组索引更新方式替代直接对象属性修改，确保点击后页面上的计数器能立即刷新。
 89. 优化了外部链接点击次数的持久化机制：统一了后端实体类中 clickCount 字段的类型为 Integer；在 Service 层增加了 null 值检查；在 Controller 层添加了返回值日志；在前端添加了详细的调试日志以追踪数据流转；创建了数据库迁移脚本将 click_count 字段类型从 BIGINT 改为 INT，确保前后端类型一致性。
 90. 优化了外部链接页面的视觉密度：缩小了卡片尺寸、内边距、字体大小，以及页面标题和分类过滤器的尺寸；优化了 Grid 布局参数，使每行能展示更多内容；调整了移动端适配，确保在小屏幕下也能高效利用空间。
+91. 部署了 earthworm 开源项目到本地目录 earthworm，配置了 .env 和 .volumes，并生成了 DEPLOY_INSTRUCTIONS.md 指导用户手动完成依赖安装和服务启动。
+92. 成功将 earthworm 部署到服务器 8.138.174.80，通过域名 earthworm.aistudy.icu 访问。关键步骤：升级 Node.js 到 v20（用 nvm）、添加 swap 解决内存不足、修复 CORS 配置（origin: true）、使用 PM2 shell 脚本启动（source nvm.sh）、生产模式用 PORT 而非 NITRO_PORT、Nginx 反向代理配置在 /www/server/panel/vhost/nginx/ 目录。

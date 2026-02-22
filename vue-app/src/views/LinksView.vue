@@ -38,6 +38,15 @@
           >
             CodeNova
           </router-link>
+          <!-- Earthworm 英语学习外链 -->
+          <a
+            href="http://earthworm.aistudy.icu/"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="nav-link"
+          >
+            Earthworm
+          </a>
           <div class="nav-actions">
             <template v-if="!authStore.isAuthenticated">
               <router-link 
@@ -135,6 +144,17 @@
                 <i class="fas fa-code" />
                 <span>CodeNova</span>
               </router-link>
+              <!-- Earthworm 英语学习外链 -->
+              <a
+                href="http://earthworm.aistudy.icu/"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="mobile-nav-link"
+                @click="isMobileMenuOpen = false"
+              >
+                <i class="fas fa-worm" />
+                <span>Earthworm</span>
+              </a>
               <div class="mobile-menu-divider" />
               <template v-if="!authStore.isAuthenticated">
                 <router-link 
@@ -889,16 +909,25 @@ onMounted(() => {
 }
 
 .links-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  display: flex;
+  overflow-x: auto;
   gap: 1.5rem;
-  padding: 0.5rem 0;
+  padding: 1rem 0.5rem;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+}
+
+.links-grid::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Edge */
 }
 
 .link-card {
+  flex: 0 0 240px; /* 固定宽度 */
+  width: 240px;
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
-  border-radius: 16px;
+  border-radius: 12px;
   overflow: hidden;
   cursor: pointer;
   transition: all 0.3s;
@@ -907,14 +936,14 @@ onMounted(() => {
 }
 
 .link-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
   border-color: var(--primary-color);
 }
 
 .link-image {
   width: 100%;
-  height: 140px;
+  height: 120px;
   overflow: hidden;
   background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
 }
@@ -931,35 +960,39 @@ onMounted(() => {
 }
 
 .link-content {
-  padding: 1rem;
+  padding: 0.8rem;
 }
 
 .link-title {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.4rem;
   line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .link-description {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: var(--text-secondary);
-  line-height: 1.5;
-  margin-bottom: 0.75rem;
+  line-height: 1.4;
+  margin-bottom: 0.6rem;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  height: 2.4em;
 }
 
 .link-meta {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 0.75rem;
+  padding-top: 0.6rem;
   border-top: 1px solid var(--border-color);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: var(--text-tertiary);
 }
 
@@ -1013,12 +1046,13 @@ onMounted(() => {
   }
 
   .links-grid {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 1rem;
+    padding: 0.5rem 0.25rem;
   }
 
   .link-card {
-    max-width: none;
+    flex: 0 0 200px;
+    width: 200px;
     margin: 0;
   }
 }
