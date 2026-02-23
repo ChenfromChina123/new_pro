@@ -228,8 +228,8 @@ if [ ! -d "vue-app" ]; then
     exit 1
 fi
 
-# 设置JVM参数
-JVM_OPTS="-Xms256m -Xmx512m -XX:MetaspaceSize=128m -XX:MaxMetaspaceSize=256m -XX:+UseG1GC"
+# 设置JVM参数 (优化内存使用)
+JVM_OPTS="-Xms128m -Xmx256m -XX:MetaspaceSize=64m -XX:MaxMetaspaceSize=128m -XX:+UseG1GC -XX:+UseStringDeduplication -Dfile.encoding=UTF-8 -Duser.timezone=Asia/Shanghai"
 
 # 启动后端服务
 print_info "启动后端服务 (Spring Boot)..."
@@ -240,10 +240,33 @@ cd aispring
 # 创建日志目录
 mkdir -p logs
 
-# 启动Spring Boot应用 (在后台运行)
-print_info "执行命令: $MAVEN_CMD org.springframework.boot:spring-boot-maven-plugin:run"
-export MAVEN_OPTS="-Xms256m -Xmx512m -XX:MetaspaceSize=128m -XX:MaxMetaspaceSize=256m -XX:+UseG1GC -Dfile.encoding=UTF-8 -Duser.timezone=Asia/Shanghai"
-nohup $MAVEN_CMD org.springframework.boot:spring-boot-maven-plugin:run -Dserver.port=5000 > ../backend.log 2>&1 &
+# 查找最新的JAR文件
+JAR_FILE=$(find target -maxdepth 1 -name "*.jar" -type f ! -name "*-sources.jar" ! -name "*-javadoc.jar" 2>/dev/null | head -n 1)
+
+# 如果没有JAR文件，先编译
+if [ -z "$JAR_FILE" ]; then
+    print_info "未找到JAR文件，正在编译项目..."
+    $MAVEN_CMD clean package -DskipTests -q
+    if [ $? -ne 0 ]; then
+        print_error "项目编译失败"
+        cd ..
+        exit 1
+    fi
+    JAR_FILE=$(find target -maxdepth 1 -name "*.jar" -type f ! -name "*-sources.jar" ! -name "*-javadoc.jar" 2>/dev/null | head -n 1)
+    print_success "项目编译完成"
+fi
+
+if [ -z "$JAR_FILE" ]; then
+    print_error "编译后仍未找到JAR文件"
+    cd ..
+    exit 1
+fi
+
+print_info "使用JAR文件: $JAR_FILE"
+print_info "内存配置: 128MB-256MB"
+
+# 启动Spring Boot应用 (使用JAR方式，更省内存)
+nohup java $JVM_OPTS -jar "$JAR_FILE" --server.port=5000 > ../backend.log 2>&1 &
 BACKEND_PID=$!
 
 if [ $BACKEND_PID ]; then
