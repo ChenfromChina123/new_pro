@@ -211,7 +211,7 @@ fi
 JVM_OPTS="-Xms256m -Xmx512m -XX:MetaspaceSize=128m -XX:MaxMetaspaceSize=256m -XX:+UseG1GC -Dfile.encoding=UTF-8 -Duser.timezone=Asia/Shanghai"
 
 # 设置Spring Boot参数
-SPRING_OPTS="--server.port=5000 --logging.level.com.aispring=INFO --logging.file.name=logs/backend.log"
+SPRING_OPTS="--server.port=5000 --logging.level.com.aispring=INFO"
 
 # 启动后端服务
 print_info "启动后端服务 (Spring Boot)..."
@@ -223,20 +223,54 @@ cd aispring
 mkdir -p logs
 
 # 启动Spring Boot应用 (在后台运行)
-echo "启动Spring Boot应用..."
+print_info "执行命令: $MAVEN_CMD spring-boot:run"
 nohup $MAVEN_CMD spring-boot:run -Dspring-boot.run.jvmArguments="$JVM_OPTS" $SPRING_OPTS > ../backend.log 2>&1 &
 BACKEND_PID=$!
 
 if [ $BACKEND_PID ]; then
     print_success "后端服务已启动，PID: $BACKEND_PID"
-    print_info "日志文件: ../backend.log"
+    print_info "日志文件: backend.log"
+    print_info "等待后端初始化..."
+    sleep 5
+    # 检查进程是否还在运行
+    if ! kill -0 $BACKEND_PID 2>/dev/null; then
+        print_error "后端服务启动失败，请查看 backend.log"
+        print_info "最后20行日志:"
+        tail -n 20 ../backend.log
+        cd ..
+        exit 1
+    fi
 else
     print_error "后端服务启动失败"
+    cd ..
+    exit 1
 fi
 
 cd ..
 
-sleep 8
+# 等待后端服务启动
+print_info "等待后端服务就绪..."
+max_wait=60
+wait_count=0
+while [ $wait_count -lt $max_wait ]; do
+    if lsof -i:5000 >/dev/null 2>&1; then
+        print_success "后端服务已就绪 (端口5000已监听)"
+        break
+    fi
+    sleep 1
+    wait_count=$((wait_count + 1))
+    if [ $((wait_count % 10)) -eq 0 ]; then
+        print_info "已等待 ${wait_count} 秒..."
+    fi
+done
+
+if [ $wait_count -ge $max_wait ]; then
+    print_warning "后端服务启动超时，请检查日志"
+    print_info "最后30行日志:"
+    tail -n 30 backend.log
+fi
+
+sleep 2
 
 # 启动前端服务
 print_info "启动前端服务 (Vue.js)..."
@@ -265,12 +299,33 @@ FRONTEND_PID=$!
 
 if [ $FRONTEND_PID ]; then
     print_success "前端服务已启动，PID: $FRONTEND_PID"
-    print_info "日志文件: ../frontend.log"
+    print_info "日志文件: frontend.log"
 else
     print_error "前端服务启动失败"
+    cd ..
+    exit 1
 fi
 
 cd ..
+
+# 等待前端服务启动
+print_info "等待前端服务就绪..."
+max_wait=30
+wait_count=0
+while [ $wait_count -lt $max_wait ]; do
+    if lsof -i:3000 >/dev/null 2>&1; then
+        print_success "前端服务已就绪 (端口3000已监听)"
+        break
+    fi
+    sleep 1
+    wait_count=$((wait_count + 1))
+done
+
+if [ $wait_count -ge $max_wait ]; then
+    print_warning "前端服务启动超时，请检查日志"
+    print_info "最后30行日志:"
+    tail -n 30 frontend.log
+fi
 
 echo
 print_title "服务启动完成！"
