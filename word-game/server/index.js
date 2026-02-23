@@ -288,12 +288,13 @@ app.post("/api/progress/migrate", (req, res) => {
 
 // ── 生产环境：托管前端静态资源（Nginx 反代 earthworm.aistudy.icu 到本服务时使用）────
 // 构建时 base 为 /word-game/，故静态资源挂在 /word-game
+// 注意：Express 5 / path-to-regexp 不支持匿名 "/word-game/*"，改用正则避免 PathError
 const distPath = join(__dirname, "..", "dist");
 if (existsSync(distPath)) {
   app.get("/", (req, res) => res.redirect(302, "/word-game/"));
   app.use("/word-game", express.static(distPath));
   app.get("/word-game", (req, res) => res.redirect(301, "/word-game/"));
-  app.get("/word-game/*", (req, res) => res.sendFile(join(distPath, "index.html")));
+  app.get(/^\/word-game\/.+/, (req, res) => res.sendFile(join(distPath, "index.html")));
 }
 
 // ── 启动 ──────────────────────────────────────────────────────────────────────
