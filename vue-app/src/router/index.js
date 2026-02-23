@@ -33,6 +33,12 @@ const router = createRouter({
           meta: { requiresAuth: true }
         },
         {
+          path: 'word-game',
+          name: 'WordGame',
+          component: () => import('@/views/WordGameView.vue'),
+          meta: { requiresAuth: false, allowGuest: true }
+        },
+        {
           path: 'public-files',
           name: 'PublicFiles',
           component: () => import('@/views/PublicFilesView.vue'),

@@ -85,6 +85,14 @@
         <span>语言学习</span>
       </router-link>
       <router-link
+        to="/word-game"
+        class="nav-item"
+        active-class="active"
+      >
+        <i class="fas fa-spell-check"></i>
+        <span>单词记忆</span>
+      </router-link>
+      <router-link
         v-if="authStore.isAuthenticated"
         to="/requirement"
         class="nav-item"
@@ -101,16 +109,6 @@
         <i class="fas fa-folder-open"></i>
         <span>公共资源</span>
       </router-link>
-      <!-- Earthworm 英语学习外链 -->
-      <a
-        href="http://earthworm.aistudy.icu/"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="nav-item"
-      >
-        <i class="fas fa-worm"></i>
-        <span>Earthworm</span>
-      </a>
       <router-link
         v-if="authStore.isAdmin"
         to="/admin"

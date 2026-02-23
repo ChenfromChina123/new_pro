@@ -13,7 +13,8 @@ import Database from "better-sqlite3";
 
 const require = createRequire(import.meta.url);
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const PORT = 5201;
+/** 端口：生产环境 Nginx 反代 earthworm.aistudy.icu 到 5010，此处通过环境变量 PORT 配置 */
+const PORT = parseInt(process.env.PORT || "5201", 10);
 
 // ── 数据库初始化 ──────────────────────────────────────────────────────────────
 
@@ -284,6 +285,16 @@ app.post("/api/progress/migrate", (req, res) => {
   migrate();
   res.json({ success: true, migrated, message: `已迁移 ${migrated} 条游客进度` });
 });
+
+// ── 生产环境：托管前端静态资源（Nginx 反代 earthworm.aistudy.icu 到本服务时使用）────
+// 构建时 base 为 /word-game/，故静态资源挂在 /word-game
+const distPath = join(__dirname, "..", "dist");
+if (existsSync(distPath)) {
+  app.get("/", (req, res) => res.redirect(302, "/word-game/"));
+  app.use("/word-game", express.static(distPath));
+  app.get("/word-game", (req, res) => res.redirect(301, "/word-game/"));
+  app.get("/word-game/*", (req, res) => res.sendFile(join(distPath, "index.html")));
+}
 
 // ── 启动 ──────────────────────────────────────────────────────────────────────
 
