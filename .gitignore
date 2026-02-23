@@ -10,6 +10,10 @@ logs/
 aispring/cloud_disk/
 aispring/logs/
 
+# SQLite 运行时文件（word-game 进度库）
+word-game/server/*.db-shm
+word-game/server/*.db-wal
+
 # Dependency bundles / caches
 aispring/deps/
 **/node_modules/
