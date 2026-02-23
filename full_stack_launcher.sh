@@ -225,10 +225,7 @@ if [ ! -d "vue-app" ]; then
 fi
 
 # 设置JVM参数
-JVM_OPTS="-Xms256m -Xmx512m -XX:MetaspaceSize=128m -XX:MaxMetaspaceSize=256m -XX:+UseG1GC -Dfile.encoding=UTF-8 -Duser.timezone=Asia/Shanghai"
-
-# 设置Spring Boot参数
-SPRING_OPTS="--server.port=5000 --logging.level.com.aispring=INFO"
+JVM_OPTS="-Xms256m -Xmx512m -XX:MetaspaceSize=128m -XX:MaxMetaspaceSize=256m -XX:+UseG1GC"
 
 # 启动后端服务
 print_info "启动后端服务 (Spring Boot)..."
@@ -241,7 +238,8 @@ mkdir -p logs
 
 # 启动Spring Boot应用 (在后台运行)
 print_info "执行命令: $MAVEN_CMD spring-boot:run"
-nohup $MAVEN_CMD spring-boot:run -Dspring-boot.run.jvmArguments="$JVM_OPTS" $SPRING_OPTS > ../backend.log 2>&1 &
+export MAVEN_OPTS="-Xms256m -Xmx512m -XX:MetaspaceSize=128m -XX:MaxMetaspaceSize=256m -XX:+UseG1GC -Dfile.encoding=UTF-8 -Duser.timezone=Asia/Shanghai"
+nohup $MAVEN_CMD spring-boot:run -Dserver.port=5000 > ../backend.log 2>&1 &
 BACKEND_PID=$!
 
 if [ $BACKEND_PID ]; then
