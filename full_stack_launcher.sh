@@ -231,11 +231,58 @@ fi
 # 设置JVM参数 (优化内存使用)
 JVM_OPTS="-Xms128m -Xmx256m -XX:MetaspaceSize=64m -XX:MaxMetaspaceSize=128m -XX:+UseG1GC -XX:+UseStringDeduplication -Dfile.encoding=UTF-8 -Duser.timezone=Asia/Shanghai"
 
+# 检测生产环境并配置数据库
+# 生产环境数据库配置
+DB_NAME="aispring"
+DB_USER="aispring"
+DB_PASSWORD="xGDswMCdHhsajfxF"
+DB_HOST="localhost"
+DB_PORT="3306"
+SPRING_PROFILES=""
+
+# 检测操作系统类型
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    print_success "检测到Linux生产环境"
+    print_info "配置生产数据库: $DB_USER@$DB_HOST:$DB_PORT/$DB_NAME"
+    
+    # 设置数据库环境变量
+    export SPRING_DATASOURCE_URL="jdbc:mysql://$DB_HOST:$DB_PORT/$DB_NAME?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true"
+    export SPRING_DATASOURCE_USERNAME="$DB_USER"
+    export SPRING_DATASOURCE_PASSWORD="$DB_PASSWORD"
+    
+    # 添加prod profile参数
+    SPRING_PROFILES="--spring.profiles.active=prod"
+else
+    print_info "检测到非Linux环境，使用默认配置"
+    SPRING_PROFILES=""
+fi
+
 # 启动后端服务
 print_info "启动后端服务 (Spring Boot)..."
 
 # 进入后端目录
 cd aispring
+
+# 创建生产配置文件
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    mkdir -p src/main/resources
+    cat > src/main/resources/application-prod.yml << EOF
+spring:
+  datasource:
+    url: jdbc:mysql://$DB_HOST:$DB_PORT/$DB_NAME?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: $DB_USER
+    password: $DB_PASSWORD
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+EOF
+    print_success "创建生产配置文件 application-prod.yml"
+fi
 
 # 创建日志目录
 mkdir -p logs
@@ -266,7 +313,7 @@ print_info "使用JAR文件: $JAR_FILE"
 print_info "内存配置: 128MB-256MB"
 
 # 启动Spring Boot应用 (使用JAR方式，更省内存)
-nohup java $JVM_OPTS -jar "$JAR_FILE" --server.port=5000 > ../backend.log 2>&1 &
+nohup java $JVM_OPTS -jar "$JAR_FILE" --server.port=5000 $SPRING_PROFILES > ../backend.log 2>&1 &
 BACKEND_PID=$!
 
 if [ $BACKEND_PID ]; then
