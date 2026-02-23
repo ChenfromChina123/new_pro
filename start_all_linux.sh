@@ -21,10 +21,12 @@ BACKEND_PORT=5000
 FRONTEND_PORT=3000
 WORD_GAME_PORT=5010
 
-# ---------- 数据库（可按需改为环境变量）----------
+# ---------- 数据库（与宝塔/MySQL 一致，可按需改为环境变量）----------
+export DB_HOST="${DB_HOST:-127.0.0.1}"
+export DB_PORT="${DB_PORT:-3306}"
+export DB_NAME="${DB_NAME:-aispring}"
 export DB_USERNAME="${DB_USERNAME:-aispring}"
 export DB_PASSWORD="${DB_PASSWORD:-xGDswMCdHhsajfxF}"
-export DB_NAME="${DB_NAME:-aispring}"
 
 # ---------- 辅助函数 ----------
 # 获取占用指定端口的进程 PID（取第一个）
@@ -45,6 +47,19 @@ kill_port_if_used() {
     fi
     echo "✅ 已释放端口 $port"
   fi
+}
+# 等待端口就绪（用于确认后端/服务真正监听），超时则提示查日志
+# 参数: 端口 服务名 超时秒数
+wait_for_port() {
+  local port="$1" name="${2:-端口 $port}" timeout="${3:-60}" t=0
+  while [ $t -lt "$timeout" ]; do
+    [ -n "$(get_port_pid "$port")" ] && return 0
+    sleep 2
+    t=$((t + 2))
+    echo "    等待 $name 监听端口 $port ... ${t}s"
+  done
+  echo "❌ $name 在 ${timeout}s 内未就绪，请查看 backend.log 排查（如数据库、Redis 连接等）"
+  return 1
 }
 ensure_dir() {
   [ -d "$1" ] || { echo "❌ 错误: 找不到目录 $1"; exit 1; }
@@ -120,7 +135,12 @@ else
   JVM_OPTS="$JVM_OPTS -XX:+UseG1GC -Dspring.profiles.active=prod"
   nohup java $JVM_OPTS -jar "$JAR_FILE" > ../backend.log 2>&1 &
   BACKEND_PID=$!
-  echo "✅ 后端已启动（端口 $BACKEND_PORT, PID: $BACKEND_PID）"
+  echo "✅ 后端进程已启动（PID: $BACKEND_PID），等待端口 $BACKEND_PORT 就绪..."
+  if wait_for_port "$BACKEND_PORT" "主站后端" 90; then
+    echo "✅ 后端已就绪（端口 $BACKEND_PORT）"
+  else
+    echo "⚠️ 后端可能启动失败，请执行: tail -100 backend.log"
+  fi
   cd "$PROJECT_ROOT"
 fi
 
