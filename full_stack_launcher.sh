@@ -5,6 +5,23 @@
 #  包含环境检测、代码更新、服务启动功能
 # ===========================================
 
+# 获取脚本路径
+SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+
+# 检查并修复执行权限
+if [ ! -x "$SCRIPT_PATH" ]; then
+    echo "检测到脚本缺少执行权限，正在自动修复..."
+    chmod +x "$SCRIPT_PATH"
+    if [ $? -eq 0 ]; then
+        echo "权限修复成功，重新启动脚本..."
+        exec "$SCRIPT_PATH" "$@"
+    else
+        echo "权限修复失败，请手动执行: chmod +x $SCRIPT_PATH"
+        echo "或者使用命令: bash $SCRIPT_PATH"
+        exit 1
+    fi
+fi
+
 # 设置颜色输出
 RED='\033[0;31m'
 GREEN='\033[0;32m'
