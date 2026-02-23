@@ -463,14 +463,30 @@ read -p "请选择操作 (1-6): " choice
 
 case $choice in
     1)
-        print_info "显示后端实时日志 (Ctrl+C 退出)..."
-        print_info "按 Ctrl+C 返回菜单"
-        tail -f backend.log || true
+        print_info "显示后端实时日志 (按 Q 或 Ctrl+C 退出)..."
+        print_info "按 Q 键返回菜单"
+        tail -f backend.log &
+        TAIL_PID=$!
+        while true; do
+            read -n 1 -t 1 key
+            if [[ "$key" == "q" ]] || [[ "$key" == "Q" ]]; then
+                kill $TAIL_PID 2>/dev/null
+                break
+            fi
+        done
         ;;
     2)
-        print_info "显示前端实时日志 (Ctrl+C 退出)..."
-        print_info "按 Ctrl+C 返回菜单"
-        tail -f frontend.log || true
+        print_info "显示前端实时日志 (按 Q 或 Ctrl+C 退出)..."
+        print_info "按 Q 键返回菜单"
+        tail -f frontend.log &
+        TAIL_PID=$!
+        while true; do
+            read -n 1 -t 1 key
+            if [[ "$key" == "q" ]] || [[ "$key" == "Q" ]]; then
+                kill $TAIL_PID 2>/dev/null
+                break
+            fi
+        done
         ;;
     3)
         print_info "显示后端最后50行日志..."
