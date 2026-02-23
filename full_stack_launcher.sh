@@ -447,6 +447,8 @@ print_info "  - 使用 'tail -f frontend.log' 查看前端实时日志"
 print_info "  - 首次启动可能需要等待30-60秒"
 print_title ""
 
+# 快捷操作菜单循环
+while true; do
 echo
 echo "=========================================="
 echo "  快捷操作菜单"
@@ -459,12 +461,15 @@ echo "  5) 停止所有服务"
 echo "  6) 退出"
 echo "=========================================="
 echo
+echo "操作说明: 查看日志时按 Q 返回菜单，按 W 退出程序"
+echo
 read -p "请选择操作 (1-6): " choice
+
+EXIT_LOOP=0
 
 case $choice in
     1)
-        print_info "显示后端实时日志 (按 Q 或 Ctrl+C 退出)..."
-        print_info "按 Q 键返回菜单"
+        print_info "显示后端实时日志 (按 Q 返回菜单，按 W 退出)..."
         tail -f backend.log &
         TAIL_PID=$!
         while true; do
@@ -472,18 +477,25 @@ case $choice in
             if [[ "$key" == "q" ]] || [[ "$key" == "Q" ]]; then
                 kill $TAIL_PID 2>/dev/null
                 break
+            elif [[ "$key" == "w" ]] || [[ "$key" == "W" ]]; then
+                kill $TAIL_PID 2>/dev/null
+                EXIT_LOOP=1
+                break
             fi
         done
         ;;
     2)
-        print_info "显示前端实时日志 (按 Q 或 Ctrl+C 退出)..."
-        print_info "按 Q 键返回菜单"
+        print_info "显示前端实时日志 (按 Q 返回菜单，按 W 退出)..."
         tail -f frontend.log &
         TAIL_PID=$!
         while true; do
             read -n 1 -t 1 key
             if [[ "$key" == "q" ]] || [[ "$key" == "Q" ]]; then
                 kill $TAIL_PID 2>/dev/null
+                break
+            elif [[ "$key" == "w" ]] || [[ "$key" == "W" ]]; then
+                kill $TAIL_PID 2>/dev/null
+                EXIT_LOOP=1
                 break
             fi
         done
@@ -510,12 +522,17 @@ case $choice in
         print_info "所有服务已停止"
         ;;
     6)
+        EXIT_LOOP=1
         print_info "服务仍在后台运行"
         print_info "使用以下命令查看日志:"
         print_info "  tail -f backend.log"
         print_info "  tail -f frontend.log"
         ;;
     *)
-        print_info "无效选择，服务仍在后台运行"
+        print_info "无效选择"
         ;;
 esac
+
+if [ $EXIT_LOOP -eq 1 ]; then
+    break
+fi
