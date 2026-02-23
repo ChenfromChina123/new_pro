@@ -170,17 +170,35 @@ else
 fi
 
 # ========== 5b. 启动 word-game (5010，earthworm.aistudy.icu 反代) ==========
+WORD_GAME_LOG="$PROJECT_ROOT/word-game.log"
 WORD_PID=$(get_port_pid "$WORD_GAME_PORT")
 if [ -n "$WORD_PID" ]; then
   echo "✅ 单词记忆(word-game)已在运行（端口 $WORD_GAME_PORT, PID: $WORD_PID）"
 else
+  command -v node >/dev/null 2>&1 || { echo "❌ 未找到 node 命令，无法启动 word-game，请先安装 Node.js"; exit 1; }
   ensure_dir "word-game/dist"
   ensure_dir "word-game/server"
-  (cd word-game && PORT=$WORD_GAME_PORT nohup node server/index.js >> ../word-game.log 2>&1 &)
-  sleep 1
-  WORD_PID=$(get_port_pid "$WORD_GAME_PORT")
-  echo "✅ 单词记忆(word-game)已启动（端口 $WORD_GAME_PORT, PID: $WORD_PID）"
-  echo "   生产接口域名: https://earthworm.aistudy.icu"
+  echo "    正在启动 word-game（端口 $WORD_GAME_PORT，日志: word-game.log）..."
+  echo "    node 路径: $(command -v node)"
+  # 使用绝对路径写日志；在主 shell 中 export PORT 再启动，确保 node 收到环境变量
+  export PORT=$WORD_GAME_PORT
+  (cd "$PROJECT_ROOT/word-game" && nohup node server/index.js >> "$WORD_GAME_LOG" 2>&1 &)
+  WORD_LAUNCH_PID=$!
+  unset PORT
+  echo "    word-game 进程已 fork (PID: $WORD_LAUNCH_PID)，等待端口 $WORD_GAME_PORT 就绪..."
+  if wait_for_port "$WORD_GAME_PORT" "word-game" 20; then
+    WORD_PID=$(get_port_pid "$WORD_GAME_PORT")
+    echo "✅ 单词记忆(word-game)已就绪（端口 $WORD_GAME_PORT, PID: $WORD_PID）"
+    echo "   生产接口域名: https://earthworm.aistudy.icu"
+    echo "   日志: $WORD_GAME_LOG"
+  else
+    echo "❌ word-game 在 20s 内未监听端口 $WORD_GAME_PORT，请查看日志:"
+    echo "--- word-game.log 最后 30 行 ---"
+    tail -30 "$WORD_GAME_LOG" 2>/dev/null || echo "(无日志或文件不存在)"
+    echo "---"
+    WORD_PID=$(get_port_pid "$WORD_GAME_PORT")
+    [ -z "$WORD_PID" ] && echo "   建议: 检查 node 版本、word-game/node_modules 是否已安装，或执行: node word-game/server/index.js 查看报错"
+  fi
 fi
 
 # ========== 汇总 ==========
