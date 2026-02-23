@@ -536,3 +536,5 @@ esac
 if [ $EXIT_LOOP -eq 1 ]; then
     break
 fi
+
+done
