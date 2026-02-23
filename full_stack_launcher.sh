@@ -294,21 +294,62 @@ echo
 print_info "操作提示:"
 print_info "  - 使用 'kill $BACKEND_PID' 停止后端服务"
 print_info "  - 使用 'kill $FRONTEND_PID' 停止前端服务"
-print_info "  - 服务日志可在对应日志文件中查看"
+print_info "  - 使用 'tail -f backend.log' 查看后端实时日志"
+print_info "  - 使用 'tail -f frontend.log' 查看前端实时日志"
 print_info "  - 首次启动可能需要等待30-60秒"
 print_title ""
 
 echo
-read -p "按Enter键退出..."
-
-# 可选：询问是否要停止服务
+echo "=========================================="
+echo "  快捷操作菜单"
+echo "=========================================="
+echo "  1) 查看后端日志 (实时)"
+echo "  2) 查看前端日志 (实时)"
+echo "  3) 查看后端日志 (最后50行)"
+echo "  4) 查看前端日志 (最后50行)"
+echo "  5) 停止所有服务"
+echo "  6) 退出"
+echo "=========================================="
 echo
-read -p "是否要停止所有服务? (y/N): " stop_services
-if [[ $stop_services =~ ^[Yy]$ ]]; then
-    if kill $BACKEND_PID 2>/dev/null; then
-        print_info "后端服务已停止 (PID: $BACKEND_PID)"
-    fi
-    if kill $FRONTEND_PID 2>/dev/null; then
-        print_info "前端服务已停止 (PID: $FRONTEND_PID)"
-    fi
-fi
+read -p "请选择操作 (1-6): " choice
+
+case $choice in
+    1)
+        print_info "显示后端实时日志 (Ctrl+C 退出)..."
+        tail -f backend.log
+        ;;
+    2)
+        print_info "显示前端实时日志 (Ctrl+C 退出)..."
+        tail -f frontend.log
+        ;;
+    3)
+        print_info "显示后端最后50行日志..."
+        tail -n 50 backend.log
+        echo
+        read -p "按Enter键继续..."
+        ;;
+    4)
+        print_info "显示前端最后50行日志..."
+        tail -n 50 frontend.log
+        echo
+        read -p "按Enter键继续..."
+        ;;
+    5)
+        if kill $BACKEND_PID 2>/dev/null; then
+            print_success "后端服务已停止 (PID: $BACKEND_PID)"
+        fi
+        if kill $FRONTEND_PID 2>/dev/null; then
+            print_success "前端服务已停止 (PID: $FRONTEND_PID)"
+        fi
+        print_info "所有服务已停止"
+        ;;
+    6)
+        print_info "服务仍在后台运行"
+        print_info "使用以下命令查看日志:"
+        print_info "  tail -f backend.log"
+        print_info "  tail -f frontend.log"
+        ;;
+    *)
+        print_info "无效选择，服务仍在后台运行"
+        ;;
+esac
