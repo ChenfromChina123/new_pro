@@ -237,9 +237,9 @@ cd aispring
 mkdir -p logs
 
 # 启动Spring Boot应用 (在后台运行)
-print_info "执行命令: $MAVEN_CMD spring-boot:run"
+print_info "执行命令: $MAVEN_CMD org.springframework.boot:spring-boot-maven-plugin:run"
 export MAVEN_OPTS="-Xms256m -Xmx512m -XX:MetaspaceSize=128m -XX:MaxMetaspaceSize=256m -XX:+UseG1GC -Dfile.encoding=UTF-8 -Duser.timezone=Asia/Shanghai"
-nohup $MAVEN_CMD spring-boot:run -Dserver.port=5000 > ../backend.log 2>&1 &
+nohup $MAVEN_CMD org.springframework.boot:spring-boot-maven-plugin:run -Dserver.port=5000 > ../backend.log 2>&1 &
 BACKEND_PID=$!
 
 if [ $BACKEND_PID ]; then
