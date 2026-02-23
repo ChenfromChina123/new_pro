@@ -13,11 +13,13 @@ spring:
 
   # 生产环境 JPA 配置
   jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect
     hibernate:
       ddl-auto: none # 生产环境禁用自动更新/校验，由 Flyway 管理表结构
     show-sql: false
     properties:
       hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect  # 显式指定，避免 Unable to determine Dialect without JDBC metadata
         format_sql: false
 
   # 邮件配置 (如果生产环境有不同配置可在此覆盖)

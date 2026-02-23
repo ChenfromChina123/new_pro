@@ -140,15 +140,21 @@ else
   [ -z "$JAR_FILE" ] && { echo "❌ 未找到 aispring JAR"; exit 1; }
   JVM_OPTS="-Xms128m -Xmx256m -XX:MetaspaceSize=64m -XX:MaxMetaspaceSize=128m"
   JVM_OPTS="$JVM_OPTS -XX:+UseG1GC -Dspring.profiles.active=prod"
-  nohup java $JVM_OPTS -jar "$JAR_FILE" > ../backend.log 2>&1 &
+  # 显式传入数据库环境变量，确保 JAR 内 Spring 能解析 datasource.url
+  nohup env DB_HOST="$DB_HOST" DB_PORT="$DB_PORT" DB_NAME="$DB_NAME" DB_USERNAME="$DB_USERNAME" DB_PASSWORD="$DB_PASSWORD" java $JVM_OPTS -jar "$JAR_FILE" > ../backend.log 2>&1 &
   BACKEND_PID=$!
-  echo "✅ 后端进程已启动（PID: $BACKEND_PID），等待端口 $BACKEND_PORT 就绪..."
-  if wait_for_port "$BACKEND_PORT" "主站后端" 90; then
+  cd "$PROJECT_ROOT"
+  echo "✅ 后端进程已启动（PID: $BACKEND_PID），等待端口 $BACKEND_PORT 就绪（下方为实时后端日志）..."
+  tail -f backend.log &
+  TAIL_PID=$!
+  wait_for_port "$BACKEND_PORT" "主站后端" 90
+  WPR=$?
+  kill $TAIL_PID 2>/dev/null || true
+  if [ $WPR -eq 0 ]; then
     echo "✅ 后端已就绪（端口 $BACKEND_PORT）"
   else
     echo "⚠️ 后端可能启动失败，请执行: tail -100 backend.log"
   fi
-  cd "$PROJECT_ROOT"
 fi
 
 # ========== 5a. 启动主站前端 (3000) ==========
