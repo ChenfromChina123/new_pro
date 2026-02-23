@@ -74,22 +74,29 @@ echo ""
 echo "【1/5】Git 拉取最新代码"
 git pull || echo "⚠️  git pull 失败，继续使用本地代码"
 
-# ========== 2. 安装依赖 ==========
+# ========== 2. 安装依赖（已有 node_modules 则跳过，避免每次拉取）==========
 echo ""
 echo "【2/5】安装依赖"
 
 ensure_dir "vue-app"
 cd vue-app
-[ ! -d "node_modules" ] && npm install
+if [ -d "node_modules" ]; then
+  echo "    vue-app 依赖已存在，跳过 npm install"
+else
+  npm install
+fi
 cd "$PROJECT_ROOT"
 
 ensure_dir "word-game"
 cd word-game
-[ ! -d "node_modules" ] && npm install
+if [ -d "node_modules" ]; then
+  echo "    word-game 依赖已存在，跳过 npm install"
+else
+  npm install
+fi
 cd "$PROJECT_ROOT"
 
 ensure_dir "aispring"
-# Maven 依赖在打包时解析即可
 cd "$PROJECT_ROOT"
 
 # ========== 3. 构建 ==========
@@ -107,9 +114,9 @@ export VITE_WORD_GAME_API_BASE="https://earthworm.aistudy.icu/api"
 npm run build
 cd "$PROJECT_ROOT"
 
-# 后端 JAR（生产模式）
+# 后端 JAR（生产模式，不 clean 以复用依赖与增量构建）
 cd aispring
-mvn clean package -DskipTests -q
+mvn package -DskipTests -q
 cd "$PROJECT_ROOT"
 
 # ========== 4. 检测端口冲突并释放 ==========
