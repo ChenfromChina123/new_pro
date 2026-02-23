@@ -245,7 +245,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     print_success "检测到Linux生产环境"
     print_info "配置生产数据库: $DB_USER@$DB_HOST:$DB_PORT/$DB_NAME"
     
-    # 设置数据库环境变量
+    # 使用环境变量传递密码（更安全，不在配置文件中明文存储）
     export SPRING_DATASOURCE_URL="jdbc:mysql://$DB_HOST:$DB_PORT/$DB_NAME?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true"
     export SPRING_DATASOURCE_USERNAME="$DB_USER"
     export SPRING_DATASOURCE_PASSWORD="$DB_PASSWORD"
@@ -263,19 +263,15 @@ print_info "启动后端服务 (Spring Boot)..."
 # 进入后端目录
 cd aispring
 
-# 创建生产配置文件 (禁用Jasypt加密，使用明文密码)
+# 创建生产配置文件 (使用环境变量，避免密码明文存储)
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     mkdir -p src/main/resources
     cat > src/main/resources/application-prod.yml << EOF
 spring:
-  # 禁用Jasypt加密配置
-  jasypt:
-    encryptor:
-      enabled: false
   datasource:
-    url: jdbc:mysql://$DB_HOST:$DB_PORT/$DB_NAME?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    username: $DB_USER
-    password: $DB_PASSWORD
+    url: \${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/aispring?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
+    username: \${SPRING_DATASOURCE_USERNAME:aispring}
+    password: \${SPRING_DATASOURCE_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       minimum-idle: 1
@@ -289,7 +285,7 @@ spring:
   flyway:
     enabled: false
 EOF
-    print_success "创建生产配置文件 application-prod.yml (明文密码)"
+    print_success "创建生产配置文件 application-prod.yml (环境变量方式)"
 fi
 
 # 创建日志目录
