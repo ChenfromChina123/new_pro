@@ -263,25 +263,33 @@ print_info "启动后端服务 (Spring Boot)..."
 # 进入后端目录
 cd aispring
 
-# 创建生产配置文件
+# 创建生产配置文件 (禁用Jasypt加密，使用明文密码)
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     mkdir -p src/main/resources
     cat > src/main/resources/application-prod.yml << EOF
 spring:
+  # 禁用Jasypt加密配置
+  jasypt:
+    encryptor:
+      enabled: false
   datasource:
     url: jdbc:mysql://$DB_HOST:$DB_PORT/$DB_NAME?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: $DB_USER
     password: $DB_PASSWORD
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      minimum-idle: 1
+      maximum-pool-size: 5
+      idle-timeout: 600000
+      connection-timeout: 30000
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: false
   flyway:
-    enabled: true
-    baseline-on-migrate: true
+    enabled: false
 EOF
-    print_success "创建生产配置文件 application-prod.yml"
+    print_success "创建生产配置文件 application-prod.yml (明文密码)"
 fi
 
 # 创建日志目录
