@@ -1,0 +1,1728 @@
+<template>
+  <div class="landing-page">
+    <!-- 导航栏 -->
+    <nav 
+      class="landing-nav" 
+      :class="{ 'scrolled': isScrolled }"
+    >
+      <div class="nav-container">
+        <div 
+          class="logo" 
+          @click="router.push('/')"
+        >
+          <i class="fas fa-brain" />
+          <span>AI 智能学习助手</span>
+        </div>
+        <div class="nav-links">
+          <router-link 
+            to="/chat" 
+            class="nav-link"
+          >
+            AI 问答
+          </router-link>
+          <router-link 
+            to="/public-files" 
+            class="nav-link"
+          >
+            公共资源
+          </router-link>
+          <router-link 
+            to="/links" 
+            class="nav-link"
+          >
+            资源推荐
+          </router-link>
+          <router-link 
+            to="/codenova" 
+            class="nav-link"
+          >
+            CodeNova
+          </router-link>
+          <!-- Earthworm 英语学习外链 -->
+          <a
+            href="http://earthworm.aistudy.icu/"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="nav-link"
+          >
+            Earthworm
+          </a>
+          <div class="nav-actions">
+            <template v-if="!authStore.isAuthenticated">
+              <router-link 
+                to="/login" 
+                class="btn-login"
+              >
+                登录
+              </router-link>
+              <router-link 
+                to="/register" 
+                class="btn-register"
+              >
+                立即加入
+              </router-link>
+            </template>
+            <template v-else>
+              <router-link 
+                to="/chat" 
+                class="btn-register"
+              >
+                进入工作台
+              </router-link>
+            </template>
+            <button 
+              class="theme-toggle-btn" 
+              @click="themeStore.toggleDarkMode()"
+            >
+              <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" />
+            </button>
+          </div>
+        </div>
+
+        <!-- 移动端菜单按钮 -->
+        <button 
+          class="mobile-menu-btn"
+          @click="isMobileMenuOpen = !isMobileMenuOpen"
+        >
+          <i :class="isMobileMenuOpen ? 'fas fa-times' : 'fas fa-bars'" />
+        </button>
+      </div>
+
+    <!-- 移动端侧边栏菜单 -->
+    <transition name="slide">
+      <div 
+        v-if="isMobileMenuOpen" 
+        class="mobile-menu-overlay" 
+        @click="isMobileMenuOpen = false"
+      >
+        <div 
+          class="mobile-menu" 
+          @click.stop
+        >
+          <div class="mobile-menu-header">
+            <div class="logo">
+              <i class="fas fa-brain" />
+              <span>AI 学习助手</span>
+            </div>
+            <button 
+              class="close-menu-btn"
+              @click="isMobileMenuOpen = false"
+            >
+              <i class="fas fa-times" />
+            </button>
+          </div>
+          <div class="mobile-menu-links">
+            <router-link 
+              to="/chat" 
+              class="mobile-nav-link" 
+              @click="isMobileMenuOpen = false"
+            >
+              <i class="fas fa-comments" /> AI 问答
+            </router-link>
+            <router-link 
+              to="/public-files" 
+              class="mobile-nav-link" 
+              @click="isMobileMenuOpen = false"
+            >
+              <i class="fas fa-folder-open" /> 公共资源
+            </router-link>
+            <router-link 
+              to="/links" 
+              class="mobile-nav-link" 
+              @click="isMobileMenuOpen = false"
+            >
+              <i class="fas fa-link" /> 资源推荐
+            </router-link>
+            <router-link 
+              to="/codenova" 
+              class="mobile-nav-link" 
+              @click="isMobileMenuOpen = false"
+            >
+              <i class="fas fa-mobile-alt" /> CodeNova
+            </router-link>
+            <!-- Earthworm 英语学习外链 -->
+            <a
+              href="http://earthworm.aistudy.icu/"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="mobile-nav-link"
+              @click="isMobileMenuOpen = false"
+            >
+              <i class="fas fa-worm" /> Earthworm
+            </a>
+            <div class="mobile-menu-divider" />
+            <template v-if="!authStore.isAuthenticated">
+              <router-link 
+                to="/login" 
+                class="mobile-nav-link" 
+                @click="isMobileMenuOpen = false"
+              >
+                <i class="fas fa-sign-in-alt" /> 登录
+              </router-link>
+              <router-link 
+                to="/register" 
+                class="mobile-nav-link highlight" 
+                @click="isMobileMenuOpen = false"
+              >
+                <i class="fas fa-user-plus" /> 立即加入
+              </router-link>
+            </template>
+            <template v-else>
+              <router-link 
+                to="/chat" 
+                class="mobile-nav-link highlight" 
+                @click="isMobileMenuOpen = false"
+              >
+                <i class="fas fa-rocket" /> 进入工作台
+              </router-link>
+            </template>
+          </div>
+          <div class="mobile-menu-footer">
+            <button 
+              class="mobile-theme-toggle" 
+              @click="themeStore.toggleDarkMode()"
+            >
+              <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" />
+              {{ themeStore.isDarkMode ? '切换浅色模式' : '切换深色模式' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
+  </nav>
+
+  <!-- Hero 区域 -->
+  <section class="hero-section">
+    <div class="hero-content animate-fade-in-up">
+      <h1 class="hero-title">
+        开启您的 <span class="gradient-text">智能学习</span> 之旅
+      </h1>
+      <p class="hero-subtitle">
+        集成 AI 问答、个人云盘、语言学习于一体的智能化全方位学习平台。
+      </p>
+      <div class="hero-actions">
+        <router-link 
+          to="/chat"
+          class="btn-primary-lg"
+        >
+          <i class="fas fa-rocket" /> 免费开始使用
+        </router-link>
+        
+        <!-- Agent 下载/跳转按钮 -->
+        <router-link 
+          to="/agent"
+          class="btn-agent-download"
+        >
+          <i class="fas fa-terminal" /> Agent {{ agentVersion }}
+          <span 
+            v-if="hasLinuxVersion" 
+            class="platform-badge"
+          >Win/Linux</span>
+        </router-link>
+
+        <!-- CodeNova 下载/跳转按钮 -->
+        <router-link 
+          to="/codenova"
+          class="btn-codenova-download"
+        >
+          <i class="fas fa-mobile-alt" /> 下载 CodeNova {{ codenovaVersion }}
+        </router-link>
+
+        <button 
+          class="btn-secondary-lg" 
+          @click="scrollToFeatures"
+        >
+          了解更多 <i class="fas fa-chevron-down" />
+        </button>
+      </div>
+      <div class="hero-stats">
+        <div class="stat-item">
+          <span class="stat-number">24/7</span>
+          <span class="stat-label">AI 在线支持</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-number">100%</span>
+          <span class="stat-label">数据安全加密</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-number">Multi</span>
+          <span class="stat-label">多语言学习</span>
+        </div>
+      </div>
+    </div>
+    <div class="hero-visual animate-float">
+      <div class="visual-card chat-preview">
+        <div class="card-header">
+          <div class="dot" />
+          <div class="dot" />
+          <div class="dot" />
+        </div>
+        <div class="card-body">
+          <div class="message ai">
+            您好！我是您的 AI 学习助手。有什么我可以帮您的吗？
+          </div>
+          <div class="message user">
+            我想制定一个学习计划。
+          </div>
+          <div class="message ai typing">
+            {{ typingText }}
+          </div>
+        </div>
+      </div>
+      <div class="visual-blob" />
+    </div>
+  </section>
+
+  <!-- 特性展示 -->
+  <section 
+    id="features" 
+    class="features-section"
+  >
+    <div class="section-header reveal">
+      <h2 class="section-title">
+        核心功能
+      </h2>
+      <p class="section-subtitle">
+        为您提供全方位的学习生产力工具
+      </p>
+    </div>
+
+    <div class="features-grid">
+      <div 
+        v-for="(feature, index) in features" 
+        :key="index"
+        class="feature-card reveal"
+        :style="{ transitionDelay: `${index * 150}ms` }"
+        :class="{ 'clickable': feature.link }"
+        @click="feature.link ? handleLinkClick(feature.link) : null"
+      >
+        <div 
+          class="feature-icon" 
+          :style="{ backgroundColor: feature.color }"
+        >
+          <i :class="feature.icon" />
+        </div>
+        <h3 class="feature-title">
+          {{ feature.title }}
+        </h3>
+        <p class="feature-desc">
+          {{ feature.description }}
+        </p>
+        <ul class="feature-list">
+          <li 
+            v-for="item in feature.items" 
+            :key="item"
+          >
+            <i class="fas fa-check-circle" /> {{ item }}
+          </li>
+        </ul>
+        <div 
+          v-if="feature.link" 
+          class="feature-action"
+        >
+          <component 
+            :is="isInternalRoute(feature.link) ? 'router-link' : 'a'"
+            v-bind="isInternalRoute(feature.link) ? { to: formatUrl(feature.link) } : { href: formatUrl(feature.link) }"
+            :target="!isInternalRoute(feature.link) ? '_blank' : undefined"
+            class="btn-text"
+          >
+            了解详情 <i class="fas fa-arrow-right" />
+          </component>
+        </div>
+      </div>
+    </div>
+  </section>
+
+    <!-- 交互区域：体验 AI -->
+    <section class="cta-section reveal">
+      <div class="cta-container">
+        <div class="cta-content">
+          <h2>准备好提升您的效率了吗？</h2>
+          <p>加入成千上万的学习者，利用 AI 的力量改变您的学习方式。</p>
+          <div class="cta-btns">
+            <router-link 
+              to="/register"
+              class="btn-white"
+            >
+              立即注册账号
+            </router-link>
+            <router-link 
+              to="/chat"
+              class="btn-outline-white"
+            >
+              以游客身份试用
+            </router-link>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="landing-footer">
+      <div class="footer-container">
+        <div class="footer-brand">
+          <div class="logo">
+            <i class="fas fa-brain" />
+            <span>AI 智能学习助手</span>
+          </div>
+          <p>让科技服务于学习，打造您的第二大脑。</p>
+        </div>
+        <div class="link-group">
+          <h4>产品</h4>
+          <router-link to="/chat">
+            AI 问答
+          </router-link>
+          <router-link to="/cloud-disk">
+            云盘管理
+          </router-link>
+          <router-link to="/language-learning">
+            语言学习
+          </router-link>
+        </div>
+        <div class="link-group">
+          <h4>支持</h4>
+          <router-link to="/public-files">
+            公共资源
+          </router-link>
+          <router-link to="/agent">
+            Agent 终端助手
+          </router-link>
+          <a href="#">使用文档</a>
+          <a href="#">常见问题</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 AI 智能学习助手. All rights reserved.</p>
+      </div>
+    </footer>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import { useThemeStore } from '@/stores/theme'
+import request from '@/utils/request'
+import { API_ENDPOINTS, API_CONFIG } from '@/config/api'
+
+const router = useRouter()
+const codenovaVersion = ref('v1.0.0')
+const codenovaDownloadUrl = ref('/codenova')
+const agentVersion = ref('v1.0.0')
+const agentDownloadUrl = ref('/agent')
+const hasLinuxVersion = ref(false)
+
+/**
+ * 判断是否为内部路由
+ * @param {string} url - 待判断的链接
+ * @returns {boolean} 是否为内部路由
+ */
+const isInternalRoute = (url) => {
+  if (!url) return false
+  const internalRoutes = [
+    '/', '/agent', '/codenova', '/chat', '/login', '/register', 
+    '/cloud-disk', '/language-learning', '/public-files', '/admin', '/settings'
+  ]
+  // 检查是否完全匹配
+  if (internalRoutes.includes(url)) return true
+  // 检查是否以某些内部路由开头（处理带参数的子路由）
+  return url.startsWith('/agent/') || url.startsWith('/codenova/')
+}
+
+/**
+ * 格式化 URL
+ * 如果是内部路由则保持不变，如果是后端 API 路径则补全域名，如果是外部链接则保持不变
+ * @param {string} url - 原始 URL
+ * @returns {string} 格式化后的 URL
+ */
+const formatUrl = (url) => {
+  if (!url) return ''
+  if (url.startsWith('http')) return url
+  if (url.startsWith('/api')) {
+    return `${API_CONFIG.baseURL}${url}`
+  }
+  return url
+}
+
+const fetchSoftwareInfo = async () => {
+  try {
+    const response = await request.get(API_ENDPOINTS.admin.publicResources)
+    const softwareList = response.data || []
+    
+    const codenova = softwareList.find(item => item.title.toLowerCase().includes('codenova'))
+    if (codenova) {
+      codenovaVersion.value = codenova.version || 'v1.0.0'
+      codenovaDownloadUrl.value = codenova.filePath || codenova.url || '/codenova'
+    }
+
+    // 查找 Windows 版或通用版作为主展示
+    const agentWin = softwareList.find(item => 
+      item.title.toLowerCase().includes('agent') && 
+      (item.platform === 'Windows' || !item.platform)
+    )
+    if (agentWin) {
+      agentVersion.value = agentWin.version || 'v1.0.0'
+      agentDownloadUrl.value = agentWin.filePath || agentWin.url || '/agent'
+    }
+
+    // 检查是否有 Linux 版
+    hasLinuxVersion.value = softwareList.some(item => 
+      item.title.toLowerCase().includes('agent') && item.platform === 'Linux'
+    )
+  } catch (error) {
+    console.error('加载软件信息失败:', error)
+  }
+}
+
+/**
+ * 处理链接点击
+ * @param {string} url - 待跳转的链接
+ */
+const handleLinkClick = (url) => {
+  if (!url) return
+  if (isInternalRoute(url)) {
+    router.push(url)
+  } else {
+    window.open(formatUrl(url), '_blank')
+  }
+}
+
+const navigateToCodeNova = () => {
+  router.push('/codenova')
+}
+const authStore = useAuthStore()
+const themeStore = useThemeStore()
+
+const isScrolled = ref(false)
+const isMobileMenuOpen = ref(false)
+const typingText = ref('')
+const fullText = '正在为您生成个性化建议...'
+
+const features = [
+  {
+    title: '智能 AI 问答',
+    description: '基于最新大模型的智能助手，为您解答疑惑、总结知识、激发灵感。',
+    icon: 'fas fa-comments',
+    color: 'rgba(29, 78, 216, 0.1)',
+    items: ['多模型支持', '上下文记忆', '流式实时响应']
+  },
+  {
+    title: '个人学习云盘',
+    description: '安全可靠的文件存储空间，随时随地访问您的学习资料。',
+    icon: 'fas fa-cloud',
+    color: 'rgba(16, 185, 129, 0.1)',
+    items: ['文件夹管理', '多格式预览', '高速上传下载']
+  },
+  {
+    title: '深度语言学习',
+    description: '专为语言学习者设计的工具集，提升词汇量与阅读能力。',
+    icon: 'fas fa-language',
+    color: 'rgba(245, 158, 11, 0.1)',
+    items: ['智能单词库', 'AI 文章生成', '阅读进度追踪']
+  },
+  {
+    title: 'Agent 终端助手',
+    description: '功能强大的本地终端助手，提供深度的系统集成与自动化处理能力。',
+    icon: 'fas fa-terminal',
+    color: 'rgba(139, 92, 246, 0.1)',
+    items: ['本地文件处理', '自动化脚本运行', '高效命令行交互'],
+    link: '/agent'
+  },
+  {
+    title: 'CodeNova 移动端 IDE',
+    description: '随时随地写代码，在 Android 设备上构建和管理您的项目。',
+    icon: 'fas fa-mobile-alt',
+    color: 'rgba(16, 185, 129, 0.1)',
+    items: ['全功能编辑器', '内置终端', 'Python/C/C++ 支持'],
+    link: '/codenova'
+  }
+]
+
+let typingInterval = null
+
+/**
+ * 开启打字机效果动画
+ * 定期更新 typingText 变量以模拟打字过程，并在完成后循环播放
+ */
+const startTyping = () => {
+  let i = 0
+  typingInterval = setInterval(() => {
+    typingText.value = fullText.slice(0, i)
+    i++
+    if (i > fullText.length) {
+      i = 0 // 循环播放
+    }
+  }, 150)
+}
+
+/**
+ * 处理窗口滚动事件
+ * 更新导航栏的滚动状态并检查页面元素的可见性以触发动画
+ */
+const handleScroll = () => {
+  isScrolled.value = window.scrollY > 50
+  revealOnScroll()
+}
+
+/**
+ * 检查页面上的 .reveal 元素是否进入可视区域
+ * 如果元素进入视野，则为其添加 active 类以触发 CSS 动画
+ */
+const revealOnScroll = () => {
+  const reveals = document.querySelectorAll('.reveal')
+  reveals.forEach(el => {
+    const windowHeight = window.innerHeight
+    const elementTop = el.getBoundingClientRect().top
+    const elementVisible = 150
+    if (elementTop < windowHeight - elementVisible) {
+      el.classList.add('active')
+    }
+  })
+}
+
+/**
+ * 平滑滚动至特性介绍区域
+ */
+const scrollToFeatures = () => {
+  document.getElementById('features').scrollIntoView({ behavior: 'smooth' })
+}
+
+onMounted(() => {
+  window.addEventListener('scroll', handleScroll)
+  startTyping()
+  setTimeout(revealOnScroll, 100) // 初始检查
+  fetchSoftwareInfo()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll)
+  if (typingInterval) clearInterval(typingInterval)
+})
+</script>
+
+<style scoped>
+.landing-page {
+  min-height: 100vh;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  overflow-x: hidden;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* 导航栏 */
+.landing-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 72px;
+  z-index: 1000;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 0 2rem;
+}
+
+.landing-nav.scrolled {
+  background-color: var(--bg-primary-transparent, rgba(255, 255, 255, 0.7));
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid var(--border-color);
+  height: 64px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03);
+}
+
+.nav-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  cursor: pointer;
+  letter-spacing: -0.02em;
+}
+
+.logo i {
+  background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-size: 1.4rem;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 2.5rem;
+}
+
+.nav-link {
+  text-decoration: none;
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.2s;
+}
+
+.nav-link:hover {
+  color: var(--primary-color);
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.mobile-menu-btn {
+  display: none;
+}
+
+/* 按钮样式 */
+.btn-login {
+  text-decoration: none;
+  color: var(--text-primary);
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.btn-register {
+  text-decoration: none;
+  background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+  color: white;
+  padding: 0.75rem 1.75rem;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.3s;
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.2);
+}
+
+.btn-register:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 25px rgba(16, 185, 129, 0.3);
+}
+
+.theme-toggle-btn {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 1.1rem;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.theme-toggle-btn:hover {
+  background: var(--bg-secondary);
+  transform: rotate(15deg);
+}
+
+/* Hero 区域 */
+.hero-section {
+  padding: 180px 2rem 120px;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 5rem;
+  align-items: center;
+}
+
+.hero-title {
+  font-size: 4rem;
+  line-height: 1.1;
+  margin-bottom: 2rem;
+  font-weight: 850;
+  letter-spacing: -0.02em;
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-size: 200% auto;
+  animation: gradient-shift 5s ease infinite;
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.hero-subtitle {
+  font-size: 1.2rem;
+  color: var(--text-secondary);
+  margin-bottom: 3rem;
+  line-height: 1.6;
+  max-width: 540px;
+  opacity: 0.85;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 1.25rem;
+  margin-bottom: 4rem;
+  flex-wrap: wrap;
+}
+
+.btn-primary-lg,
+.btn-agent-download,
+.btn-codenova-download,
+.btn-secondary-lg {
+  min-width: fit-content;
+  white-space: normal;
+  text-align: center;
+  word-break: break-word;
+  padding: 1rem 1.5rem;
+  line-height: 1.3;
+}
+
+.btn-primary-lg,
+.btn-agent-download,
+.btn-codenova-download,
+.btn-white,
+.btn-outline-white,
+.btn-text {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-primary-lg {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  min-height: 3.5rem;
+  border-radius: 14px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+}
+
+.btn-primary-lg:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 15px 30px rgba(16, 185, 129, 0.4);
+  filter: brightness(1.1);
+}
+
+.btn-agent-download {
+  position: relative;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  min-height: 3.5rem;
+  border-radius: 14px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.platform-badge {
+  font-size: 0.7rem;
+  background: var(--primary-color);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 4px;
+  opacity: 0.9;
+}
+
+.btn-agent-download:hover {
+  transform: translateY(-3px);
+  border-color: #10b981;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.05);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.btn-codenova-download {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  min-height: 3.5rem;
+  border-radius: 14px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.btn-codenova-download:hover {
+  transform: translateY(-3px);
+  border-color: #3b82f6;
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.05);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.btn-secondary-lg {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  min-height: 3.5rem;
+  border-radius: 14px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-secondary-lg:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--primary-color);
+}
+
+.hero-stats {
+  display: flex;
+  gap: 4rem;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-number {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--primary-color);
+}
+
+.stat-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+
+/* Hero 视觉 */
+.hero-visual {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.hero-visual .animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.visual-card {
+  background: var(--bg-primary);
+  border-radius: 20px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--border-color);
+  width: 100%;
+  max-width: 420px;
+  overflow: hidden;
+  position: relative;
+  z-index: 2;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.card-header {
+  padding: 14px 18px;
+  background: var(--bg-secondary);
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.dot:nth-child(1) { background: #ff5f56; }
+.dot:nth-child(2) { background: #ffbd2e; }
+.dot:nth-child(3) { background: #27c93f; }
+
+.card-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 300px;
+}
+
+.message {
+  padding: 12px 16px;
+  border-radius: 14px;
+  max-width: 85%;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.message.ai {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+}
+
+.message.user {
+  background: var(--primary-color);
+  color: white;
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+}
+
+.typing::after {
+  content: '';
+  display: inline-block;
+  width: 4px;
+  height: 14px;
+  background: var(--primary-color);
+  margin-left: 4px;
+  animation: blink 1s infinite;
+  vertical-align: middle;
+}
+
+.visual-blob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 140%;
+  height: 140%;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* 特性展示 */
+.features-section {
+  padding: 120px 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.section-header {
+  text-align: center;
+  margin-bottom: 5rem;
+}
+
+.section-title {
+  font-size: 3rem;
+  font-weight: 850;
+  margin-bottom: 1.25rem;
+  letter-spacing: -0.01em;
+}
+
+.section-subtitle {
+  font-size: 1.25rem;
+  color: var(--text-secondary);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2.5rem;
+}
+
+.feature-card {
+  background: var(--bg-primary);
+  padding: 2.5rem;
+  border-radius: 24px;
+  border: 1px solid var(--border-color);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+}
+
+.feature-card {
+  background: var(--bg-secondary);
+  padding: 2.5rem;
+  border-radius: 24px;
+  border: 1px solid var(--border-color);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+.feature-card.clickable {
+  cursor: pointer;
+}
+
+.feature-card.clickable:hover {
+  transform: translateY(-10px);
+  border-color: var(--primary-color);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05);
+}
+
+.feature-card:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+  border-color: #10b981;
+}
+
+.feature-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: #10b981;
+  margin-bottom: 1.5rem;
+  background: rgba(16, 185, 129, 0.1) !important;
+  transition: all 0.3s;
+}
+
+.feature-title {
+  font-size: 1.6rem;
+  font-weight: 800;
+  margin-bottom: 1.25rem;
+}
+
+.feature-desc {
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin-bottom: 2rem;
+  font-size: 1.05rem;
+}
+
+.feature-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.feature-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.feature-list i {
+  color: #10b981;
+}
+
+.feature-action {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.btn-text {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  font-weight: 700;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s;
+}
+
+.btn-text:hover {
+  gap: 12px;
+  color: #2563eb;
+}
+
+/* CTA 区域 */
+.cta-section {
+  padding: 80px 2rem;
+}
+
+.cta-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+  border-radius: 32px;
+  padding: 80px 60px;
+  text-align: center;
+  color: white;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(16, 185, 129, 0.4);
+}
+
+.cta-content {
+  position: relative;
+  z-index: 2;
+}
+
+.cta-content h2 {
+  font-size: 3rem;
+  font-weight: 850;
+  margin-bottom: 1.5rem;
+}
+
+.cta-content p {
+  font-size: 1.25rem;
+  opacity: 0.9;
+  margin-bottom: 3rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.cta-btns {
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+}
+
+.btn-white {
+  background: white;
+  color: var(--primary-color);
+  border: none;
+  padding: 1.1rem 2.5rem;
+  border-radius: 14px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-white:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.btn-outline-white {
+  background: transparent;
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  padding: 1.1rem 2.5rem;
+  border-radius: 14px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-outline-white:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: white;
+}
+
+/* 页脚 */
+.landing-footer {
+  padding: 100px 2rem 50px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+}
+
+.footer-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 2fr repeat(2, 1fr);
+  gap: 4rem;
+  margin-bottom: 80px;
+}
+
+.footer-brand .logo {
+  margin-bottom: 1.5rem;
+}
+
+.footer-brand p {
+  color: var(--text-tertiary);
+  line-height: 1.6;
+  max-width: 300px;
+}
+
+.link-group h4 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 2rem;
+}
+
+.link-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.link-group a {
+  text-decoration: none;
+  color: var(--text-secondary);
+  transition: color 0.2s;
+}
+
+.link-group a:hover {
+  color: var(--primary-color);
+}
+
+.footer-bottom {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-top: 40px;
+  border-top: 1px solid var(--border-color);
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 0.9rem;
+}
+
+/* 动画 */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-15px); }
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.reveal.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 响应式适配 */
+@media (max-width: 1024px) {
+  .hero-section {
+    grid-template-columns: 1fr;
+    padding: 120px 1.5rem 60px;
+    text-align: center;
+    gap: 3rem;
+  }
+  
+  .hero-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .hero-title {
+    font-size: 3rem;
+  }
+  
+  .hero-subtitle {
+    margin-left: auto;
+    margin-right: auto;
+    font-size: 1.1rem;
+  }
+  
+  .hero-actions {
+    justify-content: center;
+    gap: 1rem;
+  }
+  
+  .hero-stats {
+    justify-content: center;
+    gap: 2.5rem;
+  }
+  
+  .features-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+
+  .feature-card {
+    padding: 2rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .landing-nav {
+    padding: 0 1rem;
+    height: 60px;
+  }
+
+  .logo {
+    font-size: 1.1rem;
+    gap: 8px;
+  }
+
+  .nav-links {
+    display: none;
+  }
+  
+  .mobile-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    font-size: 1.2rem;
+    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    transition: all 0.2s;
+  }
+  
+  .mobile-menu-btn:hover {
+    background: var(--bg-tertiary);
+  }
+
+  /* 移动端侧边栏菜单样式 */
+  .mobile-menu-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    z-index: 2000;
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .mobile-menu {
+    width: 280px;
+    height: 100%;
+    background: var(--bg-primary);
+    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    padding: 2rem 1.5rem;
+    position: relative;
+  }
+
+  .mobile-menu-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+  }
+
+  .mobile-menu-header .logo {
+    font-size: 1rem;
+  }
+
+  .close-menu-btn {
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+
+  .close-menu-btn:hover {
+    color: var(--primary-color);
+    transform: rotate(90deg);
+  }
+
+  .mobile-menu-links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 2rem;
+  }
+
+  .mobile-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 1rem;
+    text-decoration: none;
+    color: var(--text-primary);
+    font-weight: 600;
+    border-radius: 12px;
+    transition: all 0.2s;
+  }
+
+  .mobile-nav-link:hover {
+    background: var(--bg-tertiary);
+    color: var(--primary-color);
+  }
+
+  .mobile-nav-link i {
+    width: 20px;
+    font-size: 1.1rem;
+    color: var(--text-tertiary);
+  }
+
+  .mobile-nav-link.highlight {
+    background: var(--primary-color);
+    color: white;
+    margin-top: 0.5rem;
+  }
+
+  .mobile-nav-link.highlight i {
+    color: white;
+  }
+
+  .mobile-menu-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 1rem 0;
+  }
+
+  .mobile-menu-footer {
+    margin-top: auto;
+    padding-top: 2rem;
+  }
+
+  .mobile-theme-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 1rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    color: var(--text-primary);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .mobile-theme-toggle:hover {
+    background: var(--bg-secondary);
+  }
+
+  /* 动画 */
+  .slide-enter-active,
+  .slide-leave-active {
+    transition: all 0.3s ease;
+  }
+
+  .slide-enter-from,
+  .slide-leave-to {
+    opacity: 0;
+  }
+
+  .slide-enter-from .mobile-menu {
+    transform: translateX(100%);
+  }
+
+  .slide-leave-to .mobile-menu {
+    transform: translateX(100%);
+  }
+  
+  .hero-section {
+    padding: 100px 1.25rem 40px;
+  }
+
+  .hero-title {
+    font-size: 2.25rem;
+    margin-bottom: 1.25rem;
+  }
+  
+  .hero-subtitle {
+    font-size: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .hero-actions {
+    flex-direction: column;
+    width: 100%;
+    max-width: 280px;
+    gap: 0.75rem;
+    margin-bottom: 3rem;
+  }
+
+  .btn-primary-lg, .btn-agent-download, .btn-secondary-lg {
+    padding: 0.85rem 1.5rem;
+    font-size: 1rem;
+    width: 100%;
+    justify-content: center;
+    border-radius: 12px;
+  }
+  
+  .hero-stats {
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .stat-number {
+    font-size: 1.25rem;
+  }
+
+  .stat-label {
+    font-size: 0.85rem;
+  }
+
+  .hero-visual {
+    margin-top: 1rem;
+  }
+
+  .visual-card {
+    max-width: 320px;
+  }
+
+  .card-body {
+    padding: 16px;
+    min-height: 240px;
+  }
+
+  .message {
+    font-size: 0.85rem;
+    padding: 10px 14px;
+  }
+  
+  .section-header {
+    margin-bottom: 3rem;
+  }
+
+  .section-title {
+    font-size: 2rem;
+  }
+
+  .section-subtitle {
+    font-size: 1rem;
+  }
+
+  .features-grid {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  .feature-card {
+    padding: 1.75rem;
+    border-radius: 20px;
+  }
+
+  .feature-icon {
+    width: 56px;
+    height: 56px;
+    font-size: 1.4rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .feature-title {
+    font-size: 1.3rem;
+  }
+
+  .feature-desc {
+    font-size: 0.95rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .feature-list li {
+    font-size: 0.85rem;
+  }
+  
+  .cta-section {
+    padding: 40px 1rem;
+  }
+
+  .cta-container {
+    padding: 40px 20px;
+    border-radius: 24px;
+  }
+  
+  .cta-content h2 {
+    font-size: 1.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .cta-content p {
+    font-size: 1rem;
+    margin-bottom: 2rem;
+  }
+  
+  .cta-btns {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .btn-white, .btn-outline-white {
+    padding: 0.85rem 1.5rem;
+    font-size: 1rem;
+    width: 100%;
+    border-radius: 12px;
+  }
+  
+  .landing-footer {
+    padding: 60px 1.25rem 30px;
+  }
+
+  .footer-container {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+    margin-bottom: 40px;
+  }
+
+  .footer-brand p {
+    font-size: 0.9rem;
+  }
+
+  .link-group h4 {
+    margin-bottom: 1.25rem;
+  }
+
+  .link-group {
+    gap: 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-title {
+    font-size: 1.85rem;
+  }
+  
+  .hero-subtitle {
+    font-size: 0.9rem;
+  }
+  
+  .hero-actions {
+    max-width: 100%;
+  }
+  
+  .cta-content h2 {
+    font-size: 1.5rem;
+  }
+}
+</style>

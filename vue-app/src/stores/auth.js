@@ -3,14 +3,11 @@ import { ref, computed } from 'vue'
 import request from '@/utils/request'
 import { API_ENDPOINTS } from '@/config/api'
 import { useChatStore } from './chat'
-import rsaEncryption from '@/utils/rsaEncryption'
 
 export const useAuthStore = defineStore('auth', () => {
   // 状态
   const token = ref(localStorage.getItem('token') || '')
   const userInfo = ref(JSON.parse(localStorage.getItem('userInfo') || 'null'))
-  const isValidating = ref(false)
-  const rsaInitialized = ref(false)
   
   // 计算属性
   const isAuthenticated = computed(() => !!token.value)
@@ -19,98 +16,13 @@ export const useAuthStore = defineStore('auth', () => {
   const username = computed(() => userInfo.value?.username)
   const email = computed(() => userInfo.value?.email)
   
-  /**
-   * 初始化RSA加密
-   */
-  async function initializeRsa() {
-    if (!rsaInitialized.value) {
-      rsaInitialized.value = await rsaEncryption.initialize()
-    }
-    return rsaInitialized.value
-  }
-  
-  /**
-   * 检查JWT token是否过期
-   * @param {string} t - JWT token
-   * @returns {boolean} - 是否过期
-   */
-  function isTokenExpired(t) {
-    if (!t) return true
-    try {
-      const p = t.split('.')[1]
-      const b = p.replace(/-/g, '+').replace(/_/g, '/')
-      const json = decodeURIComponent(atob(b).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''))
-      const payload = JSON.parse(json)
-      return !!(payload && payload.exp && payload.exp * 1000 <= Date.now())
-    } catch {
-      return true
-    }
-  }
-  
-  /**
-   * 验证token有效性（向后端发送请求）
-   * 用于实现持久化登录，在应用启动时调用
-   */
-  async function validateToken() {
-    if (!token.value) {
-      return false
-    }
-    
-    // 先检查本地是否过期
-    if (isTokenExpired(token.value)) {
-      logout()
-      return false
-    }
-    
-    isValidating.value = true
-    try {
-      const response = await request.get('/api/auth/validate')
-      if (response?.code === 200 || response?.data === true) {
-        return true
-      }
-      // 如果验证失败，清除登录状态
-      logout()
-      return false
-    } catch (error) {
-      console.error('Token validation error:', error)
-      // 如果是401错误，说明token无效，清除登录状态
-      if (error.response?.status === 401) {
-        logout()
-      }
-      return false
-    } finally {
-      isValidating.value = false
-    }
-  }
-  
   // 登录
   async function login(email, password) {
     try {
-      // 初始化RSA加密
-      const rsaReady = await initializeRsa()
-      
-      let response
-      if (rsaReady) {
-        // 使用RSA加密密码
-        const encryptedPassword = rsaEncryption.encrypt(password)
-        if (!encryptedPassword) {
-          throw new Error('密码加密失败')
-        }
-        
-        // 发送加密登录请求
-        response = await request.post('/api/auth/encrypted-login', {
-          email,
-          password: encryptedPassword,
-          encrypted: true
-        })
-      } else {
-        // 如果RSA初始化失败，使用普通登录（备选方案）
-        console.warn('RSA加密未就绪，使用普通登录')
-        response = await request.post(API_ENDPOINTS.auth.login, {
-          email,
-          password
-        })
-      }
+      const response = await request.post(API_ENDPOINTS.auth.login, {
+        email,
+        password
+      })
       
       // 后端返回结构: { code, message, data: { access_token, user_id, ... } }
       // request.js 拦截器已返回 response.data，即整个 {code, message, data} 对象
@@ -165,35 +77,12 @@ export const useAuthStore = defineStore('auth', () => {
   // 注册
   async function register(email, password, verificationCode, username) {
     try {
-      // 初始化RSA加密
-      const rsaReady = await initializeRsa()
-      
-      let response
-      if (rsaReady) {
-        // 使用RSA加密密码
-        const encryptedPassword = rsaEncryption.encrypt(password)
-        if (!encryptedPassword) {
-          throw new Error('密码加密失败')
-        }
-        
-        // 发送加密注册请求
-        response = await request.post('/api/auth/encrypted-register', {
-          email,
-          password: encryptedPassword,
-          code: verificationCode,
-          username,
-          encrypted: true
-        })
-      } else {
-        // 如果RSA初始化失败，使用普通注册（备选方案）
-        console.warn('RSA加密未就绪，使用普通注册')
-        response = await request.post(API_ENDPOINTS.auth.register, {
-          email,
-          password,
-          code: verificationCode,
-          username
-        })
-      }
+      const response = await request.post(API_ENDPOINTS.auth.register, {
+        email,
+        password,
+        code: verificationCode,
+        username
+      })
       
       // 后端返回结构: { code, message, data: { access_token, user_id, ... } }
       const payload = response?.data ?? response
@@ -343,11 +232,6 @@ export const useAuthStore = defineStore('auth', () => {
     userId,
     username,
     email,
-    isValidating,
-    rsaInitialized,
-    isTokenExpired,
-    validateToken,
-    initializeRsa,
     login,
     register,
     sendVerificationCode,

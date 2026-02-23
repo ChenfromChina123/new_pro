@@ -1,0 +1,438 @@
+# 火山方舟大模型 Chat API 接入文档（含多文件上传）
+## 一、文档概述
+### 1. 接口用途
+本接口为火山方舟大模型服务平台的对话（Chat）API，支持**文本、图片、视频**等多模态内容输入，开发者可通过该接口实现与大模型的交互，包括文件上传后的内容理解、问答等功能。
+
+### 2. 核心特性
+- 支持两种文件上传方式：公网文件URL、Base64编码字符串
+- 图片支持高/低细节模式理解，视频支持自定义抽帧频率
+- 兼容流式/非流式响应，支持Token用量控制、思维链等高级配置
+
+### 3. 适用范围
+适用于需要通过API接入大模型，且需处理图片、视频等文件内容的场景（如智能图文分析、视频内容理解、多模态对话等）。
+
+## 二、前置准备
+### 1. 环境要求
+- 支持HTTP/HTTPS协议的开发环境
+- 网络可访问火山方舟API域名（`ark.cn-beijing.volces.com`）
+- 开发语言：支持Python、Java、Go等所有可发送HTTP请求的语言
+
+### 2. 接入前提
+1. 注册火山引擎账号并开通「火山方舟大模型服务平台」
+2. 在平台控制台创建应用，获取 **API Key**（认证必备）
+3. 开通目标模型服务（如`doubao-1-5-pro-32k-250115`），获取 **Model ID** 或 **Endpoint ID**（推荐使用Endpoint ID进行精细化管理）
+4. 确保账号有足够的调用额度（文件上传会额外消耗Token，具体以平台计费规则为准）
+
+## 三、核心API说明
+### 1. 基本信息
+| 项                | 内容                                                                 |
+|-------------------|----------------------------------------------------------------------|
+| 请求方式          | POST                                                                 |
+| API地址           | `https://ark.cn-beijing.volces.com/api/v3/chat/completions`          |
+| 编码格式          | UTF-8                                                                 |
+| 响应格式          | JSON（支持流式SSE协议）                                               |
+| 超时建议          | 30秒（视频上传建议延长至60秒）                                         |
+
+### 2. 请求头（Header）
+| 参数名          | 必选 | 说明                                                                 |
+|-----------------|------|----------------------------------------------------------------------|
+| Authorization   | 是   | 认证方式：`Bearer ${API_KEY}`，其中`${API_KEY}`替换为你的实际API密钥   |
+| Content-Type    | 是   | 固定值：`application/json`                                           |
+
+## 四、请求参数详解
+### 1. 通用参数（必选）
+| 参数名          | 类型      | 说明                                                                 |
+|-----------------|-----------|----------------------------------------------------------------------|
+| model           | string    | 模型ID或Endpoint ID（需与开通的模型一致，示例：`doubao-1-5-pro-32k-250115`） |
+| messages        | object[]  | 消息列表，包含文件上传的核心配置（见下文「文件上传专属参数」）         |
+
+### 2. 文件上传专属参数（messages数组）
+`messages`数组需包含`role`（角色）和`content`（内容），其中`content`根据文件类型（图片/视频）配置不同结构。支持的角色包括`system`（系统指令）、`user`（用户输入）。
+
+#### 2.1 图片上传（两种方式）
+##### 方式1：图片URL上传
+```json
+{
+  "role": "user",
+  "content": [
+    {
+      "type": "image_url",  // 固定值，标识图片类型
+      "image_url": {
+        "url": "https://example.com/image.jpg",  // 公网可访问的图片URL
+        "detail": "high",  // 理解精度：high（高细节）/ low（低细节），默认low
+        "image_pixel_limit": {  // 可选，像素限制（优先级高于detail）
+          "min_pixels": 1764,  // 最小像素（doubao-seed-1.8+模型最小值1764）
+          "max_pixels": 9031680  // 最大像素（doubao-seed-1.8+模型最大值9031680）
+        }
+      }
+    },
+    {
+      "type": "text",  // 可选，搭配文本说明
+      "text": "请分析这张图片的内容"
+    }
+  ]
+}
+```
+
+##### 方式2：图片Base64上传
+```json
+{
+  "role": "user",
+  "content": [
+    {
+      "type": "image_url",
+      "image_url": {
+        "url": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEA...",  // 图片Base64编码（前缀需包含格式）
+        "detail": "low"
+      }
+    }
+  ]
+}
+```
+
+##### 图片上传限制
+- 支持格式：JPG、PNG、BMP等常见格式
+- 像素范围：[196, 36,000,000]（超出会直接返回错误）
+- Base64编码：需包含完整前缀（如`data:image/jpeg;base64,`）
+
+#### 2.2 视频上传（两种方式）
+##### 方式1：视频URL上传
+```json
+{
+  "role": "user",
+  "content": [
+    {
+      "type": "video_url",  // 固定值，标识视频类型
+      "video_url": {
+        "url": "https://example.com/video.mp4",  // 公网可访问的视频URL
+        "fps": 2.0  // 抽帧频率（范围[0.2,5]），默认1.0
+      }
+    },
+    {
+      "type": "text",
+      "text": "请总结该视频的关键画面内容"
+    }
+  ]
+}
+```
+
+##### 方式2：视频Base64上传
+```json
+{
+  "role": "user",
+  "content": [
+    {
+      "type": "video_url",
+      "video_url": {
+        "url": "data:video/mp4;base64,AAAAIGZ0eXBpc29tAA...",  // 视频Base64编码（含格式前缀）
+        "fps": 1.5
+      }
+    }
+  ]
+}
+```
+
+##### 视频上传限制
+- 支持格式：MP4、MOV等常见格式
+- 不支持音频理解：仅分析视频画面内容
+- 抽帧频率：fps越高，画面变化敏感度越高，但Token消耗越多、速度越慢
+
+#### 2.3 多文件混合上传（图片+视频+文本）
+```json
+{
+  "role": "user",
+  "content": [
+    {
+      "type": "text",
+      "text": "对比以下图片和视频的内容差异"
+    },
+    {
+      "type": "image_url",
+      "image_url": {
+        "url": "https://example.com/pic1.png",
+        "detail": "low"
+      }
+    },
+    {
+      "type": "video_url",
+      "video_url": {
+        "url": "https://example.com/vid1.mp4",
+        "fps": 1.0
+      }
+    }
+  ]
+}
+```
+
+### 3. 高级可选参数
+| 参数名              | 类型      | 说明                                                                 |
+|---------------------|-----------|----------------------------------------------------------------------|
+| max_tokens          | integer   | 模型回答最大长度（单位Token），默认4096，需符合模型上下文限制         |
+| stream              | boolean   | 是否流式响应：true（SSE协议）/ false（完整返回），默认false           |
+| temperature         | float     | 采样温度（0-2）：越高越随机，越低越确定，默认1.0                      |
+| top_p               | float     | 核采样阈值（0-1）：默认0.7，建议仅调整temperature或top_p其一           |
+| response_format     | object    | 响应格式：默认`{"type":"text"}`，支持`{"type":"json_object"}`（JSON格式） |
+
+## 五、响应参数说明
+### 1. 非流式响应示例（图片理解成功）
+```json
+{
+  "id": "0217426318107460cfa43dc3f3683b1de1c09624ff49085a456ac",
+  "model": "doubao-1-5-pro-32k-250115",
+  "service_tier": "default",
+  "created": 1742631811,
+  "object": "chat.completion",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "stop",
+      "logprobs": null,
+      "message": {
+        "role": "assistant",
+        "content": "该图片展示了一只白色的猫趴在窗台上，背景是户外的绿植，整体色调明亮。"
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 56,  // 含图片解析消耗的Token
+    "completion_tokens": 32,
+    "total_tokens": 88,
+    "prompt_tokens_details": {"cached_tokens": 0},
+    "completion_tokens_details": {"reasoning_tokens": 0}
+  }
+}
+```
+
+### 2. 流式响应示例（视频理解）
+流式响应通过SSE协议逐块返回，最终以`data: [DONE]`结束：
+```
+data: {"id":"0217426318107460cfa43dc3f3683b1de1c09624ff49085a456ac","model":"doubao-1-5-pro-32k-250115","service_tier":"default","created":1742631811,"object":"chat.completion.chunk","choices":[{"index":0,"finish_reason":null,"delta":{"role":"assistant","content":"该视频前10秒展示了"}}, "usage":null}
+
+data: {"id":"0217426318107460cfa43dc3f3683b1de1c09624ff49085a456ac","model":"doubao-1-5-pro-32k-250115","service_tier":"default","created":1742631811,"object":"chat.completion.chunk","choices":[{"index":0,"finish_reason":"stop","delta":{"content":"城市街道的交通状况，车辆有序行驶，无明显拥堵。"}}], "usage":{"total_tokens":120,"prompt_tokens":80,"completion_tokens":40}}
+
+data: [DONE]
+```
+
+### 3. 关键响应字段说明
+| 字段名                | 说明                                                                 |
+|-----------------------|----------------------------------------------------------------------|
+| choices[0].message.content | 模型对文件内容的理解结果（核心返回值）                               |
+| usage.total_tokens    | 总Token消耗（含文件解析+文本生成，计费依据）                         |
+| finish_reason         | 停止生成原因：stop（正常结束）/ length（长度限制）/ content_filter（内容拦截） |
+| moderation_hit_type   | 敏感内容标签（仅视觉模型支持，需开启基础内容护栏方案）               |
+
+## 六、示例代码（含文件上传）
+### 1. Python示例（图片Base64上传+文本提问）
+```python
+import requests
+import base64
+import json
+
+# 配置信息
+API_KEY = "你的火山方舟API Key"
+API_URL = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
+MODEL_ID = "doubao-1-5-pro-32k-250115"
+
+# 图片转Base64（本地文件）
+def image_to_base64(image_path):
+    with open(image_path, "rb") as f:
+        base64_str = base64.b64encode(f.read()).decode("utf-8")
+    # 拼接格式前缀（根据图片类型调整，如image/png）
+    return f"data:image/jpeg;base64,{base64_str}"
+
+# 构造请求体
+image_base64 = image_to_base64("本地图片路径.jpg")
+payload = {
+    "model": MODEL_ID,
+    "messages": [
+        {
+            "role": "system",
+            "content": "你是专业的图片分析助手，需详细描述图片内容。"
+        },
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": image_base64,
+                        "detail": "high"
+                    }
+                },
+                {
+                    "type": "text",
+                    "text": "请分析这张图片的主体、背景和色调。"
+                }
+            ]
+        }
+    ],
+    "max_tokens": 1024,
+    "temperature": 0.7
+}
+
+# 发送请求
+headers = {
+    "Authorization": f"Bearer {API_KEY}",
+    "Content-Type": "application/json"
+}
+
+try:
+    response = requests.post(API_URL, headers=headers, data=json.dumps(payload), timeout=30)
+    response.raise_for_status()
+    result = response.json()
+    print("模型回复：", result["choices"][0]["message"]["content"])
+    print("Token消耗：", result["usage"]["total_tokens"])
+except Exception as e:
+    print("请求失败：", str(e))
+```
+
+### 2. Curl示例（视频URL上传）
+```bash
+# 替换以下变量为实际值
+API_KEY="你的火山方舟API Key"
+MODEL_ID="doubao-1-5-pro-32k-250115"
+VIDEO_URL="https://example.com/test_video.mp4"
+
+curl -X POST "https://ark.cn-beijing.volces.com/api/v3/chat/completions" \
+  -H "Authorization: Bearer ${API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "'"${MODEL_ID}"'",
+    "messages": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "video_url",
+            "video_url": {
+              "url": "'"${VIDEO_URL}"'",
+              "fps": 1.5
+            }
+          },
+          {
+            "type": "text",
+            "text": "请总结该视频的核心内容，不超过50字。"
+          }
+        ]
+      }
+    ],
+    "max_tokens": 512,
+    "stream": false
+  }'
+```
+
+### 3. Java示例（多图片URL上传）
+```java
+import com.alibaba.fastjson.JSON;
+import okhttp3.*;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class VolcChatApiDemo {
+    // 配置信息
+    private static final String API_KEY = "你的火山方舟API Key";
+    private static final String API_URL = "https://ark.cn-beijing.volces.com/api/v3/chat/completions";
+    private static final String MODEL_ID = "doubao-1-5-pro-32k-250115";
+
+    public static void main(String[] args) {
+        // 构造请求体
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("model", MODEL_ID);
+
+        List<Map<String, Object>> messages = new ArrayList<>();
+        Map<String, Object> userMessage = new HashMap<>();
+        userMessage.put("role", "user");
+
+        List<Map<String, Object>> content = new ArrayList<>();
+        // 第一张图片
+        Map<String, Object> image1 = new HashMap<>();
+        image1.put("type", "image_url");
+        Map<String, Object> imageUrl1 = new HashMap<>();
+        imageUrl1.put("url", "https://example.com/pic1.jpg");
+        imageUrl1.put("detail", "low");
+        image1.put("image_url", imageUrl1);
+        content.add(image1);
+
+        // 第二张图片
+        Map<String, Object> image2 = new HashMap<>();
+        image2.put("type", "image_url");
+        Map<String, Object> imageUrl2 = new HashMap<>();
+        imageUrl2.put("url", "https://example.com/pic2.jpg");
+        imageUrl2.put("detail", "low");
+        image2.put("image_url", imageUrl2);
+        content.add(image2);
+
+        // 文本说明
+        Map<String, Object> text = new HashMap<>();
+        text.put("type", "text");
+        text.put("text", "对比这两张图片的异同点");
+        content.add(text);
+
+        userMessage.put("content", content);
+        messages.add(userMessage);
+        payload.put("messages", messages);
+
+        // 发送请求
+        OkHttpClient client = new OkHttpClient().newBuilder().build();
+        MediaType mediaType = MediaType.parse("application/json");
+        RequestBody requestBody = RequestBody.create(mediaType, JSON.toJSONString(payload));
+        Request request = new Request.Builder()
+                .url(API_URL)
+                .header("Authorization", "Bearer " + API_KEY)
+                .header("Content-Type", "application/json")
+                .post(requestBody)
+                .build();
+
+        try {
+            Response response = client.newCall(request).execute();
+            if (response.isSuccessful()) {
+                String responseBody = response.body().string();
+                System.out.println("模型回复：" + responseBody);
+            } else {
+                System.out.println("请求失败：" + response.code() + " " + response.message());
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+## 七、常见问题排查
+### 1. 文件上传失败
+| 错误现象                | 可能原因                                  | 解决方案                                 |
+|-------------------------|-------------------------------------------|------------------------------------------|
+| 400 Bad Request         | 图片像素超出[196, 36,000,000]范围         | 调整图片尺寸后重新上传                   |
+| 400 Bad Request         | Base64编码格式错误（缺少前缀或编码损坏）  | 检查编码格式，确保包含完整前缀（如`data:image/jpeg;base64,`） |
+| 404 Not Found           | 文件URL不可访问或过期                     | 更换公网可访问的有效URL                   |
+| 504 Timeout             | 视频文件过大或网络波动                    | 优化网络环境，或降低视频抽帧频率（fps）   |
+
+### 2. 认证失败
+- 错误：`401 Unauthorized`
+- 原因：API Key错误、过期或未开通模型服务
+- 解决方案：
+  1. 检查API Key是否与控制台一致
+  2. 确认模型服务已开通（控制台→模型管理）
+  3. 若使用Endpoint ID，检查Endpoint是否绑定正确模型
+
+### 3. 响应内容异常
+| 异常现象                | 处理方式                                 |
+|-------------------------|------------------------------------------|
+| 模型未识别文件内容      | 检查`content`数组中`type`字段是否正确（如`image_url`/`video_url`） |
+| Token消耗过高           | 图片使用`detail: low`，视频降低`fps`值    |
+| 响应格式不符合预期      | 明确设置`response_format`参数（如JSON格式需配置`{"type":"json_object"}`） |
+
+## 八、注意事项
+1. 安全性：Base64编码的文件内容会包含在请求体中，建议通过HTTPS传输，避免密钥和文件内容泄露。
+2. 计费规则：文件上传的Token消耗与文件大小、解析精度相关（高细节模式>低细节模式，高fps>低fps），请参考平台计费文档。
+3. 内容合规：上传的文件需符合火山引擎内容规范，避免涉及违规内容（否则会返回`content_filter`停止原因）。
+4. 版本兼容性：部分参数（如`image_pixel_limit`）仅支持doubao-seed-1.8及以上模型，使用前需确认模型版本。
+
+## 九、相关链接
+- 火山方舟控制台：https://console.volcengine.com/ark/
+- 模型列表与支持功能：https://www.volcengine.com/docs/82379/1494385
+- 获取Endpoint ID：https://www.volcengine.com/docs/82379/1494386
+- 内容护栏配置：https://www.volcengine.com/docs/82379/1494387
