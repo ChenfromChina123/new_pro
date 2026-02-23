@@ -1,13 +1,11 @@
 /**
  * word-game API 客户端
- * 统一封装对后端 API Server（端口 5201）的请求
+ * 开发：请求 localhost:5201；生产：使用域名 earthworm.aistudy.icu
  */
-
-/** API 基础地址：开发时用 localhost:5201，生产时同域端口 5201 */
 const BASE =
   import.meta.env.DEV
     ? "http://localhost:5201/api"
-    : `${location.protocol}//${location.hostname}:5201/api`;
+    : (import.meta.env.VITE_WORD_GAME_API_BASE ?? `${location.protocol}//${location.hostname}/api`);
 
 /** 从 localStorage 读取 JWT Token（aispring 同步写入） */
 function getToken(): string | null {
