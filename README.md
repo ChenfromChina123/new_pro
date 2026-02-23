@@ -1,276 +1,408 @@
-<div align="center">
-  <img alt="Earthworm" width="120" height="120" src="./assets/logo/logo-1000.png">
-  <h1>Earthworm</h1>
-  <span>English | <a href="./README.zh-CN.md">中文</a></span>
-</div>
-
-<div align="center">
-  <br/>
-  <a href="https://hellogithub.com/repository/9433615761f548cf9648434c670cd85b" target="_blank"><img src="https://abroad.hellogithub.com/v1/widgets/recommend.svg?rid=9433615761f548cf9648434c670cd85b&claim_uid=249cPWvjfNmU7dp" alt="Featured｜HelloGitHub" style="width: 250px; height: 54px;" width="250" height="54" /></a>
-</div>
-
-## ⚡ Introduction
-
-By constructing sentences with conjunctions, it helps you learn English better~ 😊
-
-## 🚀 How To Start?
-
-**The mentioned operations below are based on the root directory of the current project, please be attentive to ensure there are no errors!**
-
-### Requirements
-
-- **pnpm version >= 8**
-
-  ```bash
-  corepack enable
-  ```
-
-- **Node.js version >= v20**
-  > Use the version from .node-version. [Supported tools](https://github.com/shadowspawn/node-version-usage#compatibility-testing)
-- **Postgres version >= 14.0.0**
-- **Redis version >= 5.0.0**
-- **Docker**. please make sure it is installed and running successfully on your local machine.
-
-```bash
-docker --version # Docker version 24.0.7, build afdd53b
-
-node --version # v20+
-
-pnpm -v # 8+
-```
-
-### Editor
-
-#### VSCode
-
-- Install the recommended extensions [extensions.json](./.vscode/extensions.json)
-
-### 1. Install Dependencies
-
-```bash
-pnpm install
-```
-
-### 2. Configure the `.env` File
-
-You can choose to copy the contents of `./apps/api/.env.example` to`./apps/api/.env`. note that the' example' file contains sample configuration. the main storage system's environment variable information, such as database connection address, user name, password, port, key, etc. the back-end service will read the configuration from this file, **of course you can also change it to your own configuration information**.
-
-Windows users recommend shortcut keys to copy and paste, Linux users can operate through the following command.
-
-#### Server
-
-```bash
-cp ./apps/api/.env.example ./apps/api/.env
-```
-
-#### Client
-
-```bash
-cp ./apps/client/.env.example ./apps/client/.env
-```
-
-### 3. Restore Data Of Logto
-
-Uncompress `logto_db_init_data.zip` to `.volumes/`
-
-```bash
-unzip logto_db_init_data.zip -d .volumes/
-```
-
-- Admin URL: http://localhost:3011
-- Username: admin
-- Password: WkN7g5-i8ZrJckX
-
-> if you want to [Manual Configuration Logto](https://github.com/cuixueshe/earthworm/wiki/%E8%BF%81%E7%A7%BB-Logto-%E7%94%A8%E6%88%B7%E7%B3%BB%E7%BB%9F%E5%90%8E%E6%9C%AC%E5%9C%B0%E5%90%AF%E5%8A%A8%E9%85%8D%E7%BD%AE%E6%96%B9%E6%A1%88%EF%BC%88%E8%B4%A1%E7%8C%AE%E8%80%85%EF%BC%89)
-
-### 4. Start Docker Compose Service
-
-The backend relies on Postgres and Redis services. Start and stop these services using the commands configured in `package.json` below.
-
-```bash
-# start
-pnpm docker:start
-
-# When needed, execute the following command
-# stop
-pnpm docker:stop
-# delete
-pnpm docker:delete
-# Complete deletion (including Volume data)
-pnpm docker:down
-```
-
-If you prefer manual, you can use the commands below.
-
-```bash
-docker compose up -d
-docker compose stop
-docker compose down
-
-# commands compatible with older versions of Docker
-docker-compose up -d
-```
-
-### 5. Initialize Database Schema
-
-When executing this command, try to keep a little time from the previous command, because the `-d` parameter just used will suspend its service execution in the background. At this time, the docker service may still be running. If an error is found, execute it again.
-
-```bash
-pnpm db:init
-```
-
-### 6. Create and Upload Course Data
-
-**Only Execute This During the Initial Database Initialization**.
-
-```bash
-pnpm db:upload
-```
-
-### 7. Start the Backend Service
-
-```bash
-pnpm dev:serve
-```
-
-### 8. Start the Frontend Service
-
-```bash
-pnpm dev:client
-```
-
-## 🛠️ About testing
-
-**Run the test before submitting the commit, and submit the code after the test passes, so as to avoid multiple commits to solve the test problem**.
-
-### Front-end Testing
-
-The main is the single test of Vitest and the automated test of cypress, execute the following command:
-
-```bash
-# Enter the front-end project directory
-cd apps/client
-
-# vitest
-pnpm test:unit:run
-# cypress
-pnpm test:e2e:run
-
-# monitor vitest, convenient hot update to see test results
-pnpm test:unit:watch
-```
-
-### Backend Testing
-
-Mainly Jest single test and end-to-end test, but need to access the test database, so you need to ensure that:
-
-1. testdb and testRedis services in Docker Compose started normally.
-2. The configuration information in the `.env.test` file is correct. If there is no such file, you can copy the contents of the `apps/api/.env.test.example` file to the `apps/api/.env.test` file. The following command is provided to directly use.
-
-Execute the following command:
-
-```bash
-# Enter Backend Project Directory
-cd apps/api
-
-# If you have an.env.test file, you don't need to run this step
-cp .env.test.example .env.test
-
-# Single test
-pnpm test:unit
-# End-to-end testing
-pnpm test:e2e
-# Single test and end-to-end test run together
-pnpm test
-```
-
-## Docs Project
-
-Project based on Vitepress documentation，execute the following command:
-
-```bash
-# Local Development
-pnpm docs:dev
-```
-
-## ❓ FAQ
-
-### Database connection failed
-
-My Docker and the database inside are running normally, but when I run the `db:init` command, I still report an error, indicating that the database connection failed.
-
-You can check whether the database configuration in the `.env` file is correct, or even whether this file has it! 😠
-
-### How To Correctly Update Course Data?
-
-when you identify incorrect course data and make modifications, you should use the following command to update the course data in the database.
-
-```bash
-pnpm db:update
-```
-
-### pnpm Install Error?
-
-Some dependencies require compilation during installation, necessitating the presence of relevant build environments.
-If these environments are not available, the compilation process may fail. Additionally, different modules may require different build environments, so specific issues need to be analyzed individually.
-Below are specific problems encountered along with their solutions.
-
-First try the following command to update `pnpm`.
-
-```shell
-pnpm i -g
-# or
-pnpm i -g pnpm
-# or
-npx pnpm i -g pnpm@latest
-```
-
-**Error Installing the argon2 Module On Windows**
-
-- Install Visual Studio 2015 or later, specifically the "Desktop development with C++" component. (In practice, any component containing C++ development tools and libraries will suffice.)
-- If you encounter Chinese characters display issues during compilation, execute `chcp 437` in the command prompt, then rerun the install command.
-
-### Docker Permission Denied in Docker?
-
-When using WSL2 as a development environment in Windows, the following error occurs when starting Docker with `docker compose up -d` :
-
-```bash
-permission denied while trying to connect to the Docker daemon socket at unix:///var/run/docker.sock: Get "http://%2Fvar%2Frun%2Fdocker.sock/v1.24/containers/json": dial unix /var/run/docker.sock: connect: permission denied
-```
-
-> Solution
-
-Add the current user to the docker group
-
-```bash
-# Add docker user group
-sudo groupadd docker
-# Add the logged-in user to the docker user group
-sudo gpasswd -a $USER docker
-# Update user group
-newgrp docker
-# Test if docker command is working properly
-docker images
-```
-
-## 🤝 Frontend Development Guideline
-
-1. Do not Destructure Pinia store.
-
-   - The readability will be better when using `store`
-   - Destructuring can lead to reactivity loss and using `storeToRefs` is also quite cumbersome
-
-2. Avoid including UI logic in composables.
-
-   - Such as `toast.info()`
-   - We categorize the router as UI logic, and for ease of testing, avoid including routerrelated logic in there
-
-## 🚀 Star History
-
-[![Stargazers over time](https://starchart.cc/cuixueshe/earthworm.svg?variant=adaptive)](https://starchart.cc/cuixueshe/earthworm)
-
-## 🌟 Contributing
-
-Thanks to everyone who has already contributed to Earthworm! 🎉
-
-<a href="https://github.com//cuixueshe/earthworm/graphs/contributors"><img src="https://contributors.nn.ci/api?repo=cuixueshe/earthworm" /></a>
+# AI智能学习助手系统 - Vue 3版本
+
+这是基于Vue 3的现代化前端重构版本，将原有的HTML页面转换为组件化的Vue应用。
+
+## ✨ 特性
+
+- 🚀 **Vue 3 + Vite** - 使用最新的Vue 3 Composition API和Vite构建工具
+- 🎨 **现代化UI** - 全新的界面设计，支持深色模式
+- 📦 **组件化开发** - 模块化的组件结构，易于维护和扩展
+- 🔐 **完整的认证系统** - JWT Token认证，路由守卫
+- 💾 **状态管理** - 使用Pinia进行全局状态管理
+- 🌐 **API集成** - 完整对接后端FastAPI接口
+- 📱 **响应式设计** - 适配各种屏幕尺寸
+
+## 🛠️ 技术栈
+
+### 前端
+- **框架**: Vue 3.4+
+- **构建工具**: Vite 5.0+
+- **路由**: Vue Router 4.2+
+- **状态管理**: Pinia 2.1+
+- **HTTP客户端**: Axios 1.6+
+- **Markdown渲染**: Marked 11.0+
+- **代码高亮**: Highlight.js 11.9+
+
+### 后端
+- **框架**: Spring Boot 3.3.5
+- **运行环境**: **Java 17+ (必须)**
+- **构建工具**: Maven 3.6+
+- **AI 框架**: Spring AI
+- **默认端口**: 5000 (请确保此端口未被其他服务占用，如 Python Flask 等)
+
+## 🛠️ 服务启动指南
+
+### 🛠️ 服务启动指南
+
+#### 后端启动 (Spring Boot)
+1. 进入 `aispring` 目录
+2. 运行 `./mvnw.cmd spring-boot:run` (Windows) 或 `./mvnw spring-boot:run` (Linux/Mac)
+3. 确保端口 5000 可用。如果启动失败并提示端口占用，请使用相应平台的命令查找并终止冲突进程（如 Windows 下使用 `netstat -ano | findstr :5000`）。
+
+#### 前端启动 (Vue 3)
+1. 进入 `vue-app` 目录
+2. 运行 `npm install` (首次启动)
+3. 运行 `npm run dev`
+4. 默认访问地址: `http://localhost:5173`
+
+##### 🚀 最近更新
+
+### 🔧 移动端 APK 下载问题修复 (2026-02-16)
+- **问题描述**: 移动端浏览器下载 APK 文件时会自动识别为 ZIP 格式并修改文件后缀
+- **根本原因**: APK 本质是 ZIP 格式，部分移动浏览器会进行 MIME 嗅探并根据文件内容判断类型
+- **前端优化**:
+  - 在 `CodeNovaView.vue` 中实现了智能下载逻辑，区分移动端和桌面端
+  - 移动端直接使用后端 URL 下载，避免 Blob 转换导致的类型丢失
+  - 桌面端使用 Blob 方式并强制指定 `application/vnd.android.package-archive` MIME 类型
+- **后端增强**:
+  - 在 `ResourceController`、`PublicFileController`、`CloudDiskController` 中强制 APK 文件使用正确的 MIME 类型
+  - 添加 `Accept-Ranges: bytes` 响应头支持断点续传，提升移动端网络不稳定时的下载成功率
+  - 强化 `X-Content-Type-Options: nosniff` 禁止浏览器 MIME 嗅探
+
+### 🛠️ 前后端无响应问题集中修复 (2026-02-16)
+- **后端编译阻断修复**: 修复了 `AgentServiceImpl` 末尾多余的 `}` 语法错误，避免 Spring Boot 启动失败导致全站接口不可用。
+- **前端运行时错误修复**:
+  - 修复 `AppSidebar.vue` 中未定义变量 `terminalStore` 的调用，避免路由切换时脚本异常中断。
+  - 修复云盘删除文件夹参数传递错误（路径误传为 ID）与重命名字段判断错误，恢复文件夹操作响应。
+  - 修复 `AppHeader.vue` 中登录状态判断字段错误（`isLoggedIn` -> `isAuthenticated`），恢复主题设置同步逻辑。
+- **接口基址稳态优化**: 将 `API_CONFIG.baseURL` 默认改为同源相对路径，统一适配 Vite 代理与生产反向代理，降低跨域/端口不一致导致的“点击无响应”概率。
+- **启动脚本优化**: 更新 `start_linux_prod.sh`，新增 UTF-8 环境设置、端口占用时跳过重启（避免误杀热部署进程）、并支持自动选择最新 JAR 启动后端。
+
+### 🚀 智能需求分析文档生成系统 (2026-01-26)
+- **AI Agent 驱动的全流程**: 实现了从初步想法到标准化需求文档的智能生成流程。
+  - **领域智能识别**: AI 自动识别需求所属行业（如电商、金融、医疗等），并匹配专家级提示词。
+  - **动态引导问答**: 基于识别的领域，AI 动态生成 5-8 道专业细化问题，引导用户补齐业务流程 and 关键约束。
+  - **实时行业信息集成**: 模拟集成实时网络搜索，自动检索行业标准和竞品动态，确保文档的专业性与时效性。
+  - **SSE 流式文档生成**: 采用 Server-Sent Events 技术，实时展示 AI 编写文档的过程，支持 Markdown 格式。
+- **标准化提示词库 (Awesome-Prompts 集成)**:
+  - **实时远程同步**: 实现了直接从 GitHub 官方仓库 (`f/awesome-chatgpt-prompts`) 拉取最新 `prompts.csv` 的逻辑。
+  - **本地化存储**: 自动解析并存储数百个标准化提示词到 MySQL 中，支持按「角色」「任务」「领域」分类。
+  - **动态调用机制**: 后端 `AgentServiceImpl` 优先从数据库检索最匹配的提示词模板，取代硬编码，支持管理员在线同步更新。
+  - **管理后台支持**: 新增 `/api/admin/prompts/sync` 接口，支持一键从远程仓库同步最新的 Agent 提示词。
+- **交互式多步 UI**:
+  - **智能生成工作流**: 采用三步式引导（输入想法 -> 领域识别与动态答题 -> 自动跳转生成），极大降低了非专业人士编写需求文档的难度。
+  - **无缝集成编辑器**: 摒弃传统的“生成后预览”模式，点击生成后立即自动跳转至编辑器界面，以流式 Markdown 形式实时展现 AI Agent 的撰写过程，支持生成过程中随时停止。
+  - **响应式表单**: 自动适配 AI 返回的单选/多选题目结构，提供流畅的答题体验。
+  - **全能编辑视图**: 支持 Markdown 源码编辑与实时预览双模式切换，集成版本历史回溯与一键保存功能。
+- **历史记录与工作流优化**:
+  - **修复历史加载 Bug**: 统一了后端 API 的 `ApiResponse<T>` 返回格式，解决了需求分析页面无法加载历史文档列表的严重问题。
+  - **实现自动恢复最后编辑**: 系统现在能自动记录并恢复用户最后一次编辑的文档 ID，确保用户每次进入功能都能无缝接续上次的工作，极大提升了生产力。
+
+### 🚀 软件下载与 MIME 类型优化 (2026-01-26)
+- **APK 下载识别修复**: 彻底解决了移动端（Android）下载 APK 文件时，由于浏览器或服务器 MIME 类型识别不准导致文件被重命名为 `.zip` 的问题。
+  - **核心组件**: 引入了 `FileUtils` 统一文件处理工具类。
+  - **精确匹配**: 针对 `.apk` 后缀强制指定 `application/vnd.android.package-archive` 类型，确保下载后可直接触发系统安装。
+  - **全站覆盖**: 更新了云盘下载、公共资源下载、管理后台资源预览及用户头像展示等所有涉及文件流输出的模块。
+
+### 🚀 软件详情页深度优化与功能增强 (2026-01-26)
+- **Agent 终端助手深度介绍**:
+  - **CodeNova 简介更新**: 在 CodeNova 详情页中补充了关于 Agent 核心集成的说明，明确了其作为智能自动化引擎与 IDE 协同工作的定位。
+  - **Agent 专属简介**: 为 Agent 详情页新增了完整的“软件简介”板块，详细介绍了其自然语言处理能力、文件系统集成及自动化执行引擎等核心价值。
+- **GitHub 开源生态集成**:
+  - **动态链接同步**: Agent 和 CodeNova 详情页现能动态同步后端配置的 GitHub 开源地址，支持根据不同平台版本自动切换链接。
+  - **全新 GitHub 交互设计**: 为 Agent 页面新增了深色系、高辨识度的 GitHub 风格按钮（btn-github-lg），提升了开源社区入口的可见性。
+- **UI/UX 一致性优化**:
+  - **结构标准化**: 统一了 CodeNova 和 Agent 两个核心软件详情页的内容布局，确保了用户在使用不同产品介绍页时视觉与交互体验的一致性。
+  - **样式增强**: 补全了配套的 CSS 动画与玻璃拟态（Glassmorphism）样式，使简介板块与整体页面风格完美融合。
+
+### 🚀 API 基础地址与路由兼容性优化 (2026-01-26)
+- **API 基础地址调整**: 将前端 API 的基础地址从 `http://localhost:5000` 修改为 `http://localhost:3000`。
+  - **优势**: 充分利用 Vite 的本地代理（Proxy）功能，统一请求路径，避免开发环境下的跨域问题，并与生产环境的相对路径保持逻辑一致。
+- **多平台路由兼容性修复**: 修复了 Agent 和 CodeNova 在访问带平台参数的路径（如 `/agent/windows`）时出现 404 的问题。
+  - **路由增强**: 升级了 `Agent` 和 `CodeNova` 的路由定义，支持可选的平台参数（`:platform?`）。
+  - **跳转识别优化**: 优化了首页的 `isInternalRoute` 逻辑，使其能正确识别并使用 Vue Router 处理带参数的内部子路径，确保了页面跳转的平滑性。
+
+### 🚀 外部链接跳转逻辑修复 (2026-01-26)
+- **外部链接智能识别**: 首页软件下载按钮与功能卡片现能智能识别内部路由、外部 URL 及后端文件下载路径。
+- **跳转逻辑优化**:
+  - 修复了点击外部 GitHub 链接或文件下载链接时导致的 404 错误（原本被 `router-link` 错误处理为相对路径）。
+  - 内部路由（如 `/agent`, `/codenova`）继续使用 Vue Router 进行无刷新跳转。
+  - 外部链接及后端下载文件自动使用绝对路径并支持 `_blank` 新标签页打开。
+- **模板语法修复**: 修复了 Vue 模板中动态属性 `:[arg]` 不支持包含空格的复杂表达式导致的编译错误，改用 `v-bind` 对象语法实现动态属性绑定。
+- **路径格式化增强**: 自动补全后端上传文件的下载前缀，确保从首页可以直接点击下载通过后台管理系统上传的各类软件安装包。
+
+### 🚀 文件上传稳定性与进度显示优化 (2026-01-26)
+- **上传超时时间大幅延长**:
+  - **全站统一延长**: 将管理后台软件上传、个人云盘文件/文件夹上传、用户头像上传的超时时间统一延长至 **10 分钟**，确保大文件在弱网环境下也能稳定上传。
+  - **后端配置同步**: 同步增加了后端 Tomcat 的连接超时时间至 5 分钟，并优化了 Spring Boot 的文件上传配置。
+- **实时上传进度显示**:
+  - **管理后台**: 新增了全屏磨砂玻璃风格的上传进度对话框，支持显示当前上传的文件名、百分比进度条及动态百分比数值。
+  - **个人云盘**: 为文件和文件夹上传引入了全新的进度模态框，用户可实时掌握上传状态，避免因误操作关闭页面。
+  - **头像上传**: 在个人设置页面增加了头像上传百分比显示，提升了交互反馈的即时性。
+- **异常处理增强**:
+  - 引入了专门的超时错误捕获逻辑（ECONNABORTED），当上传超时时会弹出友好的中文提示信息。
+  - 优化了上传过程中的状态管理，确保无论上传成功还是失败，系统都能正确重置上传状态，避免界面卡死。
+- **UI/UX 细节优化**:
+  - 采用现代化的渐变色进度条设计，并增加了平滑的宽度过渡动画。
+  - 确保进度对话框具备最高层级（Z-index: 10000），不会被其他 UI 组件遮挡。
+
+### 🚀 后台管理与多平台版本支持 (2026-01-26)
+- **生产环境稳定性**:
+  - **核心表修复**: 解决了生产环境下由于 `verification_codes_v2` 表缺失导致的注册与重置密码失败问题。
+  - **用户字段补全**: 为 `users` 表自动补全了 `last_login`（最后登录时间）和 `is_active`（激活状态）字段，修复了登录逻辑中的 SQL 异常。
+  - **资源表升级**: 通过 Flyway 自动化迁移，确保 `resources` 表具备 `file_path`、`platform` 和 `version` 字段，支持多平台软件发布。
+- **多平台管理**: 软件管理系统现已支持 Windows、Linux、Android 等多平台版本。管理员可为同一软件创建不同平台的记录并分别上传对应的安装包。
+- **数据库同步**: 修复了 `resources` 表中缺失 `file_path`、`platform` 和 `version` 字段导致的 SQL 异常，确保系统在扩展多平台功能后数据库模式与实体定义保持一致。
+- **UI 体验升级**:
+  - **表单优化**: 彻底修复了管理后台弹窗中选择框（Select）高度不一、文字不居中及浏览器默认样式干扰的问题。
+  - **平台标签**: 引入了色彩鲜明的平台标识（如 Windows 蓝色、Linux 橙色、Android 绿色），提升了版本区分度。
+- **下载体验优化**:
+  - **智能 MIME 探测**: 后端下载服务现能根据文件内容自动识别 MIME 类型，有效解决 APK 等压缩格式文件被部分浏览器误识别为 `.zip` 的问题。
+  - **友好文件名**: 引入了专用的 `Resource` 下载接口，下载时将自动以软件标题重命名文件（如 `CodeNova.apk`），而非原始的随机 ID，提升用户体验。
+- **自动化初始化**: 优化了后端数据初始化逻辑，系统启动时会自动为 Agent 助手创建 Windows 和 Linux 两个平台的独立管理项，并清理冗余的旧数据。
+- **暗色模式适配**: 深度优化了弹窗表单在暗色模式下的背景色与边框显示，确保视觉一致性。
+
+### 🚀 后台管理与动态软件发布 (2026-01-26)
+- **软件管理功能**: 管理后台新增“软件管理”选项卡，支持管理员动态更新首页软件的版本号、外部链接，并支持直接上传 APK/源文件到服务器。
+- **动态加载**: 首页、CodeNova 详情页及 Agent 详情页全面实现数据动态化，软件版本信息与下载路径实时同步后台设置。
+- **下载服务**: 扩展了后端文件下载接口，支持从指定子目录（如 `/software/`）安全下载已上传的软件安装包。
+
+### 🚀 CodeNova 移动端 IDE 发布 (2026-01-25)
+- **CodeNova 上线**: 新增 CodeNova 移动端 IDE 下载与介绍页，路由为 `/codenova`。
+- **UI 重构**: 采用了现代化的玻璃态（Glassmorphism）设计，提供更美观的视觉体验。
+- **功能**: 支持 APK 下载、详细功能介绍及 GitHub Releases 跳转。
+- **交互优化**: 优化了首页跳转逻辑，修复了部分按钮和功能卡片点击无反应的问题。
+- **资源修复**: 修复了 CodeNova 页面中的图片资源引用，确保在不同环境下均能正常渲染。
+
+
+### 🛠️ 导航栏交互与响应式逻辑修复 (2026-01-13)
+- **导航栏结构优化**:
+  - **移动端按钮归位**: 将移动端菜单切换按钮移入 `nav-container` 内部，确保其在不同分辨率下都能保持正确的边距与对齐。
+  - **桌面端冗余消除**: 修复了移动端菜单按钮在桌面端错误显示的 Bug，现在该按钮仅在 768px 以下设备显示。
+  - **视觉渲染修复**: 为移动端菜单按钮添加了与主题切换按钮一致的视觉风格（圆角边框与背景），解决了部分浏览器下渲染不完整或样式突兀的问题。
+- **配色方案重定义**: 移除了原有的蓝紫渐变风格，采用了更具专业感与科技感的 **翡翠绿 (Emerald) - 科技蓝 (Blue)** 渐变方案。
+
+### 🛠️ 欢迎页视觉重构与配色方案优化 (2026-01-13)
+- **视觉体验升级**:
+  - **配色方案重定义**: 移除了原有的蓝紫渐变风格，采用了更具专业感与科技感的 **翡翠绿 (Emerald) - 科技蓝 (Blue)** 渐变方案。这种配色方案更符合高效学习与工具类产品的定位。
+  - **动态视觉增强**: 优化了 Hero 区域的流光渐变动画，并保持了视觉预览卡片的平滑悬浮效果。
+  - **组件精益化**: 统一了按钮、图标及卡片的色彩反馈，增强了品牌一致性。
+- **深度移动端适配**:
+  - **组件尺寸微调**: 针对 768px 以下设备，全面缩小了导航栏高度、标题字号、按钮内边距及卡片间距。
+  - **性能与响应优化**: 确保在不同设备上均能保持流畅的视觉体验与交互反馈。
+
+### 🛠️ 欢迎页视觉重构与移动端适配优化 (2026-01-13)
+- **视觉体验升级**:
+  - **色彩方案重定义**: 将 `LandingView.vue` 的主色调从通用的蓝青色升级为更具现代感的 **靛蓝-紫罗兰-玫瑰粉** 渐变方案，提升了品牌的独特性与专业感。
+  - **动态视觉增强**: 为 Hero 区域的文字引入了流光渐变动画，并为视觉预览卡片添加了平滑的悬浮（Floating）效果。
+  - **卡片设计精益化**: 重构了特性展示卡片，采用了更细腻的阴影、圆角与边框反馈，降低了视觉疲劳感。
+- **深度移动端适配**:
+  - **组件尺寸微调**: 针对 768px 以下设备，全面缩小了导航栏高度、标题字号、按钮内边距及卡片间距，确保在小屏设备上内容更紧凑。
+  - **布局性能优化**: 优化了移动端下的堆叠顺序与间距逻辑，使页面滚动更加流畅，操作响应更精准。
+  - **文字排版优化**: 调整了移动端下的行高与字间距，提升了长文本的可读性。
+
+### 🛠️ 代码质量与 CSS 兼容性优化 (2026-01-13)
+- **Agent 助手使用流程优化**:
+  - **安装说明简化**: 更新了 `AgentView.vue` 中的安装步骤。现在明确标注 Agent 助手为 **免安装绿色版**，用户下载解压后即可直接运行，无需执行安装脚本。
+- **全站 Linter 规范化**:
+  - **组件清理**: 对 `AgentView.vue` 和 `LandingView.vue` 进行了代码审查，移除了冗余逻辑。
+  - **标签规范化**: 修复了 `ChatView.vue`、`AppHeader.vue`、`Settings.vue` 等 13 个组件中共 48 处非自闭合 HTML 标签（如 `<i>`, `<span>`, `<textarea>`）的自闭合问题，确保符合 HTML5 标准与 Linter 规范。
+  - **文字修正**: 修正了 `AgentView.vue` 中“专业级回退系统”的文字错误。
+  - **代码文档化**: 为 `LandingView.vue` 等核心页面的关键函数添加了详细的中文函数级注释。
+- **CSS 兼容性增强**:
+  - **跨浏览器支持**: 在 `RequirementManager.vue`、`AdminView.vue`、`ChatView.vue` 等全站组件的毛玻璃效果中全面补齐了 `-webkit-backdrop-filter` 属性，确保在 Safari 及旧版 WebKit 浏览器下的视觉一致性。
+- **交互细节微调**:
+  - 统一了移动端菜单图标的渲染逻辑，提升了在弱网环境下的加载稳定性。
+
+### 🛠️ Agent 终端助手 Linux 支持上线 (2026-01-13)
+- **顶层组件集成 Linux 介绍**:
+  - **Hero 区域重构**: 在 `AgentView.vue` 顶层 Hero 区域直接引入 Linux 支持介绍与快捷下载，并明确标注了 **Windows 全量版** 与 **Linux 独立版**，提升了版本识别度。
+  - **跨平台全量包 (v1.0.0)**: 将 Windows 发行版与 Linux 二进制文件集成到统一的 `xiaochen_agent_v1.0.0.zip` 压缩包中，实现一包支持多平台。
+  - **视觉体验优化**: 统一了下载按钮的视觉风格，新增了 Windows 平台图标，确保在不同主题下均具备良好的交互反馈。
+- **全局导航体验优化**:
+  - **返回首页功能**: 在侧边栏顶部操作区域新增了“返回首页”快捷按钮，方便用户在不同功能页与落地页之间快速切换。
+- **静态资源更新**:
+  - 发布并部署了集成了 Linux 版本的全平台压缩包 `xiaochen_agent_v1.0.0.zip`。
+
+### 🛠️ Agent 专题页与 RequirementManager 视觉对齐 (2026-01-13)
+- **视觉风格全站统一**:
+  - **色调重构**: 将 `AgentView.vue`、`ChatView.vue` 和 `RequirementManager.vue` 中的旧版蓝紫色调全面替换为现代化的青绿渐变方案 (`#06b6d4` -> `#10b981`)。
+  - **深度思考组件优化**: 重构了 `ChatView.vue` 中的深度思考（Reasoning）模块，采用青绿色边框和呼吸灯动画，适配深色模式。
+  - **RequirementManager 升级**: 为需求管理组件引入了与 `AgentView` 一致的侧边栏风格、渐变按钮及深色模式适配。
+- **布局与交互优化**:
+  - **移动端适配**: 统一了移动端菜单的间距、圆角与 Z-index 层级。
+  - **页脚对齐**: 将 `LandingView` 的页脚样式同步至 `AgentView`，并优化了其在深色模式下的表现。
+- **代码质量**: 确保所有修改的代码均包含中文函数级注释，并遵循 Vue 3 最佳实践。
+
+### 🛠️ Agent 终端助手详情页独立化与视觉重构 (2026-01-13)
+- **Agent 专题页独立化**:
+  - **架构调整**: 将 Agent 详情页从 `AppLayout` 的子路由中移出，变为与首页平级的顶层路由。现在访问 `/agent` 将呈现完全独立的 Landing Page 风格，提供沉浸式阅读体验。
+  - **视觉一致性**: 采用与首页一致的现代设计语言，包含渐变文字、毛玻璃效果、以及流畅的滚动入场动画。
+  - **交互增强**: 专题页现已具备完整的移动端适配和主题切换功能，并新增了模拟终端的实时演示。
+  - **内容优化**: 移除了所有平台特定的下载限制说明，采用统一的路由引导，让用户更直观地了解 Agent 的核心功能与使用方法。
+
+### 🛠️ 欢迎页与精美 UI 交互 (2026-01-12)
+- **全新欢迎页 (Landing Page)**:
+  - **精美视觉设计**: 设计了全新的根路径 `/` 欢迎页面，采用沉浸式 Hero 区域、渐变文字、毛玻璃导航栏以及流畅的入场动画。
+  - **核心特性展示**: 通过卡片化布局直观展示了 AI 问答、个人云盘、语言学习三大核心功能，并配有对应的功能清单。
+  - **实时交互演示**: 增加了一个模拟 AI 对话的实时打字机动画，让用户进入网站的第一秒就能感知 AI 助手的魅力。
+  - **全局主题适配**: 欢迎页完美支持深色/浅色模式切换，并保持了全站 UI 风格的高度统一。
+  - **响应式布局**: 针对移动端、平板和桌面端进行了深度适配，确保在任何设备上都有极致的视觉呈现。
+  - **无缝导航引导**: 提供了清晰的登录、注册以及“以游客身份试用”的行动导向按钮（CTA），大幅提升了转化率和用户留存。
+
+### 🛠️ 游客功能与后端内存优化 (2026-01-12)
+- **后端内存占用优化**:
+  - **线程池重构**: 为 AI 聊天和后台任务引入了专用线程池 `chatExecutor` 和 `backgroundExecutor`，解决了高并发下线程频繁创建销毁导致的内存抖动问题。
+  - **分页历史加载**: 将聊天记录从“全量加载”优化为“分页加载”，并限制了模型上下文的字符数，有效防止了长对话导致的 OOM（内存溢出）风险。
+  - **流式文件处理**: 优化了云盘文件操作，采用流式读写替代全量读取到内存，极大降低了处理大文件时的瞬时内存峰值。
+- **游客模式 (免登录访问)**:
+  - **匿名对话支持**: 允许用户无需登录即可直接进入聊天页面进行 AI 对话，提供流畅的试用体验。
+  - **频率限制 (Rate Limiting)**: 针对游客（IP 维度）实施了对话频率限制，每日限额 5 次对话，通过 Redis 进行高效计数。
+  - **角色化导航**: 根据登录状态动态调整侧边栏导航，游客仅可访问“AI 问答”和“公共资源”，云盘、语言学习等私有功能自动隐藏。
+  - **匿名记录保存**: 游客的对话记录根据 Session ID 和 IP 地址保存在专门的 `anonymous_chat_records` 表中，确保数据隔离。
+  - **会话平滑升级**: 游客在聊天过程中会收到登录提示，引导其注册以保存永久历史记录。
+- **功能细节优化**:
+  - 路由守卫调整: 放开了 `/chat` 和 `/public-files` 路由的认证要求。
+  - **公共资源开放**: 游客现在可以访问公共资源列表并直接下载文件，无需登录。后端 Security 已配置允许对 `/api/public-files` 及其子路径的 GET 请求进行匿名访问。
+  - 前端状态管理: `chatStore` 支持在未登录状态下发起请求，并自动处理后端返回的匿名 Session ID。
+  - **UI 交互改进**: 侧边栏为游客增加了明显的登录引导提示，优化了未登录状态下的头像显示。
+
+### 🛠️ 多语言翻译与语言学习模块导航优化 (2026-01-10)
+- **新增多语言翻译功能**:
+  - 后端新增 `TranslationController` 和 `TranslationService`，集成 `AiChatService` 实现高质量 AI 翻译。
+  - 支持中文、英语、日语、韩语、法语、德语、西班牙语、俄语等 8 种语言互译。
+  - 前端开发了 `TranslationTool.vue` 组件，支持语言切换、一键复制和文本互换功能。
+  - 翻译功能已集成至“语言学习”模块中，方便用户在学习过程中随时翻译。
+  - 修复了翻译请求中目标语言可能为空导致的验证失败问题，增加了默认目标语言支持。
+   - 移除了控制器中的 `@Valid` 验证，解决了因热部署未完全刷新 DTO 验证规则导致的请求拦截问题。
+    - 优化了 AI 翻译的 Prompt 结构，引入 `System Prompt` 提高了翻译的专业性并解决了后台“系统提示词为空”的警告。
+    - 移除了前端翻译成功时的冗余 `alert` 提示，优化了用户交互体验。
+  - **修复翻译结果不显示问题**: 修正了前端 `TranslationTool.vue` 对后端成功响应的判定逻辑，从 `response.success` 更改为 `response.code === 200`，确保翻译内容能正确渲染到译文区域。
+  - **优化后台日志**: 清理了 `AiChatServiceImpl` 中对系统提示词的误报警告，使后台日志输出更加清晰准确。
+- **语言学习模块导航重构**:
+  - 将原有的页内侧边栏迁移至全局 `AppSidebar`，统一了全站导航风格。
+  - 实现了基于路由查询参数（Query Parameters）的视图切换逻辑，支持在侧边栏直接切换“学习概览”、“我的生词”、“公共词库”、“AI 文章”和“智能翻译”。
+  - 优化了侧边栏子导航的视觉样式，增加了活动状态指示器，并与聊天记录列表风格保持一致。
+- **移动端适配优化**:
+  - 移除了语言学习页面冗余的移动端头部和侧边栏遮罩，解决了与全局布局的显示冲突。
+  - 优化了全局侧边栏在移动端的交互，确保在切换子导航视图时自动关闭侧边栏，提升了小屏设备的可用性。
+
+### 🛠️ 用户注册与个人资料修复 (2026-01-10)
+- **修复用户名不匹配问题**:
+  - 解决了注册时输入的用户名未被正确保存的问题（原逻辑错误地使用了邮箱前缀作为用户名）。
+  - 在 `RegisterRequest` DTO 中增加了 `username` 字段及相应的参数校验。
+  - 更新了 `AuthService` 中的注册逻辑，优先使用用户输入的用户名创建账号。
+- **新增个人资料编辑功能**:
+  - 在后端 `UserController` 中新增了 `updateProfile` 接口，支持用户修改自己的用户名。
+  - 在前端 `Settings.vue` 页面增加了用户名编辑入口，支持“点击编辑-保存-取消”交互。
+  - 更新了 `auth.js` store，实现了资料更新后的本地缓存同步更新，确保 UI 实时反馈。
+
+### 🛠️ AI 对话逻辑简化 (2026-01-10)
+- **移除 Agent 循环**:
+  - 取消了所有基于 Agent 循环的工具调用和任务自动更新逻辑，回归纯粹的普通对话模式。
+  - 移除了 `AiChatService` 中的 `askAgentStream` 接口，统一使用 `askStream` 进行流式问答。
+  - 清理了不再使用的 `ToolsService`、`ToolCallParser` 等相关类和方法，减少了系统复杂度。
+  - 优化了对话核心实现，移除了不必要的 JSON 解析和任务上下文维护逻辑，提升了响应速度。
+- **上下文与 UI 优化**:
+  - **取消上下文窗口限制**: 移除了对话历史消息数量的限制（MAX_CONTEXT_MESSAGES），现在 AI 可以保留并引用全部历史对话内容。
+  - **UI 图标移除**: 移除了 AI 生成内容时的“深度思考”脑部图标及闪烁光标，以匹配图 2 的极简设计风格。
+- **配置安全性增强**:
+  - 对 `application.yml` 中的 DeepSeek 和 豆包 API Key 进行了 Jasypt 加密处理。
+  - 支持通过环境变量 `JASYPT_ENCRYPTOR_PASSWORD` 注入解密密钥，避免敏感信息明文泄露。
+
+### 🛠️ 管理后台文件预览与下载修复 (2026-01-06)
+- **PDF & 图片预览修复**:
+  - 修复了 PDF 预览显示“获取内容失败”的问题，通过在前端请求中添加 `transformResponse: [(data) => data]` 成功获取并解析了原始 Blob 数据。
+  - 优化了预览弹窗的视觉效果，增加了磨砂玻璃背景、加载动画和更清晰的错误提示信息。
+  - 解决了 PDF 预览时 iframe 边框显示不协调的问题，使预览效果更加沉浸。
+- **Word 下载体验优化**:
+  - 修复了 Word 文件在弹窗中文字布局混乱的问题，增加了专门的文件信息展示区域。
+  - 确保了管理员可以跨用户安全地下载所有类型的文件。
+- **接口稳定性增强**:
+  - 将管理员下载接口路径统一调整为 `/api/admin/files/download/{fileId}`，与内容获取接口保持一致。
+  - 增加了后端日志记录，支持在文件下载过程中实时追踪文件路径解析状态，便于后续排错。
+  - 增强了前端对 Blob 错误响应的解析能力，现在可以正确显示后端返回的 JSON 格式错误信息。
+
+### 🛠️ 管理后台 UI 优化与文件预览增强 (2026-01-06)
+- **管理后台 UI 深度优化**:
+  - 重构了用户管理、文件管理和反馈管理的表格样式，增加了交互动画和响应式适配。
+  - 优化了搜索框、下拉选择框的视觉效果，使其更符合现代化 UI 规范。
+  - 改进了操作按钮的视觉反馈，区分了“预览”、“编辑”和“查看”等不同功能场景。
+- **全格式文件查看支持**:
+  - **PDF & 图片预览**: 实现了基于 Blob 对象的安全预览功能，支持在管理后台直接查看 PDF 文件和各类图片格式（JPG, PNG, GIF）。
+  - **Word 文件处理**: 针对 Word (.doc/.docx) 文件，添加了“下载查看”功能，并优化了文件下载流程。
+  - **文本文件编辑**: 优化了文本类文件的加载状态显示，增强了编辑器的容错处理。
+- **后端管理接口加固**:
+  - 在 `AdminController` 中新增了管理员专用的文件下载/预览接口，绕过了普通用户的路径限制。
+  - 在 `CloudDiskService` 中实现了 `downloadFileAdmin` 方法，支持管理员跨用户下载和预览文件。
+  - 完善了 API 端点配置，确保前后端在管理功能上的高度同步。
+
+### 🛠️ 管理后台功能增强 (2026-01-06)
+- **搜索与筛选功能增强**:
+  - 在“文件管理”选项卡添加了**用户筛选下拉框**，支持直接点击选择特定用户查看其文件。
+  - 在“用户管理”列表添加了**“查看文件”快捷按钮**，点击即可跳转并自动筛选该用户的文件。
+  - 优化了搜索框布局，支持文件名实时过滤，提升了管理大批量文件的效率。
+  - 优化了管理后台的交互体验，增加了空数据状态的友好提示。
+- **文件管理显示修复**:
+  - 修复了 `AdminView.vue` 中文件管理、用户管理和反馈管理等选项卡数据无法显示的问题。
+  - 修正了前端在解析后端 `ApiResponse` 统一包装类时的路径错误，统一使用 `response.data` 获取业务数据。
+  - 修复了后端 `AdminController` 中的 `LazyInitializationException` 问题，通过在 `UserFileRepository` 中使用 `JOIN FETCH` 优化查询，确保关联的用户数据能被正确加载。
+  - 增强了统计卡片的展示稳定性，确保在数据加载失败时显示默认值。
+- **管理后台交互优化**:
+  - 修复了文件编辑弹窗中文件内容无法加载的问题。
+  - 优化了管理后台各模块的数据刷新逻辑，确保在切换标签页时能够实时获取最新数据。
+
+### 🚀 公共资源下载与管理后台增强 (2026-01-06)
+- **公共资源下载修复**: 
+  - 解决了下载公共文件时可能触发前端路由跳转而非浏览器下载的问题。
+  - 通过 `encodeURIComponent` 处理文件名，并在前端强制使用新窗口打开下载链接，提升了不同浏览器下的兼容性。
+- **管理后台数据统计修复**:
+  - 修复了管理员仪表盘统计数据全为 0 的问题，通过在后端 `AdminStatistics` 实体中添加 `@JsonProperty` 注解，确保了前后端数据字段映射的一致性。
+- **API 配置自动化**:
+  - 优化了 `api.js` 中的 `getBaseURL` 逻辑，能够根据当前域名自动切换 `localhost:5000` 或生产环境相对路径，简化了前后端分离部署的配置。
+  - 完善了公共资源的 API 端点配置，包括上传、列表、下载和删除功能。
+- **删除功能增强**: 
+  - 在公共资源页面为管理员增加了文件删除功能，并实现了前后端联动实时刷新。
+  - 后端实现了 `DELETE /api/public-files/{filename}` 接口，支持物理文件删除。
+
+### 🛡️ 管理员设置与界面滚动优化 (2026-01-05)
+- **管理员自动化设置**:
+  - 新增了 `UserService.setAsAdmin` 事务性方法，支持将指定邮箱账号设置为管理员。
+  - 引入了 `CommandLineRunner` 机制（`adminSetupRunner`），在应用启动时自动将指定账号（如 `3301767269@qq.com`）配置为管理员。
+  - 增强了认证系统：在 JWT Token 中新增了 `is_admin` Claim，使前端能够实时感知用户的管理员身份。
+- **数据库架构加固 (Flyway)**:
+  - 引入了 `V2_2__fix_admin_table_defaults.sql` 迁移文件，通过存储过程安全地为 `admins` 表的 `is_active` 和 `is_superadmin` 字段添加了数据库级别的默认值（1 和 0）。
+  - 解决了 `SQL Error 1364: Field 'is_active' doesn't have a default value` 报错，确保管理员记录在各种插入场景下的稳定性。
+- **全屏滚动体验优化**:
+  - 统一修复了全站页面的滚动失效问题。核心方案是将各子页面的 `height: 100vh` 或固定计算高度修改为 `height: 100%`，并由父容器 `AppLayout` 统一管理滚动条。
+  - **云盘页 (CloudDiskView)**: 修复了长文件列表无法下滑的问题。
+  - **聊天页 (ChatView)**: 修复了消息历史过长时的滚动异常。
+  - **设置页 (SettingsView)**: 解决了设置选项过多时无法滑动查看底部内容的问题。
+  - **管理页 (AdminView & ChatManagementView)**: 移除了 `AdminView` 和 `ChatManagementView` 中冗余嵌套的 `AppLayout` 组件，修复了双重布局导致的滚动冲突和样式错乱。
+  - **布局系统加固**: 在 `AppLayout.vue` 的 `main-content` 容器中增加了 `min-height: 0` 配置，解决了 Flex 布局下子元素无法正确触发内部滚动的经典难题。
+- **前端界面精简**:
+  - 移除了聊天工具栏中暂不可用的功能图标（截图、通话、语音输入），提升了界面的整洁度和用户体验。
+- **敏感配置加密 (Jasypt)**: 
+  - 集成了 **Jasypt** 加密框架，对 `application.yml` 中的数据库密码、邮件授权码、DeepSeek API Key 等敏感信息进行了加密处理（`ENC(...)` 格式）。
+  - 支持通过环境变量 `JASYPT_PASSWORD` 动态传入解密盐值。
+
+### 🌐 生产环境部署与数据库兼容性优化 (2026-01-05)
+- **域名自动识别**: 前端配置现在能够自动识别 `aistudy.icu` 域名并切换后端基础地址到 `http://aistudy.icu:5000`。
+- **CORS 与安全修复**: 
+  - 更新了后端 CORS 白名单，允许来自 `aistudy.icu` 的跨域请求。
+  - 修复了 Spring Security 导致的 OPTIONS 预检请求返回 403 Forbidden 的问题。
+- **多环境配置支持**: 引入了 `application-dev.yml` 和 `application-prod.yml`，支持通过 `--spring.profiles.active=prod` 参数切换环境。
+- **数据库版本管理**: 引入了 **Flyway** 数据库迁移工具，支持自动版本控制和基准线 (`baseline`) 迁移。
+
+### 🔐 找回密码与认证功能修复 (2026-01-05)
+- **参数映射修复**: 修复了 `ResetPasswordRequest` 中 JSON 字段无法正确映射的问题。
+- **错误响应规范化**: 更新了 `GlobalExceptionHandler`，将验证失败的返回格式统一为 `ErrorResponse` 对象。
+- **验证码系统校准**: 打通了发送重置码、验证并更新密码的完整流程。
+
+### 🔧 工具批准系统修复 (2025-12-25)
+- **前端设置保存**: 修复了用户在前端设置工具批准规则后未保存到后端的问题。
+- **批准同步**: 确保用户批准/拒绝工具调用时正确同步到后端。
+- **数据一致性**: 统一了前端和后端的工具名称映射关系。
+
+### 🛠️ 后端管理与文件编辑增强 (2025-12-24)
+- **AdminController**: 新增管理员专用控制器，支持全站统计、用户管理及文件列表查询。
+- **全格式文件编辑**: 支持对多种文本格式（如 `.js`, `.ts`, `.java`, `.py` 等）的直接编辑。
+- **编码兼容性优化**: 修复了读取非 UTF-8 编码文件（如 GBK）时的报错问题。
+- **存储统计修复**: 修复了管理员面板中全站总存储空间的统计逻辑。
+
+### 🎨 前端 AI 终端系统全面重构 (2025-12-24)
+- **AgentLoopManager**: 完整的 Agent 循环生命周期管理器。
+- **CheckpointTimeline**: 时间旅行式检查点可视化。
+- **ToolApprovalManager**: 智能工具批准系统。
+- **SessionStatePanel**: 实时会话状态监控。
+- **UI 交互优化**: 将任务链移至右侧面板，采用更紧凑的聊天框样式，提升了核心内容展示空间。

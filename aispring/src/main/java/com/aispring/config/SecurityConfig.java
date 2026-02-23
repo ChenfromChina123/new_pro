@@ -36,7 +36,6 @@ public class SecurityConfig {
                 .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
                 // 公开端点
                 .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/api/rsa/**").permitAll()  // 允许访问RSA公钥端点
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/users/avatar/**").permitAll()
                 .requestMatchers("/api/resources/public").permitAll()

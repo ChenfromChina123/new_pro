@@ -1,0 +1,1 @@
+75. 修复了移动端下载 APK 文件被自动转换为 ZIP 后缀的问题。通过前端智能检测设备类型并采用不同下载策略（移动端直接使用后端 URL，桌面端使用 Blob 并强制指定 MIME 类型），以及后端在所有下载接口中强制 APK 文件使用 application/vnd.android.package-archive MIME 类型，并添加 Accept-Ranges 支持断点续传，确保移动浏览器正确识别并保存 APK 文件。

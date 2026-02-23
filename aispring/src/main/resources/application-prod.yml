@@ -1,0 +1,52 @@
+spring:
+  # 生产环境数据库配置
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:aispring}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: ${DB_USERNAME:aispring}
+    password: ${DB_PASSWORD:ENC(+yqdk06jmsk4+aN2ztM3IaEhuSp2j6JRPbM7QRQW7Uc=)}
+    hikari:
+      maximum-pool-size: 50
+      minimum-idle: 10
+      idle-timeout: 600000
+      connection-timeout: 30000
+      max-lifetime: 1800000
+
+  # 生产环境 JPA 配置
+  jpa:
+    hibernate:
+      ddl-auto: none # 生产环境禁用自动更新/校验，由 Flyway 管理表结构
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+  # 邮件配置 (如果生产环境有不同配置可在此覆盖)
+  mail:
+    properties:
+      mail:
+        debug: false
+
+  # 生产环境禁用热部署
+  devtools:
+    restart:
+      enabled: false
+    livereload:
+      enabled: false
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.aispring: INFO
+  file:
+    name: logs/aispring-prod.log
+    max-history: 30
+    max-size: 10MB
+
+# 生产环境 CORS 配置
+cors:
+  allowed-origins: http://aistudy.icu,https://aistudy.icu,http://www.aistudy.icu,https://www.aistudy.icu
+  allowed-methods: GET,POST,PUT,DELETE,OPTIONS
+  allowed-headers: "*"
+  allow-credentials: true
+  max-age: 3600
