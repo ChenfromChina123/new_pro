@@ -24,9 +24,11 @@ import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { useThemeStore } from '@/stores/theme'
 import { useAuthStore } from '@/stores/auth'
 
+// 生产环境必须指向 word-game 独立域名（earthworm.aistudy.icu → 5010），
+// 若用 /word-game/ 会请求主站导致返回主站 SPA、iframe 内重复侧栏且加载不到 word-game 后端
 const wordGameUrl = import.meta.env.DEV
   ? 'http://localhost:5200'
-  : '/word-game/'
+  : 'https://earthworm.aistudy.icu'
 
 const themeStore = useThemeStore()
 const authStore = useAuthStore()
