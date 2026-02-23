@@ -37,11 +37,16 @@
     <!-- 游戏主体 -->
     <main class="game-main">
       <div class="game-content">
-        <!-- 准备开始提示（首次进入） -->
+        <!-- 准备开始提示（首次进入）：支持键盘与点击/触摸，兼容移动端 -->
         <Transition name="fade">
-          <div v-if="!gameStarted" class="ready-screen">
+          <div
+            v-if="!gameStarted"
+            class="ready-screen"
+            @click="startGame"
+            @touchstart.passive="startGame"
+          >
             <p class="ready-hint">准备好了吗？</p>
-            <p class="ready-sub">按任意键开始</p>
+            <p class="ready-sub">点击或按任意键开始</p>
           </div>
         </Transition>
 
@@ -122,16 +127,19 @@ onMounted(() => {
     courseStore.loadCourse(courseIndex);
   }
 
-  // 监听任意键启动游戏
-  window.addEventListener("keydown", handleStartKey, { once: true });
+  // 监听任意键启动游戏（桌面端）
+  window.addEventListener("keydown", startGame, { once: true });
 });
 
 onUnmounted(() => {
-  window.removeEventListener("keydown", handleStartKey);
+  window.removeEventListener("keydown", startGame);
 });
 
-/** 任意键触发游戏开始 */
-function handleStartKey() {
+/**
+ * 开始游戏：支持键盘（桌面端）与点击/触摸（移动端），仅生效一次
+ */
+function startGame() {
+  if (gameStarted.value) return;
   gameStarted.value = true;
 }
 
@@ -283,10 +291,17 @@ function handleAgain() {
   justify-content: center;
 }
 
-/* 准备开始提示 */
+/* 准备开始提示：可点击/触摸，兼容移动端 */
 .ready-screen {
   position: absolute;
   text-align: center;
+  cursor: pointer;
+  padding: 24px;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 .ready-hint {
