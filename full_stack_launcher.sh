@@ -231,11 +231,71 @@ fi
 # 设置JVM参数 (优化内存使用)
 JVM_OPTS="-Xms128m -Xmx256m -XX:MetaspaceSize=64m -XX:MaxMetaspaceSize=128m -XX:+UseG1GC -XX:+UseStringDeduplication -Dfile.encoding=UTF-8 -Duser.timezone=Asia/Shanghai"
 
+# 检测生产环境并配置数据库
+# 生产环境数据库配置
+DB_NAME="aispring"
+DB_USER="aispring"
+DB_PASSWORD="xGDswMCdHhsajfxF"
+DB_HOST="localhost"
+DB_PORT="3306"
+SPRING_PROFILES=""
+
+# 检测操作系统类型
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    print_success "检测到Linux生产环境"
+    print_info "配置生产数据库: $DB_USER@$DB_HOST:$DB_PORT/$DB_NAME"
+    
+    # 使用环境变量传递密码（更安全，不在配置文件中明文存储）
+    export SPRING_DATASOURCE_URL="jdbc:mysql://$DB_HOST:$DB_PORT/$DB_NAME?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true"
+    export SPRING_DATASOURCE_USERNAME="$DB_USER"
+    export SPRING_DATASOURCE_PASSWORD="$DB_PASSWORD"
+    
+    # 设置数据存储目录环境变量
+    export APP_DATA_ROOT="/home/aispring/data"
+    
+    # 创建专门的数据存储目录
+    mkdir -p "$APP_DATA_ROOT/avatars"
+    mkdir -p "$APP_DATA_ROOT/cloud_disk_storage"
+    mkdir -p "$APP_DATA_ROOT/public_files"
+    print_success "数据存储目录: $APP_DATA_ROOT"
+    
+    # 添加prod profile参数
+    SPRING_PROFILES="--spring.profiles.active=prod"
+else
+    print_info "检测到非Linux环境，使用默认配置"
+    SPRING_PROFILES=""
+fi
+
 # 启动后端服务
 print_info "启动后端服务 (Spring Boot)..."
 
 # 进入后端目录
 cd aispring
+
+# 创建生产配置文件 (使用环境变量，避免密码明文存储)
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    mkdir -p src/main/resources
+    cat > src/main/resources/application-prod.yml << EOF
+spring:
+  datasource:
+    url: \${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/aispring?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
+    username: \${SPRING_DATASOURCE_USERNAME:aispring}
+    password: \${SPRING_DATASOURCE_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      minimum-idle: 1
+      maximum-pool-size: 5
+      idle-timeout: 600000
+      connection-timeout: 30000
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+  flyway:
+    enabled: false
+EOF
+    print_success "创建生产配置文件 application-prod.yml (环境变量方式)"
+fi
 
 # 创建日志目录
 mkdir -p logs
@@ -266,7 +326,7 @@ print_info "使用JAR文件: $JAR_FILE"
 print_info "内存配置: 128MB-256MB"
 
 # 启动Spring Boot应用 (使用JAR方式，更省内存)
-nohup java $JVM_OPTS -jar "$JAR_FILE" --server.port=5000 > ../backend.log 2>&1 &
+nohup java $JVM_OPTS -jar "$JAR_FILE" --server.port=5000 $SPRING_PROFILES > ../backend.log 2>&1 &
 BACKEND_PID=$!
 
 if [ $BACKEND_PID ]; then
@@ -396,6 +456,8 @@ print_info "  - 使用 'tail -f frontend.log' 查看前端实时日志"
 print_info "  - 首次启动可能需要等待30-60秒"
 print_title ""
 
+# 快捷操作菜单循环
+while true; do
 echo
 echo "=========================================="
 echo "  快捷操作菜单"
@@ -408,18 +470,44 @@ echo "  5) 停止所有服务"
 echo "  6) 退出"
 echo "=========================================="
 echo
+echo "操作说明: 查看日志时按 Q 返回菜单，按 W 退出程序"
+echo
 read -p "请选择操作 (1-6): " choice
+
+EXIT_LOOP=0
 
 case $choice in
     1)
-        print_info "显示后端实时日志 (Ctrl+C 退出)..."
-        print_info "按 Ctrl+C 返回菜单"
-        tail -f backend.log || true
+        print_info "显示后端实时日志 (按 Q 返回菜单，按 W 退出)..."
+        tail -f backend.log &
+        TAIL_PID=$!
+        while true; do
+            read -n 1 -t 1 key
+            if [[ "$key" == "q" ]] || [[ "$key" == "Q" ]]; then
+                kill $TAIL_PID 2>/dev/null
+                break
+            elif [[ "$key" == "w" ]] || [[ "$key" == "W" ]]; then
+                kill $TAIL_PID 2>/dev/null
+                EXIT_LOOP=1
+                break
+            fi
+        done
         ;;
     2)
-        print_info "显示前端实时日志 (Ctrl+C 退出)..."
-        print_info "按 Ctrl+C 返回菜单"
-        tail -f frontend.log || true
+        print_info "显示前端实时日志 (按 Q 返回菜单，按 W 退出)..."
+        tail -f frontend.log &
+        TAIL_PID=$!
+        while true; do
+            read -n 1 -t 1 key
+            if [[ "$key" == "q" ]] || [[ "$key" == "Q" ]]; then
+                kill $TAIL_PID 2>/dev/null
+                break
+            elif [[ "$key" == "w" ]] || [[ "$key" == "W" ]]; then
+                kill $TAIL_PID 2>/dev/null
+                EXIT_LOOP=1
+                break
+            fi
+        done
         ;;
     3)
         print_info "显示后端最后50行日志..."
@@ -443,12 +531,19 @@ case $choice in
         print_info "所有服务已停止"
         ;;
     6)
+        EXIT_LOOP=1
         print_info "服务仍在后台运行"
         print_info "使用以下命令查看日志:"
         print_info "  tail -f backend.log"
         print_info "  tail -f frontend.log"
         ;;
     *)
-        print_info "无效选择，服务仍在后台运行"
+        print_info "无效选择"
         ;;
 esac
+
+if [ $EXIT_LOOP -eq 1 ]; then
+    break
+fi
+
+done

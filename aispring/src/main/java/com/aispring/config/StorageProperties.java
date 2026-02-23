@@ -25,14 +25,32 @@ public class StorageProperties {
     public String getPublicFilesDir() { return publicFilesDir; }
     public void setPublicFilesDir(String publicFilesDir) { this.publicFilesDir = publicFilesDir; }
 
+    private boolean isProduction() {
+        String profile = System.getProperty("spring.profiles.active", "");
+        String appMode = System.getProperty("app.mode", "");
+        return "prod".equalsIgnoreCase(profile) || "production".equalsIgnoreCase(appMode);
+    }
+
     public Path getRootAbsolute() {
-        String dir = System.getProperty("user.dir");
-        Path rootPath;
-        if (rootDir == null || rootDir.trim().isEmpty() || ".".equals(rootDir) || "./".equals(rootDir)) {
-            rootPath = Paths.get(dir).toAbsolutePath().normalize();
+        String dir;
+        
+        // 检查环境变量
+        String envRootDir = System.getenv("APP_DATA_ROOT");
+        if (envRootDir != null && !envRootDir.trim().isEmpty()) {
+            dir = envRootDir;
+        } else if (isProduction()) {
+            // 生产环境使用专门的数据目录
+            dir = "/home/aispring/data";
         } else {
-            Path rp = Paths.get(rootDir);
-            rootPath = rp.isAbsolute() ? rp.normalize() : Paths.get(dir).resolve(rp).toAbsolutePath().normalize();
+            dir = System.getProperty("user.dir", ".");
+        }
+        
+        Path rootPath;
+        if (dir == null || dir.trim().isEmpty() || ".".equals(dir) || "./".equals(dir)) {
+            rootPath = Paths.get(System.getProperty("user.dir")).toAbsolutePath().normalize();
+        } else {
+            Path rp = Paths.get(dir);
+            rootPath = rp.isAbsolute() ? rp.normalize() : Paths.get(System.getProperty("user.dir")).resolve(rp).toAbsolutePath().normalize();
         }
         try { 
             if (!Files.exists(rootPath)) {

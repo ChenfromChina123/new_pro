@@ -16,5 +16,16 @@ module.exports = {
         NUXT_PUBLIC_BACKEND_ENDPOINT: "http://earthworm-api.aistudy.icu",
       },
     },
+    {
+      // word-game API 服务器（学习进度 + 课程数据）
+      name: "word-game-api",
+      script: "node",
+      args: "server/index.js",
+      cwd: "d:\\Users\\Administrator\\AistudyProject\\new_pro\\word-game",
+      watch: false,
+      env: {
+        NODE_ENV: "production",
+      },
+    },
   ],
 };
