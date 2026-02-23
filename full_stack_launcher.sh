@@ -5,6 +5,10 @@
 #  包含环境检测、代码更新、服务启动功能
 # ===========================================
 
+# 设置信号处理 - 确保Ctrl+C能正常退出
+trap 'echo; echo "收到中断信号，正在退出..."; exit 130' INT TERM
+trap 'echo "脚本已退出"; exit 0' EXIT
+
 # 获取脚本路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
@@ -386,11 +390,13 @@ read -p "请选择操作 (1-6): " choice
 case $choice in
     1)
         print_info "显示后端实时日志 (Ctrl+C 退出)..."
-        tail -f backend.log
+        print_info "按 Ctrl+C 返回菜单"
+        tail -f backend.log || true
         ;;
     2)
         print_info "显示前端实时日志 (Ctrl+C 退出)..."
-        tail -f frontend.log
+        print_info "按 Ctrl+C 返回菜单"
+        tail -f frontend.log || true
         ;;
     3)
         print_info "显示后端最后50行日志..."
