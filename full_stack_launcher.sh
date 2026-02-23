@@ -250,6 +250,15 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     export SPRING_DATASOURCE_USERNAME="$DB_USER"
     export SPRING_DATASOURCE_PASSWORD="$DB_PASSWORD"
     
+    # 设置数据存储目录环境变量
+    export APP_DATA_ROOT="/home/aispring/data"
+    
+    # 创建专门的数据存储目录
+    mkdir -p "$APP_DATA_ROOT/avatars"
+    mkdir -p "$APP_DATA_ROOT/cloud_disk_storage"
+    mkdir -p "$APP_DATA_ROOT/public_files"
+    print_success "数据存储目录: $APP_DATA_ROOT"
+    
     # 添加prod profile参数
     SPRING_PROFILES="--spring.profiles.active=prod"
 else
