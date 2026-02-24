@@ -1,8 +1,7 @@
 /**
  * 英文读音播放组合式函数
- * 使用有道词典 API 播放美式/英式发音
- * 美式发音：https://dict.youdao.com/dictvoice?type=2&audio=word
- * 英式发音：https://dict.youdao.com/dictvoice?type=1&audio=word
+ * 优先使用有道词典 API；失败时降级为浏览器自带语音合成（Web Speech API）
+ * 有道：https://dict.youdao.com/dictvoice?type=2&audio=word
  */
 
 /** 全局单例 Audio 实例，避免重复创建 */
@@ -16,19 +15,47 @@ function getPronunciationUrl(english: string): string {
 }
 
 /**
+ * 使用浏览器自带语音合成（Web Speech API）朗读英文
+ * @param english 要朗读的英文文本
+ */
+function playWithBrowserTTS(english: string): void {
+  if (typeof window === "undefined" || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(english);
+  u.lang = "en-US";
+  u.rate = 0.95;
+  window.speechSynthesis.speak(u);
+}
+
+/**
  * 播放英文句子/单词读音
+ * 先尝试有道；若加载/播放失败则降级为浏览器自带 TTS
  * @param english 要朗读的英文文本
  */
 export function playEnglishSound(english: string | undefined): void {
   if (!english) return;
   const url = getPronunciationUrl(english);
-  // 若当前正在播放同一音频，则重播
+  let fallbackDone = false;
+
+  const doFallback = () => {
+    if (fallbackDone) return;
+    fallbackDone = true;
+    audio.removeEventListener("error", onSentenceError);
+    audio.removeEventListener("ended", onSentenceEnded);
+    playWithBrowserTTS(english);
+  };
+
+  const onSentenceError = () => doFallback();
+  const onSentenceEnded = () => {
+    audio.removeEventListener("error", onSentenceError);
+  };
+
   audio.pause();
   audio.currentTime = 0;
+  audio.addEventListener("error", onSentenceError, { once: true });
+  audio.addEventListener("ended", onSentenceEnded, { once: true });
   audio.src = url;
-  audio.play().catch(() => {
-    // 部分浏览器在未经用户交互前禁止自动播放，静默忽略
-  });
+  audio.play().catch(() => doFallback());
 }
 
 /**
