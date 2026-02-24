@@ -1,6 +1,6 @@
 /**
  * word-game API 服务器
- * 提供课程包数据、学习进度（支持游客 IP 标识 + 登录用户 JWT）
+ * 提供课程包数据、学习进度；已接入 aispring 登录，API 需携带有效 JWT
  * 端口: 5201
  */
 import express from "express";
@@ -12,6 +12,7 @@ import { fileURLToPath } from "url";
 import Database from "better-sqlite3";
 
 const require = createRequire(import.meta.url);
+const jwt = require("jsonwebtoken");
 const __dirname = dirname(fileURLToPath(import.meta.url));
 /** 端口：生产环境 Nginx 反代 earthworm.aistudy.icu 到 5010，此处通过环境变量 PORT 配置 */
 const PORT = parseInt(process.env.PORT || "5201", 10);
@@ -115,7 +116,8 @@ function resolveUserKey(req) {
       const payload = JSON.parse(
         Buffer.from(payloadB64.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf-8")
       );
-      const userId = payload.userId || payload.sub || payload.id;
+      // 兼容 aispring JWT：user_id（下划线）及常见字段
+      const userId = payload.user_id ?? payload.userId ?? payload.sub ?? payload.id;
       if (userId) return { key: String(userId), type: "user" };
     } catch {
       // token 无效，回退到游客模式
@@ -129,6 +131,41 @@ function resolveUserKey(req) {
   return { key: `guest_${ip}`, type: "guest" };
 }
 
+/**
+ * 获取与 aispring 一致的 JWT 签名密钥（至少 32 字节，用于 HS256）
+ * 生产环境请设置环境变量 JWT_SECRET_KEY 与 aispring 的 jwt.secret 一致
+ */
+function getJwtSigningKey() {
+  const secret = process.env.JWT_SECRET_KEY || "default_development_key_change_in_production";
+  let keyBytes = Buffer.from(secret, "utf8");
+  if (keyBytes.length < 32) {
+    const extended = Buffer.alloc(32, 0);
+    keyBytes.copy(extended, 0);
+    keyBytes = extended;
+  }
+  return keyBytes;
+}
+
+/**
+ * aispring 登录验证中间件：/api 开头的请求必须携带有效 JWT，否则 401
+ */
+function requireAispringAuth(req, res, next) {
+  const auth = req.headers["authorization"];
+  if (!auth || !auth.startsWith("Bearer ")) {
+    res.status(401).json({ success: false, message: "未登录或 token 缺失" });
+    return;
+  }
+  const token = auth.slice(7);
+  try {
+    const key = getJwtSigningKey();
+    jwt.verify(token, key, { algorithms: ["HS256"] });
+    next();
+  } catch (err) {
+    const msg = err.name === "TokenExpiredError" ? "登录已过期" : "无效的登录凭证";
+    res.status(401).json({ success: false, message: msg });
+  }
+}
+
 // ── Express 应用 ──────────────────────────────────────────────────────────────
 
 const app = express();
@@ -140,6 +177,9 @@ app.use(
   })
 );
 app.use(express.json());
+
+// 所有 /api 请求必须通过 aispring JWT 验证
+app.use("/api", requireAispringAuth);
 
 // ── 路由：课程包 ──────────────────────────────────────────────────────────────
 

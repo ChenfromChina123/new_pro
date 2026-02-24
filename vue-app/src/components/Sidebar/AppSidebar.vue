@@ -1,5 +1,9 @@
 <template>
-  <aside class="app-sidebar">
+  <aside
+    class="app-sidebar"
+    :class="{ collapsed: uiStore.sidebarCollapsed }"
+    :style="{ width: uiStore.sidebarCollapsed ? '64px' : '300px' }"
+  >
     <!-- 顶部：用户个人资料与设置 -->
     <div class="sidebar-top">
       <div class="user-profile">
@@ -397,6 +401,16 @@
       @resolve="onConflictResolved"
       @cancel="onConflictCancelled"
     />
+
+    <!-- 侧栏折叠/展开按钮（仅桌面端显示） -->
+    <button
+      type="button"
+      class="sidebar-collapse-btn"
+      :title="uiStore.sidebarCollapsed ? '展开侧栏' : '收起侧栏'"
+      @click="toggleSidebarCollapse"
+    >
+      <i :class="uiStore.sidebarCollapsed ? 'fas fa-chevron-right' : 'fas fa-chevron-left'"></i>
+    </button>
   </aside>
 </template>
 
@@ -439,6 +453,13 @@ const handleToggleDarkMode = async () => {
       theme: themeStore.isDarkMode ? 'dark' : 'light'
     })
   }
+}
+
+/**
+ * 切换侧栏折叠/展开状态，并持久化到 localStorage
+ */
+const toggleSidebarCollapse = () => {
+  uiStore.saveState('sidebarCollapsed', !uiStore.sidebarCollapsed)
 }
 
 // 路由判断
@@ -760,10 +781,88 @@ onMounted(() => {
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  transition: all 0.3s ease;
+  transition: width 0.25s ease, min-width 0.25s ease;
   height: 100vh;
   flex-shrink: 0;
   z-index: 100;
+  position: relative;
+}
+
+/* 侧栏折叠按钮：贴在右侧边，仅桌面端显示 */
+.sidebar-collapse-btn {
+  display: none;
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translate(100%, -50%);
+  width: 20px;
+  height: 56px;
+  padding: 0;
+  border: none;
+  border-radius: 0 8px 8px 0;
+  background-color: var(--bg-tertiary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 2px 0 6px rgba(0, 0, 0, 0.08);
+  transition: background-color 0.2s, color 0.2s;
+  z-index: 101;
+}
+
+.sidebar-collapse-btn:hover {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.sidebar-collapse-btn i {
+  font-size: 12px;
+}
+
+/* 折叠状态下隐藏文字，仅保留图标 */
+.app-sidebar.collapsed .sidebar-user-name,
+.app-sidebar.collapsed .nav-item span,
+.app-sidebar.collapsed .sidebar-empty-tip,
+.app-sidebar.collapsed .sidebar-info-text,
+.app-sidebar.collapsed .guest-sidebar-tip,
+.app-sidebar.collapsed .sidebar-header span,
+.app-sidebar.collapsed .dynamic-sidebar-content .sidebar-header:not(.cloud-sidebar-header) .btn-small,
+.app-sidebar.collapsed .cloud-sidebar-header h3,
+.app-sidebar.collapsed .sidebar-quota {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  max-width: 0;
+  opacity: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  border: none;
+  pointer-events: none;
+}
+
+.app-sidebar.collapsed .sidebar-top {
+  padding: 16px 12px;
+  justify-content: center;
+}
+
+.app-sidebar.collapsed .user-profile {
+  justify-content: center;
+  margin-right: 0;
+}
+
+.app-sidebar.collapsed .sidebar-actions {
+  display: none;
+}
+
+.app-sidebar.collapsed .nav-item {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.app-sidebar.collapsed .nav-item i {
+  margin-right: 0;
 }
 
 .sidebar-top {
@@ -1215,12 +1314,24 @@ onMounted(() => {
   background: var(--gray-400);
 }
 
-/* 移动端适配 */
+/* 桌面端显示折叠按钮 */
+@media (min-width: 769px) {
+  .sidebar-collapse-btn {
+    display: flex;
+  }
+}
+
+/* 移动端适配：隐藏折叠按钮，侧栏使用抽屉 */
 @media (max-width: 768px) {
+  .sidebar-collapse-btn {
+    display: none !important;
+  }
+
   .app-sidebar {
     position: fixed;
     top: 0;
     left: -300px;
+    width: 300px !important;
     height: 100vh;
     z-index: 100;
     box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
@@ -1228,6 +1339,10 @@ onMounted(() => {
 
   .app-sidebar.mobile-open {
     left: 0;
+  }
+
+  .app-sidebar.collapsed {
+    width: 300px !important;
   }
 }
 
