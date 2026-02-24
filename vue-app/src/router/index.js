@@ -36,7 +36,7 @@ const router = createRouter({
           path: 'word-game',
           name: 'WordGame',
           component: () => import('@/views/WordGameView.vue'),
-          meta: { requiresAuth: false, allowGuest: true }
+          meta: { requiresAuth: true }
         },
         {
           path: 'public-files',

@@ -91,3 +91,4 @@
 91. 部署了 earthworm 开源项目到本地目录 earthworm，配置了 .env 和 .volumes，并生成了 DEPLOY_INSTRUCTIONS.md 指导用户手动完成依赖安装和服务启动。
 92. 成功将 earthworm 部署到服务器 8.138.174.80，通过域名 earthworm.aistudy.icu 访问。关键步骤：升级 Node.js 到 v20（用 nvm）、添加 swap 解决内存不足、修复 CORS 配置（origin: true）、使用 PM2 shell 脚本启动（source nvm.sh）、生产模式用 PORT 而非 NITRO_PORT、Nginx 反向代理配置在 /www/server/panel/vhost/nginx/ 目录。
 93. 修复移动端输入完成后无法回车的问题（部分输入法无回车键）：在 word-game 的 TypingInput.vue 中新增仅移动端显示的「提交 / 下一词」按钮（@media max-width: 768px），点击即提交答案；AnswerView.vue 在移动端隐藏「Space / Enter」键盘提示，避免误导。
+94. word-game 已接入 aispring 登录：前端路由 /word-game 改为 requiresAuth: true；后端 /api 全部需携带有效 JWT（与 aispring 共用 JWT_SECRET_KEY），未登录或 token 无效返回 401；JWT payload 支持 user_id 字段与 aispring 一致。
