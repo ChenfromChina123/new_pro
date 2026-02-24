@@ -123,7 +123,7 @@ onUnmounted(() => {
   margin-top: 8px;
 }
 
-/* 快捷键提示标记 */
+/* 快捷键提示标记（桌面端显示，移动端隐藏） */
 .kbd-hint {
   font-size: 0.75rem;
   opacity: 0.75;
@@ -131,5 +131,11 @@ onUnmounted(() => {
   background: rgba(255, 255, 255, 0.2);
   padding: 1px 6px;
   border-radius: 4px;
+}
+
+@media (max-width: 768px) {
+  .kbd-hint {
+    display: none;
+  }
 }
 </style>

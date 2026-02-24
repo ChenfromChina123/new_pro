@@ -43,6 +43,15 @@
       <span class="tip-label">答案：</span>
       <span class="tip-content">{{ courseStore.currentStatement?.english }}</span>
     </div>
+
+    <!-- 移动端专用：提交按钮（部分输入法无回车键时使用） -->
+    <button
+      type="button"
+      class="mobile-submit-btn"
+      @click="doSubmitAnswer"
+    >
+      提交 / 下一词
+    </button>
   </div>
 </template>
 
@@ -324,6 +333,37 @@ function getWordWidth(word: string) {
 .tip-label {
   font-weight: 600;
   margin-right: 6px;
+}
+
+/* 移动端专用提交按钮：部分输入法无回车键，用按钮提交 */
+.mobile-submit-btn {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-submit-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: 200px;
+    padding: 12px 20px;
+    margin-top: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+    background: var(--primary-color, #3b82f6);
+    border: none;
+    border-radius: var(--border-radius-md, 8px);
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    transition: opacity 0.2s ease, transform 0.1s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mobile-submit-btn:active {
+    opacity: 0.9;
+    transform: scale(0.98);
+  }
 }
 
 @keyframes shake {

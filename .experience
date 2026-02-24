@@ -90,3 +90,4 @@
 90. 优化了外部链接页面的视觉密度：缩小了卡片尺寸、内边距、字体大小，以及页面标题和分类过滤器的尺寸；优化了 Grid 布局参数，使每行能展示更多内容；调整了移动端适配，确保在小屏幕下也能高效利用空间。
 91. 部署了 earthworm 开源项目到本地目录 earthworm，配置了 .env 和 .volumes，并生成了 DEPLOY_INSTRUCTIONS.md 指导用户手动完成依赖安装和服务启动。
 92. 成功将 earthworm 部署到服务器 8.138.174.80，通过域名 earthworm.aistudy.icu 访问。关键步骤：升级 Node.js 到 v20（用 nvm）、添加 swap 解决内存不足、修复 CORS 配置（origin: true）、使用 PM2 shell 脚本启动（source nvm.sh）、生产模式用 PORT 而非 NITRO_PORT、Nginx 反向代理配置在 /www/server/panel/vhost/nginx/ 目录。
+93. 修复移动端输入完成后无法回车的问题（部分输入法无回车键）：在 word-game 的 TypingInput.vue 中新增仅移动端显示的「提交 / 下一词」按钮（@media max-width: 768px），点击即提交答案；AnswerView.vue 在移动端隐藏「Space / Enter」键盘提示，避免误导。
