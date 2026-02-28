@@ -179,7 +179,7 @@
         开启您的 <span class="gradient-text">智能学习</span> 之旅
       </h1>
       <p class="hero-subtitle">
-        集成 AI 问答、个人云盘、语言学习于一体的智能化全方位学习平台。
+        集成 AI 问答、个人云盘、单词记忆于一体的智能化全方位学习平台。
       </p>
       <div class="hero-actions">
         <router-link 
@@ -226,8 +226,8 @@
           <span class="stat-label">数据安全加密</span>
         </div>
         <div class="stat-item">
-          <span class="stat-number">Multi</span>
-          <span class="stat-label">多语言学习</span>
+          <span class="stat-number">3+</span>
+          <span class="stat-label">核心功能</span>
         </div>
       </div>
     </div>
@@ -356,9 +356,6 @@
           <router-link to="/cloud-disk">
             云盘管理
           </router-link>
-          <router-link to="/language-learning">
-            语言学习
-          </router-link>
           <router-link to="/word-game">
             单词记忆
           </router-link>
@@ -406,7 +403,7 @@ const isInternalRoute = (url) => {
   if (!url) return false
   const internalRoutes = [
     '/', '/agent', '/codenova', '/chat', '/login', '/register', 
-    '/cloud-disk', '/language-learning', '/word-game', '/public-files', '/admin', '/settings'
+    '/cloud-disk', '/word-game', '/public-files', '/admin', '/settings'
   ]
   // 检查是否完全匹配
   if (internalRoutes.includes(url)) return true
@@ -497,13 +494,6 @@ const features = [
     icon: 'fas fa-cloud',
     color: 'rgba(16, 185, 129, 0.1)',
     items: ['文件夹管理', '多格式预览', '高速上传下载']
-  },
-  {
-    title: '深度语言学习',
-    description: '专为语言学习者设计的工具集，提升词汇量与阅读能力。',
-    icon: 'fas fa-language',
-    color: 'rgba(245, 158, 11, 0.1)',
-    items: ['智能单词库', 'AI 文章生成', '阅读进度追踪']
   },
   {
     title: 'Agent 终端助手',

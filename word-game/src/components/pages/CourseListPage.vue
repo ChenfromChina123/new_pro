@@ -9,7 +9,10 @@
         </button>
 
         <div class="brand" v-if="pkgMeta">
-          <span class="brand-icon">{{ pkgMeta.icon }}</span>
+          <div class="brand-icon-wrap">
+            <img v-if="isIconImage(pkgMeta.icon)" :src="pkgMeta.icon" alt="" class="brand-icon-img" />
+            <span v-else class="brand-icon">{{ pkgMeta.icon || "📦" }}</span>
+          </div>
           <div>
             <h1 class="brand-title">{{ pkgMeta.name }}</h1>
             <p class="brand-sub">
@@ -114,6 +117,12 @@ const courses = ref<CourseMeta[]>([]);
 
 const isEmbedded = window.self !== window.top;
 
+/** 判断图标是否为图片（data URL 或 http(s)），避免 base64 当作文本显示在标题区 */
+function isIconImage(icon: string): boolean {
+  if (!icon || typeof icon !== "string") return false;
+  return icon.startsWith("data:") || icon.startsWith("http://") || icon.startsWith("https://");
+}
+
 onMounted(async () => {
   // 主题初始化
   const saved = localStorage.getItem("wordGameDarkMode");
@@ -163,10 +172,14 @@ function toggleDarkMode() {
   localStorage.setItem("wordGameDarkMode", String(isDark.value));
 }
 
-/** 点击课程卡片，加载课程（自动恢复进度）并跳转到游戏页 */
+/** 点击课程卡片，加载课程（自动恢复进度）并跳转到游戏页；用户课程包需把 packageId 带入 URL */
 async function handleStartCourse(courseIndex: number) {
   await courseStore.loadCourse(courseIndex, props.packageId);
-  router.push(`/game/${courseIndex}`);
+  const q =
+    props.packageId?.startsWith("up-")
+      ? `?packageId=${encodeURIComponent(props.packageId)}`
+      : "";
+  router.push(`/game/${courseIndex}${q}`);
 }
 </script>
 
@@ -201,6 +214,8 @@ async function handleStartCourse(courseIndex: number) {
 .back-arrow { font-size: 1rem; }
 
 .brand { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+.brand-icon-wrap { width: 48px; height: 48px; flex-shrink: 0; border-radius: var(--border-radius-md); overflow: hidden; display: flex; align-items: center; justify-content: center; background: var(--bg-tertiary); }
+.brand-icon-img { width: 100%; height: 100%; object-fit: cover; }
 .brand-icon { font-size: 1.8rem; flex-shrink: 0; }
 .brand-title { font-size: 1.2rem; font-weight: 700; color: var(--text-primary); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .brand-sub { font-size: 0.78rem; color: var(--text-tertiary); margin-top: 2px; }

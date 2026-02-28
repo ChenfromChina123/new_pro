@@ -193,6 +193,7 @@ app:
   description: 基于Spring Boot的AI智能学习助手
   auth:
     verification-code-expire-minutes: 5
+  # 用户数据存储：开发默认当前目录；生产环境由 application-prod 指定项目外专用目录
   storage:
     root-dir: ${APP_STORAGE_ROOT:./}
     cloud-disk-dir: ${CLOUD_DISK_DIR:cloud_disk}

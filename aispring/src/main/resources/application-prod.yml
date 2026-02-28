@@ -52,3 +52,9 @@ cors:
   allowed-headers: "*"
   allow-credentials: true
   max-age: 3600
+
+# 生产环境：用户个人资料与文件存放到项目外专用目录，不放在当前项目目录下
+# 可通过环境变量 APP_STORAGE_ROOT 覆盖（Windows 建议设为如 D:\aispring-data 或 C:\ProgramData\aispring）
+app:
+  storage:
+    root-dir: ${APP_STORAGE_ROOT:/data/aispring}
