@@ -2,8 +2,9 @@
   <aside
     class="app-sidebar"
     :class="{ collapsed: uiStore.sidebarCollapsed }"
-    :style="{ width: uiStore.sidebarCollapsed ? '64px' : '300px' }"
+    :style="{ '--sidebar-width': uiStore.sidebarCollapsed ? '56px' : '300px' }"
   >
+    <div class="app-sidebar-inner">
     <!-- 顶部：用户个人资料与设置 -->
     <div class="sidebar-top">
       <div class="user-profile">
@@ -80,7 +81,7 @@
         <span>云盘</span>
       </router-link>
       <router-link
-        v-if="authStore.isAuthenticated"
+        v-if="authStore.isAuthenticated && featureFlags.languageLearning"
         to="/language-learning"
         class="nav-item"
         active-class="active"
@@ -96,8 +97,9 @@
         <i class="fas fa-spell-check"></i>
         <span>单词记忆</span>
       </router-link>
+      <!-- PRD/需求分析：始终显示入口，未登录点击时由路由守卫跳转登录 -->
       <router-link
-        v-if="authStore.isAuthenticated"
+        v-if="featureFlags.requirement"
         to="/requirement"
         class="nav-item"
         active-class="active"
@@ -270,8 +272,19 @@
         </div>
       </template>
 
+      <!-- 需求分析（PRD）相关的侧边栏内容 -->
+      <template v-else-if="featureFlags.requirement && isRequirementRoute">
+        <div class="sidebar-header">
+          <h3>📋 需求文档</h3>
+        </div>
+        <div class="sidebar-info-text">
+          <p>使用 AI 智能生成或手动编写产品需求文档（PRD）。</p>
+          <p>支持演示项目预览与历史文档管理。</p>
+        </div>
+      </template>
+
       <!-- 语言学习相关的侧边栏内容 -->
-      <template v-else-if="isLanguageLearningRoute">
+      <template v-else-if="featureFlags.languageLearning && isLanguageLearningRoute">
         <div class="sidebar-header">
           <h3>📖 语言学习</h3>
         </div>
@@ -401,8 +414,9 @@
       @resolve="onConflictResolved"
       @cancel="onConflictCancelled"
     />
+    </div>
 
-    <!-- 侧栏折叠/展开按钮（仅桌面端显示） -->
+    <!-- 侧栏折叠/展开按钮（仅桌面端显示，放在 inner 外避免被 overflow 裁切） -->
     <button
       type="button"
       class="sidebar-collapse-btn"
@@ -436,6 +450,14 @@ const uiStore = useUIStore()
 const cloudDiskStore = useCloudDiskStore()
 const settingsStore = useSettingsStore()
 
+/**
+ * 功能开关：用于临时隐藏模块入口（便于后续恢复）
+ */
+const featureFlags = {
+  languageLearning: false,
+  requirement: false,
+}
+
 // 状态
 const newFolderName = ref('')
 const conflictDialogVisible = ref(false)
@@ -467,6 +489,7 @@ const isChatRoute = computed(() => route.path.startsWith('/chat'))
 const isCloudDiskRoute = computed(() => route.path.startsWith('/cloud-disk'))
 const isPublicFilesRoute = computed(() => route.path.startsWith('/public-files'))
 const isLanguageLearningRoute = computed(() => route.path.startsWith('/language-learning'))
+const isRequirementRoute = computed(() => route.path.startsWith('/requirement'))
 
 // 头像逻辑
 const avatarUrl = ref(null)
@@ -776,16 +799,26 @@ onMounted(() => {
 
 <style scoped>
 .app-sidebar {
-  width: 300px;
+  width: var(--sidebar-width, 300px);
+  min-width: var(--sidebar-width, 300px);
   background-color: var(--bg-secondary);
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  transition: width 0.25s ease, min-width 0.25s ease;
+  transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   height: 100vh;
   flex-shrink: 0;
   z-index: 100;
   position: relative;
+}
+
+/* 内层裁剪内容，折叠按钮在 outer 上不裁切 */
+.app-sidebar-inner {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
 }
 
 /* 侧栏折叠按钮：贴在右侧边，仅桌面端显示 */
@@ -819,7 +852,19 @@ onMounted(() => {
   font-size: 12px;
 }
 
-/* 折叠状态下隐藏文字，仅保留图标 */
+/* 折叠状态下隐藏文字，仅保留图标；文字区域带过渡使展开/收起更流畅 */
+.app-sidebar .sidebar-user-name,
+.app-sidebar .nav-item span,
+.app-sidebar .sidebar-empty-tip,
+.app-sidebar .sidebar-info-text,
+.app-sidebar .guest-sidebar-tip,
+.app-sidebar .sidebar-header span,
+.app-sidebar .dynamic-sidebar-content .sidebar-header:not(.cloud-sidebar-header) .btn-small,
+.app-sidebar .cloud-sidebar-header h3,
+.app-sidebar .sidebar-header h3,
+.app-sidebar .sidebar-quota {
+  transition: opacity 0.2s ease, max-width 0.25s cubic-bezier(0.4, 0, 0.2, 1), padding 0.2s ease, margin 0.2s ease;
+}
 .app-sidebar.collapsed .sidebar-user-name,
 .app-sidebar.collapsed .nav-item span,
 .app-sidebar.collapsed .sidebar-empty-tip,
@@ -828,6 +873,7 @@ onMounted(() => {
 .app-sidebar.collapsed .sidebar-header span,
 .app-sidebar.collapsed .dynamic-sidebar-content .sidebar-header:not(.cloud-sidebar-header) .btn-small,
 .app-sidebar.collapsed .cloud-sidebar-header h3,
+.app-sidebar.collapsed .sidebar-header h3,
 .app-sidebar.collapsed .sidebar-quota {
   overflow: hidden;
   white-space: nowrap;
@@ -839,6 +885,20 @@ onMounted(() => {
   min-width: 0;
   border: none;
   pointer-events: none;
+}
+
+/* 完全折叠时收起下方动态内容区（历史对话、云盘树等），不占宽度 */
+.app-sidebar.collapsed .dynamic-sidebar-content {
+  width: 0;
+  min-width: 0;
+  flex: 0 0 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, flex 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.dynamic-sidebar-content {
+  transition: opacity 0.22s ease 0.06s;
 }
 
 .app-sidebar.collapsed .sidebar-top {
@@ -855,6 +915,10 @@ onMounted(() => {
   display: none;
 }
 
+.app-sidebar.collapsed .sidebar-nav {
+  padding: 12px 0;
+}
+
 .app-sidebar.collapsed .nav-item {
   justify-content: center;
   padding-left: 0;
@@ -863,6 +927,15 @@ onMounted(() => {
 
 .app-sidebar.collapsed .nav-item i {
   margin-right: 0;
+}
+
+/* 完全折叠时隐藏分隔线，避免占位 */
+.app-sidebar.collapsed .sidebar-divider {
+  margin: 0;
+  height: 0;
+  min-height: 0;
+  overflow: hidden;
+  opacity: 0;
 }
 
 .sidebar-top {
@@ -1023,6 +1096,7 @@ onMounted(() => {
   height: 1px;
   background-color: var(--border-color);
   margin: 8px 16px;
+  transition: margin 0.2s ease, height 0.2s ease, opacity 0.2s ease;
 }
 
 .dynamic-sidebar-content {

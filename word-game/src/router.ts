@@ -2,6 +2,7 @@ import { createRouter, createWebHashHistory } from "vue-router";
 import PackageListPage from "@/components/pages/PackageListPage.vue";
 import CourseListPage from "@/components/pages/CourseListPage.vue";
 import GamePage from "@/components/pages/GamePage.vue";
+import PackageUploadPage from "@/components/pages/PackageUploadPage.vue";
 
 /**
  * 应用路由配置
@@ -9,6 +10,7 @@ import GamePage from "@/components/pages/GamePage.vue";
  *
  * 路由层级：
  *   /                        → 课程包列表（PackageListPage）
+ *   /upload                  → 分节上传课程包（PackageUploadPage）
  *   /package/:packageId      → 包内课程列表（CourseListPage）
  *   /game/:courseIndex       → 答题游戏页（GamePage）
  */
@@ -19,6 +21,11 @@ const router = createRouter({
       path: "/",
       name: "package-list",
       component: PackageListPage,
+    },
+    {
+      path: "/upload",
+      name: "package-upload",
+      component: PackageUploadPage,
     },
     {
       path: "/package/:packageId",

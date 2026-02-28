@@ -9,6 +9,7 @@ import { createRequire } from "module";
 import { readFileSync, readdirSync, existsSync } from "fs";
 import { join, dirname, resolve } from "path";
 import { fileURLToPath } from "url";
+import { randomUUID } from "crypto";
 import Database from "better-sqlite3";
 
 const require = createRequire(import.meta.url);
@@ -36,7 +37,87 @@ db.exec(`
     UNIQUE(user_key, package_id, course_index)
   );
   CREATE INDEX IF NOT EXISTS idx_progress_user ON course_progress(user_key);
+
+  -- 用户上传的课程包（可私有或公开）
+  CREATE TABLE IF NOT EXISTS user_packages (
+    id          TEXT    PRIMARY KEY,
+    user_key    TEXT    NOT NULL,
+    name        TEXT    NOT NULL,
+    description TEXT    NOT NULL DEFAULT '',
+    icon        TEXT    NOT NULL DEFAULT '📦',
+    level       TEXT    NOT NULL DEFAULT '自定义',
+    is_public   INTEGER NOT NULL DEFAULT 0,
+    created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_user_packages_user ON user_packages(user_key);
+  CREATE INDEX IF NOT EXISTS idx_user_packages_public ON user_packages(is_public);
+
+  -- 用户课程包中的题目，按节（course_index 0-based）组织
+  CREATE TABLE IF NOT EXISTS user_package_statements (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    package_id  TEXT    NOT NULL,
+    course_index INTEGER NOT NULL DEFAULT 0,
+    sort_order  INTEGER NOT NULL DEFAULT 0,
+    english     TEXT    NOT NULL,
+    chinese     TEXT    NOT NULL,
+    soundmark   TEXT    NOT NULL DEFAULT '',
+    FOREIGN KEY (package_id) REFERENCES user_packages(id) ON DELETE CASCADE
+  );
+  CREATE INDEX IF NOT EXISTS idx_ups_package ON user_package_statements(package_id);
+  CREATE INDEX IF NOT EXISTS idx_ups_package_course ON user_package_statements(package_id, course_index);
+
+  -- 用户课程包中的“节”信息（节标题等，便于扩展）
+  CREATE TABLE IF NOT EXISTS user_package_courses (
+    package_id   TEXT    NOT NULL,
+    course_index INTEGER NOT NULL,
+    title        TEXT    NOT NULL DEFAULT '',
+    created_at   TEXT    NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (package_id, course_index),
+    FOREIGN KEY (package_id) REFERENCES user_packages(id) ON DELETE CASCADE
+  );
+
+  -- 兼容旧表：若无 course_index 列则添加（SQLite 3.35+ 支持 ADD COLUMN … DEFAULT）
+  -- 通过 pragma 检查列是否存在，若不存在再 ALTER（better-sqlite3 无信息模式则用 try/catch）
+  -- 此处建表已包含 course_index，仅对已有库做迁移
 `);
+try {
+  db.prepare(`SELECT course_index FROM user_package_statements LIMIT 1`).get();
+} catch {
+  try {
+    db.exec(`ALTER TABLE user_package_statements ADD COLUMN course_index INTEGER NOT NULL DEFAULT 0`);
+  } catch (_) {}
+}
+// 为已有用户包回填一节（便于 GET courses 走统一逻辑）
+try {
+  const userPkgIds = db.prepare(`SELECT id FROM user_packages`).all();
+  const ins = db.prepare(
+    `INSERT OR IGNORE INTO user_package_courses (package_id, course_index, title) VALUES (?, 0, '第一课')`
+  );
+  for (const p of userPkgIds) {
+    ins.run(p.id);
+  }
+} catch (_) {}
+
+db.exec(`
+  -- 课程包点击次数（内置包与用户包统一存储，用于排名）
+  CREATE TABLE IF NOT EXISTS package_clicks (
+    package_id TEXT PRIMARY KEY,
+    click_count INTEGER NOT NULL DEFAULT 0
+  );
+`);
+
+// 旧数据回填：为已有题目但无节信息的包插入默认一节「第一课」
+try {
+  const packagesWithStatements = db.prepare(`
+    SELECT DISTINCT package_id FROM user_package_statements
+  `).all();
+  const insertCourse = db.prepare(`
+    INSERT OR IGNORE INTO user_package_courses (package_id, course_index, title) VALUES (?, 0, '第一课')
+  `);
+  for (const { package_id } of packagesWithStatements) {
+    insertCourse.run(package_id);
+  }
+} catch (_) {}
 
 // ── 课程数据加载 ──────────────────────────────────────────────────────────────
 
@@ -150,19 +231,20 @@ function getJwtSigningKey() {
  * aispring 登录验证中间件：/api 开头的请求必须携带有效 JWT，否则 401
  */
 function requireAispringAuth(req, res, next) {
-  const auth = req.headers["authorization"];
-  if (!auth || !auth.startsWith("Bearer ")) {
-    res.status(401).json({ success: false, message: "未登录或 token 缺失" });
-    return;
-  }
-  const token = auth.slice(7);
   try {
+    const auth = req.headers["authorization"];
+    if (!auth || !auth.startsWith("Bearer ")) {
+      res.status(401).json({ success: false, message: "未登录或 token 缺失" });
+      return;
+    }
+    const token = auth.slice(7);
     const key = getJwtSigningKey();
     jwt.verify(token, key, { algorithms: ["HS256"] });
     next();
   } catch (err) {
-    const msg = err.name === "TokenExpiredError" ? "登录已过期" : "无效的登录凭证";
-    res.status(401).json({ success: false, message: msg });
+    if (res.headersSent) return next(err);
+    const msg = err.name === "TokenExpiredError" ? "登录已过期" : (err.name === "JsonWebTokenError" ? "无效的登录凭证" : (err.message || "认证失败"));
+    res.status(401).set("Content-Type", "application/json").json({ success: false, message: msg });
   }
 }
 
@@ -176,31 +258,190 @@ app.use(
     credentials: true,
   })
 );
-app.use(express.json());
+// 课程包图标等可能为 base64，需放宽请求体限制（默认约 100kb）
+app.use(express.json({ limit: "10mb" }));
 
-// 所有 /api 请求必须通过 aispring JWT 验证
+// 健康检查（无需登录，用于确认 5201 服务与 JSON 响应正常）
+app.get("/api/ping", (req, res) => {
+  res.set("Content-Type", "application/json").json({ success: true, message: "pong" });
+});
+
+// 所有其它 /api 请求必须通过 aispring JWT 验证
 app.use("/api", requireAispringAuth);
 
 // ── 路由：课程包 ──────────────────────────────────────────────────────────────
 
-/** GET /api/packages — 返回所有课程包列表 */
+/**
+ * 获取用户上传的课程包列表（公开 + 当前用户自己的）
+ * 支持 ?search= 按名称、描述模糊搜索
+ */
+function getUserPackagesList(userKey, search) {
+  let sql = `
+    SELECT id, user_key, name, description, icon, level, is_public, created_at
+    FROM user_packages
+    WHERE is_public = 1 OR user_key = ?
+  `;
+  const args = [userKey];
+  if (search && String(search).trim()) {
+    sql += ` AND (name LIKE ? OR description LIKE ?)`;
+    const term = `%${String(search).trim()}%`;
+    args.push(term, term);
+  }
+  sql += ` ORDER BY created_at DESC`;
+  return db.prepare(sql).all(...args);
+}
+
+/**
+ * 将用户包转为与 PACKAGES 一致的 meta 结构，并统计题目数、节数
+ * 节数来自 user_package_courses，若无则回退为 statements 总数（兼容旧数据）
+ */
+function userPackageToMeta(row) {
+  const totalStmt = db
+    .prepare(`SELECT COUNT(*) AS cnt FROM user_package_statements WHERE package_id = ?`)
+    .get(row.id);
+  const total = (totalStmt && totalStmt.cnt) || 0;
+  let courseCount = total > 0 ? 1 : 0;
+  try {
+    const courseRows = db
+      .prepare(
+        `SELECT course_index FROM user_package_courses WHERE package_id = ? ORDER BY course_index`
+      )
+      .all(row.id);
+    if (courseRows.length > 0) courseCount = courseRows.length;
+  } catch (_) {
+    // 兼容旧库无 user_package_courses 表
+  }
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description || "",
+    icon: row.icon || "📦",
+    level: row.level || "自定义",
+    courseCount,
+    totalQuestions: total,
+    isUserPackage: true,
+    isPublic: !!row.is_public,
+  };
+}
+
+/** 获取某课程包的点击次数 */
+function getPackageClickCount(packageId) {
+  const row = db.prepare(`SELECT click_count FROM package_clicks WHERE package_id = ?`).get(packageId);
+  return row ? (row.click_count || 0) : 0;
+}
+
+/** 增加课程包点击次数（内置包与用户包统一写入 package_clicks） */
+function incrementPackageClick(packageId) {
+  db.prepare(
+    `INSERT INTO package_clicks (package_id, click_count) VALUES (?, 1)
+     ON CONFLICT(package_id) DO UPDATE SET click_count = click_count + 1`
+  ).run(packageId);
+}
+
+/** GET /api/packages — 返回内置 + 用户课程包列表，支持 ?search= 搜索，按点击量降序排名 */
 app.get("/api/packages", (req, res) => {
-  res.json({ success: true, data: PACKAGES });
+  const { key } = resolveUserKey(req);
+  const search = req.query.search ? String(req.query.search).trim() : "";
+  let list = [];
+  if (!search) {
+    list = PACKAGES.map((p) => ({ ...p }));
+  } else {
+    const term = search.toLowerCase();
+    list = PACKAGES.filter(
+      (p) =>
+        (p.name && p.name.toLowerCase().includes(term)) ||
+        (p.description && p.description.toLowerCase().includes(term))
+    ).map((p) => ({ ...p }));
+  }
+  const userRows = getUserPackagesList(key, search || null);
+  for (const row of userRows) {
+    list.push(userPackageToMeta(row));
+  }
+  // 合并点击次数并按点击量降序排序
+  list = list.map((p) => ({
+    ...p,
+    clickCount: getPackageClickCount(p.id),
+  }));
+  list.sort((a, b) => (b.clickCount || 0) - (a.clickCount || 0));
+  res.json({ success: true, data: list });
 });
 
-/** GET /api/packages/:packageId/courses — 返回指定课程包内的课程列表 */
+/** POST /api/packages/:packageId/click — 记录课程包点击（用于排名） */
+app.post("/api/packages/:packageId/click", (req, res) => {
+  const packageId = req.params.packageId;
+  const exists =
+    PACKAGES.some((p) => p.id === packageId) ||
+    db.prepare(`SELECT 1 FROM user_packages WHERE id = ?`).get(packageId);
+  if (!exists) {
+    return res.status(404).json({ success: false, message: "课程包不存在" });
+  }
+  incrementPackageClick(packageId);
+  res.json({ success: true });
+});
+
+/** GET /api/packages/:packageId/courses — 返回指定课程包内的课程列表（节列表，index 从 1 开始） */
 app.get("/api/packages/:packageId/courses", (req, res) => {
-  const pkg = PACKAGES.find((p) => p.id === req.params.packageId);
-  if (!pkg) return res.status(404).json({ success: false, message: "课程包不存在" });
-  // 只返回元数据，不含题目内容
-  res.json({ success: true, data: courseMetas });
+  const packageId = req.params.packageId;
+  const pkg = PACKAGES.find((p) => p.id === packageId);
+  if (pkg) {
+    return res.json({ success: true, data: courseMetas });
+  }
+  const userPkg = db.prepare(`SELECT id FROM user_packages WHERE id = ?`).get(packageId);
+  if (userPkg) {
+    const courses = db
+      .prepare(
+        `SELECT package_id, course_index, title FROM user_package_courses WHERE package_id = ? ORDER BY course_index`
+      )
+      .all(packageId);
+    if (courses.length > 0) {
+      const data = courses.map((c, i) => {
+        const countRow = db
+          .prepare(
+            `SELECT COUNT(*) AS cnt FROM user_package_statements WHERE package_id = ? AND course_index = ?`
+          )
+          .get(packageId, c.course_index);
+        return {
+          index: i + 1,
+          title: c.title || toChineseTitle(i + 1),
+          count: (countRow && countRow.cnt) || 0,
+        };
+      });
+      return res.json({ success: true, data });
+    }
+    // 兼容旧数据：无 user_package_courses 时按单节返回
+    const count = db
+      .prepare(`SELECT COUNT(*) AS cnt FROM user_package_statements WHERE package_id = ?`)
+      .get(packageId);
+    const total = (count && count.cnt) || 0;
+    res.json({
+      success: true,
+      data: [{ index: 1, title: "第一课", count: total }],
+    });
+    return;
+  }
+  res.status(404).json({ success: false, message: "课程包不存在" });
 });
 
-/** GET /api/courses/:courseIndex/questions — 返回指定课程的题目列表 */
+/** GET /api/courses/:courseIndex/questions — 返回指定课程的题目列表；支持 ?packageId= 用户课程包；courseIndex 为 1-based */
 app.get("/api/courses/:courseIndex/questions", (req, res) => {
+  const packageId = req.query.packageId;
   const idx = parseInt(req.params.courseIndex, 10);
   if (isNaN(idx) || idx < 1) {
     return res.status(400).json({ success: false, message: "无效的课程索引" });
+  }
+  if (packageId && String(packageId).startsWith("up-")) {
+    const courseIndex0 = idx - 1;
+    const rows = db
+      .prepare(
+        `SELECT english, chinese, soundmark FROM user_package_statements WHERE package_id = ? AND course_index = ? ORDER BY sort_order, id`
+      )
+      .all(packageId, courseIndex0);
+    const statements = rows.map((r) => ({
+      english: r.english,
+      chinese: r.chinese,
+      soundmark: r.soundmark || "",
+    }));
+    return res.json({ success: true, data: statements });
   }
   const filePath = join(COURSES_DIR, `${String(idx).padStart(2, "0")}.json`);
   if (!existsSync(filePath)) {
@@ -212,6 +453,134 @@ app.get("/api/courses/:courseIndex/questions", (req, res) => {
     res.json({ success: true, data: statements });
   } catch (e) {
     res.status(500).json({ success: false, message: "课程数据读取失败" });
+  }
+});
+
+/**
+ * POST /api/packages — 创建自定义课程包（支持仅元数据、单次全量、分节）
+ * Body: { name, description?, icon?, level?, isPublic [, statements ] [, sections: [{ title, statements }] ] }
+ * - 仅 name + isPublic：创建空包，后续用 POST /packages/:id/sections 添加节
+ * - statements（数组）：兼容旧版，视为单节「第一课」
+ * - sections（数组）：多节，每节 { title, statements }
+ */
+app.post("/api/packages", (req, res) => {
+  try {
+    const { key } = resolveUserKey(req);
+    const { name, description, icon, level, isPublic, statements, sections } = req.body || {};
+    if (!name || typeof name !== "string" || !name.trim()) {
+      return res.status(400).json({ success: false, message: "课程包名称不能为空" });
+    }
+    const packageId = "up-" + randomUUID().replace(/-/g, "").slice(0, 16);
+    const insertPkg = db.prepare(`
+      INSERT INTO user_packages (id, user_key, name, description, icon, level, is_public)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+    const insertCourse = db.prepare(`
+      INSERT INTO user_package_courses (package_id, course_index, title) VALUES (?, ?, ?)
+    `);
+    const insertStmt = db.prepare(`
+      INSERT INTO user_package_statements (package_id, course_index, sort_order, english, chinese, soundmark)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+    insertPkg.run(
+      packageId,
+      key,
+      String(name).trim().slice(0, 200),
+      (description != null && description !== undefined ? String(description) : "").slice(0, 1000),
+      (icon != null && icon !== undefined ? String(icon) : "📦").slice(0, 5000),
+      (level != null && level !== undefined ? String(level) : "自定义").slice(0, 50),
+      isPublic ? 1 : 0
+    );
+    const sectionList = Array.isArray(sections) && sections.length > 0
+      ? sections
+      : Array.isArray(statements) && statements.length > 0
+        ? [{ title: "第一课", statements }]
+        : [];
+    let courseIndex = 0;
+    for (const sec of sectionList) {
+      const title = (sec.title != null && sec.title !== undefined ? String(sec.title).trim() : "") || toChineseTitle(courseIndex + 1);
+      const list = Array.isArray(sec.statements) ? sec.statements : [];
+      insertCourse.run(packageId, courseIndex, title.slice(0, 200));
+      let order = 0;
+      for (const s of list) {
+        const en = (s.english != null ? String(s.english) : "").trim();
+        const zh = (s.chinese != null ? String(s.chinese) : "").trim();
+        if (!en && !zh) continue;
+        insertStmt.run(
+          packageId,
+          courseIndex,
+          order++,
+          en.slice(0, 2000),
+          zh.slice(0, 2000),
+          (s.soundmark != null ? String(s.soundmark) : "").slice(0, 200)
+        );
+      }
+      courseIndex++;
+    }
+    const meta = userPackageToMeta(
+      db.prepare(`SELECT * FROM user_packages WHERE id = ?`).get(packageId)
+    );
+    res.status(201).json({ success: true, data: meta, message: sectionList.length > 0 ? "上传成功" : "课程包已创建，请添加节" });
+  } catch (e) {
+    console.error("[upload package]", e);
+    const msg = (e && typeof e.message === "string" ? e.message : String(e && e.code || "保存失败"));
+    res.status(500).set("Content-Type", "application/json").json({ success: false, message: msg });
+  }
+});
+
+/**
+ * POST /api/packages/:packageId/sections — 为已有课程包追加一节
+ * Body: { title?, statements: [{ english, chinese, soundmark? }] }
+ * 仅允许包所属用户操作
+ */
+app.post("/api/packages/:packageId/sections", (req, res) => {
+  const { key } = resolveUserKey(req);
+  const packageId = req.params.packageId;
+  if (!packageId || !String(packageId).startsWith("up-")) {
+    return res.status(400).json({ success: false, message: "无效的课程包 ID" });
+  }
+  const row = db.prepare(`SELECT id, user_key FROM user_packages WHERE id = ?`).get(packageId);
+  if (!row || row.user_key !== key) {
+    return res.status(404).json({ success: false, message: "课程包不存在或无权操作" });
+  }
+  const { title, statements } = req.body || {};
+  const list = Array.isArray(statements) ? statements : [];
+  if (list.length === 0) {
+    return res.status(400).json({ success: false, message: "至少需要一条题目" });
+  }
+  const nextIndexRow = db.prepare(
+    `SELECT COALESCE(MAX(course_index), -1) + 1 AS next FROM user_package_courses WHERE package_id = ?`
+  ).get(packageId);
+  const courseIndex = (nextIndexRow && nextIndexRow.next != null) ? nextIndexRow.next : 0;
+  const insertCourse = db.prepare(`
+    INSERT INTO user_package_courses (package_id, course_index, title) VALUES (?, ?, ?)
+  `);
+  const insertStmt = db.prepare(`
+    INSERT INTO user_package_statements (package_id, course_index, sort_order, english, chinese, soundmark)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
+  try {
+    const sectionTitle = (title != null && title !== undefined ? String(title).trim() : "") || toChineseTitle(courseIndex + 1);
+    insertCourse.run(packageId, courseIndex, sectionTitle.slice(0, 200));
+    let order = 0;
+    for (const s of list) {
+      const en = (s.english != null ? String(s.english) : "").trim();
+      const zh = (s.chinese != null ? String(s.chinese) : "").trim();
+      if (!en && !zh) continue;
+      insertStmt.run(
+        packageId,
+        courseIndex,
+        order++,
+        en.slice(0, 2000),
+        zh.slice(0, 2000),
+        (s.soundmark != null ? String(s.soundmark) : "").slice(0, 200)
+      );
+    }
+    const meta = userPackageToMeta(db.prepare(`SELECT * FROM user_packages WHERE id = ?`).get(packageId));
+    res.status(201).json({ success: true, data: meta, message: "节已添加" });
+  } catch (e) {
+    console.error("[add section]", e);
+    res.status(500).json({ success: false, message: "添加节失败" });
   }
 });
 
@@ -336,6 +705,16 @@ if (existsSync(distPath)) {
   app.get("/word-game", (req, res) => res.redirect(301, "/word-game/"));
   app.get(/^\/word-game\/.+/, (req, res) => res.sendFile(join(distPath, "index.html")));
 }
+
+// 全局错误处理：未捕获异常时统一返回 JSON 500
+app.use((err, req, res, next) => {
+  console.error("[express error]", err);
+  if (res.headersSent) return next(err);
+  res.status(500).set("Content-Type", "application/json").json({
+    success: false,
+    message: err.message || "服务器内部错误",
+  });
+});
 
 // ── 启动 ──────────────────────────────────────────────────────────────────────
 

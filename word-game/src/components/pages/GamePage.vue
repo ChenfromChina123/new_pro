@@ -121,10 +121,11 @@ const progressPercent = computed(() => {
 // ---- 生命周期 ----
 
 onMounted(() => {
-  // 如果从 URL 直接访问（如刷新页面），重新加载课程
+  // 如果从 URL 直接访问（如刷新页面），重新加载课程；用户课程包从 query 取 packageId
   const courseIndex = Number(route.params.courseIndex);
+  const packageId = (route.query.packageId as string) || undefined;
   if (courseIndex && !courseStore.currentCourse) {
-    courseStore.loadCourse(courseIndex);
+    courseStore.loadCourse(courseIndex, packageId);
   }
 
   // 监听任意键启动游戏（桌面端）
@@ -148,7 +149,12 @@ function startGame() {
 function goBack() {
   courseStore.hideCompletion();
   resetMode();
-  router.push("/");
+  const packageId = (route.query.packageId as string) || "";
+  if (packageId && packageId.startsWith("up-")) {
+    router.push(`/package/${packageId}`);
+  } else {
+    router.push("/");
+  }
 }
 
 // ---- 游戏逻辑 ----

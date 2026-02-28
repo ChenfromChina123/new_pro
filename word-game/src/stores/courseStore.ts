@@ -59,13 +59,20 @@ export const useCourseStore = defineStore("course", () => {
     _sessionStart = Date.now();
 
     try {
-      // ① 尝试从后端 API 加载题目
-      const statements = await fetchCourseQuestions(courseIndex);
-      const meta = courseMetas.find((m) => m.index === courseIndex);
+      // ① 尝试从后端 API 加载题目（用户课程包传 packageId）
+      const statements = await fetchCourseQuestions(courseIndex, packageId);
+      const meta =
+        packageId?.startsWith("up-")
+          ? { index: 1, title: "第一课", count: statements.length }
+          : courseMetas.find((m) => m.index === courseIndex);
       if (!meta) throw new Error("元数据不存在");
       currentCourse.value = { ...meta, statements };
     } catch {
-      // ② 降级到静态数据
+      // ② 降级到静态数据（仅内置包）
+      if (packageId?.startsWith("up-")) {
+        loadingCourse.value = false;
+        return;
+      }
       const meta = courseMetas.find((m) => m.index === courseIndex);
       if (!meta) { loadingCourse.value = false; return; }
       const statements = getCourseStatements(courseIndex);

@@ -434,9 +434,6 @@
           <router-link to="/cloud-disk">
             云盘管理
           </router-link>
-          <router-link to="/language-learning">
-            语言学习
-          </router-link>
         </div>
         <div class="link-group">
           <h4>支持</h4>
