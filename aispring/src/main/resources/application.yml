@@ -5,6 +5,20 @@ spring:
   application:
     name: ai-smart-tutor
   
+  # Jackson JSON 序列化配置（将下划线转为驼峰）
+  jackson:
+    property-naming-strategy: LOWER_CAMEL_CASE  # 使用驼峰命名（默认）
+  
+  # 触发DevTools重启
+  # 禁用 GraphQL
+  graphql:
+    graphiql:
+      enabled: false
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.graphql.GraphQlAutoConfiguration
+      - org.springframework.boot.autoconfigure.graphql.servlet.GraphQlWebMvcAutoConfiguration
+  
   # 数据库配置（极致优化：最小化连接池以大幅降低内存占用）
   datasource:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:ipv6_education}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&cachePrepStmts=true&prepStmtCacheSize=100&prepStmtCacheSqlLimit=1024
@@ -88,7 +102,7 @@ spring:
   # 热部署配置 (生产环境默认禁用)
   devtools:
     restart:
-      enabled: false
+      enabled: true
       poll-interval: 2000ms
       quiet-period: 1000ms
       log-condition-evaluation-delta: false

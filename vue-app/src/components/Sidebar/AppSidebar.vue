@@ -101,6 +101,16 @@
         <i class="fas fa-folder-open"></i>
         <span>公共资源</span>
       </router-link>
+      <!-- Earthworm 英语学习外链 -->
+      <a
+        href="http://earthworm.aistudy.icu/"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="nav-item"
+      >
+        <i class="fas fa-worm"></i>
+        <span>Earthworm</span>
+      </a>
       <router-link
         v-if="authStore.isAdmin"
         to="/admin"
