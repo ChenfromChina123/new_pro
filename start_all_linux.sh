@@ -100,6 +100,20 @@ else
 fi
 cd "$PROJECT_ROOT"
 
+# 博客系统：检查依赖
+BLOG_DIR="$PROJECT_ROOT/个人博客/tailwind-nextjs-starter-blog-main"
+if [ -d "$BLOG_DIR" ]; then
+  ensure_dir "$BLOG_DIR"
+  cd "$BLOG_DIR"
+  if [ -d "node_modules" ]; then
+    echo "    博客系统依赖已存在，跳过 npm install"
+  else
+    echo "    正在安装博客系统依赖..."
+    npm install
+  fi
+  cd "$PROJECT_ROOT"
+fi
+
 ensure_dir "aispring"
 cd "$PROJECT_ROOT"
 
@@ -109,14 +123,32 @@ echo "【3/5】构建前端与 word-game"
 
 # 主站前端
 cd vue-app
-npm run build
+if [ -d "dist" ]; then
+  echo "    主站前端已构建，跳过 build"
+else
+  npm run build
+fi
 cd "$PROJECT_ROOT"
 
 # 单词记忆：生产环境 API 使用 earthworm.aistudy.icu
 cd word-game
 export VITE_WORD_GAME_API_BASE="https://earthworm.aistudy.icu/api"
-npm run build
+if [ -d "dist" ]; then
+  echo "    word-game 已构建，跳过 build"
+else
+  npm run build
+fi
 cd "$PROJECT_ROOT"
+
+# 博客系统：如果有 .next 目录则跳过构建
+if [ -d "$BLOG_DIR/.next" ]; then
+  echo "    博客系统已构建，跳过 build"
+else
+  echo "    正在构建博客系统..."
+  cd "$BLOG_DIR"
+  npm run build
+  cd "$PROJECT_ROOT"
+fi
 
 # 后端 JAR（生产模式，不 clean 以复用依赖与增量构建）
 cd aispring
