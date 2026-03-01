@@ -16,10 +16,12 @@ cd "$PROJECT_ROOT"
 # ---------- 端口（与 Nginx 反代一致）----------
 # aistudy.icu         -> 3000  主站前端
 # earthworm.aistudy.icu -> 5010  单词记忆（word-game 前端+API）
+# blog.aistudy.icu    -> 3200  博客系统
 # 主站后端 aispring   -> 5000
 BACKEND_PORT=5000
 FRONTEND_PORT=3000
 WORD_GAME_PORT=5010
+BLOG_PORT=3200
 
 # ---------- 数据库（与宝塔/MySQL 一致，可按需改为环境变量）----------
 export DB_HOST="${DB_HOST:-127.0.0.1}"
@@ -125,6 +127,7 @@ echo "【4/5】检测端口冲突"
 kill_port_if_used "$BACKEND_PORT" "主站后端"
 kill_port_if_used "$FRONTEND_PORT" "主站前端"
 kill_port_if_used "$WORD_GAME_PORT" "单词记忆"
+kill_port_if_used "$BLOG_PORT" "博客系统"
 
 # ========== 5. 启动后端 aispring (5000) ==========
 echo ""
@@ -201,16 +204,52 @@ else
   fi
 fi
 
+# ========== 5c. 启动博客系统 (3200，blog.aistudy.icu 反代) ==========
+BLOG_LOG="$PROJECT_ROOT/blog.log"
+BLOG_PID=$(get_port_pid "$BLOG_PORT")
+if [ -n "$BLOG_PID" ]; then
+  echo "✅ 博客系统已在运行（端口 $BLOG_PORT, PID: $BLOG_PID）"
+else
+  command -v node >/dev/null 2>&1 || { echo "❌ 未找到 node 命令，无法启动博客系统，请先安装 Node.js"; exit 1; }
+  BLOG_DIR="$PROJECT_ROOT/个人博客/tailwind-nextjs-starter-blog-main"
+  if [ ! -d "$BLOG_DIR" ]; then
+    echo "⚠️  博客系统目录不存在，跳过启动"
+  else
+    ensure_dir "$BLOG_DIR/.next"
+    echo "    正在启动博客系统（端口 $BLOG_PORT, 日志：blog.log）..."
+    echo "    node 路径：$(command -v node)"
+    export PORT=$BLOG_PORT
+    (cd "$BLOG_DIR" && nohup npm run start >> "$BLOG_LOG" 2>&1 &)
+    BLOG_LAUNCH_PID=$!
+    unset PORT
+    echo "    博客系统进程已 fork (PID: $BLOG_LAUNCH_PID)，等待端口 $BLOG_PORT 就绪..."
+    if wait_for_port "$BLOG_PORT" "博客系统" 30; then
+      BLOG_PID=$(get_port_pid "$BLOG_PORT")
+      echo "✅ 博客系统已就绪（端口 $BLOG_PORT, PID: $BLOG_PID）"
+      echo "   访问地址：http://localhost:$BLOG_PORT (blog.aistudy.icu)"
+      echo "   日志：$BLOG_LOG"
+    else
+      echo "❌ 博客系统在 30s 内未监听端口 $BLOG_PORT，请查看日志:"
+      echo "--- blog.log 最后 30 行 ---"
+      tail -30 "$BLOG_LOG" 2>/dev/null || echo "(无日志或文件不存在)"
+      echo "---"
+      BLOG_PID=$(get_port_pid "$BLOG_PORT")
+      [ -z "$BLOG_PID" ] && echo "   建议：检查 node 版本、博客系统 node_modules 是否已安装，或执行：cd 个人博客/tailwind-nextjs-starter-blog-main && npm run start 查看报错"
+    fi
+  fi
+fi
+
 # ========== 汇总 ==========
 echo ""
 echo "=========================================="
 echo "🎉 全量启动完成"
 echo "=========================================="
-echo "主站前端:    http://localhost:$FRONTEND_PORT  (aistudy.icu)"
-echo "主站后端:    http://localhost:$BACKEND_PORT   (API)"
-echo "单词记忆:    http://localhost:$WORD_GAME_PORT (earthworm.aistudy.icu)"
+echo "主站前端：   http://localhost:$FRONTEND_PORT  (aistudy.icu)"
+echo "主站后端：   http://localhost:$BACKEND_PORT   (API)"
+echo "单词记忆：   http://localhost:$WORD_GAME_PORT (earthworm.aistudy.icu)"
+echo "博客系统：   http://localhost:$BLOG_PORT      (blog.aistudy.icu)"
 echo ""
-echo "📋 进程: 后端 $BACKEND_PID | 前端 $FRONTEND_PID | word-game $WORD_PID"
-echo "📝 日志: backend.log | frontend.log | word-game.log"
-echo "🛑 停止: kill $BACKEND_PID $FRONTEND_PID $WORD_PID"
+echo "📋 进程：后端 $BACKEND_PID | 前端 $FRONTEND_PID | word-game $WORD_PID | 博客 $BLOG_PID"
+echo "📝 日志：backend.log | frontend.log | word-game.log | blog.log"
+echo "🛑 停止：kill $BACKEND_PID $FRONTEND_PID $WORD_PID $BLOG_PID"
 echo "=========================================="
