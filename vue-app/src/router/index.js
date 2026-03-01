@@ -45,6 +45,12 @@ const router = createRouter({
           meta: { requiresAuth: true }
         },
         {
+          path: 'graphql-demo',
+          name: 'GraphQLDemo',
+          component: () => import('@/views/GraphQLDemoView.vue'),
+          meta: { requiresAuth: false, allowGuest: true }
+        },
+        {
           path: 'chat-management',
           name: 'ChatManagement',
           component: () => import('@/views/ChatManagementView.vue'),
@@ -74,6 +80,12 @@ const router = createRouter({
       path: '/codenova/:platform?',
       name: 'CodeNova',
       component: () => import('@/views/CodeNovaView.vue'),
+      meta: { requiresAuth: false, allowGuest: true }
+    },
+    {
+      path: '/links',
+      name: 'Links',
+      component: () => import('@/views/LinksView.vue'),
       meta: { requiresAuth: false, allowGuest: true }
     },
     {

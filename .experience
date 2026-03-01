@@ -70,3 +70,23 @@
 70. 优化了 Agent 提示词调用链路。`AgentServiceImpl` 现已完全接入动态提示词库，支持根据任务角色实时匹配最佳提示词模板，显著提升了需求分析与 PRD 生成的专业性。
 71. 新增了管理员专属的提示词管理接口 `SystemPromptController.java`。支持对系统级 Prompt 进行实时的增删改查操作，为后续通过管理后台动态优化 Agent 表现奠定了基础。
 72. 修复了 `Table 'aispring.system_prompts' doesn't exist` 数据库错误。通过创建 Flyway 迁移脚本 V3_1__create_system_prompts.sql，自动创建了 system_prompts 表，包含角色、提示词内容、分类、语言等字段，确保系统提示词功能在数据库层面的完整支持。
+73. 实现了 Token 消耗监控：新增 `TokenUsageAudit` 实体与审计表（通过 Flyway V3_2 迁移脚本），记录每个 API 提供方（deepseek/doubao/default）或用户的 Token 消耗量（估算或实际）与响应耗时，通过异步写入不阻塞主流程，帮助精确控制成本。
+74. 实现了敏感信息脱敏：引入 `SensitiveDataMasker` 工具类，在请求发送给大模型前自动识别并脱敏身份证号、手机号、邮箱、银行卡号等隐私数据，确保用户隐私在流转到外部 API 时不被泄露。
+75. 深度集成脱敏与审计到 AI 聊天流程：在 `AiChatServiceImpl` 的流式（Spring AI 与 OkHttp）和非流式调用点，统一在请求前对 prompt 及历史 user 消息脱敏，并在响应后记录审计日志（包含 provider、model、userId、sessionId、inputTokens、outputTokens、responseTimeMs 等维度）。
+76. 为管理后台新增 Token 审计可视化页面：在 AdminView.vue 中新增"Token 审计"选项卡，展示总请求数、总 Token 消耗、平均响应时间等统计指标，以及 API 提供方分布图表和最近 7 天的详细审计记录，帮助管理员实时监控成本并进行性能分析。
+77. 在后端 AdminController 中新增 Token 审计 API 接口：`/api/admin/token-audit/stats`（统计数据）和 `/api/admin/token-audit/records`（审计记录列表），支持按提供方、用户、时间范围等维度查询，为管理后台提供完整的数据支持。
+78. 基于 Spring for GraphQL 实现了完整的数据分片加载方案：通过 Fragments 定义可重用字段集合，@SchemaMapping 声明式解析字段，DataLoader 批量加载避免 N+1 问题，实现了列表页最小字段传输（~200bytes/条）、详情页按需加载完整内容、统计信息独立计算等多场景优化，显著提升了 API 灵活性和性能。
+79. 新增了外部链接展示和管理功能：创建了独立的链接展示页面（/links，无需登录），支持展示标题、URL、描述、图片和基于点击次数的排名；实现了简单的防爬虫机制（User-Agent 检测、IP 点击频率限制、常见爬虫拦截）；在管理后台新增"外部链接"选项卡，支持链接的增删改查、激活/禁用、排序等完整管理功能。
+80. 修复了外部链接页面样式问题：将 LinksView.vue 的样式从固定的紫色渐变主题改为与 LandingView.vue 完全一致的主题适配设计，添加了完整的导航栏、移动端菜单、暗色模式支持，使其与整体应用风格保持统一。
+81. 暂时禁用了 GraphQL 功能：由于 GraphQL 依赖配置问题导致启动失败（NoClassDefFoundError: GraphQLScalarType），通过在 application.yml 中禁用 GraphQL 自动配置来确保应用能正常启动。后续需要修复 GraphQL 的依赖配置问题。
+82. 创建了示例外部链接数据迁移脚本（V3_4__insert_sample_external_links.sql），包含了 GitHub、Stack Overflow、MDN、LeetCode、菜鸟教程、Hugging Face、DeepSeek、Vue.js 等8个常用开发资源链接。
+83. 实现了外部链接数据自动初始化功能：创建了 ExternalLinkDataInitializer，在应用启动时自动检查并初始化示例外部链接数据（如果数据库为空），确保用户首次访问时就能看到精选的开发资源链接。
+84. 修复了外部链接接口的 403 Forbidden 错误：在 SecurityConfig 中将 `/api/external-links`（GET）和 `/api/external-links/*/click`（POST）设为公开访问，无需登录即可查看和点击外部链接，符合公开展示页面的设计初衷。
+85. 优化了外部链接点击次数的持久化机制：在 Repository 层的 @Modifying 查询中添加了 updatedAt 时间戳自动更新；在 Service 层的 recordClick 方法中添加了异常捕获和静默处理，确保即使出现异常也不会影响用户体验；在前端实现了乐观更新和异步记录，点击链接后立即打开新标签页，不阻塞用户操作。
+86. 优化了前端错误处理：移除了控制台错误信息的输出（仅在开发环境显示），改为静默处理，避免在生产环境中向用户展示技术细节；点击记录失败时不影响用户正常访问链接。
+87. 实现了外部链接的分类功能：为 external_links 表添加了 category 字段（通过 Flyway V3_5 迁移脚本），支持将链接分为"开发工具"、"学习资源"、"AI平台"、"前端框架"等类别；在实体类和初始化器中添加了自动分类逻辑；在前端实现了分类过滤器和分组显示，用户可以点击分类标签筛选链接，也可以查看按分类分组的所有链接，提升了资源的组织性和可浏览性。
+88. 优化了外部链接页面UI：移除了卡片上的"Top N"排名徽章和"分类标签"覆盖层，使卡片界面更加简洁清爽；修复了点击次数无法实时同步的问题，通过改用响应式数组索引更新方式替代直接对象属性修改，确保点击后页面上的计数器能立即刷新。
+89. 优化了外部链接点击次数的持久化机制：统一了后端实体类中 clickCount 字段的类型为 Integer；在 Service 层增加了 null 值检查；在 Controller 层添加了返回值日志；在前端添加了详细的调试日志以追踪数据流转；创建了数据库迁移脚本将 click_count 字段类型从 BIGINT 改为 INT，确保前后端类型一致性。
+90. 优化了外部链接页面的视觉密度：缩小了卡片尺寸、内边距、字体大小，以及页面标题和分类过滤器的尺寸；优化了 Grid 布局参数，使每行能展示更多内容；调整了移动端适配，确保在小屏幕下也能高效利用空间。
+91. 部署了 earthworm 开源项目到本地目录 earthworm，配置了 .env 和 .volumes，并生成了 DEPLOY_INSTRUCTIONS.md 指导用户手动完成依赖安装和服务启动。
+92. 成功将 earthworm 部署到服务器 8.138.174.80，通过域名 earthworm.aistudy.icu 访问。关键步骤：升级 Node.js 到 v20（用 nvm）、添加 swap 解决内存不足、修复 CORS 配置（origin: true）、使用 PM2 shell 脚本启动（source nvm.sh）、生产模式用 PORT 而非 NITRO_PORT、Nginx 反向代理配置在 /www/server/panel/vhost/nginx/ 目录。
