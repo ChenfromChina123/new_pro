@@ -16,11 +16,13 @@ cd "$PROJECT_ROOT"
 # ---------- 端口（与 Nginx 反代一致）----------
 # aistudy.icu         -> 3000  主站前端
 # earthworm.aistudy.icu -> 5010  单词记忆（word-game 前端+API）
+# cv.aistudy.icu      -> 3100  个人简历网站
 # blog.aistudy.icu    -> 3200  博客系统
 # 主站后端 aispring   -> 5000
 BACKEND_PORT=5000
 FRONTEND_PORT=3000
 WORD_GAME_PORT=5010
+CV_PORT=3100
 BLOG_PORT=3200
 
 # ---------- 数据库（与宝塔/MySQL 一致，可按需改为环境变量）----------
@@ -127,9 +129,10 @@ echo "【4/5】检测端口冲突"
 kill_port_if_used "$BACKEND_PORT" "主站后端"
 kill_port_if_used "$FRONTEND_PORT" "主站前端"
 kill_port_if_used "$WORD_GAME_PORT" "单词记忆"
+kill_port_if_used "$CV_PORT" "简历网站"
 kill_port_if_used "$BLOG_PORT" "博客系统"
 
-# ========== 5. 启动后端 aispring (5000) ==========
+# ========== 5. 启动后端 aispring (500)0 ==========
 echo ""
 echo "【5/5】启动服务"
 
@@ -172,7 +175,35 @@ else
   echo "✅ 主站前端已启动（端口 $FRONTEND_PORT, PID: $FRONTEND_PID）"
 fi
 
-# ========== 5b. 启动 word-game (5010，earthworm.aistudy.icu 反代) ==========
+# ========== 5b. 启动简历网站 (3100，cv.aistudy.icu 反代) ==========
+CV_PID=$(get_port_pid "$CV_PORT")
+if [ -n "$CV_PID" ]; then
+  echo "✅ 简历网站已在运行（端口 $CV_PORT, PID: $CV_PID）"
+else
+  command -v python3 >/dev/null 2>&1 || command -v python >/dev/null 2>&1 || { echo "❌ 未找到 Python 命令，无法启动简历网站，请先安装 Python"; exit 1; }
+  CV_DIR="$PROJECT_ROOT/cv-site"
+  if [ ! -d "$CV_DIR" ]; then
+    echo "⚠️  简历网站目录不存在，跳过启动"
+  else
+    CV_LOG="$PROJECT_ROOT/cv-site.log"
+    echo "    正在启动简历网站（端口 $CV_PORT, 日志：cv-site.log）..."
+    # 使用 Python 简单 HTTP 服务器
+    export PORT=$CV_PORT
+    (cd "$CV_DIR" && nohup python3 -m http.server $CV_PORT >> "$CV_LOG" 2>&1 || python -m http.server $CV_PORT >> "$CV_LOG" 2>&1 &)
+    sleep 2
+    CV_PID=$(get_port_pid "$CV_PORT")
+    if [ -n "$CV_PID" ]; then
+      echo "✅ 简历网站已启动（端口 $CV_PORT, PID: $CV_PID）"
+      echo "   访问地址：http://localhost:$CV_PORT (cv.aistudy.icu)"
+      echo "   日志：$CV_LOG"
+    else
+      echo "⚠️  简历网站启动中，请等待片刻..."
+    fi
+    unset PORT
+  fi
+fi
+
+# ========== 5c. 启动 word-game (5010，earthworm.aistudy.icu 反代) ==========
 WORD_GAME_LOG="$PROJECT_ROOT/word-game.log"
 WORD_PID=$(get_port_pid "$WORD_GAME_PORT")
 if [ -n "$WORD_PID" ]; then
@@ -204,7 +235,7 @@ else
   fi
 fi
 
-# ========== 5c. 启动博客系统 (3200，blog.aistudy.icu 反代) ==========
+# ========== 5d. 启动博客系统 (3200，blog.aistudy.icu 反代) ==========
 BLOG_LOG="$PROJECT_ROOT/blog.log"
 BLOG_PID=$(get_port_pid "$BLOG_PORT")
 if [ -n "$BLOG_PID" ]; then
@@ -245,11 +276,12 @@ echo "=========================================="
 echo "🎉 全量启动完成"
 echo "=========================================="
 echo "主站前端：   http://localhost:$FRONTEND_PORT  (aistudy.icu)"
+echo "简历网站：   http://localhost:$CV_PORT        (cv.aistudy.icu)"
 echo "主站后端：   http://localhost:$BACKEND_PORT   (API)"
 echo "单词记忆：   http://localhost:$WORD_GAME_PORT (earthworm.aistudy.icu)"
 echo "博客系统：   http://localhost:$BLOG_PORT      (blog.aistudy.icu)"
 echo ""
-echo "📋 进程：后端 $BACKEND_PID | 前端 $FRONTEND_PID | word-game $WORD_PID | 博客 $BLOG_PID"
-echo "📝 日志：backend.log | frontend.log | word-game.log | blog.log"
-echo "🛑 停止：kill $BACKEND_PID $FRONTEND_PID $WORD_PID $BLOG_PID"
+echo "📋 进程：后端 $BACKEND_PID | 前端 $FRONTEND_PID | 简历 $CV_PID | word-game $WORD_PID | 博客 $BLOG_PID"
+echo "📝 日志：backend.log | frontend.log | cv-site.log | word-game.log | blog.log"
+echo "🛑 停止：kill $BACKEND_PID $FRONTEND_PID $CV_PID $WORD_PID $BLOG_PID"
 echo "=========================================="
