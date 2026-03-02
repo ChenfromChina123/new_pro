@@ -1,6 +1,6 @@
 /**
  * 个人简历网页样式
- * 简约黑白风格设计
+ * 黑色简约风格设计
  */
 
 * {
@@ -23,25 +23,25 @@ body {
     Roboto,
     sans-serif;
   line-height: 1.6;
-  color: #1a1a1a;
-  background-color: #fafafa;
+  color: #e0e0e0;
+  background-color: #121212;
 }
 
 a {
-  color: #1a1a1a;
+  color: #e0e0e0;
   text-decoration: none;
   transition: color 0.2s ease;
 }
 
 a:hover {
-  color: #666;
+  color: #bb86fc;
 }
 
 .container {
   max-width: 900px;
   margin: 0 auto;
   padding: 40px 20px;
-  background-color: #ffffff;
+  background-color: #1e1e1e;
   min-height: 100vh;
 }
 
@@ -49,12 +49,12 @@ a:hover {
   .container {
     padding: 60px 80px;
     margin: 40px auto;
-    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
   }
 }
 
 .header {
-  border-bottom: 2px solid #1a1a1a;
+  border-bottom: 2px solid #333;
   padding-bottom: 30px;
   margin-bottom: 40px;
 }
@@ -69,12 +69,13 @@ a:hover {
 .avatar {
   width: 100px;
   height: 100px;
-  background-color: #1a1a1a;
+  background-color: #333;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  border: 2px solid #bb86fc;
 }
 
 .avatar-text {
@@ -93,18 +94,19 @@ a:hover {
   font-weight: 700;
   letter-spacing: 2px;
   margin-bottom: 8px;
+  color: #ffffff;
 }
 
 .title {
   font-size: 1.25rem;
-  color: #666;
+  color: #bb86fc;
   font-weight: 500;
   margin-bottom: 4px;
 }
 
 .tagline {
   font-size: 0.95rem;
-  color: #888;
+  color: #a0a0a0;
 }
 
 .contact-info {
@@ -118,11 +120,12 @@ a:hover {
   align-items: center;
   gap: 8px;
   font-size: 0.9rem;
-  color: #555;
+  color: #b0b0b0;
 }
 
 .contact-icon {
   font-size: 1rem;
+  color: #bb86fc;
 }
 
 .section {
@@ -136,11 +139,12 @@ a:hover {
   text-transform: uppercase;
   margin-bottom: 20px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid #333;
+  color: #bb86fc;
 }
 
 .section-content {
-  color: #333;
+  color: #e0e0e0;
 }
 
 .summary {
@@ -159,7 +163,7 @@ a:hover {
   font-size: 1rem;
   font-weight: 600;
   margin-bottom: 12px;
-  color: #1a1a1a;
+  color: #bb86fc;
 }
 
 .skill-list {
@@ -171,7 +175,7 @@ a:hover {
   padding-left: 16px;
   margin-bottom: 8px;
   font-size: 0.95rem;
-  color: #444;
+  color: #c0c0c0;
 }
 
 .skill-list li::before {
@@ -181,7 +185,7 @@ a:hover {
   top: 10px;
   width: 6px;
   height: 1px;
-  background-color: #1a1a1a;
+  background-color: #bb86fc;
 }
 
 .project-item,
@@ -189,7 +193,7 @@ a:hover {
 .education-item {
   margin-bottom: 30px;
   padding-bottom: 30px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #333;
 }
 
 .project-item:last-child,
@@ -205,7 +209,7 @@ a:hover {
 .education-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 6px;
@@ -216,14 +220,14 @@ a:hover {
 .education-school {
   font-size: 1.1rem;
   font-weight: 600;
-  color: #1a1a1a;
+  color: #bb86fc;
 }
 
 .project-date,
 .work-date,
 .education-date {
   font-size: 0.85rem;
-  color: #888;
+  color: #a0a0a0;
   white-space: nowrap;
 }
 
@@ -231,7 +235,7 @@ a:hover {
 .work-position,
 .education-major {
   font-size: 0.95rem;
-  color: #666;
+  color: #b0b0b0;
   margin-bottom: 12px;
 }
 
@@ -248,7 +252,7 @@ a:hover {
   margin-bottom: 8px;
   font-size: 0.95rem;
   line-height: 1.6;
-  color: #444;
+  color: #c0c0c0;
 }
 
 .project-description li::before,
@@ -259,7 +263,7 @@ a:hover {
   top: 10px;
   width: 8px;
   height: 8px;
-  border: 1px solid #1a1a1a;
+  border: 1px solid #bb86fc;
   border-radius: 50%;
   background: transparent;
 }
@@ -276,7 +280,7 @@ a:hover {
   margin-bottom: 8px;
   font-size: 0.95rem;
   line-height: 1.6;
-  color: #444;
+  color: #c0c0c0;
 }
 
 .education-description li::before {
@@ -286,7 +290,7 @@ a:hover {
   top: 10px;
   width: 6px;
   height: 6px;
-  background-color: #1a1a1a;
+  background-color: #bb86fc;
   border-radius: 50%;
 }
 
@@ -294,7 +298,7 @@ a:hover {
 .skill-detail-item {
   margin-bottom: 25px;
   padding-bottom: 25px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid #333;
 }
 
 .skill-detail-item:last-child {
@@ -306,31 +310,31 @@ a:hover {
 .skill-detail-title {
   font-size: 1.1rem;
   font-weight: 600;
-  color: #1a1a1a;
+  color: #bb86fc;
   margin-bottom: 10px;
 }
 
 .skill-detail-desc {
   font-size: 0.95rem;
   line-height: 1.7;
-  color: #444;
+  color: #c0c0c0;
   text-align: justify;
 }
 
 /* 项目链接 */
 .project-link {
   font-size: 0.9rem;
-  color: #666;
+  color: #b0b0b0;
   margin-bottom: 12px;
 }
 
 .project-link a {
-  color: #1a1a1a;
+  color: #bb86fc;
   text-decoration: underline;
 }
 
 .project-link a:hover {
-  color: #666;
+  color: #bb86fc;
 }
 
 /* 其他信息 */
@@ -342,7 +346,7 @@ a:hover {
   margin-bottom: 10px;
   font-size: 0.95rem;
   line-height: 1.6;
-  color: #444;
+  color: #c0c0c0;
 }
 
 .other-info li:last-child {
@@ -350,7 +354,7 @@ a:hover {
 }
 
 .other-info strong {
-  color: #1a1a1a;
+  color: #bb86fc;
   font-weight: 600;
 }
 
@@ -364,23 +368,23 @@ a:hover {
   display: inline-block;
   padding: 4px 12px;
   font-size: 0.8rem;
-  color: #1a1a1a;
-  background-color: #f0f0f0;
-  border: 1px solid #ddd;
+  color: #e0e0e0;
+  background-color: #2d2d2d;
+  border: 1px solid #444;
   border-radius: 3px;
   transition: all 0.2s ease;
 }
 
 .tech-tag:hover {
-  background-color: #1a1a1a;
-  color: #fff;
-  border-color: #1a1a1a;
+  background-color: #bb86fc;
+  color: #121212;
+  border-color: #bb86fc;
 }
 
 .footer {
   margin-top: 60px;
   padding-top: 30px;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid #333;
   text-align: center;
   color: #888;
   font-size: 0.85rem;
@@ -392,7 +396,66 @@ a:hover {
 
 .footer-links .divider {
   margin: 0 12px;
-  color: #ccc;
+  color: #555;
+}
+
+/* 可折叠项目样式 */
+.collapsible-header {
+  cursor: pointer;
+  position: relative;
+  padding-right: 40px;
+  transition: background-color 0.2s ease;
+}
+
+.collapsible-header:hover {
+  background-color: rgba(187, 134, 252, 0.05);
+  border-radius: 4px;
+}
+
+.collapse-toggle {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #bb86fc;
+  transition:
+    transform 0.3s ease,
+    color 0.2s ease;
+}
+
+.collapse-toggle:hover {
+  color: #e0e0e0;
+}
+
+.toggle-icon {
+  font-size: 12px;
+  transition: transform 0.3s ease;
+  display: inline-block;
+}
+
+.collapsible.collapsed .toggle-icon {
+  transform: rotate(-90deg);
+}
+
+.collapsible-content {
+  overflow: hidden;
+  transition:
+    max-height 0.3s ease-out,
+    opacity 0.3s ease;
+  max-height: 1000px;
+  opacity: 1;
+}
+
+.collapsible.collapsed .collapsible-content {
+  max-height: 0;
+  opacity: 0;
 }
 
 @media print {
@@ -409,6 +472,15 @@ a:hover {
 
   .tech-tag {
     border: 1px solid #ccc;
+  }
+
+  .collapse-toggle {
+    display: none;
+  }
+
+  .collapsible-content {
+    max-height: none !important;
+    opacity: 1 !important;
   }
 }
 
@@ -430,6 +502,19 @@ a:hover {
   .work-header,
   .education-header {
     flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .collapsible-header {
+    padding-right: 0;
+  }
+
+  .collapse-toggle {
+    position: relative;
+    transform: none;
+    align-self: flex-end;
+    margin-top: -30px;
+    margin-bottom: 10px;
   }
 
   .skills-grid {
