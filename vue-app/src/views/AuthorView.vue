@@ -10,7 +10,13 @@
       <!-- 作者信息卡片 -->
       <div class="author-card card">
         <div class="author-header">
-          <div class="author-avatar">Xi</div>
+          <div class="author-avatar">
+            <img
+              src="/preview.jpg"
+              alt="XiHuiChen"
+              class="avatar-img"
+            />
+          </div>
 
           <!-- 基本信息 -->
           <div class="author-info">
@@ -192,6 +198,14 @@ document.title = "关于作者 - AI智能学习助手";
   font-weight: bold;
   box-shadow: var(--shadow-lg);
   margin-bottom: 20px;
+  overflow: hidden;
+  border: 3px solid white;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .author-info {
