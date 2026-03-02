@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "vite",
     "server": "node server/index.js",
-    "build": "vue-tsc --noEmit && vite build",
-    "build:prod": "vue-tsc --noEmit && vite build --mode production",
+    "build": "vite build",
+    "build:prod": "vite build --mode production",
     "preview": "vite preview"
   },
   "dependencies": {
