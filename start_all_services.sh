@@ -146,6 +146,7 @@ if [ -d "ai-tutor-system/aispring/word-game" ]; then
     echo "    ✅ 单词记忆已构建"
   else
     echo "    正在构建单词记忆..."
+    rm -rf node_modules/.vite node_modules/.vite-temp .vite .vite-temp
     npm run build
   fi
   cd "$PROJECT_ROOT"
