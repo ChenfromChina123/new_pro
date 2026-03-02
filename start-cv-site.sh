@@ -39,22 +39,21 @@ if [ ! -d "$CV_DIR" ]; then
 fi
 echo "✅ 简历网站目录已找到"
 
-# 检查端口
+# 检查端口并重启
 CV_PID=$(get_port_pid "$CV_PORT")
 if [ -n "$CV_PID" ]; then
-  echo "✅ 简历网站已在运行（端口 $CV_PORT, PID: $CV_PID）"
-  echo ""
-  echo "访问地址：http://localhost:$CV_PORT"
-  echo "=========================================="
-  exit 0
-fi
-
-# 释放端口（如果有残留）
-echo "🔍 检测端口 $CV_PORT..."
-if [ -n "$CV_PID" ]; then
-  echo "⚠️  端口 $CV_PORT 已被占用 (PID: $CV_PID)，正在终止..."
+  echo "⚠️  简历网站已在运行（端口 $CV_PORT, PID: $CV_PID）"
+  echo "🔄 正在停止现有服务..."
   kill -9 "$CV_PID" 2>/dev/null || true
   sleep 2
+  
+  # 确认已停止
+  if [ -n "$(get_port_pid "$CV_PORT")" ]; then
+    echo "❌ 无法停止现有服务，请手动执行：kill -9 $CV_PID"
+    exit 1
+  fi
+  echo "✅ 现有服务已停止"
+  echo ""
 fi
 
 # 启动服务
