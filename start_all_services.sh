@@ -108,10 +108,11 @@ fi
 # 单词记忆（已合并到 aispring）
 if [ -d "ai-tutor-system/aispring/word-game" ]; then
   cd ai-tutor-system/aispring/word-game
-  if [ -d "node_modules" ]; then
+  if [ -d "node_modules/vite" ]; then
     echo "    ✅ 单词记忆依赖已存在"
   else
     echo "    正在安装单词记忆依赖..."
+    rm -rf node_modules package-lock.json
     npm install
   fi
   cd "$PROJECT_ROOT"
