@@ -10,11 +10,11 @@
       <!-- 作者信息卡片 -->
       <div class="author-card card">
         <div class="author-header">
-          <div class="author-avatar">林</div>
+          <div class="author-avatar">Xi</div>
 
           <!-- 基本信息 -->
           <div class="author-info">
-            <h2 class="text-3xl font-bold">林晓枫</h2>
+            <h2 class="text-3xl font-bold">XiHuiChen</h2>
             <p class="mt-1 text-xl text-secondary">Java 后端开发工程师</p>
             <p class="mt-1 text-secondary">本科在读 | 软件工程 | 专注后端开发与 AI 应用</p>
 
