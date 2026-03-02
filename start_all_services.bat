@@ -56,7 +56,7 @@ cd ..
 timeout /t 5 /nobreak >nul
 
 echo.
-echo [3/3] 启动前端服务 (Vue.js)...
+echo [3/5] 启动前端服务 (Vue.js)...
 
 :: 检查前端目录
 if not exist "ai-tutor-system\vue-app" (
@@ -70,12 +70,55 @@ cd ai-tutor-system\vue-app
 start "AI Study Frontend - Port 3000" cmd /k "title AI Study Frontend && npm run dev && pause"
 cd ..
 
+timeout /t 3 /nobreak >nul
+
+echo.
+echo [4/5] 启动单词记忆服务 (Word Game)...
+
+:: 检查单词游戏目录
+if not exist "word-game" (
+    echo [错误] 未找到 word-game 目录
+    pause
+    exit /b 1
+)
+
+:: 启动单词游戏服务
+cd word-game
+start "Word Game - Port 5200" cmd /k "title Word Game && npm run dev && pause"
+cd ..
+
+timeout /t 3 /nobreak >nul
+
+echo.
+echo [5/5] 启动简历网站服务 (CV Site)...
+
+:: 检查简历网站目录
+if not exist "cv-site" (
+    echo [错误] 未找到 cv-site 目录
+    pause
+    exit /b 1
+)
+
+:: 检查 Python
+where python >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [警告] 未找到 Python，跳过简历网站启动
+) else (
+    cd cv-site
+    start "CV Site - Port 3100" cmd /k "title CV Site && python -m http.server 3100 && pause"
+    cd ..
+)
+
 echo.
 echo ========================================================
-echo 服务启动完成！
+echo 所有服务启动完成！
 echo.
-echo 后端 API 文档：http://localhost:5000/swagger-ui.html
-echo 前端访问地址：http://localhost:3000
+echo 主应用:
+echo   后端 API 文档：http://localhost:5000/swagger-ui.html
+echo   前端访问地址：http://localhost:3000
+echo.
+echo 单词记忆：http://localhost:5200
+echo 简历网站：http://localhost:3100
 echo.
 echo 注意：服务将在独立窗口中运行，关闭窗口将停止对应服务
 echo ========================================================
