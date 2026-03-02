@@ -95,6 +95,12 @@ const router = createRouter({
       meta: { requiresAuth: false, allowGuest: true }
     },
     {
+      path: '/author',
+      name: 'Author',
+      component: () => import('@/views/AuthorView.vue'),
+      meta: { requiresAuth: false, allowGuest: true }
+    },
+    {
       path: '/login',
       name: 'Login',
       component: () => import('@/views/auth/LoginView.vue'),

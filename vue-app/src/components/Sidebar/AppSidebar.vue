@@ -116,6 +116,14 @@
         <span>公共资源</span>
       </router-link>
       <router-link
+        to="/author"
+        class="nav-item"
+        active-class="active"
+      >
+        <i class="fas fa-user"></i>
+        <span>关于作者</span>
+      </router-link>
+      <router-link
         v-if="authStore.isAdmin"
         to="/admin"
         class="nav-item"
