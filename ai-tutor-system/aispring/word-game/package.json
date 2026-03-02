@@ -4,11 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "npx vite",
     "server": "node server/index.js",
-    "build": "vite build",
-    "build:prod": "vite build --mode production",
-    "preview": "vite preview"
+    "build": "npx vite build",
+    "build:prod": "npx vite build --mode production",
+    "preview": "npx vite preview"
   },
   "dependencies": {
     "better-sqlite3": "^12.6.2",
