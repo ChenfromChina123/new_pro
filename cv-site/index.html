@@ -12,6 +12,10 @@
       href="styles.css"
     />
     <link
+      rel="stylesheet"
+      href="theme.css"
+    />
+    <link
       rel="preconnect"
       href="https://fonts.googleapis.com"
     />
@@ -91,38 +95,72 @@
           <h2 class="section-title">专业技能</h2>
           <div class="section-content">
             <div class="skill-detail-item">
-              <h3 class="skill-detail-title">Java</h3>
+              <div class="skill-header">
+                <h3 class="skill-detail-title">Java</h3>
+                <span class="skill-level">90%</span>
+              </div>
+              <div class="skill-progress">
+                <div class="skill-progress-bar" data-level="90"></div>
+              </div>
               <p class="skill-detail-desc">
                 熟练掌握 Java
                 编程语言，深入理解面向对象编程思想，可灵活运用单例、工厂、策略等常用设计模式完成代码开发；
                 精通 Java 集合框架、多线程、IO 流等核心特性，具备规范的代码编写与基础问题排查能力。
               </p>
             </div>
+            
             <div class="skill-detail-item">
-              <h3 class="skill-detail-title">Spring Boot</h3>
+              <div class="skill-header">
+                <h3 class="skill-detail-title">Spring Boot</h3>
+                <span class="skill-level">85%</span>
+              </div>
+              <div class="skill-progress">
+                <div class="skill-progress-bar" data-level="85"></div>
+              </div>
               <p class="skill-detail-desc">
                 熟练使用 Spring Boot 完成后端应用开发，深入理解 Spring 框架 IOC、AOP 核心原理； 熟悉
                 Spring MVC、MyBatis/MyBatis-Plus 等主流框架，可独立完成 RESTful API
                 接口设计、业务模块开发与第三方组件整合。
               </p>
             </div>
+            
             <div class="skill-detail-item">
-              <h3 class="skill-detail-title">数据库</h3>
+              <div class="skill-header">
+                <h3 class="skill-detail-title">数据库</h3>
+                <span class="skill-level">80%</span>
+              </div>
+              <div class="skill-progress">
+                <div class="skill-progress-bar" data-level="80"></div>
+              </div>
               <p class="skill-detail-desc">
                 熟练使用 MySQL 关系型数据库，精通标准 SQL 编写，具备业务表结构设计与数据建模能力；
                 熟悉 InnoDB 存储引擎、事务 ACID 特性、索引设计原则，可通过执行计划分析完成 SQL
                 查询优化。
               </p>
             </div>
+            
             <div class="skill-detail-item">
-              <h3 class="skill-detail-title">前端技术</h3>
+              <div class="skill-header">
+                <h3 class="skill-detail-title">前端技术</h3>
+                <span class="skill-level">75%</span>
+              </div>
+              <div class="skill-progress">
+                <div class="skill-progress-bar" data-level="75"></div>
+              </div>
               <p class="skill-detail-desc">
                 熟悉 Vue 3 + Element Plus 前端开发，可独立完成前后端分离项目的前端模块开发； 掌握
                 HTML5、CSS3、JavaScript 基础，了解 TypeScript、Pinia 等现代前端技术栈。
               </p>
             </div>
+            
             <div class="skill-detail-item">
-              <h3 class="skill-detail-title">AI 集成</h3>
+              <div class="skill-header">
+                <h3 class="skill-detail-title">AI 集成</h3>
+                <span class="skill-level">70%</span>
+              </div>
+              <div class="skill-progress">
+                <div class="skill-progress-bar" data-level="70"></div>
+              </div>
               <p class="skill-detail-desc">
                 熟悉 Spring AI 框架，有大模型集成实战经验，支持通义千问、DeepSeek 等多个 AI
                 模型接入； 掌握 SSE 流式响应、Prompt Engineering
@@ -253,8 +291,18 @@
       </main>
 
       <footer class="footer">
-        <p>&copy; 2025 林晓枫 | 个人简历</p>
+        <div class="footer-content">
+          <p>© 2024 林晓枫 - Java 后端开发工程师</p>
+          <div class="footer-links">
+            <a href="mailto:3301767269@qq.com">邮箱</a>
+            <span class="divider">|</span>
+            <a href="https://aistudy.icu" target="_blank">个人网站</a>
+            <span class="divider">|</span>
+            <a href="#" id="theme-toggle">切换主题</a>
+          </div>
+        </div>
       </footer>
+  </body>
     </div>
     <script src="script.js"></script>
   </body>
