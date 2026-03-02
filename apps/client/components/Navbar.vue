@@ -107,6 +107,7 @@ const HEADER_OPTIONS: AnchorAttributes[] = [
   { name: "文档", href: runtimeConfig.public.helpDocsURL as string, target: "_blank" },
   { name: "功能", href: "#features" },
   { name: "问题", href: "#faq" },
+  { name: "作者", href: "/author" },
   { name: "联系我们", href: "#contact" },
 ];
 
