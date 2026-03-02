@@ -60,6 +60,12 @@ fi
 echo "🚀 正在启动简历网站..."
 echo "💡 提示：静态 HTML 网站，启动速度很快"
 
+# 进入简历网站目录
+cd "$CV_DIR" || {
+  echo "❌ 无法进入目录：$CV_DIR"
+  exit 1
+}
+
 export PORT=$CV_PORT
 nohup python3 -m http.server $CV_PORT > "$CV_LOG" 2>&1 &
 if [ $? -ne 0 ]; then
