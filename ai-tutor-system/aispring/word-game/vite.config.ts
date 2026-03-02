@@ -20,6 +20,7 @@ export default defineConfig({
   },
   server: {
     port: 5200,
+    cors: true,  // 允许跨域请求（支持 iframe 嵌入）
     fs: {
       allow: [resolve(__dirname, ".."), resolve(__dirname)],
     },

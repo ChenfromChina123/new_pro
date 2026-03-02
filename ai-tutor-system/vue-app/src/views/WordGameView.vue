@@ -72,6 +72,10 @@ const loading = ref(true)
 const loadFailed = ref(false)
 const isDev = import.meta.env.DEV
 
+// 调试：打印 wordGameUrl 的值
+console.log('[WordGame] 开发模式:', isDev)
+console.log('[WordGame] wordGameUrl:', wordGameUrl)
+
 /** 向 iframe 发送消息 */
 function postToFrame(payload) {
   frameRef.value?.contentWindow?.postMessage(payload, '*')

@@ -121,10 +121,10 @@ try {
 
 // ── 课程数据加载 ──────────────────────────────────────────────────────────────
 
-/** 课程 JSON 文件所在目录（packages/xingrong-courses/data/courses） */
+/** 课程 JSON 文件所在目录（../../../packages/xingrong-courses/data/courses） */
 const COURSES_DIR = resolve(
   __dirname,
-  "../packages/xingrong-courses/data/courses"
+  "../../../packages/xingrong-courses/data/courses"
 );
 
 /** 将数字转为中文课程标题，如 1 → "第一课" */
@@ -140,8 +140,11 @@ function toChineseTitle(num) {
 
 /** 读取并缓存所有课程元数据 */
 function buildCourseMetas() {
+  console.log(`[调试] COURSES_DIR 路径：${COURSES_DIR}`);
+  console.log(`[调试] 当前工作目录：${process.cwd()}`);
+  console.log(`[调试] __dirname: ${__dirname}`);
   if (!existsSync(COURSES_DIR)) {
-    console.warn(`[警告] 课程目录不存在: ${COURSES_DIR}`);
+    console.warn(`[警告] 课程目录不存在：${COURSES_DIR}`);
     return [];
   }
   const files = readdirSync(COURSES_DIR)
