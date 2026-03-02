@@ -215,28 +215,41 @@ a:hover {
   margin-bottom: 6px;
 }
 
+.project-title-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
 .project-title,
 .work-company,
 .education-school {
   font-size: 1.1rem;
   font-weight: 600;
   color: #ffffff;
+  margin: 0;
 }
 
 .project-date,
 .work-date,
 .education-date {
   font-size: 0.85rem;
-  color: #a0a0a0;
+  color: #888;
   white-space: nowrap;
+  font-weight: 400;
 }
 
 .project-role,
 .work-position,
 .education-major {
   font-size: 0.95rem;
-  color: #b0b0b0;
-  margin-bottom: 12px;
+  color: #999;
+  margin-bottom: 16px;
+  padding-left: 12px;
+  border-left: 2px solid #444;
+  font-weight: 500;
 }
 
 .project-description,
@@ -248,24 +261,25 @@ a:hover {
 .project-description li,
 .work-description li {
   position: relative;
-  padding-left: 20px;
-  margin-bottom: 8px;
+  padding-left: 24px;
+  margin-bottom: 10px;
   font-size: 0.95rem;
-  line-height: 1.6;
+  line-height: 1.7;
   color: #c0c0c0;
 }
 
 .project-description li::before,
 .work-description li::before {
-  content: "";
+  content: "•";
   position: absolute;
   left: 0;
-  top: 10px;
-  width: 8px;
-  height: 8px;
-  border: 1px solid #ffffff;
-  border-radius: 50%;
-  background: transparent;
+  top: 0;
+  width: 16px;
+  height: 16px;
+  color: #ffffff;
+  font-size: 18px;
+  line-height: 16px;
+  font-weight: bold;
 }
 
 /* 教育经历描述 */
@@ -324,17 +338,26 @@ a:hover {
 /* 项目链接 */
 .project-link {
   font-size: 0.9rem;
-  color: #b0b0b0;
-  margin-bottom: 12px;
+  color: #888;
+  margin-bottom: 16px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+  display: inline-block;
+  border: 1px solid #333;
 }
 
 .project-link a {
   color: #ffffff;
-  text-decoration: underline;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.3s ease;
 }
 
 .project-link a:hover {
   color: #ffffff;
+  text-decoration: underline;
+  letter-spacing: 0.5px;
 }
 
 /* 其他信息 */
@@ -366,19 +389,23 @@ a:hover {
 
 .tech-tag {
   display: inline-block;
-  padding: 4px 12px;
+  padding: 5px 14px;
   font-size: 0.8rem;
-  color: #e0e0e0;
-  background-color: #2d2d2d;
+  color: #d0d0d0;
+  background: linear-gradient(135deg, #2a2a2a 0%, #1f1f1f 100%);
   border: 1px solid #444;
-  border-radius: 3px;
-  transition: all 0.2s ease;
+  border-radius: 4px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight: 500;
+  letter-spacing: 0.3px;
 }
 
 .tech-tag:hover {
-  background-color: #ffffff;
+  background: linear-gradient(135deg, #ffffff 0%, #e0e0e0 100%);
   color: #121212;
   border-color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.15);
 }
 
 .footer {
@@ -402,8 +429,8 @@ a:hover {
 /* 可折叠项目样式 - 创新设计 */
 .collapsible {
   position: relative;
-  margin-bottom: 30px;
-  padding-bottom: 30px;
+  margin-bottom: 35px;
+  padding-bottom: 35px;
   border-bottom: 1px solid #333;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -415,29 +442,30 @@ a:hover {
 .collapsible-header {
   cursor: pointer;
   position: relative;
-  padding-right: 50px;
-  padding: 12px 0;
-  border-radius: 6px;
+  padding-right: 60px;
+  padding: 16px 12px;
+  border-radius: 8px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
+  margin-left: 0;
 }
 
 .collapsible-header:hover {
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.03) 0%, transparent 100%);
-  transform: translateX(4px);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
+  transform: translateX(6px);
 }
 
 .collapse-toggle {
   position: absolute;
-  right: 0;
+  right: 12px;
   top: 50%;
   transform: translateY(-50%);
   background: transparent;
-  border: 2px solid #555;
+  border: 2px solid #666;
   border-radius: 50%;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   cursor: pointer;
   padding: 0;
   display: flex;
@@ -446,19 +474,22 @@ a:hover {
   color: #ffffff;
   transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
   overflow: hidden;
+  flex-shrink: 0;
+  z-index: 10;
 }
 
 .collapse-toggle:hover {
   border-color: #ffffff;
-  background-color: rgba(255, 255, 255, 0.1);
-  transform: translateY(-50%) scale(1.1);
+  background-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-50%) scale(1.15);
 }
 
 .toggle-icon {
-  font-size: 14px;
+  font-size: 16px;
   transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
   display: inline-block;
   font-weight: bold;
+  line-height: 1;
 }
 
 .collapsible.collapsed .toggle-icon {
@@ -468,6 +499,7 @@ a:hover {
 .collapsible-content-wrapper {
   overflow: hidden;
   position: relative;
+  padding-left: 12px;
 }
 
 .collapsible-content {
@@ -476,20 +508,22 @@ a:hover {
   max-height: 1000px;
   opacity: 1;
   transform: translateY(0);
+  padding-top: 8px;
 }
 
 .collapsible.collapsed .collapsible-content {
   max-height: 0;
   opacity: 0;
-  transform: translateY(-20px);
+  transform: translateY(-15px);
   margin-top: 0;
   padding-top: 0;
 }
 
 /* 展开状态的高亮效果 */
 .collapsible:not(.collapsed) .collapsible-header {
-  border-left: 3px solid #ffffff;
-  padding-left: 12px;
+  border-left: 4px solid #ffffff;
+  padding-left: 8px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.08) 0%, transparent 100%);
 }
 
 .collapsible:not(.collapsed) .collapse-toggle {
@@ -497,18 +531,24 @@ a:hover {
   color: #121212;
   border-color: #ffffff;
   transform: translateY(-50%) rotate(90deg);
+  box-shadow: 0 2px 8px rgba(255, 255, 255, 0.3);
 }
 
 /* 移动端优化 */
 @media (max-width: 768px) {
   .collapsible-header:hover {
     transform: none;
-    background: rgba(255, 255, 255, 0.02);
+    background: rgba(255, 255, 255, 0.03);
   }
 
   .collapse-toggle {
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
+    right: 8px;
+  }
+
+  .collapsible-header {
+    padding-right: 50px;
   }
 }
 
