@@ -105,9 +105,9 @@ if [ -d "ai-tutor-system/aispring" ]; then
   echo "    ✅ 后端目录已存在"
 fi
 
-# 单词记忆
-if [ -d "word-game" ]; then
-  cd word-game
+# 单词记忆（已合并到 aispring）
+if [ -d "ai-tutor-system/aispring/word-game" ]; then
+  cd ai-tutor-system/aispring/word-game
   if [ -d "node_modules" ]; then
     echo "    ✅ 单词记忆依赖已存在"
   else
