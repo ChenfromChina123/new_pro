@@ -1,6 +1,25 @@
 <template>
   <div class="word-game-view">
+    <div v-if="loading" class="loading-wrapper">
+      <div class="loading-spinner">
+        <i class="fas fa-circle-notch fa-spin fa-2x"></i>
+        <p>加载中...</p>
+      </div>
+    </div>
+    
+    <div v-if="loadFailed" class="error-wrapper">
+      <div class="error-content">
+        <i class="fas fa-exclamation-triangle fa-3x"></i>
+        <h3>无法连接单词记忆服务</h3>
+        <p>请确认 word-game 服务已启动</p>
+        <button @click="retryLoad" class="retry-btn">
+          <i class="fas fa-redo"></i> 重试
+        </button>
+      </div>
+    </div>
+    
     <iframe
+      v-show="!loading && !loadFailed"
       ref="frameRef"
       :src="wordGameUrl"
       class="word-game-frame"
@@ -81,6 +100,7 @@ function syncAuthToFrame(isAuth) {
 
 /** iframe 加载完成：同步主题、认证状态，并请求统计数据 */
 const onFrameLoad = () => {
+  console.log('[WordGame] iframe 加载完成')
   if (loadTimeout) {
     clearTimeout(loadTimeout)
     loadTimeout = null
@@ -94,6 +114,7 @@ const onFrameLoad = () => {
 
 /** iframe 加载失败（如未启动 word-game 服务） */
 const onFrameError = () => {
+  console.error('[WordGame] iframe 加载失败')
   loading.value = false
   loadFailed.value = true
 }
@@ -137,6 +158,7 @@ onUnmounted(() => {
   position: relative;
   width: 100%;
   height: 100%;
+  min-height: 100%;
   overflow: hidden;
   background-color: var(--bg-primary);
 }
@@ -144,13 +166,18 @@ onUnmounted(() => {
 .word-game-frame {
   width: 100%;
   height: 100%;
+  min-height: 100%;
   border: none;
   display: block;
 }
 
-.loading-mask {
+.loading-wrapper,
+.error-wrapper {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -159,74 +186,50 @@ onUnmounted(() => {
 }
 
 .loading-spinner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
+  text-align: center;
   color: var(--text-secondary);
-  font-size: 14px;
 }
 
 .loading-spinner i {
-  font-size: 32px;
   color: var(--primary-color);
+  margin-bottom: 12px;
 }
 
-.load-failed-mask {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: var(--bg-primary);
-  z-index: 10;
-}
-
-.load-failed-box {
+.error-content {
   text-align: center;
-  max-width: 420px;
-  padding: 32px 24px;
+  color: var(--text-secondary);
 }
 
-.load-failed-box > i {
-  font-size: 48px;
-  color: var(--text-tertiary);
+.error-content i {
+  color: #ef4444;
   margin-bottom: 16px;
 }
 
-.load-failed-title {
-  font-size: 1.1rem;
-  font-weight: 600;
+.error-content h3 {
   color: var(--text-primary);
   margin: 0 0 8px 0;
+  font-size: 1.2rem;
 }
 
-.load-failed-desc {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
+.error-content p {
   margin: 0 0 16px 0;
-  line-height: 1.5;
 }
 
-.load-failed-steps {
-  font-size: 0.85rem;
-  color: var(--text-tertiary);
-  text-align: left;
-  background: var(--bg-secondary);
-  padding: 12px 16px;
-  border-radius: 8px;
-  margin: 0 0 20px 0;
-  line-height: 1.6;
+.retry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: opacity 0.2s;
 }
 
-.load-failed-steps code {
-  background: var(--bg-tertiary);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.8rem;
-}
-
-.load-failed-box .btn {
-  margin-top: 8px;
+.retry-btn:hover {
+  opacity: 0.9;
 }
 </style>
