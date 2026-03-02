@@ -25,10 +25,10 @@ function convertToChineseTitle(num: number): string {
 
 /**
  * 使用 Vite 的 import.meta.glob 预加载所有课程 JSON 数据
- * 路径相对于本文件（src/data/），上3级到达 monorepo 根目录，再进入 packages
+ * 路径相对于本文件（src/data/），上 2 级到达项目根目录，再进入 ai-tutor-system/packages
  */
 const courseModules = import.meta.glob<Statement[]>(
-  "../../../packages/xingrong-courses/data/courses/*.json",
+  "../../ai-tutor-system/packages/xingrong-courses/data/courses/*.json",
   { eager: true, import: "default" },
 );
 

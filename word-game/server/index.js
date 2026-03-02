@@ -121,10 +121,10 @@ try {
 
 // ── 课程数据加载 ──────────────────────────────────────────────────────────────
 
-/** 课程 JSON 文件所在目录（monorepo 中的 packages/xingrong-courses/data/courses） */
+/** 课程 JSON 文件所在目录（ai-tutor-system/packages/xingrong-courses/data/courses） */
 const COURSES_DIR = resolve(
   __dirname,
-  "../../packages/xingrong-courses/data/courses"
+  "../ai-tutor-system/packages/xingrong-courses/data/courses"
 );
 
 /** 将数字转为中文课程标题，如 1 → "第一课" */
