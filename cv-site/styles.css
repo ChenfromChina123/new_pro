@@ -1,6 +1,6 @@
 /**
  * 个人简历网页样式
- * 黑色简约风格设计
+ * 黑白极简风格设计
  */
 
 * {
@@ -34,7 +34,7 @@ a {
 }
 
 a:hover {
-  color: #bb86fc;
+  color: #ffffff;
 }
 
 .container {
@@ -75,7 +75,7 @@ a:hover {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  border: 2px solid #bb86fc;
+  border: 2px solid #ffffff;
 }
 
 .avatar-text {
@@ -99,7 +99,7 @@ a:hover {
 
 .title {
   font-size: 1.25rem;
-  color: #bb86fc;
+  color: #ffffff;
   font-weight: 500;
   margin-bottom: 4px;
 }
@@ -125,7 +125,7 @@ a:hover {
 
 .contact-icon {
   font-size: 1rem;
-  color: #bb86fc;
+  color: #ffffff;
 }
 
 .section {
@@ -140,7 +140,7 @@ a:hover {
   margin-bottom: 20px;
   padding-bottom: 10px;
   border-bottom: 1px solid #333;
-  color: #bb86fc;
+  color: #ffffff;
 }
 
 .section-content {
@@ -163,7 +163,7 @@ a:hover {
   font-size: 1rem;
   font-weight: 600;
   margin-bottom: 12px;
-  color: #bb86fc;
+  color: #ffffff;
 }
 
 .skill-list {
@@ -185,7 +185,7 @@ a:hover {
   top: 10px;
   width: 6px;
   height: 1px;
-  background-color: #bb86fc;
+  background-color: #ffffff;
 }
 
 .project-item,
@@ -220,7 +220,7 @@ a:hover {
 .education-school {
   font-size: 1.1rem;
   font-weight: 600;
-  color: #bb86fc;
+  color: #ffffff;
 }
 
 .project-date,
@@ -263,7 +263,7 @@ a:hover {
   top: 10px;
   width: 8px;
   height: 8px;
-  border: 1px solid #bb86fc;
+  border: 1px solid #ffffff;
   border-radius: 50%;
   background: transparent;
 }
@@ -290,7 +290,7 @@ a:hover {
   top: 10px;
   width: 6px;
   height: 6px;
-  background-color: #bb86fc;
+  background-color: #ffffff;
   border-radius: 50%;
 }
 
@@ -310,7 +310,7 @@ a:hover {
 .skill-detail-title {
   font-size: 1.1rem;
   font-weight: 600;
-  color: #bb86fc;
+  color: #ffffff;
   margin-bottom: 10px;
 }
 
@@ -329,12 +329,12 @@ a:hover {
 }
 
 .project-link a {
-  color: #bb86fc;
+  color: #ffffff;
   text-decoration: underline;
 }
 
 .project-link a:hover {
-  color: #bb86fc;
+  color: #ffffff;
 }
 
 /* 其他信息 */
@@ -354,7 +354,7 @@ a:hover {
 }
 
 .other-info strong {
-  color: #bb86fc;
+  color: #ffffff;
   font-weight: 600;
 }
 
@@ -376,9 +376,9 @@ a:hover {
 }
 
 .tech-tag:hover {
-  background-color: #bb86fc;
+  background-color: #ffffff;
   color: #121212;
-  border-color: #bb86fc;
+  border-color: #ffffff;
 }
 
 .footer {
@@ -399,17 +399,33 @@ a:hover {
   color: #555;
 }
 
-/* 可折叠项目样式 */
+/* 可折叠项目样式 - 创新设计 */
+.collapsible {
+  position: relative;
+  margin-bottom: 30px;
+  padding-bottom: 30px;
+  border-bottom: 1px solid #333;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.collapsible:last-child {
+  border-bottom: none;
+}
+
 .collapsible-header {
   cursor: pointer;
   position: relative;
-  padding-right: 40px;
-  transition: background-color 0.2s ease;
+  padding-right: 50px;
+  padding: 12px 0;
+  border-radius: 6px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
 }
 
 .collapsible-header:hover {
-  background-color: rgba(187, 134, 252, 0.05);
-  border-radius: 4px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.03) 0%, transparent 100%);
+  transform: translateX(4px);
 }
 
 .collapse-toggle {
@@ -417,45 +433,83 @@ a:hover {
   right: 0;
   top: 50%;
   transform: translateY(-50%);
-  background: none;
-  border: none;
+  background: transparent;
+  border: 2px solid #555;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
   cursor: pointer;
-  padding: 8px;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #bb86fc;
-  transition:
-    transform 0.3s ease,
-    color 0.2s ease;
+  color: #ffffff;
+  transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  overflow: hidden;
 }
 
 .collapse-toggle:hover {
-  color: #e0e0e0;
+  border-color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.1);
+  transform: translateY(-50%) scale(1.1);
 }
 
 .toggle-icon {
-  font-size: 12px;
-  transition: transform 0.3s ease;
+  font-size: 14px;
+  transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
   display: inline-block;
+  font-weight: bold;
 }
 
 .collapsible.collapsed .toggle-icon {
-  transform: rotate(-90deg);
+  transform: rotate(-180deg);
+}
+
+.collapsible-content-wrapper {
+  overflow: hidden;
+  position: relative;
 }
 
 .collapsible-content {
   overflow: hidden;
-  transition:
-    max-height 0.3s ease-out,
-    opacity 0.3s ease;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   max-height: 1000px;
   opacity: 1;
+  transform: translateY(0);
 }
 
 .collapsible.collapsed .collapsible-content {
   max-height: 0;
   opacity: 0;
+  transform: translateY(-20px);
+  margin-top: 0;
+  padding-top: 0;
+}
+
+/* 展开状态的高亮效果 */
+.collapsible:not(.collapsed) .collapsible-header {
+  border-left: 3px solid #ffffff;
+  padding-left: 12px;
+}
+
+.collapsible:not(.collapsed) .collapse-toggle {
+  background-color: #ffffff;
+  color: #121212;
+  border-color: #ffffff;
+  transform: translateY(-50%) rotate(90deg);
+}
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+  .collapsible-header:hover {
+    transform: none;
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .collapse-toggle {
+    width: 32px;
+    height: 32px;
+  }
 }
 
 @media print {
