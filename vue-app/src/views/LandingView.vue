@@ -33,6 +33,12 @@
             资源推荐
           </router-link>
           <router-link 
+            to="/author" 
+            class="nav-link"
+          >
+            关于作者
+          </router-link>
+          <router-link 
             to="/codenova" 
             class="nav-link"
           >
