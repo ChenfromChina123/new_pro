@@ -76,15 +76,16 @@ echo.
 echo [4/5] 启动单词记忆服务 (Word Game)...
 
 :: 检查单词游戏目录
-if not exist "word-game" (
-    echo [错误] 未找到 word-game 目录
+if not exist "ai-tutor-system\aispring\word-game" (
+    echo [错误] 未找到 ai-tutor-system\aispring\word-game 目录
     pause
     exit /b 1
 )
 
 :: 启动单词游戏服务
-cd word-game
+cd ai-tutor-system\aispring\word-game
 start "Word Game - Port 5200" cmd /k "title Word Game && npm run dev && pause"
+cd ..
 cd ..
 
 timeout /t 3 /nobreak >nul

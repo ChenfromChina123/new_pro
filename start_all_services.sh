@@ -138,9 +138,9 @@ if [ -d "ai-tutor-system/vue-app" ]; then
   cd "$PROJECT_ROOT"
 fi
 
-# 单词记忆
-if [ -d "word-game" ]; then
-  cd word-game
+# 单词记忆（已合并到 aispring）
+if [ -d "ai-tutor-system/aispring/word-game" ]; then
+  cd ai-tutor-system/aispring/word-game
   if [ -d "dist" ]; then
     echo "    ✅ 单词记忆已构建"
   else
@@ -202,15 +202,15 @@ else
   echo "✅ 主站前端已启动（端口 $FRONTEND_PORT, PID: $FRONTEND_PID）"
 fi
 
-# 5c. 启动单词记忆
+# 5c. 启动单词记忆（已合并到 aispring）
 WORD_PID=$(get_port_pid "$WORD_GAME_PORT")
 if [ -n "$WORD_PID" ]; then
   echo "✅ 单词记忆已在运行（端口 $WORD_GAME_PORT, PID: $WORD_PID）"
 else
-  ensure_dir "word-game/dist"
-  ensure_dir "word-game/server"
+  ensure_dir "ai-tutor-system/aispring/word-game/dist"
+  ensure_dir "ai-tutor-system/aispring/word-game/server"
   export PORT=$WORD_GAME_PORT
-  (cd word-game && nohup node server/index.js > ../word-game.log 2>&1 &)
+  (cd ai-tutor-system/aispring/word-game && nohup node server/index.js > ../word-game.log 2>&1 &)
   unset PORT
   sleep 2
   WORD_PID=$(get_port_pid "$WORD_GAME_PORT")
