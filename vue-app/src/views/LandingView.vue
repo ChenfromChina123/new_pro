@@ -1,74 +1,74 @@
 <template>
   <div class="landing-page">
     <!-- 导航栏 -->
-    <nav 
-      class="landing-nav" 
-      :class="{ 'scrolled': isScrolled }"
+    <nav
+      class="landing-nav"
+      :class="{ scrolled: isScrolled }"
     >
       <div class="nav-container">
-        <div 
-          class="logo" 
+        <div
+          class="logo"
           @click="router.push('/')"
         >
           <i class="fas fa-brain" />
           <span>AI 智能学习助手</span>
         </div>
         <div class="nav-links">
-          <router-link 
-            to="/chat" 
+          <router-link
+            to="/chat"
             class="nav-link"
           >
             AI 问答
           </router-link>
-          <router-link 
-            to="/public-files" 
+          <router-link
+            to="/public-files"
             class="nav-link"
           >
             公共资源
           </router-link>
-          <router-link 
-            to="/links" 
+          <router-link
+            to="/links"
             class="nav-link"
           >
             资源推荐
           </router-link>
-          <router-link 
-            to="/author" 
+          <router-link
+            to="/author"
             class="nav-link"
           >
             关于作者
           </router-link>
-          <router-link 
-            to="/codenova" 
+          <router-link
+            to="/codenova"
             class="nav-link"
           >
             CodeNova
           </router-link>
           <div class="nav-actions">
             <template v-if="!authStore.isAuthenticated">
-              <router-link 
-                to="/login" 
+              <router-link
+                to="/login"
                 class="btn-login"
               >
                 登录
               </router-link>
-              <router-link 
-                to="/register" 
+              <router-link
+                to="/register"
                 class="btn-register"
               >
                 立即加入
               </router-link>
             </template>
             <template v-else>
-              <router-link 
-                to="/chat" 
+              <router-link
+                to="/chat"
                 class="btn-register"
               >
                 进入工作台
               </router-link>
             </template>
-            <button 
-              class="theme-toggle-btn" 
+            <button
+              class="theme-toggle-btn"
               @click="themeStore.toggleDarkMode()"
             >
               <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" />
@@ -77,7 +77,7 @@
         </div>
 
         <!-- 移动端菜单按钮 -->
-        <button 
+        <button
           class="mobile-menu-btn"
           @click="isMobileMenuOpen = !isMobileMenuOpen"
         >
@@ -85,240 +85,240 @@
         </button>
       </div>
 
-    <!-- 移动端侧边栏菜单 -->
-    <transition name="slide">
-      <div 
-        v-if="isMobileMenuOpen" 
-        class="mobile-menu-overlay" 
-        @click="isMobileMenuOpen = false"
-      >
-        <div 
-          class="mobile-menu" 
-          @click.stop
+      <!-- 移动端侧边栏菜单 -->
+      <transition name="slide">
+        <div
+          v-if="isMobileMenuOpen"
+          class="mobile-menu-overlay"
+          @click="isMobileMenuOpen = false"
         >
-          <div class="mobile-menu-header">
-            <div class="logo">
-              <i class="fas fa-brain" />
-              <span>AI 学习助手</span>
+          <div
+            class="mobile-menu"
+            @click.stop
+          >
+            <div class="mobile-menu-header">
+              <div class="logo">
+                <i class="fas fa-brain" />
+                <span>AI 学习助手</span>
+              </div>
+              <button
+                class="close-menu-btn"
+                @click="isMobileMenuOpen = false"
+              >
+                <i class="fas fa-times" />
+              </button>
             </div>
-            <button 
-              class="close-menu-btn"
-              @click="isMobileMenuOpen = false"
-            >
-              <i class="fas fa-times" />
-            </button>
-          </div>
-          <div class="mobile-menu-links">
-            <router-link 
-              to="/chat" 
-              class="mobile-nav-link" 
-              @click="isMobileMenuOpen = false"
-            >
-              <i class="fas fa-comments" /> AI 问答
-            </router-link>
-            <router-link 
-              to="/public-files" 
-              class="mobile-nav-link" 
-              @click="isMobileMenuOpen = false"
-            >
-              <i class="fas fa-folder-open" /> 公共资源
-            </router-link>
-            <router-link 
-              to="/links" 
-              class="mobile-nav-link" 
-              @click="isMobileMenuOpen = false"
-            >
-              <i class="fas fa-link" /> 资源推荐
-            </router-link>
-            <router-link 
-              to="/codenova" 
-              class="mobile-nav-link" 
-              @click="isMobileMenuOpen = false"
-            >
-              <i class="fas fa-mobile-alt" /> CodeNova
-            </router-link>
-            <div class="mobile-menu-divider" />
-            <template v-if="!authStore.isAuthenticated">
-              <router-link 
-                to="/login" 
-                class="mobile-nav-link" 
+            <div class="mobile-menu-links">
+              <router-link
+                to="/chat"
+                class="mobile-nav-link"
                 @click="isMobileMenuOpen = false"
               >
-                <i class="fas fa-sign-in-alt" /> 登录
+                <i class="fas fa-comments" /> AI 问答
               </router-link>
-              <router-link 
-                to="/register" 
-                class="mobile-nav-link highlight" 
+              <router-link
+                to="/public-files"
+                class="mobile-nav-link"
                 @click="isMobileMenuOpen = false"
               >
-                <i class="fas fa-user-plus" /> 立即加入
+                <i class="fas fa-folder-open" /> 公共资源
               </router-link>
-            </template>
-            <template v-else>
-              <router-link 
-                to="/chat" 
-                class="mobile-nav-link highlight" 
+              <router-link
+                to="/links"
+                class="mobile-nav-link"
                 @click="isMobileMenuOpen = false"
               >
-                <i class="fas fa-rocket" /> 进入工作台
+                <i class="fas fa-link" /> 资源推荐
               </router-link>
-            </template>
-          </div>
-          <div class="mobile-menu-footer">
-            <button 
-              class="mobile-theme-toggle" 
-              @click="themeStore.toggleDarkMode()"
-            >
-              <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" />
-              {{ themeStore.isDarkMode ? '切换浅色模式' : '切换深色模式' }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </transition>
-  </nav>
-
-  <!-- Hero 区域 -->
-  <section class="hero-section">
-    <div class="hero-content animate-fade-in-up">
-      <h1 class="hero-title">
-        开启您的 <span class="gradient-text">智能学习</span> 之旅
-      </h1>
-      <p class="hero-subtitle">
-        集成 AI 问答、个人云盘、单词记忆于一体的智能化全方位学习平台。
-      </p>
-      <div class="hero-actions">
-        <router-link 
-          to="/chat"
-          class="btn-primary-lg"
-        >
-          <i class="fas fa-rocket" /> 免费开始使用
-        </router-link>
-        
-        <!-- Agent 下载/跳转按钮 -->
-        <router-link 
-          to="/agent"
-          class="btn-agent-download"
-        >
-          <i class="fas fa-terminal" /> Agent {{ agentVersion }}
-          <span 
-            v-if="hasLinuxVersion" 
-            class="platform-badge"
-          >Win/Linux</span>
-        </router-link>
-
-        <!-- CodeNova 下载/跳转按钮 -->
-        <router-link 
-          to="/codenova"
-          class="btn-codenova-download"
-        >
-          <i class="fas fa-mobile-alt" /> 下载 CodeNova {{ codenovaVersion }}
-        </router-link>
-
-        <button 
-          class="btn-secondary-lg" 
-          @click="scrollToFeatures"
-        >
-          了解更多 <i class="fas fa-chevron-down" />
-        </button>
-      </div>
-      <div class="hero-stats">
-        <div class="stat-item">
-          <span class="stat-number">24/7</span>
-          <span class="stat-label">AI 在线支持</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-number">100%</span>
-          <span class="stat-label">数据安全加密</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-number">3+</span>
-          <span class="stat-label">核心功能</span>
-        </div>
-      </div>
-    </div>
-    <div class="hero-visual animate-float">
-      <div class="visual-card chat-preview">
-        <div class="card-header">
-          <div class="dot" />
-          <div class="dot" />
-          <div class="dot" />
-        </div>
-        <div class="card-body">
-          <div class="message ai">
-            您好！我是您的 AI 学习助手。有什么我可以帮您的吗？
-          </div>
-          <div class="message user">
-            我想制定一个学习计划。
-          </div>
-          <div class="message ai typing">
-            {{ typingText }}
+              <router-link
+                to="/codenova"
+                class="mobile-nav-link"
+                @click="isMobileMenuOpen = false"
+              >
+                <i class="fas fa-mobile-alt" /> CodeNova
+              </router-link>
+              <router-link
+                to="/author"
+                class="mobile-nav-link"
+                @click="isMobileMenuOpen = false"
+              >
+                <i class="fas fa-user" /> 关于作者
+              </router-link>
+              <div class="mobile-menu-divider" />
+              <template v-if="!authStore.isAuthenticated">
+                <router-link
+                  to="/login"
+                  class="mobile-nav-link"
+                  @click="isMobileMenuOpen = false"
+                >
+                  <i class="fas fa-sign-in-alt" /> 登录
+                </router-link>
+                <router-link
+                  to="/register"
+                  class="mobile-nav-link highlight"
+                  @click="isMobileMenuOpen = false"
+                >
+                  <i class="fas fa-user-plus" /> 立即加入
+                </router-link>
+              </template>
+              <template v-else>
+                <router-link
+                  to="/chat"
+                  class="mobile-nav-link highlight"
+                  @click="isMobileMenuOpen = false"
+                >
+                  <i class="fas fa-rocket" /> 进入工作台
+                </router-link>
+              </template>
+            </div>
+            <div class="mobile-menu-footer">
+              <button
+                class="mobile-theme-toggle"
+                @click="themeStore.toggleDarkMode()"
+              >
+                <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" />
+                {{ themeStore.isDarkMode ? "切换浅色模式" : "切换深色模式" }}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="visual-blob" />
-    </div>
-  </section>
+      </transition>
+    </nav>
 
-  <!-- 特性展示 -->
-  <section 
-    id="features" 
-    class="features-section"
-  >
-    <div class="section-header reveal">
-      <h2 class="section-title">
-        核心功能
-      </h2>
-      <p class="section-subtitle">
-        为您提供全方位的学习生产力工具
-      </p>
-    </div>
-
-    <div class="features-grid">
-      <div 
-        v-for="(feature, index) in features" 
-        :key="index"
-        class="feature-card reveal"
-        :style="{ transitionDelay: `${index * 150}ms` }"
-        :class="{ 'clickable': feature.link }"
-        @click="feature.link ? handleLinkClick(feature.link) : null"
-      >
-        <div 
-          class="feature-icon" 
-          :style="{ backgroundColor: feature.color }"
-        >
-          <i :class="feature.icon" />
-        </div>
-        <h3 class="feature-title">
-          {{ feature.title }}
-        </h3>
-        <p class="feature-desc">
-          {{ feature.description }}
-        </p>
-        <ul class="feature-list">
-          <li 
-            v-for="item in feature.items" 
-            :key="item"
+    <!-- Hero 区域 -->
+    <section class="hero-section">
+      <div class="animate-fade-in-up hero-content">
+        <h1 class="hero-title">开启您的 <span class="gradient-text">智能学习</span> 之旅</h1>
+        <p class="hero-subtitle">集成 AI 问答、个人云盘、单词记忆于一体的智能化全方位学习平台。</p>
+        <div class="hero-actions">
+          <router-link
+            to="/chat"
+            class="btn-primary-lg"
           >
-            <i class="fas fa-check-circle" /> {{ item }}
-          </li>
-        </ul>
-        <div 
-          v-if="feature.link" 
-          class="feature-action"
-        >
-          <component 
-            :is="isInternalRoute(feature.link) ? 'router-link' : 'a'"
-            v-bind="isInternalRoute(feature.link) ? { to: formatUrl(feature.link) } : { href: formatUrl(feature.link) }"
-            :target="!isInternalRoute(feature.link) ? '_blank' : undefined"
-            class="btn-text"
+            <i class="fas fa-rocket" /> 免费开始使用
+          </router-link>
+
+          <!-- Agent 下载/跳转按钮 -->
+          <router-link
+            to="/agent"
+            class="btn-agent-download"
           >
-            了解详情 <i class="fas fa-arrow-right" />
-          </component>
+            <i class="fas fa-terminal" /> Agent {{ agentVersion }}
+            <span
+              v-if="hasLinuxVersion"
+              class="platform-badge"
+              >Win/Linux</span
+            >
+          </router-link>
+
+          <!-- CodeNova 下载/跳转按钮 -->
+          <router-link
+            to="/codenova"
+            class="btn-codenova-download"
+          >
+            <i class="fas fa-mobile-alt" /> 下载 CodeNova {{ codenovaVersion }}
+          </router-link>
+
+          <button
+            class="btn-secondary-lg"
+            @click="scrollToFeatures"
+          >
+            了解更多 <i class="fas fa-chevron-down" />
+          </button>
+        </div>
+        <div class="hero-stats">
+          <div class="stat-item">
+            <span class="stat-number">24/7</span>
+            <span class="stat-label">AI 在线支持</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-number">100%</span>
+            <span class="stat-label">数据安全加密</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-number">3+</span>
+            <span class="stat-label">核心功能</span>
+          </div>
         </div>
       </div>
-    </div>
-  </section>
+      <div class="hero-visual animate-float">
+        <div class="visual-card chat-preview">
+          <div class="card-header">
+            <div class="dot" />
+            <div class="dot" />
+            <div class="dot" />
+          </div>
+          <div class="card-body">
+            <div class="message ai">您好！我是您的 AI 学习助手。有什么我可以帮您的吗？</div>
+            <div class="message user">我想制定一个学习计划。</div>
+            <div class="message ai typing">
+              {{ typingText }}
+            </div>
+          </div>
+        </div>
+        <div class="visual-blob" />
+      </div>
+    </section>
+
+    <!-- 特性展示 -->
+    <section
+      id="features"
+      class="features-section"
+    >
+      <div class="section-header reveal">
+        <h2 class="section-title">核心功能</h2>
+        <p class="section-subtitle">为您提供全方位的学习生产力工具</p>
+      </div>
+
+      <div class="features-grid">
+        <div
+          v-for="(feature, index) in features"
+          :key="index"
+          class="feature-card reveal"
+          :style="{ transitionDelay: `${index * 150}ms` }"
+          :class="{ clickable: feature.link }"
+          @click="feature.link ? handleLinkClick(feature.link) : null"
+        >
+          <div
+            class="feature-icon"
+            :style="{ backgroundColor: feature.color }"
+          >
+            <i :class="feature.icon" />
+          </div>
+          <h3 class="feature-title">
+            {{ feature.title }}
+          </h3>
+          <p class="feature-desc">
+            {{ feature.description }}
+          </p>
+          <ul class="feature-list">
+            <li
+              v-for="item in feature.items"
+              :key="item"
+            >
+              <i class="fas fa-check-circle" /> {{ item }}
+            </li>
+          </ul>
+          <div
+            v-if="feature.link"
+            class="feature-action"
+          >
+            <component
+              :is="isInternalRoute(feature.link) ? 'router-link' : 'a'"
+              v-bind="
+                isInternalRoute(feature.link)
+                  ? { to: formatUrl(feature.link) }
+                  : { href: formatUrl(feature.link) }
+              "
+              :target="!isInternalRoute(feature.link) ? '_blank' : undefined"
+              class="btn-text"
+            >
+              了解详情 <i class="fas fa-arrow-right" />
+            </component>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <!-- 交互区域：体验 AI -->
     <section class="cta-section reveal">
@@ -327,13 +327,13 @@
           <h2>准备好提升您的效率了吗？</h2>
           <p>加入成千上万的学习者，利用 AI 的力量改变您的学习方式。</p>
           <div class="cta-btns">
-            <router-link 
+            <router-link
               to="/register"
               class="btn-white"
             >
               立即注册账号
             </router-link>
-            <router-link 
+            <router-link
               to="/chat"
               class="btn-outline-white"
             >
@@ -356,24 +356,14 @@
         </div>
         <div class="link-group">
           <h4>产品</h4>
-          <router-link to="/chat">
-            AI 问答
-          </router-link>
-          <router-link to="/cloud-disk">
-            云盘管理
-          </router-link>
-          <router-link to="/word-game">
-            单词记忆
-          </router-link>
+          <router-link to="/chat"> AI 问答 </router-link>
+          <router-link to="/cloud-disk"> 云盘管理 </router-link>
+          <router-link to="/word-game"> 单词记忆 </router-link>
         </div>
         <div class="link-group">
           <h4>支持</h4>
-          <router-link to="/public-files">
-            公共资源
-          </router-link>
-          <router-link to="/agent">
-            Agent 终端助手
-          </router-link>
+          <router-link to="/public-files"> 公共资源 </router-link>
+          <router-link to="/agent"> Agent 终端助手 </router-link>
           <a href="#">使用文档</a>
           <a href="#">常见问题</a>
         </div>
@@ -386,19 +376,19 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-import { useThemeStore } from '@/stores/theme'
-import request from '@/utils/request'
-import { API_ENDPOINTS, API_CONFIG } from '@/config/api'
+import { API_CONFIG, API_ENDPOINTS } from "@/config/api";
+import { useAuthStore } from "@/stores/auth";
+import { useThemeStore } from "@/stores/theme";
+import request from "@/utils/request";
+import { onMounted, onUnmounted, ref } from "vue";
+import { useRouter } from "vue-router";
 
-const router = useRouter()
-const codenovaVersion = ref('v1.0.0')
-const codenovaDownloadUrl = ref('/codenova')
-const agentVersion = ref('v1.0.0')
-const agentDownloadUrl = ref('/agent')
-const hasLinuxVersion = ref(false)
+const router = useRouter();
+const codenovaVersion = ref("v1.0.0");
+const codenovaDownloadUrl = ref("/codenova");
+const agentVersion = ref("v1.0.0");
+const agentDownloadUrl = ref("/agent");
+const hasLinuxVersion = ref(false);
 
 /**
  * 判断是否为内部路由
@@ -406,16 +396,25 @@ const hasLinuxVersion = ref(false)
  * @returns {boolean} 是否为内部路由
  */
 const isInternalRoute = (url) => {
-  if (!url) return false
+  if (!url) return false;
   const internalRoutes = [
-    '/', '/agent', '/codenova', '/chat', '/login', '/register', 
-    '/cloud-disk', '/word-game', '/public-files', '/admin', '/settings'
-  ]
+    "/",
+    "/agent",
+    "/codenova",
+    "/chat",
+    "/login",
+    "/register",
+    "/cloud-disk",
+    "/word-game",
+    "/public-files",
+    "/admin",
+    "/settings",
+  ];
   // 检查是否完全匹配
-  if (internalRoutes.includes(url)) return true
+  if (internalRoutes.includes(url)) return true;
   // 检查是否以某些内部路由开头（处理带参数的子路由）
-  return url.startsWith('/agent/') || url.startsWith('/codenova/')
-}
+  return url.startsWith("/agent/") || url.startsWith("/codenova/");
+};
 
 /**
  * 格式化 URL
@@ -424,161 +423,162 @@ const isInternalRoute = (url) => {
  * @returns {string} 格式化后的 URL
  */
 const formatUrl = (url) => {
-  if (!url) return ''
-  if (url.startsWith('http')) return url
-  if (url.startsWith('/api')) {
-    return `${API_CONFIG.baseURL}${url}`
+  if (!url) return "";
+  if (url.startsWith("http")) return url;
+  if (url.startsWith("/api")) {
+    return `${API_CONFIG.baseURL}${url}`;
   }
-  return url
-}
+  return url;
+};
 
 const fetchSoftwareInfo = async () => {
   try {
-    const response = await request.get(API_ENDPOINTS.admin.publicResources)
-    const softwareList = response.data || []
-    
-    const codenova = softwareList.find(item => item.title.toLowerCase().includes('codenova'))
+    const response = await request.get(API_ENDPOINTS.admin.publicResources);
+    const softwareList = response.data || [];
+
+    const codenova = softwareList.find((item) => item.title.toLowerCase().includes("codenova"));
     if (codenova) {
-      codenovaVersion.value = codenova.version || 'v1.0.0'
-      codenovaDownloadUrl.value = codenova.filePath || codenova.url || '/codenova'
+      codenovaVersion.value = codenova.version || "v1.0.0";
+      codenovaDownloadUrl.value = codenova.filePath || codenova.url || "/codenova";
     }
 
     // 查找 Windows 版或通用版作为主展示
-    const agentWin = softwareList.find(item => 
-      item.title.toLowerCase().includes('agent') && 
-      (item.platform === 'Windows' || !item.platform)
-    )
+    const agentWin = softwareList.find(
+      (item) =>
+        item.title.toLowerCase().includes("agent") &&
+        (item.platform === "Windows" || !item.platform),
+    );
     if (agentWin) {
-      agentVersion.value = agentWin.version || 'v1.0.0'
-      agentDownloadUrl.value = agentWin.filePath || agentWin.url || '/agent'
+      agentVersion.value = agentWin.version || "v1.0.0";
+      agentDownloadUrl.value = agentWin.filePath || agentWin.url || "/agent";
     }
 
     // 检查是否有 Linux 版
-    hasLinuxVersion.value = softwareList.some(item => 
-      item.title.toLowerCase().includes('agent') && item.platform === 'Linux'
-    )
+    hasLinuxVersion.value = softwareList.some(
+      (item) => item.title.toLowerCase().includes("agent") && item.platform === "Linux",
+    );
   } catch (error) {
-    console.error('加载软件信息失败:', error)
+    console.error("加载软件信息失败:", error);
   }
-}
+};
 
 /**
  * 处理链接点击
  * @param {string} url - 待跳转的链接
  */
 const handleLinkClick = (url) => {
-  if (!url) return
+  if (!url) return;
   if (isInternalRoute(url)) {
-    router.push(url)
+    router.push(url);
   } else {
-    window.open(formatUrl(url), '_blank')
+    window.open(formatUrl(url), "_blank");
   }
-}
+};
 
 const navigateToCodeNova = () => {
-  router.push('/codenova')
-}
-const authStore = useAuthStore()
-const themeStore = useThemeStore()
+  router.push("/codenova");
+};
+const authStore = useAuthStore();
+const themeStore = useThemeStore();
 
-const isScrolled = ref(false)
-const isMobileMenuOpen = ref(false)
-const typingText = ref('')
-const fullText = '正在为您生成个性化建议...'
+const isScrolled = ref(false);
+const isMobileMenuOpen = ref(false);
+const typingText = ref("");
+const fullText = "正在为您生成个性化建议...";
 
 const features = [
   {
-    title: '智能 AI 问答',
-    description: '基于最新大模型的智能助手，为您解答疑惑、总结知识、激发灵感。',
-    icon: 'fas fa-comments',
-    color: 'rgba(29, 78, 216, 0.1)',
-    items: ['多模型支持', '上下文记忆', '流式实时响应']
+    title: "智能 AI 问答",
+    description: "基于最新大模型的智能助手，为您解答疑惑、总结知识、激发灵感。",
+    icon: "fas fa-comments",
+    color: "rgba(29, 78, 216, 0.1)",
+    items: ["多模型支持", "上下文记忆", "流式实时响应"],
   },
   {
-    title: '个人学习云盘',
-    description: '安全可靠的文件存储空间，随时随地访问您的学习资料。',
-    icon: 'fas fa-cloud',
-    color: 'rgba(16, 185, 129, 0.1)',
-    items: ['文件夹管理', '多格式预览', '高速上传下载']
+    title: "个人学习云盘",
+    description: "安全可靠的文件存储空间，随时随地访问您的学习资料。",
+    icon: "fas fa-cloud",
+    color: "rgba(16, 185, 129, 0.1)",
+    items: ["文件夹管理", "多格式预览", "高速上传下载"],
   },
   {
-    title: 'Agent 终端助手',
-    description: '功能强大的本地终端助手，提供深度的系统集成与自动化处理能力。',
-    icon: 'fas fa-terminal',
-    color: 'rgba(139, 92, 246, 0.1)',
-    items: ['本地文件处理', '自动化脚本运行', '高效命令行交互'],
-    link: '/agent'
+    title: "Agent 终端助手",
+    description: "功能强大的本地终端助手，提供深度的系统集成与自动化处理能力。",
+    icon: "fas fa-terminal",
+    color: "rgba(139, 92, 246, 0.1)",
+    items: ["本地文件处理", "自动化脚本运行", "高效命令行交互"],
+    link: "/agent",
   },
   {
-    title: 'CodeNova 移动端 IDE',
-    description: '随时随地写代码，在 Android 设备上构建和管理您的项目。',
-    icon: 'fas fa-mobile-alt',
-    color: 'rgba(16, 185, 129, 0.1)',
-    items: ['全功能编辑器', '内置终端', 'Python/C/C++ 支持'],
-    link: '/codenova'
-  }
-]
+    title: "CodeNova 移动端 IDE",
+    description: "随时随地写代码，在 Android 设备上构建和管理您的项目。",
+    icon: "fas fa-mobile-alt",
+    color: "rgba(16, 185, 129, 0.1)",
+    items: ["全功能编辑器", "内置终端", "Python/C/C++ 支持"],
+    link: "/codenova",
+  },
+];
 
-let typingInterval = null
+let typingInterval = null;
 
 /**
  * 开启打字机效果动画
  * 定期更新 typingText 变量以模拟打字过程，并在完成后循环播放
  */
 const startTyping = () => {
-  let i = 0
+  let i = 0;
   typingInterval = setInterval(() => {
-    typingText.value = fullText.slice(0, i)
-    i++
+    typingText.value = fullText.slice(0, i);
+    i++;
     if (i > fullText.length) {
-      i = 0 // 循环播放
+      i = 0; // 循环播放
     }
-  }, 150)
-}
+  }, 150);
+};
 
 /**
  * 处理窗口滚动事件
  * 更新导航栏的滚动状态并检查页面元素的可见性以触发动画
  */
 const handleScroll = () => {
-  isScrolled.value = window.scrollY > 50
-  revealOnScroll()
-}
+  isScrolled.value = window.scrollY > 50;
+  revealOnScroll();
+};
 
 /**
  * 检查页面上的 .reveal 元素是否进入可视区域
  * 如果元素进入视野，则为其添加 active 类以触发 CSS 动画
  */
 const revealOnScroll = () => {
-  const reveals = document.querySelectorAll('.reveal')
-  reveals.forEach(el => {
-    const windowHeight = window.innerHeight
-    const elementTop = el.getBoundingClientRect().top
-    const elementVisible = 150
+  const reveals = document.querySelectorAll(".reveal");
+  reveals.forEach((el) => {
+    const windowHeight = window.innerHeight;
+    const elementTop = el.getBoundingClientRect().top;
+    const elementVisible = 150;
     if (elementTop < windowHeight - elementVisible) {
-      el.classList.add('active')
+      el.classList.add("active");
     }
-  })
-}
+  });
+};
 
 /**
  * 平滑滚动至特性介绍区域
  */
 const scrollToFeatures = () => {
-  document.getElementById('features').scrollIntoView({ behavior: 'smooth' })
-}
+  document.getElementById("features").scrollIntoView({ behavior: "smooth" });
+};
 
 onMounted(() => {
-  window.addEventListener('scroll', handleScroll)
-  startTyping()
-  setTimeout(revealOnScroll, 100) // 初始检查
-  fetchSoftwareInfo()
-})
+  window.addEventListener("scroll", handleScroll);
+  startTyping();
+  setTimeout(revealOnScroll, 100); // 初始检查
+  fetchSoftwareInfo();
+});
 
 onUnmounted(() => {
-  window.removeEventListener('scroll', handleScroll)
-  if (typingInterval) clearInterval(typingInterval)
-})
+  window.removeEventListener("scroll", handleScroll);
+  if (typingInterval) clearInterval(typingInterval);
+});
 </script>
 
 <style scoped>
@@ -587,7 +587,13 @@ onUnmounted(() => {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   overflow-x: hidden;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
 }
 
 /* 导航栏 */
@@ -742,9 +748,15 @@ onUnmounted(() => {
 }
 
 @keyframes gradient-shift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 .hero-subtitle {
@@ -951,9 +963,15 @@ onUnmounted(() => {
   border-radius: 50%;
 }
 
-.dot:nth-child(1) { background: #ff5f56; }
-.dot:nth-child(2) { background: #ffbd2e; }
-.dot:nth-child(3) { background: #27c93f; }
+.dot:nth-child(1) {
+  background: #ff5f56;
+}
+.dot:nth-child(2) {
+  background: #ffbd2e;
+}
+.dot:nth-child(3) {
+  background: #27c93f;
+}
 
 .card-body {
   padding: 24px;
@@ -986,7 +1004,7 @@ onUnmounted(() => {
 }
 
 .typing::after {
-  content: '';
+  content: "";
   display: inline-block;
   width: 4px;
   height: 14px;
@@ -1287,13 +1305,23 @@ onUnmounted(() => {
 
 /* 动画 */
 @keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-15px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-15px);
+  }
 }
 
 .reveal {
@@ -1315,33 +1343,33 @@ onUnmounted(() => {
     text-align: center;
     gap: 3rem;
   }
-  
+
   .hero-content {
     display: flex;
     flex-direction: column;
     align-items: center;
   }
-  
+
   .hero-title {
     font-size: 3rem;
   }
-  
+
   .hero-subtitle {
     margin-left: auto;
     margin-right: auto;
     font-size: 1.1rem;
   }
-  
+
   .hero-actions {
     justify-content: center;
     gap: 1rem;
   }
-  
+
   .hero-stats {
     justify-content: center;
     gap: 2.5rem;
   }
-  
+
   .features-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 1.5rem;
@@ -1366,7 +1394,7 @@ onUnmounted(() => {
   .nav-links {
     display: none;
   }
-  
+
   .mobile-menu-btn {
     display: flex;
     align-items: center;
@@ -1381,7 +1409,7 @@ onUnmounted(() => {
     border-radius: 10px;
     transition: all 0.2s;
   }
-  
+
   .mobile-menu-btn:hover {
     background: var(--bg-tertiary);
   }
@@ -1529,7 +1557,7 @@ onUnmounted(() => {
   .slide-leave-to .mobile-menu {
     transform: translateX(100%);
   }
-  
+
   .hero-section {
     padding: 100px 1.25rem 40px;
   }
@@ -1538,7 +1566,7 @@ onUnmounted(() => {
     font-size: 2.25rem;
     margin-bottom: 1.25rem;
   }
-  
+
   .hero-subtitle {
     font-size: 1rem;
     margin-bottom: 2rem;
@@ -1552,14 +1580,16 @@ onUnmounted(() => {
     margin-bottom: 3rem;
   }
 
-  .btn-primary-lg, .btn-agent-download, .btn-secondary-lg {
+  .btn-primary-lg,
+  .btn-agent-download,
+  .btn-secondary-lg {
     padding: 0.85rem 1.5rem;
     font-size: 1rem;
     width: 100%;
     justify-content: center;
     border-radius: 12px;
   }
-  
+
   .hero-stats {
     gap: 1.5rem;
     flex-wrap: wrap;
@@ -1591,7 +1621,7 @@ onUnmounted(() => {
     font-size: 0.85rem;
     padding: 10px 14px;
   }
-  
+
   .section-header {
     margin-bottom: 3rem;
   }
@@ -1633,7 +1663,7 @@ onUnmounted(() => {
   .feature-list li {
     font-size: 0.85rem;
   }
-  
+
   .cta-section {
     padding: 40px 1rem;
   }
@@ -1642,7 +1672,7 @@ onUnmounted(() => {
     padding: 40px 20px;
     border-radius: 24px;
   }
-  
+
   .cta-content h2 {
     font-size: 1.75rem;
     margin-bottom: 1rem;
@@ -1652,19 +1682,20 @@ onUnmounted(() => {
     font-size: 1rem;
     margin-bottom: 2rem;
   }
-  
+
   .cta-btns {
     flex-direction: column;
     gap: 0.75rem;
   }
 
-  .btn-white, .btn-outline-white {
+  .btn-white,
+  .btn-outline-white {
     padding: 0.85rem 1.5rem;
     font-size: 1rem;
     width: 100%;
     border-radius: 12px;
   }
-  
+
   .landing-footer {
     padding: 60px 1.25rem 30px;
   }
@@ -1692,15 +1723,15 @@ onUnmounted(() => {
   .hero-title {
     font-size: 1.85rem;
   }
-  
+
   .hero-subtitle {
     font-size: 0.9rem;
   }
-  
+
   .hero-actions {
     max-width: 100%;
   }
-  
+
   .cta-content h2 {
     font-size: 1.5rem;
   }
