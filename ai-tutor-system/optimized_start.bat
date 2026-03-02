@@ -85,19 +85,19 @@ echo.
 echo [2/3] 启动后端服务 (Spring Boot)...
 
 :: 检查后端目录
-if not exist "ai-tutor-system\aispring" (
-    echo [错误] 未找到 ai-tutor-system\aispring 目录
+if not exist "aispring" (
+    echo [错误] 未找到 aispring 目录
     pause
     exit /b 1
 )
 
-:: 设置JVM参数
+:: 设置 JVM 参数
 set "JVM_OPTS=-Xms256m -Xmx512m -XX:MetaspaceSize=128m -XX:MaxMetaspaceSize=256m -XX:+UseG1GC -Dfile.encoding=UTF-8"
 
 :: 启动后端服务
-echo [启动] 进入 ai-tutor-system\aispring 目录并启动Spring Boot应用...
-cd ai-tutor-system\aispring
-start "AI Study Backend - Port 5000" cmd /k "title AI Study Backend && echo 后端服务正在启动...请等待约30秒 && %MAVEN_CMD% spring-boot:run -Dspring-boot.run.jvmArguments="!JVM_OPTS!" > ../backend.log 2>&1 && echo 后端服务已退出"
+echo [启动] 进入 aispring 目录并启动 Spring Boot 应用...
+cd aispring
+start "AI Study Backend - Port 5000" cmd /k "title AI Study Backend && echo 后端服务正在启动...请等待约 30 秒 && %MAVEN_CMD% spring-boot:run -Dspring-boot.run.jvmArguments="!JVM_OPTS!" > ../backend.log 2>&1 && echo 后端服务已退出"
 cd ..
 
 timeout /t 5 /nobreak >nul
@@ -106,21 +106,21 @@ echo.
 echo [3/3] 启动前端服务 (Vue.js)...
 
 :: 检查前端目录
-if not exist "ai-tutor-system\vue-app" (
-    echo [错误] 未找到 ai-tutor-system\vue-app 目录
+if not exist "vue-app" (
+    echo [错误] 未找到 vue-app 目录
     pause
     exit /b 1
 )
 
 :: 检查前端依赖
-cd ai-tutor-system\vue-app
+cd vue-app
 if not exist "node_modules" (
-    echo [提示] 未找到node_modules，正在安装依赖...
+    echo [提示] 未找到 node_modules，正在安装依赖...
     npm install --registry https://registry.npmmirror.com
 )
 
 :: 启动前端服务
-echo [启动] 进入 vue-app 目录并启动Vue开发服务器...
+echo [启动] 进入 vue-app 目录并启动 Vue 开发服务器...
 start "AI Study Frontend - Port 3000" cmd /k "title AI Study Frontend && npm run dev > ../frontend.log 2>&1 && echo 前端服务已退出"
 cd ..
 
