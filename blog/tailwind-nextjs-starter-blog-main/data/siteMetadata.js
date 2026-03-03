@@ -1,17 +1,18 @@
 /** @type {import("pliny/config").PlinyConfig } */
 const siteMetadata = {
   title: 'AI Study Platform Blog',
-  author: 'AI Study Team',
+  author: 'XiHuiChen',
   headerTitle: 'AI Study Blog',
-  description: '分享 AI 学习平台开发技术与经验 - Sharing AI learning platform development technologies',
+  description: 'XiHuiChen - Java 后端开发工程师，专注于后端开发与 AI 应用',
   language: 'zh-CN', // 默认中文，会根据 IP 自动切换
   theme: 'system', // system, dark or light
   siteUrl: 'https://blog.aistudy.icu',
   siteRepo: 'https://github.com/ChenfromChina123/new_pro',
   siteLogo: `${process.env.BASE_PATH || ''}/static/images/logo.png`,
   socialBanner: `${process.env.BASE_PATH || ''}/static/images/twitter-card.png`,
-  email: 'support@aistudy.icu',
+  email: '3301767269@qq.com',
   github: 'https://github.com/ChenfromChina123',
+  website: 'https://aistudy.icu',
   locale: 'zh-CN', // 默认中文，会根据 IP 自动切换
   // set to true if you want a navbar fixed to the top
   stickyNav: false,
