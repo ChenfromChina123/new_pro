@@ -36,12 +36,18 @@ kill_port_if_used() {
   if [ -n "$pid" ]; then
     echo "⚠️  $name 端口 $port 已被占用 (PID: $pid)，正在终止..."
     kill -9 "$pid" 2>/dev/null || true
-    sleep 1
+    sleep 2
+    # 再次检查，如果仍被占用则尝试强制终止所有相关进程
     if [ -n "$(get_port_pid "$port")" ]; then
-      echo "❌ 无法释放端口 $port，请手动检查后重试"
-      exit 1
+      echo "    尝试强制终止所有占用端口 $port 的进程..."
+      lsof -ti:"$port" 2>/dev/null | xargs -r kill -9 2>/dev/null || true
+      sleep 1
     fi
-    echo "✅ 已释放端口 $port"
+    if [ -n "$(get_port_pid "$port")" ]; then
+      echo "❌ 无法释放端口 $port，跳过并继续..."
+    else
+      echo "✅ 已释放端口 $port"
+    fi
   fi
 }
 
@@ -91,7 +97,7 @@ echo "【2/6】安装依赖..."
 # 主站前端
 if [ -d "ai-tutor-system/vue-app" ]; then
   cd ai-tutor-system/vue-app
-  if [ -d "node_modules" ]; then
+  if [ -d "node_modules/vite" ]; then
     echo "    ✅ 主站前端依赖已存在"
   else
     echo "    正在安装主站前端依赖..."
