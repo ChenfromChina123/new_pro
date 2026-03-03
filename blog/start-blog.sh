@@ -11,7 +11,7 @@ export LC_ALL=C.UTF-8
 
 # 配置
 BLOG_PORT=3200
-BLOG_DIR="$(cd "$(dirname "$0")/个人博客/tailwind-nextjs-starter-blog-main" && pwd)"
+BLOG_DIR="$(cd "$(dirname "$0")/tailwind-nextjs-starter-blog-main" && pwd)"
 BLOG_LOG="$(cd "$(dirname "$0")" && pwd)/blog.log"
 
 # 辅助函数
@@ -24,7 +24,7 @@ wait_for_port() {
   local name="${2:-服务}"
   local timeout="${3:-30}"
   local count=0
-  
+
   while [ $count -lt $timeout ]; do
     if [ -n "$(get_port_pid "$port")" ]; then
       return 0
@@ -32,7 +32,7 @@ wait_for_port() {
     sleep 1
     count=$((count + 1))
   done
-  
+
   return 1
 }
 
@@ -136,8 +136,8 @@ else
   echo ""
   echo "建议："
   echo "1. 检查 node 版本：node --version"
-  echo "2. 检查依赖是否完整：cd 个人博客/tailwind-nextjs-starter-blog-main && npm install"
+  echo "2. 检查依赖是否完整：cd tailwind-nextjs-starter-blog-main && npm install"
   echo "3. 查看详细日志：tail -f $BLOG_LOG"
-  echo "4. 手动启动测试：cd 个人博客/tailwind-nextjs-starter-blog-main && npm run start"
+  echo "4. 手动启动测试：cd tailwind-nextjs-starter-blog-main && npm run start"
   exit 1
 fi
