@@ -12,11 +12,12 @@ export LC_ALL=C.UTF-8
 PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$PROJECT_ROOT"
 
-# ---------- 端口配置 ----------
+# ========== 端口配置 ==========
 BACKEND_PORT=5000
 FRONTEND_PORT=3000
 WORD_GAME_PORT=5200
 CV_PORT=3100
+BLOG_PORT=3200
 
 # ---------- 数据库配置 ----------
 export DB_HOST="${DB_HOST:-127.0.0.1}"
@@ -129,6 +130,20 @@ if [ -d "cv-site" ]; then
   echo "    ✅ 简历网站目录已存在（静态 HTML，无需依赖）"
 fi
 
+# 博客系统
+if [ -d "blog/tailwind-nextjs-starter-blog-main" ]; then
+  cd blog/tailwind-nextjs-starter-blog-main
+  if [ -d "node_modules/next" ]; then
+    echo "    ✅ 博客系统依赖已存在"
+  else
+    echo "    正在安装博客系统依赖..."
+    npm install
+  fi
+  cd "$PROJECT_ROOT"
+else
+  echo "    ⚠️  博客系统目录不存在，跳过"
+fi
+
 # ========== 3. 构建 ==========
 echo ""
 echo "【3/6】构建项目..."
@@ -175,6 +190,18 @@ if [ -d "ai-tutor-system/aispring" ]; then
   echo "    ✅ 后端构建完成"
 fi
 
+# 博客系统：构建
+if [ -d "blog/tailwind-nextjs-starter-blog-main" ]; then
+  cd blog/tailwind-nextjs-starter-blog-main
+  if [ -d ".next" ]; then
+    echo "    ✅ 博客系统已构建"
+  else
+    echo "    正在构建博客系统..."
+    npm run build
+  fi
+  cd "$PROJECT_ROOT"
+fi
+
 # ========== 4. 检测端口冲突 ==========
 echo ""
 echo "【4/6】检测端口冲突..."
@@ -182,6 +209,7 @@ kill_port_if_used "$BACKEND_PORT" "后端"
 kill_port_if_used "$FRONTEND_PORT" "主站前端"
 kill_port_if_used "$WORD_GAME_PORT" "单词记忆"
 kill_port_if_used "$CV_PORT" "简历网站"
+kill_port_if_used "$BLOG_PORT" "博客系统"
 
 # ========== 5. 启动服务 ==========
 echo ""
@@ -251,6 +279,23 @@ else
   fi
 fi
 
+# 5e. 启动博客系统
+BLOG_PID=$(get_port_pid "$BLOG_PORT")
+if [ -n "$BLOG_PID" ]; then
+  echo "✅ 博客系统已在运行（端口 $BLOG_PORT, PID: $BLOG_PID）"
+else
+  BLOG_DIR="$PROJECT_ROOT/blog/tailwind-nextjs-starter-blog-main"
+  if [ ! -d "$BLOG_DIR" ]; then
+    echo "⚠️  博客系统目录不存在，跳过启动"
+  else
+    echo "    正在启动博客系统（端口 $BLOG_PORT, 日志：blog.log）..."
+    (cd "$BLOG_DIR" && nohup npx next start -p $BLOG_PORT > ../blog.log 2>&1 &)
+    sleep 3
+    BLOG_PID=$(get_port_pid "$BLOG_PORT")
+    echo "✅ 博客系统已启动（端口 $BLOG_PORT, PID: $BLOG_PID）"
+  fi
+fi
+
 # ========== 6. 汇总 ==========
 echo ""
 echo "=========================================="
@@ -262,20 +307,23 @@ echo "  主站前端：   http://localhost:$FRONTEND_PORT"
 echo "  后端 API:    http://localhost:$BACKEND_PORT/swagger-ui.html"
 echo "  单词记忆：   http://localhost:$WORD_GAME_PORT"
 echo "  简历网站：   http://localhost:$CV_PORT"
+echo "  博客系统：   http://localhost:$BLOG_PORT"
 echo ""
 echo "📋 进程信息："
 echo "  后端：$BACKEND_PID"
 echo "  前端：$FRONTEND_PID"
 echo "  单词记忆：$WORD_PID"
 echo "  简历网站：$CV_PID"
+echo "  博客系统：$BLOG_PID"
 echo ""
 echo "📝 日志文件："
 echo "  后端：backend.log"
 echo "  前端：frontend.log"
 echo "  单词记忆：word-game.log"
 echo "  简历网站：cv-site.log"
+echo "  博客系统：blog.log"
 echo ""
 echo "🛑 停止所有服务："
-echo "  kill $BACKEND_PID $FRONTEND_PID $WORD_PID $CV_PID"
+echo "  kill $BACKEND_PID $FRONTEND_PID $WORD_PID $CV_PID $BLOG_PID"
 echo ""
 echo "=========================================="
