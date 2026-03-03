@@ -6,6 +6,7 @@ import siteMetadata from '@/data/siteMetadata'
 import { formatDate } from 'pliny/utils/formatDate'
 import NewsletterForm from '@/components/NewsletterForm'
 import { useLanguage } from '@/contexts/LanguageProvider'
+import ViewCounter from '@/components/ViewCounter'
 
 const MAX_DISPLAY = 5
 
@@ -48,10 +49,13 @@ export default function Home({ posts }) {
                               {title}
                             </Link>
                           </h2>
-                          <div className="flex flex-wrap">
-                            {tags.map((tag) => (
-                              <Tag key={tag} text={tag} />
-                            ))}
+                          <div className="mt-2 flex flex-wrap items-center gap-4">
+                            <div className="flex flex-wrap">
+                              {tags.map((tag) => (
+                                <Tag key={tag} text={tag} />
+                              ))}
+                            </div>
+                            <ViewCounter slug={slug} />
                           </div>
                         </div>
                         <div className="prose max-w-none text-gray-500 dark:text-gray-400">
