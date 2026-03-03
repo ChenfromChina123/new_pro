@@ -11,8 +11,8 @@ export LC_ALL=C.UTF-8
 
 # 配置
 BLOG_PORT=3200
-BLOG_DIR="$(cd "$(dirname "$0")/tailwind-nextjs-starter-blog-main" && pwd)"
-BLOG_LOG="$(cd "$(dirname "$0")" && pwd)/blog.log"
+BLOG_DIR="$(cd "$(dirname "$0")" && pwd)"
+BLOG_LOG="$BLOG_DIR/blog.log"
 
 # 辅助函数
 get_port_pid() {
