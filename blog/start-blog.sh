@@ -58,9 +58,20 @@ echo "✅ 博客系统目录已找到"
 
 # 检查依赖
 cd "$BLOG_DIR"
-if [ ! -d "node_modules" ]; then
-  echo "⚠️  未找到 node_modules，正在安装依赖..."
+if [ -d "node_modules/next" ]; then
+  echo "✅ 博客系统依赖已存在"
+else
+  echo "⚠️  未找到 node_modules 或 next 依赖，正在安装依赖..."
+  rm -rf node_modules package-lock.json 2>/dev/null || true
   npm install
+fi
+
+# 检查构建
+if [ -d ".next" ]; then
+  echo "✅ 博客系统已构建"
+else
+  echo "⚠️  未找到 .next 构建目录，正在构建..."
+  npm run build
 fi
 
 # 检查端口
@@ -79,16 +90,25 @@ if [ -n "$BLOG_PID" ]; then
   echo "⚠️  端口 $BLOG_PORT 已被占用 (PID: $BLOG_PID)，正在终止..."
   kill -9 "$BLOG_PID" 2>/dev/null || true
   sleep 2
+  # 再次检查并尝试强制释放
+  if [ -n "$(get_port_pid "$BLOG_PORT")" ]; then
+    echo "    尝试强制终止所有占用进程..."
+    lsof -ti:"$BLOG_PORT" 2>/dev/null | xargs -r kill -9 2>/dev/null || true
+    sleep 1
+  fi
+  if [ -n "$(get_port_pid "$BLOG_PORT")" ]; then
+    echo "❌ 无法释放端口 $BLOG_PORT，但将继续尝试启动..."
+  else
+    echo "✅ 已释放端口 $BLOG_PORT"
+  fi
 fi
 
 # 启动服务
 echo "🚀 正在启动博客系统..."
 echo "💡 提示：首次启动可能需要 30-60 秒构建"
 
-export PORT=$BLOG_PORT
-nohup npm run start > "$BLOG_LOG" 2>&1 &
+nohup npx next start -p $BLOG_PORT > "$BLOG_LOG" 2>&1 &
 BLOG_LAUNCH_PID=$!
-unset PORT
 
 echo "📋 博客系统进程已启动 (PID: $BLOG_LAUNCH_PID)"
 echo "⏳ 等待端口 $BLOG_PORT 就绪..."
