@@ -11,7 +11,7 @@ export LC_ALL=C.UTF-8
 
 # 配置
 BLOG_PORT=3200
-BLOG_DIR="$(cd "$(dirname "$0")" && pwd)"
+BLOG_DIR="$(pwd)"
 BLOG_LOG="$BLOG_DIR/blog.log"
 
 # 辅助函数
