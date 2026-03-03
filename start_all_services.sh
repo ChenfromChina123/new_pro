@@ -127,6 +127,9 @@ fi
 echo ""
 echo "【3/6】构建项目..."
 
+# 清理根目录可能干扰 vite 的缓存
+rm -rf node_modules/.vite node_modules/.vite-temp .vite .vite-temp 2>/dev/null || true
+
 # 主站前端
 if [ -d "ai-tutor-system/vue-app" ]; then
   cd ai-tutor-system/vue-app
