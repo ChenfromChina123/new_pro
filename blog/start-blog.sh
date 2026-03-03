@@ -9,7 +9,7 @@ set -e
 export LANG=C.UTF-8
 export LC_ALL=C.UTF-8
 
-# 配置
+# 配置 - 使用当前工作目录
 BLOG_PORT=3200
 BLOG_DIR="$(pwd)"
 BLOG_LOG="$BLOG_DIR/blog.log"
@@ -43,6 +43,13 @@ echo "=========================================="
 echo "端口：$BLOG_PORT"
 echo "目录：$BLOG_DIR"
 echo "日志：$BLOG_LOG"
+echo ""
+
+# 调试信息
+echo "🔍 检测当前目录..."
+echo "   PWD: $(pwd)"
+echo "   脚本路径：$0"
+echo "   脚本目录：$(dirname "$0")"
 echo ""
 
 # 检查 node
