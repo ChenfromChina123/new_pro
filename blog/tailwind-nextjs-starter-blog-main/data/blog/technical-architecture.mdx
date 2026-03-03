@@ -1,0 +1,565 @@
+---
+title: AI Study Platform 技术架构详解
+date: 2026-03-03
+tags: ['技术架构', '技术栈', '开发文档', '版本信息']
+draft: false
+summary: 详细介绍 AI Study Platform 的技术架构、技术栈选型、版本信息和部署方案
+author: XiHuiChen
+---
+
+# AI Study Platform 技术架构详解
+
+本文档详细介绍了 AI Study Platform 项目的技术架构、技术栈选型、版本信息和部署方案。
+
+## 项目概述
+
+**AI Study Platform** 是一个基于人工智能技术的现代化学习平台，采用前后端分离架构，集成了多种先进的 AI 技术和教育工具。
+
+**项目仓库**：[https://github.com/ChenfromChina123/new_pro](https://github.com/ChenfromChina123/new_pro)
+
+## 系统架构图
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    用户层 (Users)                        │
+└─────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────┐
+│                  前端应用层 (Frontend)                    │
+│  ┌──────────┐  ┌──────────  ┌──────────┐  ┌─────────┐ │
+│  │ 主站前端 │  │单词记忆  │  │ 博客系统 │  │简历网站 │ │
+│  │ Vue 3    │  │ Vue 3    │  │ Next.js  │ │ 静态   │ │
+│  └──────────  └──────────┘  └──────────┘  └─────────┘ │
+└─────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────┐
+│                  后端服务层 (Backend)                     │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │        Spring Boot 3 + AI 智能服务                │   │
+│  │  - RESTful API                                    │   │
+│  │  - JWT 认证                                       │   │
+│  │  - AI 智能辅导                                    │   │
+│  │  - 数据持久化                                     │   │
+│  └──────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────┐
+│                  数据存储层 (Data)                        │
+│  ┌──────────┐  ┌──────────  ┌──────────┐              │
+│  │  MySQL   │  │  Redis   │  │  文件存储 │              │
+│  └──────────┘  └──────────  └──────────┘              │
+└─────────────────────────────────────────────────────────┘
+```
+
+## 技术栈详情
+
+### 后端技术栈
+
+#### 核心框架
+- **Java**: 17 (LTS)
+- **Spring Boot**: 3.3.5
+- **Spring Security**: 6.x (集成 JWT 认证)
+- **Spring Data JPA**: 3.3.x
+- **Spring AI**: 1.0.0-M4 (AI 功能支持)
+
+#### 数据库相关
+- **MySQL**: 8.0+
+- **MySQL Connector/J**: 8.0.33
+- **Flyway**: 9.x (数据库版本管理)
+- **HikariCP**: 5.x (数据库连接池)
+
+#### 安全认证
+- **JWT**: io.jsonwebtoken 0.12.3
+- **BCrypt**: Spring Security 内置
+- **CORS**: Spring Security 配置
+
+#### 工具库
+- **Lombok**: 1.18.30 (代码简化)
+- **Hutool**: 5.8.23 (Java 工具集)
+- **Guava**: 32.1.3-jre (Google 核心库)
+- **Apache Commons**: 3.x (通用工具)
+
+#### API 文档
+- **SpringDoc OpenAPI**: 2.2.0
+- **Swagger UI**: 5.x
+
+#### 构建工具
+- **Maven**: 3.9.6+
+- **构建插件**: 
+  - maven-compiler-plugin: 3.11.0
+  - maven-surefire-plugin: 3.1.2
+  - spring-boot-maven-plugin: 3.3.5
+
+### 前端技术栈
+
+#### 主站前端 (vue-app)
+- **框架**: Vue 3.4.x (Composition API)
+- **构建工具**: Vite 5.x
+- **状态管理**: Pinia 2.x
+- **路由**: Vue Router 4.x
+- **UI 框架**: Element Plus 2.x
+- **HTTP 客户端**: Axios 1.x
+- **样式**: 
+  - TailwindCSS 4.x
+  - Sass 1.x
+- **TypeScript**: 5.x
+- **ESLint**: 9.x
+- **Prettier**: 3.x
+
+#### 单词记忆系统 (word-game)
+- **框架**: Vue 3.4.x
+- **构建工具**: Vite 5.x
+- **状态管理**: Pinia 2.x
+- **路由**: Vue Router 4.x
+- **UI 组件**: 自定义组件库
+- **样式**: TailwindCSS 4.x
+- **TypeScript**: 5.x
+
+#### 博客系统 (blog)
+- **框架**: Next.js 15.5.12 (App Router)
+- **React**: 19.2.4
+- **语言**: TypeScript 5.9.3
+- **样式**: 
+  - TailwindCSS 4.1.18
+  - @tailwindcss/forms 0.5.11
+  - @tailwindcss/typography 0.5.19
+- **内容管理**: 
+  - Contentlayer2 0.5.8
+  - next-contentlayer2 0.5.8
+- **UI 组件**: 
+  - @headlessui/react 2.2.9
+  - Pliny 0.4.1
+- **主题**: next-themes 0.4.6
+- **Markdown 处理**:
+  - remark 15.0.1
+  - rehype 系列插件
+  - gray-matter 4.0.3
+- **搜索**: 
+  - KBar (内置)
+  - Algolia DocSearch (可选)
+- **构建工具**: 
+  - Next.js Build
+  - esbuild 0.27.3
+- **代码质量**:
+  - ESLint 9.18.0
+  - Prettier 3.8.1
+  - Husky 9.1.7
+  - lint-staged 16.2.7
+
+#### 简历网站 (cv-site)
+- **技术**: 纯静态 HTML/CSS/JavaScript
+- **服务器**: Python HTTP Server 3.12
+- **样式**: 自定义 CSS
+- **响应式**: 媒体查询
+
+### 开发工具链
+
+#### 代码编辑器
+- **推荐**: Visual Studio Code 1.90+
+- **必备插件**:
+  - Volar (Vue 开发)
+  - ESLint
+  - Prettier
+  - GitLens
+  - Spring Boot Extension Pack
+  - Maven for Java
+
+#### 版本控制
+- **Git**: 2.40+
+- **分支策略**: Git Flow
+- **提交规范**: Conventional Commits
+
+#### 包管理
+- **Node.js**: 20.20.0+ (LTS)
+- **npm**: 10.8.2+
+- **Yarn**: 3.6.1+ (博客系统)
+- **pnpm**: 8.x (可选)
+
+#### 数据库工具
+- **MySQL Workbench**: 8.0+
+- **DBeaver**: 23.x (通用数据库工具)
+- **Redis Desktop Manager**: 2023.x
+
+### 测试工具
+
+#### 后端测试
+- **JUnit 5**: 5.10.x
+- **Mockito**: 5.x
+- **Spring Boot Test**: 3.3.5
+- **Testcontainers**: 1.19.x (集成测试)
+
+#### 前端测试
+- **Vitest**: 1.x (Vue 项目)
+- **Vue Test Utils**: 2.x
+- **@testing-library/react**: (博客系统)
+- **Jest**: 29.x
+
+### 部署工具
+
+#### 容器化
+- **Docker**: 24.x
+- **Docker Compose**: 2.x
+- **基础镜像**: 
+  - openjdk:17-slim (后端)
+  - node:20-alpine (前端)
+
+#### 服务器
+- **操作系统**: Ubuntu 22.04 LTS
+- **Web 服务器**: Nginx 1.24+
+- **进程管理**: 
+  - systemd (后端)
+  - PM2 (可选，Node.js 应用)
+
+#### CI/CD
+- **GitHub Actions**: 自动化构建和部署
+- **工作流程**:
+  - 代码检查
+  - 自动化测试
+  - 构建打包
+  - 部署到服务器
+
+## 项目结构
+
+```
+new_pro/
+├── ai-tutor-system/
+│   ├── aispring/              # Spring Boot 后端
+│   │   ├── src/
+│   │   │   ├── main/
+│   │   │   │   ├── java/      # Java 源代码
+│   │   │   │   ├── resources/ # 配置文件
+│   │   │   └── test/          # 测试代码
+│   │   ├── pom.xml            # Maven 配置
+│   │   └── avatars/           # 用户头像
+│   ├── vue-app/               # 主站前端
+│   │   ├── src/
+│   │   │   ├── components/    # 组件
+│   │   │   ├── views/         # 页面
+│   │   │   ├── stores/        # Pinia stores
+│   │   │   └── router/        # 路由配置
+│   │   ├── package.json
+│   │   └── vite.config.ts
+│   └── word-game/             # 单词记忆
+│       ├── src/
+│       ├── server/            # Node.js 后端
+│       ├── package.json
+│       └── vite.config.ts
+├── blog/
+│   └── tailwind-nextjs-starter-blog-main/
+│       ├── app/               # Next.js App Router
+│       ├── components/        # React 组件
+│       ├── data/              # 数据配置
+│       ├── layouts/           # 布局组件
+│       ├── public/            # 静态资源
+│       ├── package.json
+│       └── tsconfig.json
+├── cv-site/                   # 简历网站
+│   ├── index.html
+│   └── css/
+├── start_all_services.sh      # Linux 启动脚本
+└── optimized_start.bat         # Windows 启动脚本
+```
+
+## 核心功能模块
+
+### 1. 用户认证系统
+- **技术**: Spring Security + JWT
+- **功能**:
+  - 用户注册/登录
+  - 邮箱验证
+  - 密码重置
+  - Token 刷新机制
+- **API 端点**: `/api/auth/**`
+
+### 2. AI 智能辅导
+- **技术**: Spring AI + 大语言模型
+- **功能**:
+  - 智能问答
+  - 学习建议生成
+  - 个性化学习路径
+- **API 端点**: `/api/ai/**`
+
+### 3. 单词记忆系统
+- **技术**: Vue 3 + 艾宾浩斯遗忘曲线算法
+- **功能**:
+  - 智能复习计划
+  - 多种学习模式
+  - 进度追踪
+  - 数据统计
+- **访问地址**: `http://localhost:5200`
+
+### 4. 在线课程
+- **技术**: Vue 3 + Spring Boot
+- **功能**:
+  - 视频播放
+  - 随堂练习
+  - 学习进度保存
+  - 成就系统
+- **API 端点**: `/api/courses/**`
+
+### 5. 博客系统
+- **技术**: Next.js 15 + Contentlayer
+- **功能**:
+  - Markdown 支持
+  - 中英文自动切换
+  - SEO 优化
+  - 评论系统 (Giscus)
+  - 全文搜索
+- **访问地址**: `http://localhost:3200`
+
+## 部署方案
+
+### 环境要求
+
+#### 生产环境
+- **CPU**: 4 核+
+- **内存**: 8GB+
+- **存储**: 50GB+ SSD
+- **操作系统**: Ubuntu 22.04 LTS
+
+#### 开发环境
+- **CPU**: 2 核+
+- **内存**: 4GB+
+- **存储**: 20GB+
+
+### 端口配置
+
+| 服务 | 端口 | 说明 |
+|------|------|------|
+| 后端 API | 5000 | Spring Boot |
+| 主站前端 | 3000 | Vue 3 + Vite |
+| 单词记忆 | 5200 | Vue 3 + Node.js |
+| 博客系统 | 3200 | Next.js |
+| 简历网站 | 3100 | Python HTTP Server |
+| MySQL | 3306 | 数据库 |
+| Redis | 6379 | 缓存 |
+
+### 一键部署
+
+#### Linux/Mac
+```bash
+# 克隆项目
+git clone https://github.com/ChenfromChina123/new_pro.git
+cd new_pro
+
+# 安装依赖并启动
+chmod +x start_all_services.sh
+./start_all_services.sh
+```
+
+#### Windows
+```powershell
+# 克隆项目
+git clone https://github.com/ChenfromChina123/new_pro.git
+cd new_pro
+
+# 启动服务
+optimized_start.bat
+```
+
+### Docker 部署 (推荐)
+
+```yaml
+# docker-compose.yml
+version: '3.8'
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: your_password
+      MYSQL_DATABASE: ai_tutor
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+  
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+  
+  backend:
+    build: ./ai-tutor-system/aispring
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mysql
+      - redis
+  
+  frontend:
+    build: ./ai-tutor-system/vue-app
+    ports:
+      - "3000:3000"
+  
+  blog:
+    build: ./blog/tailwind-nextjs-starter-blog-main
+    ports:
+      - "3200:3200"
+
+volumes:
+  mysql_data:
+```
+
+## 开发指南
+
+### 后端开发
+
+#### 启动后端
+```bash
+cd ai-tutor-system/aispring
+mvn spring-boot:run
+```
+
+#### 构建生产版本
+```bash
+mvn clean package -DskipTests
+java -jar target/ai-tutor-1.0.0.jar
+```
+
+#### 运行测试
+```bash
+mvn test
+```
+
+### 前端开发
+
+#### 主站前端
+```bash
+cd ai-tutor-system/vue-app
+npm install
+npm run dev
+```
+
+#### 单词记忆
+```bash
+cd ai-tutor-system/word-game
+npm install
+npm run dev
+```
+
+#### 博客系统
+```bash
+cd blog/tailwind-nextjs-starter-blog-main
+npm install
+npm run dev
+```
+
+## 性能优化
+
+### 后端优化
+- **数据库连接池**: HikariCP (最大连接数：20)
+- **Redis 缓存**: 热点数据缓存
+- **异步处理**: @Async 注解
+- **分页查询**: Spring Data JPA Pageable
+
+### 前端优化
+- **代码分割**: 路由级代码分割
+- **懒加载**: 图片和组件懒加载
+- **缓存策略**: Service Worker + PWA
+- **构建优化**: Tree Shaking + Minification
+
+### 博客系统优化
+- **静态生成**: SSG (Static Site Generation)
+- **增量静态再生**: ISR
+- **图片优化**: Next.js Image 组件
+- **字体优化**: 本地字体 + preload
+
+## 监控与日志
+
+### 后端日志
+- **框架**: SLF4J + Logback
+- **级别**: DEBUG, INFO, WARN, ERROR
+- **文件**: `logs/aispring.log`
+
+### 前端监控
+- **错误追踪**: Sentry (可选)
+- **性能监控**: Lighthouse
+- **访问统计**: Umami Analytics
+
+## 安全考虑
+
+### 后端安全
+- **SQL 注入**: 参数化查询
+- **XSS 攻击**: 输入验证 + 输出编码
+- **CSRF 攻击**: Token 验证
+- **CORS**: 严格配置允许的来源
+
+### 前端安全
+- **XSS 防护**: Vue/React 自动转义
+- **CSP**: Content Security Policy
+- **依赖检查**: npm audit
+
+## 常见问题
+
+### Q: 如何重置数据库？
+```bash
+# 删除所有表
+mysql -u root -p -e "DROP DATABASE ai_tutor; CREATE DATABASE ai_tutor;"
+
+# 重新运行 Flyway 迁移
+cd ai-tutor-system/aispring
+mvn flyway:migrate
+```
+
+### Q: 前端构建失败？
+```bash
+# 清理缓存
+rm -rf node_modules package-lock.json
+npm install
+
+# 重新构建
+npm run build
+```
+
+### Q: 博客系统中文乱码？
+确保文件编码为 UTF-8，并在 `next.config.js` 中配置：
+```javascript
+module.exports = {
+  i18n: {
+    locales: ['zh-CN', 'en-US'],
+    defaultLocale: 'zh-CN',
+  },
+}
+```
+
+## 贡献指南
+
+欢迎贡献代码！请遵循以下步骤：
+
+1. Fork 本仓库
+2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 开启 Pull Request
+
+## 许可证
+
+本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
+
+## 更新日志
+
+### v2026.03.03
+- ✅ 完善技术文档，添加详细版本信息
+- ✅ 更新博客作者信息为 XiHuiChen
+- ✅ 同步头像到 AISpring 项目风格
+- ✅ 优化中文适配
+
+### v2026.03.02
+- ✅ 添加 IP 自动语言切换功能
+- ✅ 完善博客系统中文适配
+- ✅ 优化启动脚本
+
+## 联系方式
+
+- **作者**: XiHuiChen
+- **邮箱**: 3301767269@qq.com
+- **GitHub**: [@ChenfromChina123](https://github.com/ChenfromChina123)
+- **博客**: [blog.aistudy.icu](https://blog.aistudy.icu)
+- **主站**: [aistudy.icu](https://aistudy.icu)
+
+---
+
+**最后更新时间**: 2026-03-03
