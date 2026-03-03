@@ -9,10 +9,16 @@ set -e
 export LANG=C.UTF-8
 export LC_ALL=C.UTF-8
 
-# 配置 - 使用脚本所在目录（不跟随软链接）
+# 配置 - 使用脚本所在目录（保留软链接路径）
 BLOG_PORT=3200
-# 获取脚本的绝对路径，不跟随软链接
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -P)"
+# 获取脚本所在目录的绝对路径（不解析软链接）
+if [[ "$0" = /* ]]; then
+  # 已经是绝对路径
+  SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+else
+  # 相对路径，转换为绝对路径
+  SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+fi
 BLOG_DIR="$SCRIPT_DIR"
 BLOG_LOG="$BLOG_DIR/blog.log"
 
