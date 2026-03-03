@@ -9,9 +9,11 @@ set -e
 export LANG=C.UTF-8
 export LC_ALL=C.UTF-8
 
-# 配置 - 使用当前工作目录
+# 配置 - 使用脚本所在目录（不跟随软链接）
 BLOG_PORT=3200
-BLOG_DIR="$(pwd)"
+# 获取脚本的绝对路径，不跟随软链接
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -P)"
+BLOG_DIR="$SCRIPT_DIR"
 BLOG_LOG="$BLOG_DIR/blog.log"
 
 # 辅助函数
