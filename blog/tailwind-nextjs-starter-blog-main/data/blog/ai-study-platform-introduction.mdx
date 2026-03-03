@@ -1,0 +1,233 @@
+---
+title: AI Study Platform 项目介绍
+date: 2026-03-03
+tags: ['项目介绍', 'AI', '教育技术', '开源项目']
+draft: false
+summary: 介绍 AI Study Platform - 一个基于人工智能的现代化学习平台，包含单词记忆、在线课程、学习进度追踪等功能
+author: AI Study Team
+---
+
+## 项目概述
+
+**AI Study Platform** 是一个基于人工智能技术的现代化学习平台，致力于为用户提供高效、智能的学习体验。项目采用前后端分离架构，集成了多种先进的 AI 技术和教育工具。
+
+## 核心功能
+
+### 1. 单词记忆系统 📚
+
+基于艾宾浩斯遗忘曲线理论的智能单词记忆系统：
+
+- **智能复习算法**：根据记忆曲线自动安排复习时间
+- **多种学习模式**：拼写练习、选择题、听写模式
+- **进度追踪**：详细的学习数据统计和可视化图表
+- **课程管理**：支持自定义课程包和单词分类
+
+技术栈：
+- 前端：Vue 3 + Vite + Pinia
+- 后端：Node.js + Express
+- 数据库：SQLite
+
+访问地址：`http://localhost:5200/word-game`
+
+### 2. 在线课程系统 🎓
+
+互动式在线学习平台：
+
+- **视频课程**：支持多种视频格式和播放速度调节
+- **实时练习**：学完即练，巩固知识点
+- **学习进度**：自动保存学习进度，支持多设备同步
+- **成就系统**：学习时长统计、排行榜激励
+
+技术栈：
+- 前端：Next.js 15 + React 19 + TailwindCSS
+- 后端：Spring Boot 3 + Java 17
+- 数据库：MySQL
+
+访问地址：`http://localhost:3000`
+
+### 3. 个人简历网站 📄
+
+静态个人简历展示网站：
+
+- 简洁专业的界面设计
+- 响应式布局，适配各种设备
+- 快速加载，SEO 友好
+
+技术栈：
+- HTML5 + CSS3 + JavaScript
+- Python HTTP Server
+
+访问地址：`http://localhost:3100`
+
+### 4. 技术博客系统 📝
+
+基于 Next.js 的技术博客平台：
+
+- **自动语言切换**：根据访问者 IP 自动切换中英文
+- **Markdown 支持**：完整的 Markdown 语法和代码高亮
+- **搜索功能**：全文搜索，快速定位内容
+- **评论系统**：集成 Giscus 评论
+- **SEO 优化**：自动生成 sitemap 和 RSS
+
+技术栈：
+- Next.js 15 + React 19
+- Contentlayer (内容管理)
+- TailwindCSS 4
+
+访问地址：`http://localhost:3200`
+
+## 技术架构
+
+### 后端架构
+
+```
+ai-tutor-system/aispring/
+├── src/main/java/com/aispring/
+│   ├── config/          # 配置类
+│   ├── controller/      # 控制器层
+│   ├── service/         # 业务逻辑层
+│   ├── repository/      # 数据访问层
+│   ├── entity/          # 实体类
+│   └── security/        # 安全认证
+├── pom.xml              # Maven 依赖配置
+└── application.yml      # 应用配置
+```
+
+核心技术：
+- Spring Boot 3.x
+- MyBatis-Plus
+- Spring Security
+- JWT 认证
+- Swagger/OpenAPI 文档
+
+### 前端架构
+
+```
+ai-tutor-system/
+├── vue-app/             # 主站前端 (Vue 3)
+├── aispring/word-game/  # 单词记忆 (Vue 3)
+└── blog/                # 博客系统 (Next.js 15)
+```
+
+核心技术：
+- Vue 3 Composition API
+- Next.js 15 App Router
+- TypeScript
+- TailwindCSS 4
+- Pinia / Zustand 状态管理
+
+## 部署说明
+
+### 环境要求
+
+- **Node.js**: v20.20.0+
+- **Java**: OpenJDK 17+
+- **Maven**: 3.9.6+
+- **Python**: 3.12+
+- **MySQL**: 8.0+
+
+### 一键启动
+
+项目提供了完整的启动脚本：
+
+```bash
+# Linux/Mac
+./start_all_services.sh
+
+# Windows
+optimized_start.bat
+```
+
+启动后访问以下地址：
+
+| 服务 | 端口 | 地址 |
+|------|------|------|
+| 主站前端 | 3000 | http://localhost:3000 |
+| 后端 API | 5000 | http://localhost:5000/swagger-ui.html |
+| 单词记忆 | 5200 | http://localhost:5200 |
+| 简历网站 | 3100 | http://localhost:3100 |
+| 博客系统 | 3200 | http://localhost:3200 |
+
+## 特色功能
+
+### 1. 智能 IP 语言切换 🌍
+
+博客系统集成了 IP 地理位置检测功能：
+
+- 自动识别中国大陆访问者
+- 中文用户显示中文界面
+- 国际用户显示英文界面
+- 多重 API 备份，确保可靠性
+
+实现原理：
+
+```javascript
+// 使用多个免费 IP 地理位置 API
+const checkIP = async () => {
+  // 1. ipapi.co
+  // 2. ip-api.com (备用)
+  // 3. ipwhois.app (备用)
+  // 4. 时区判断 (最终方案)
+}
+```
+
+### 2. 学习进度追踪 📊
+
+完整的学习数据分析：
+
+- 学习时长统计
+- 课程完成度
+- 记忆曲线可视化
+- 成就徽章系统
+
+### 3. 响应式设计 📱
+
+所有应用均支持：
+
+- 桌面端完美适配
+- 平板优化布局
+- 移动端友好界面
+- PWA 离线支持（部分应用）
+
+## 开发团队
+
+**AI Study Team** - 致力于利用人工智能技术提升学习效率和体验
+
+- GitHub: [@ChenfromChina123](https://github.com/ChenfromChina123)
+- 项目地址：[new_pro](https://github.com/ChenfromChina123/new_pro)
+
+## 贡献指南
+
+欢迎贡献代码、报告问题或提出建议：
+
+1. Fork 本仓库
+2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m '添加新功能'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 开启 Pull Request
+
+## 许可证
+
+本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情
+
+## 更新日志
+
+### v2026.03.03
+- ✅ 删除所有示例博客文章
+- ✅ 添加 IP 地理位置检测功能
+- ✅ 实现中英文自动切换
+- ✅ 优化启动脚本，增强依赖检测
+- ✅ 添加博客系统到一键启动
+
+### v2026.03.02
+- ✅ 修复 word-game 构建问题
+- ✅ 优化端口释放逻辑
+- ✅ 改进错误处理机制
+
+---
+
+**相关链接**：
+
+- [项目仓库](https://github.com/ChenfromChina123/new_pro)
+- [在线文档](https://github.com/ChenfromChina123/new_pro/tree/main/ai-tutor-system/aispring)
+- [问题反馈](https://github.com/ChenfromChina123/new_pro/issues)
