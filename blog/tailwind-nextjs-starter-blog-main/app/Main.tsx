@@ -64,7 +64,7 @@ export default function Home({ posts }) {
                           className="text-primary-500 hover:text-primary-600 dark:hover:text-primary-400"
                           aria-label={`Read more: "${title}"`}
                         >
-                          {isChina ? '阅读全文 &rarr;' : 'Read more &rarr;'}
+                          {isChina ? '阅读全文 →' : 'Read more →'}
                         </Link>
                       </div>
                     </div>
@@ -82,7 +82,7 @@ export default function Home({ posts }) {
             className="text-primary-500 hover:text-primary-600 dark:hover:text-primary-400"
             aria-label="All posts"
           >
-            {isChina ? '所有文章 &rarr;' : 'All Posts &rarr;'}
+            {isChina ? '所有文章 →' : 'All Posts →'}
           </Link>
         </div>
       )}
