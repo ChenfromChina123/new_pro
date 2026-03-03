@@ -4,7 +4,7 @@
       <!-- 页面标题 -->
       <div class="mb-12 text-center">
         <h1 class="text-4xl font-bold text-gray-900 dark:text-white sm:text-5xl">关于作者</h1>
-        <p class="mt-4 text-lg text-gray-600 dark:text-gray-300">了解 Earthworm 背后的开发者</p>
+        <p class="mt-4 text-lg text-gray-600 dark:text-gray-300">了解 AISpring 背后的开发者</p>
       </div>
 
       <!-- 作者信息卡片 -->
@@ -16,12 +16,12 @@
               <div
                 class="mb-6 flex h-32 w-32 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-5xl font-bold text-white shadow-lg sm:mb-0 sm:mr-8"
               >
-                林
+                陈
               </div>
 
               <!-- 基本信息 -->
               <div class="text-center sm:text-left">
-                <h2 class="text-3xl font-bold text-gray-900 dark:text-white">林晓枫</h2>
+                <h2 class="text-3xl font-bold text-gray-900 dark:text-white">XiHuiChen</h2>
                 <p class="mt-2 text-xl text-gray-600 dark:text-gray-300">Java 后端开发工程师</p>
                 <p class="mt-1 text-gray-500 dark:text-gray-400">
                   本科在读 | 软件工程 | 专注后端开发与 AI 应用
@@ -125,6 +125,30 @@
               </div>
             </div>
 
+            <!-- 博客链接 -->
+            <div class="mt-12">
+              <h3 class="mb-4 text-2xl font-bold text-gray-900 dark:text-white">技术博客</h3>
+              <div class="rounded-lg bg-gradient-to-r from-blue-50 to-purple-50 p-6 dark:from-blue-900/20 dark:to-purple-900/20">
+                <div class="flex flex-col items-center text-center">
+                  <h4 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                    AI Study Platform 技术博客
+                  </h4>
+                  <p class="text-gray-600 dark:text-gray-300 mb-4">
+                    分享 AI 学习平台开发技术与经验，涵盖 Java、Vue、Spring Boot、AI 应用等技术栈
+                  </p>
+                  <a
+                    href="https://blog.aistudy.icu"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="inline-flex items-center rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-3 font-medium text-white shadow-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-300 transform hover:scale-105"
+                  >
+                    <span class="mr-2">📚</span>
+                    访问技术博客
+                  </a>
+                </div>
+              </div>
+            </div>
+
             <!-- 荣誉奖项 -->
             <div class="mt-12">
               <h3 class="mb-4 text-2xl font-bold text-gray-900 dark:text-white">荣誉奖项</h3>
@@ -161,7 +185,7 @@
               <h3 class="mb-4 text-2xl font-bold text-gray-900 dark:text-white">个人简介</h3>
               <div class="prose max-w-none text-gray-600 dark:text-gray-300">
                 <p>
-                  热爱编程，专注于后端开发和AI应用。作为Earthworm项目的主要开发者，致力于打造高效、易用的学习平台。
+                  热爱编程，专注于后端开发和AI应用。作为AISpring项目的主要开发者，致力于打造高效、易用的学习平台。
                   在校期间积极参与各类编程竞赛，不断提升自己的技术能力和解决问题的思维方式。
                 </p>
                 <p class="mt-4">
@@ -190,6 +214,14 @@
                   title="个人网站"
                 >
                   <span class="text-xl">🌐</span>
+                </a>
+                <a
+                  href="https://blog.aistudy.icu"
+                  target="_blank"
+                  class="text-gray-600 hover:text-blue-500 dark:text-gray-300 dark:hover:text-blue-400"
+                  title="技术博客"
+                >
+                  <span class="text-xl">📚</span>
                 </a>
                 <a
                   href="https://cv.aistudy.icu"
