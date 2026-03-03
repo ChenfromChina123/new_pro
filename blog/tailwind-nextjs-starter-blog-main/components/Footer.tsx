@@ -7,7 +7,7 @@ import { useLanguage } from '@/contexts/LanguageProvider'
 
 export default function Footer() {
   const { isChina } = useLanguage()
-  
+
   return (
     <footer>
       <div className="mt-16 flex flex-col items-center">

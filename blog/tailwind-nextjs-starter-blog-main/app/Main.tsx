@@ -11,7 +11,7 @@ const MAX_DISPLAY = 5
 
 export default function Home({ posts }) {
   const { isChina } = useLanguage()
-  
+
   return (
     <>
       <div className="divide-y divide-gray-200 dark:divide-gray-700">
