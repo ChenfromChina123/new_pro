@@ -9,15 +9,25 @@ import React, { createContext, useContext } from 'react'
 import { useGeoIP } from '@/hooks/useGeoIP'
 import { zhCN, enUS } from '@/data/i18n'
 
-const LanguageContext = createContext(null)
+type Translations = typeof zhCN | typeof enUS
 
-export function LanguageProvider({ children }) {
+interface LanguageContextType {
+  translations: Translations
+  locale: string
+  dir: string
+  loading: boolean
+  isChina?: boolean
+}
+
+const LanguageContext = createContext<LanguageContextType | null>(null)
+
+export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const { isChina, loading } = useGeoIP()
-  
+
   // 根据 IP 选择语言包
-  const translations = isChina ? zhCN : enUS
+  const translations = (isChina ? zhCN : enUS) as Translations
   const locale = isChina ? 'zh-CN' : 'en-US'
-  const dir = isChina ? 'ltr' : 'ltr'
+  const dir = 'ltr'
 
   if (loading) {
     // 加载期间显示简单加载状态

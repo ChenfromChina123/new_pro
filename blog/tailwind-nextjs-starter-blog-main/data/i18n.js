@@ -18,6 +18,7 @@ const zhCN = {
     subtitle: '分享 AI 学习平台开发技术与经验',
     latestPosts: '最新文章',
     viewAll: '查看全部',
+    noPosts: '没有找到文章。',
   },
   // 博客列表
   blog: {
@@ -27,6 +28,8 @@ const zhCN = {
     updatedOn: '更新于',
     readingTime: '分钟阅读',
     tags: '标签',
+    noPosts: '没有找到文章。',
+    allPosts: '所有文章',
   },
   // 文章页面
   post: {
@@ -53,10 +56,26 @@ const zhCN = {
     noResults: '未找到结果',
     search: '搜索',
   },
+  // 标签页面
+  tags: {
+    title: '标签',
+    description: '浏览所有标签',
+    noTags: '暂无标签',
+  },
+  // 订阅
+  newsletter: {
+    title: '订阅我们的通讯',
+    placeholder: '请输入您的邮箱',
+    subscribed: '您已订阅！🎉',
+    button: '订阅',
+    thanks: '谢谢！',
+    invalidEmail: '您的邮箱地址无效或者您已经订阅！',
+  },
   // 页脚
   footer: {
     copyright: '版权所有',
-    poweredBy: 'Powered by',
+    poweredBy: '技术支持',
+    theme: 'Tailwind Nextjs 主题',
   },
 }
 
@@ -75,6 +94,7 @@ const enUS = {
     subtitle: 'Sharing AI learning platform development technologies and experiences',
     latestPosts: 'Latest Posts',
     viewAll: 'View All',
+    noPosts: 'No posts found.',
   },
   // Blog
   blog: {
@@ -84,6 +104,8 @@ const enUS = {
     updatedOn: 'Updated on',
     readingTime: 'min read',
     tags: 'Tags',
+    noPosts: 'No posts found.',
+    allPosts: 'All Posts',
   },
   // Post
   post: {
@@ -110,10 +132,26 @@ const enUS = {
     noResults: 'No results found',
     search: 'Search',
   },
+  // Tags
+  tags: {
+    title: 'Tags',
+    description: 'Browse all tags',
+    noTags: 'No tags found',
+  },
+  // Newsletter
+  newsletter: {
+    title: 'Subscribe to the newsletter',
+    placeholder: 'Enter your email',
+    subscribed: "You're subscribed! 🎉",
+    button: 'Sign up',
+    thanks: 'Thank you!',
+    invalidEmail: 'Your e-mail address is invalid or you are already subscribed!',
+  },
   // Footer
   footer: {
     copyright: 'Copyright',
     poweredBy: 'Powered by',
+    theme: 'Tailwind Nextjs Theme',
   },
 }
 
