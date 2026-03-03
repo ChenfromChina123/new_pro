@@ -127,8 +127,13 @@ fi
 echo ""
 echo "【3/6】构建项目..."
 
-# 清理根目录可能干扰 vite 的缓存
-rm -rf node_modules/.vite node_modules/.vite-temp .vite .vite-temp 2>/dev/null || true
+# 清理根目录可能干扰 vite 的 node_modules 和缓存
+# 根目录不应该有 node_modules，它会干扰子项目的依赖解析
+if [ -d "node_modules" ]; then
+  echo "    清理根目录多余的 node_modules..."
+  rm -rf node_modules
+fi
+rm -rf .vite .vite-temp 2>/dev/null || true
 
 # 主站前端
 if [ -d "ai-tutor-system/vue-app" ]; then
