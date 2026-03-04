@@ -29,11 +29,42 @@ fi
 
 BLOG_LOG="$BLOG_DIR/blog.log"
 
-# 辅助函数
+# 辅助函数 - 获取端口占用的 PID
 get_port_pid() {
-  lsof -ti:"$1" 2>/dev/null | head -n 1
+  local port="$1"
+  local pid=""
+
+  # 方法 1: 使用 ss 命令（推荐）
+  if command -v ss >/dev/null 2>&1; then
+    pid=$(ss -tlnp 2>/dev/null | grep ":${port} " | grep -oP 'pid=\K[0-9]+' | head -n 1)
+  fi
+
+  # 方法 2: 使用 lsof 命令
+  if [ -z "$pid" ] && command -v lsof >/dev/null 2>&1; then
+    pid=$(lsof -ti:"$port" 2>/dev/null | head -n 1)
+  fi
+
+  # 方法 3: 使用 netstat 命令
+  if [ -z "$pid" ] && command -v netstat >/dev/null 2>&1; then
+    pid=$(netstat -tlnp 2>/dev/null | grep ":${port} " | awk '{print $7}' | cut -d'/' -f1 | head -n 1)
+  fi
+
+  # 方法 4: 使用 fuser 命令
+  if [ -z "$pid" ] && command -v fuser >/dev/null 2>&1; then
+    pid=$(fuser "${port}/tcp" 2>/dev/null | awk '{print $1}')
+  fi
+
+  echo "$pid"
 }
 
+# 检查端口是否被占用
+is_port_used() {
+  local port="$1"
+  local pid=$(get_port_pid "$port")
+  [ -n "$pid" ]
+}
+
+# 等待端口就绪
 wait_for_port() {
   local port="$1"
   local name="${2:-服务}"
@@ -41,7 +72,7 @@ wait_for_port() {
   local count=0
 
   while [ $count -lt $timeout ]; do
-    if [ -n "$(get_port_pid "$port")" ]; then
+    if is_port_used "$port"; then
       return 0
     fi
     sleep 1
