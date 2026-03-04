@@ -9,9 +9,9 @@ set -e
 export LANG=C.UTF-8
 export LC_ALL=C.UTF-8
 
-# 配置 - 使用脚本所在目录（保留软链接路径）
+# 配置 - 使用脚本所在目录
 BLOG_PORT=3200
-# 获取脚本所在目录的绝对路径（不解析软链接）
+# 获取脚本所在目录的绝对路径（不跟随软链接）
 if [[ "$0" = /* ]]; then
   # 已经是绝对路径
   SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -19,7 +19,14 @@ else
   # 相对路径，转换为绝对路径
   SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 fi
-BLOG_DIR="$SCRIPT_DIR"
+
+# 检查是否有 tailwind-nextjs-starter-blog-main 子目录
+if [ -d "$SCRIPT_DIR/tailwind-nextjs-starter-blog-main" ]; then
+  BLOG_DIR="$SCRIPT_DIR/tailwind-nextjs-starter-blog-main"
+else
+  BLOG_DIR="$SCRIPT_DIR"
+fi
+
 BLOG_LOG="$BLOG_DIR/blog.log"
 
 # 辅助函数
