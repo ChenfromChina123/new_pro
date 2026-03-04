@@ -96,33 +96,57 @@ else
   npm run build
 fi
 
-# 检查端口
+# 检查并释放端口
+echo "🔍 检测端口 $BLOG_PORT..."
 BLOG_PID=$(get_port_pid "$BLOG_PORT")
 if [ -n "$BLOG_PID" ]; then
-  echo "✅ 博客系统已在运行（端口 $BLOG_PORT, PID: $BLOG_PID）"
-  echo ""
-  echo "访问地址：http://localhost:$BLOG_PORT"
-  echo "=========================================="
-  exit 0
+  echo "⚠️  端口 $BLOG_PORT 已被占用 (PID: $BLOG_PID)"
+  echo " 正在停止旧进程..."
+
+  # 停止进程
+  kill -15 "$BLOG_PID" 2>/dev/null || true
+
+  # 等待进程完全停止
+  echo "⏳ 等待进程停止..."
+  for i in {1..10}; do
+    if [ -z "$(get_port_pid "$BLOG_PORT")" ]; then
+      break
+    fi
+    sleep 1
+  done
+
+  # 如果还在运行，强制停止
+  if [ -n "$(get_port_pid "$BLOG_PORT")" ]; then
+    echo "⚠️  进程未响应，强制终止..."
+    kill -9 "$BLOG_PID" 2>/dev/null || true
+    sleep 2
+  fi
+
+  # 检查是否还有其他进程占用
+  OTHER_PIDS=$(lsof -ti:"$BLOG_PORT" 2>/dev/null)
+  if [ -n "$OTHER_PIDS" ]; then
+    echo "⚠️  发现其他占用进程，一并终止..."
+    echo "$OTHER_PIDS" | xargs -r kill -9 2>/dev/null || true
+    sleep 2
+  fi
+
+  # 最终检查
+  if [ -n "$(get_port_pid "$BLOG_PORT")" ]; then
+    echo "❌ 无法释放端口 $BLOG_PORT，请手动处理"
+    echo "   当前占用进程：$(get_port_pid "$BLOG_PORT")"
+    exit 1
+  else
+    echo "✅ 端口 $BLOG_PORT 已释放"
+  fi
+else
+  echo "✅ 端口 $BLOG_PORT 空闲"
 fi
 
-# 释放端口（如果有残留）
-echo "🔍 检测端口 $BLOG_PORT..."
-if [ -n "$BLOG_PID" ]; then
-  echo "⚠️  端口 $BLOG_PORT 已被占用 (PID: $BLOG_PID)，正在终止..."
-  kill -9 "$BLOG_PID" 2>/dev/null || true
-  sleep 2
-  # 再次检查并尝试强制释放
-  if [ -n "$(get_port_pid "$BLOG_PORT")" ]; then
-    echo "    尝试强制终止所有占用进程..."
-    lsof -ti:"$BLOG_PORT" 2>/dev/null | xargs -r kill -9 2>/dev/null || true
-    sleep 1
-  fi
-  if [ -n "$(get_port_pid "$BLOG_PORT")" ]; then
-    echo "❌ 无法释放端口 $BLOG_PORT，但将继续尝试启动..."
-  else
-    echo "✅ 已释放端口 $BLOG_PORT"
-  fi
+# 确认端口已释放
+sleep 1
+if [ -n "$(get_port_pid "$BLOG_PORT")" ]; then
+  echo "❌ 端口 $BLOG_PORT 仍然被占用，无法启动"
+  exit 1
 fi
 
 # 启动服务
