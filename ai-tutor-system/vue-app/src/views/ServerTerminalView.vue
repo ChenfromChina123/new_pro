@@ -638,11 +638,14 @@ onUnmounted(() => {
 <style scoped>
 .server-terminal-view {
   padding: 20px;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .page-title {
   color: #333;
   margin-bottom: 30px;
+  font-size: 24px;
 }
 
 .content-container {
@@ -668,8 +671,8 @@ onUnmounted(() => {
   border-radius: 6px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 10px;
   transition: all 0.3s ease;
   cursor: pointer;
 }
@@ -689,6 +692,7 @@ onUnmounted(() => {
 .server-info h3 {
   margin: 0 0 5px 0;
   color: #333;
+  font-size: 16px;
 }
 
 .server-info p {
@@ -699,7 +703,8 @@ onUnmounted(() => {
 
 .server-actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .btn {
@@ -709,6 +714,7 @@ onUnmounted(() => {
   cursor: pointer;
   font-size: 14px;
   transition: all 0.3s ease;
+  white-space: nowrap;
 }
 
 .btn-primary {
@@ -730,20 +736,11 @@ onUnmounted(() => {
 }
 
 .btn-secondary {
-  background: #9e9e9e;
-  color: white;
-}
-
-.btn-secondary:hover {
-  background: #757575;
-}
-
-.btn-success {
   background: #2196F3;
   color: white;
 }
 
-.btn-success:hover {
+.btn-secondary:hover {
   background: #0b7dda;
 }
 
@@ -751,6 +748,283 @@ onUnmounted(() => {
   background: white;
   padding: 20px;
   border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.add-server-form h3 {
+  margin: 0 0 15px 0;
+  color: #333;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  color: #666;
+  font-size: 14px;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.terminal-section {
+  background: #1e1e1e;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 500px;
+}
+
+.terminal-header {
+  background: #2d2d2d;
+  padding: 15px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.terminal-header h2 {
+  margin: 0;
+  color: #f0f0f0;
+  font-size: 18px;
+}
+
+.terminal-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.status {
+  padding: 5px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.status.connected {
+  background: #4CAF50;
+  color: white;
+}
+
+.status.disconnected {
+  background: #f44336;
+  color: white;
+}
+
+.terminal-container {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.terminal-placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #888;
+  font-size: 18px;
+  padding: 20px;
+  text-align: center;
+}
+
+.terminal-output {
+  flex: 1;
+  background: #1e1e1e;
+  padding: 20px;
+  font-family: 'Courier New', 'Monaco', 'Consolas', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  outline: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.terminal-output:focus {
+  outline: none;
+}
+
+.prompt {
+  color: #4CAF50;
+  font-weight: bold;
+  margin-right: 8px;
+}
+
+.cursor {
+  color: #f0f0f0;
+}
+
+.cursor-blink {
+  color: #4CAF50;
+  animation: blink 1s step-end infinite;
+  font-weight: bold;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.terminal-output::-webkit-scrollbar {
+  width: 8px;
+}
+
+.terminal-output::-webkit-scrollbar-track {
+  background: #2d2d2d;
+}
+
+.terminal-output::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 4px;
+}
+
+.terminal-output::-webkit-scrollbar-thumb:hover {
+  background: #666;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .server-terminal-view {
+    padding: 10px;
+  }
+
+  .page-title {
+    font-size: 20px;
+    margin-bottom: 20px;
+  }
+
+  .content-container {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .servers-section {
+    padding: 15px;
+  }
+
+  .server-item {
+    padding: 12px;
+  }
+
+  .server-info h3 {
+    font-size: 15px;
+  }
+
+  .server-info p {
+    font-size: 13px;
+  }
+
+  .server-actions {
+    gap: 6px;
+  }
+
+  .btn {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  .add-server-form {
+    padding: 15px;
+  }
+
+  .add-server-form h3 {
+    font-size: 16px;
+  }
+
+  .form-group input {
+    padding: 8px;
+    font-size: 13px;
+  }
+
+  .terminal-section {
+    min-height: 400px;
+  }
+
+  .terminal-header {
+    padding: 12px 15px;
+  }
+
+  .terminal-header h2 {
+    font-size: 16px;
+  }
+
+  .terminal-output {
+    padding: 15px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+}
+
+@media (max-width: 480px) {
+  .server-terminal-view {
+    padding: 8px;
+  }
+
+  .page-title {
+    font-size: 18px;
+    margin-bottom: 15px;
+  }
+
+  .servers-section {
+    padding: 12px;
+  }
+
+  .server-item {
+    padding: 10px;
+  }
+
+  .server-info h3 {
+    font-size: 14px;
+  }
+
+  .server-info p {
+    font-size: 12px;
+  }
+
+  .server-actions {
+    gap: 4px;
+  }
+
+  .btn {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+
+  .terminal-section {
+    min-height: 350px;
+  }
+
+  .terminal-header {
+    padding: 10px 12px;
+  }
+
+  .terminal-header h2 {
+    font-size: 15px;
+  }
+
+  .terminal-output {
+    padding: 12px;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+}
+</style>
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
