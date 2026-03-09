@@ -88,6 +88,7 @@
             tabindex="0"
             @click="focusTerminal"
             @keydown="handleKeyDown"
+            @keyup="handleKeyUp"
           >
             <div v-html="getTerminalContent()"></div>
           </div>
@@ -124,9 +125,11 @@ const commandHistory = ref([])
 const commandHistoryIndex = ref(-1)
 const terminalOutput = ref('')
 
-// WebSocket连接
+// WebSocket 连接
 let ws = null
 const wsConnected = ref(false)
+// 防止 Ctrl 键重复触发
+let ctrlKeyPressed = false
 
 // API基础URL（Spring Boot后端）
 const API_BASE = '/api/server-terminal'
@@ -337,8 +340,9 @@ const handleKeyDown = (event) => {
     event.preventDefault()
   }
 
-  // 处理 Ctrl 组合键
-  if (event.ctrlKey) {
+  // 处理 Ctrl 组合键（只在第一次按下时触发）
+  if (event.ctrlKey && !ctrlKeyPressed) {
+    ctrlKeyPressed = true
     switch (event.key.toLowerCase()) {
       case 'c':
         // Ctrl+C - 中断当前命令
@@ -430,9 +434,7 @@ const handleKeyDown = (event) => {
         break
 
       default:
-        // 其他 Ctrl 组合键，发送对应的控制字符
-        const controlChar = String.fromCharCode(event.key.charCodeAt(0) - 96)
-        sendControlCharacter(controlChar)
+        // 其他 Ctrl 组合键，不发送任何字符（避免单独按 Ctrl 时发送）
         break
     }
     return
@@ -455,6 +457,13 @@ const handleKeyDown = (event) => {
     // 普通字符输入
     currentCommand.value += event.key
     // console.log('输入字符:', event.key, '当前命令:', currentCommand.value)
+  }
+}
+
+// 处理键盘释放
+const handleKeyUp = (event) => {
+  if (event.key === 'Control') {
+    ctrlKeyPressed = false
   }
 }
 

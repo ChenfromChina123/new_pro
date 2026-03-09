@@ -16,38 +16,38 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "server_connections")
 public class ServerConnection {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
+
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
     @JsonIgnore
     private User user;
-    
+
     @Column(name = "server_name", nullable = false)
     private String serverName;
-    
+
     @Column(name = "host", nullable = false)
     private String host;
-    
+
     @Column(name = "username", nullable = false)
     private String username;
-    
+
     @JsonIgnore
     @Column(name = "password", nullable = false)
     private String password;
-    
+
     @Column(name = "port", nullable = false, columnDefinition = "int default 22")
     private Integer port;
-    
+
     @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     private LocalDateTime createdAt;
-    
+
     @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
     private LocalDateTime updatedAt;
-    
+
     // 构造函数
     public ServerConnection(User user, String serverName, String host, String username, String password, Integer port) {
         this.user = user;

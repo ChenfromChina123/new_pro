@@ -135,7 +135,7 @@ const router = createRouter({
 // 路由守卫
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
-  
+
   const t = authStore.token
   let expired = false
   if (t) {
@@ -147,13 +147,13 @@ router.beforeEach((to, from, next) => {
       expired = !!(payload && payload.exp && payload.exp * 1000 <= Date.now())
     } catch { }
   }
-  
+
   if (expired) {
     authStore.logout()
     next({ name: 'Login' })
     return
   }
-  
+
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     next({ name: 'Login' })
   } else if (to.meta.requiresGuest && authStore.isAuthenticated) {

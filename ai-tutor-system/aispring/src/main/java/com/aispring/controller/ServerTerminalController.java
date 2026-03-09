@@ -21,9 +21,9 @@ import java.util.List;
 @RequestMapping("/api/server-terminal")
 @RequiredArgsConstructor
 public class ServerTerminalController {
-    
+
     private final ServerTerminalService serverTerminalService;
-    
+
     /**
      * 获取用户的服务器列表
      */
@@ -32,7 +32,7 @@ public class ServerTerminalController {
         List<ServerConnection> servers = serverTerminalService.getServers(user.getId());
         return ResponseEntity.ok(ApiResponse.success("获取服务器列表成功", servers));
     }
-    
+
     /**
      * 添加服务器
      */
@@ -50,18 +50,18 @@ public class ServerTerminalController {
         System.out.println("username: " + username);
         System.out.println("password: " + password);
         System.out.println("port: " + port);
-        
+
         ServerConnection server = serverTerminalService.addServer(
-                user.getId(), 
-                serverName, 
-                host, 
-                username, 
-                password, 
+                user.getId(),
+                serverName,
+                host,
+                username,
+                password,
                 port
         );
         return ResponseEntity.ok(ApiResponse.success("添加服务器成功", server));
     }
-    
+
     /**
      * 删除服务器
      */
@@ -72,7 +72,7 @@ public class ServerTerminalController {
         serverTerminalService.deleteServer(user.getId(), serverId);
         return ResponseEntity.ok(ApiResponse.success("删除服务器成功", null));
     }
-    
+
     /**
      * 连接服务器
      */
@@ -83,7 +83,7 @@ public class ServerTerminalController {
         String message = serverTerminalService.connectServer(user.getId(), serverId);
         return ResponseEntity.ok(ApiResponse.success(message, message));
     }
-    
+
     /**
      * 断开服务器连接
      */
@@ -94,7 +94,7 @@ public class ServerTerminalController {
         serverTerminalService.disconnectServer(user.getId(), serverId);
         return ResponseEntity.ok(ApiResponse.success("断开连接成功", null));
     }
-    
+
     /**
      * 执行命令
      */
@@ -106,7 +106,7 @@ public class ServerTerminalController {
         ServerCommandExecution execution = serverTerminalService.executeCommand(user.getId(), serverId, command);
         return ResponseEntity.ok(ApiResponse.success("执行命令成功", execution));
     }
-    
+
     /**
      * 获取命令执行结果
      */
@@ -117,7 +117,7 @@ public class ServerTerminalController {
         ServerCommandExecution execution = serverTerminalService.getExecutionResult(user.getId(), executionId);
         return ResponseEntity.ok(ApiResponse.success("获取执行结果成功", execution));
     }
-    
+
     /**
      * 获取服务器的命令执行历史
      */

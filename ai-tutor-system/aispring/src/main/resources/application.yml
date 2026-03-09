@@ -4,11 +4,11 @@ spring:
       request-timeout: 300000 # 5 minutes
   application:
     name: ai-smart-tutor
-  
+
   # Jackson JSON 序列化配置（将下划线转为驼峰）
   jackson:
     property-naming-strategy: LOWER_CAMEL_CASE  # 使用驼峰命名（默认）
-  
+
   # 触发DevTools重启
   # 禁用 GraphQL
   graphql:
@@ -18,7 +18,7 @@ spring:
     exclude:
       - org.springframework.boot.autoconfigure.graphql.GraphQlAutoConfiguration
       - org.springframework.boot.autoconfigure.graphql.servlet.GraphQlWebMvcAutoConfiguration
-  
+
   # 数据库配置（极致优化：最小化连接池以大幅降低内存占用）
   datasource:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:ipv6_education}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&cachePrepStmts=true&prepStmtCacheSize=100&prepStmtCacheSqlLimit=1024
@@ -32,7 +32,7 @@ spring:
       connection-timeout: 30000
       max-lifetime: 1800000
       leak-detection-threshold: 60000
-  
+
   # Flyway 配置
   flyway:
     enabled: true
@@ -57,7 +57,7 @@ spring:
         "[cache.use_second_level_cache]": false
         "[cache.use_query_cache]": false
     open-in-view: false
-  
+
   # Redis配置 - 用于Session状态存储（极致优化：最小化连接池）
   data:
     redis:
@@ -73,7 +73,7 @@ spring:
           min-idle: 1
           max-wait: 3000ms
         shutdown-timeout: 200ms
-  
+
   # 文件上传配置（优化：不限制上传时间，基于大小限制，提高临时文件阈值以减少磁盘IO）
   servlet:
     multipart:
@@ -82,7 +82,7 @@ spring:
       max-request-size: 1000MB
       file-size-threshold: 10MB
       # 使用流式处理，避免将整个文件加载到内存
-  
+
   # 邮件配置
   mail:
     host: smtp.qq.com
@@ -98,7 +98,7 @@ spring:
             required: true
           ssl:
             trust: smtp.qq.com
-  
+
   # 热部署配置 (生产环境默认禁用)
   devtools:
     restart:
@@ -111,7 +111,7 @@ spring:
     livereload:
       enabled: false
     add-properties: true
-  
+
   # Spring AI配置 - DeepSeek (兼容OpenAI API)
   ai:
     openai:

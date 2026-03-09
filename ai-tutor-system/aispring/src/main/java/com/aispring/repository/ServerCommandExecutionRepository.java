@@ -12,22 +12,22 @@ import java.util.List;
  */
 @Repository
 public interface ServerCommandExecutionRepository extends JpaRepository<ServerCommandExecution, Long> {
-    
+
     /**
      * 根据用户查找命令执行记录
      */
     List<ServerCommandExecution> findByUser(User user);
-    
+
     /**
      * 根据用户ID查找命令执行记录
      */
     List<ServerCommandExecution> findByUserId(Long userId);
-    
+
     /**
      * 根据服务器ID查找命令执行记录
      */
     List<ServerCommandExecution> findByServerId(Long serverId);
-    
+
     /**
      * 根据用户ID和服务器ID查找命令执行记录
      */
