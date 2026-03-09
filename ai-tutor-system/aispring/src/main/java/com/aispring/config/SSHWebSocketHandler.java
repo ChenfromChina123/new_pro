@@ -135,6 +135,8 @@ public class SSHWebSocketHandler extends TextWebSocketHandler {
                 if (existingOutputStream != null) {
                     outputStreams.put(session.getId(), existingOutputStream);
                 }
+                // 复用现有通道
+                channels.put(session.getId(), existingChannel);
                 log.info("复用连接成功：oldSessionId={}, newSessionId={}", existingSessionId, session.getId());
                 return;
             }
