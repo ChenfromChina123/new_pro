@@ -694,37 +694,35 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* 主容器 - 深色主题 */
+/* 引入等宽字体 */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* 主容器 - 更深邃的底色 */
 .server-terminal-view {
-  background-color: #0f111a;
+  background-color: #0b0e14;
   padding: 0;
   height: 100vh;
   overflow: hidden;
-  color: #e0e0e0;
+  color: #eff1f5;
+  display: flex;
+  flex-direction: column;
 }
 
 .page-title {
-  color: #e0e0e0;
-  margin: 0;
-  padding: 20px;
-  font-size: 16px;
-  font-weight: 600;
-  background: #1a1c25;
-  border-bottom: 1px solid #2d313d;
   display: none;
 }
 
 .content-container {
-  display: grid;
-  grid-template-columns: 280px 1fr;
+  display: flex;
+  height: 100vh;
   gap: 0;
-  height: calc(100vh - 0px);
 }
 
 .servers-section {
-  background: #1a1c25;
-  padding: 0;
-  border-right: 1px solid #2d313d;
+  background: #151921;
+  border-right: 1px solid #282c34;
+  width: 280px;
+  min-width: 280px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -738,13 +736,13 @@ onUnmounted(() => {
 .servers-list h2 {
   margin: 0;
   padding: 15px 20px;
-  color: #888;
-  font-size: 12px;
+  color: #6b7280;
+  font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 1px;
-  background: #1a1c25;
-  border-bottom: 1px solid #2d313d;
+  letter-spacing: 1.2px;
+  background: #151921;
+  border-bottom: 1px solid #1e222a;
   position: sticky;
   top: 0;
   z-index: 10;
@@ -752,40 +750,43 @@ onUnmounted(() => {
 
 .server-item {
   background: transparent;
-  padding: 12px 20px;
-  border-bottom: 1px solid #2d313d;
+  padding: 15px 20px;
+  border: none;
+  border-left: 3px solid transparent;
+  border-bottom: 1px solid #1e222a;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   cursor: pointer;
 }
 
 .server-item:hover {
-  background: #232732;
+  background: #1e222a;
 }
 
 .server-item.selected {
-  background: #232732;
-  border-left: 3px solid #3498db;
+  background: #1e222a;
+  border-left-color: #3b82f6;
 }
 
 .server-item.connected {
-  border-left: 3px solid #2ecc71;
+  border-left-color: #10b981;
 }
 
 .server-info h3 {
   margin: 0 0 4px 0;
-  color: #e0e0e0;
-  font-size: 14px;
-  font-weight: 600;
-  font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+  color: #eff1f5;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', monospace;
 }
 
 .server-info p {
   margin: 0;
-  color: #888;
+  color: #6b7280;
   font-size: 12px;
+  font-family: 'JetBrains Mono', monospace;
 }
 
 .server-actions {
@@ -795,42 +796,43 @@ onUnmounted(() => {
 }
 
 .btn {
-  padding: 6px 12px;
+  padding: 5px 10px;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 12px;
-  transition: all 0.2s ease;
+  font-size: 11px;
+  transition: all 0.15s ease;
   font-weight: 500;
+  font-family: 'JetBrains Mono', monospace;
 }
 
 .btn-primary {
-  background: #3498db;
+  background: #3b82f6;
   color: white;
 }
 
 .btn-primary:hover {
-  background: #2980b9;
+  background: #2563eb;
   transform: translateY(-1px);
 }
 
 .btn-danger {
-  background: #e74c3c;
+  background: #ef4444;
   color: white;
 }
 
 .btn-danger:hover {
-  background: #c0392b;
+  background: #dc2626;
   transform: translateY(-1px);
 }
 
 .btn-secondary {
-  background: #34495e;
-  color: #bdc3c7;
+  background: #374151;
+  color: #9ca3af;
 }
 
 .btn-secondary:hover {
-  background: #2c3e50;
+  background: #4b5563;
   transform: translateY(-1px);
 }
 
@@ -868,33 +870,35 @@ onUnmounted(() => {
 
 /* 终端区域 - macOS 风格 */
 .terminal-section {
-  background: #0f111a;
+  background: #0b0e14;
   border-radius: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   height: 100%;
-  border: 1px solid #2d313d;
+  padding: 12px;
 }
 
 .terminal-header {
-  background: #1a1c25;
-  padding: 12px 20px;
+  background: #1e222a;
+  padding: 0 15px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
   gap: 10px;
-  color: #e0e0e0;
-  border-bottom: 1px solid #2d313d;
+  color: #eff1f5;
+  border-bottom: 1px solid #282c34;
   position: relative;
+  height: 32px;
+  border-radius: 8px 8px 0 0;
 }
 
 /* macOS 风格的三个小圆点 */
 .terminal-header::before {
   content: '';
   position: absolute;
-  left: 20px;
+  left: 12px;
   top: 50%;
   transform: translateY(-50%);
   display: flex;
@@ -904,21 +908,23 @@ onUnmounted(() => {
 .terminal-header::after {
   content: '● ● ●';
   position: absolute;
-  left: 20px;
+  left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 10px;
-  letter-spacing: 4px;
+  font-size: 9px;
+  letter-spacing: 2px;
   color: #ff5f56;
-  text-shadow: 16px 0 #ffbd2e, 32px 0 #27c93f;
+  text-shadow: 11px 0 #ffbd2e, 22px 0 #27c93f;
+  opacity: 0.8;
 }
 
 .terminal-header h2 {
   margin: 0;
-  color: #e0e0e0;
-  font-size: 14px;
+  color: #eff1f5;
+  font-size: 13px;
   font-weight: 500;
   padding-left: 60px;
+  font-family: 'JetBrains Mono', monospace;
 }
 
 .terminal-status {
@@ -928,19 +934,20 @@ onUnmounted(() => {
 }
 
 .status {
-  padding: 4px 10px;
-  border-radius: 4px;
-  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  font-size: 11px;
   font-weight: 500;
+  font-family: 'JetBrains Mono', monospace;
 }
 
 .status.connected {
-  background: #2ecc71;
+  background: #10b981;
   color: white;
 }
 
 .status.disconnected {
-  background: #e74c3c;
+  background: #ef4444;
   color: white;
 }
 
@@ -949,6 +956,10 @@ onUnmounted(() => {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  background: #0b0e14;
+  border-radius: 0 0 8px 8px;
+  border: 1px solid #282c34;
+  border-top: none;
 }
 
 .terminal-placeholder {
@@ -956,25 +967,26 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #888;
-  font-size: 18px;
+  color: #6b7280;
+  font-size: 14px;
   padding: 20px;
   text-align: center;
+  font-family: 'JetBrains Mono', monospace;
 }
 
 .terminal-output {
   flex: 1;
-  background: #1e1e1e;
-  padding: 20px;
-  font-family: 'Courier New', 'Monaco', 'Consolas', monospace;
-  font-size: 14px;
+  background: #0b0e14;
+  padding: 15px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 13px;
   line-height: 1.6;
   overflow-y: auto;
   white-space: pre-wrap;
   word-wrap: break-word;
   outline: none;
   -webkit-overflow-scrolling: touch;
-  color: #f0f0f0;
+  color: #eff1f5;
 }
 
 .terminal-output:focus {
@@ -1143,104 +1155,108 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.75);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
   padding: 20px;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(8px);
 }
 
 .modal-content {
-  background: #1a1c25;
+  background: #151921;
   border-radius: 8px;
   width: 100%;
-  max-width: 480px;
+  max-width: 440px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-  border: 1px solid #2d313d;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  border: 1px solid #282c34;
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px;
-  border-bottom: 1px solid #2d313d;
+  padding: 16px 20px;
+  border-bottom: 1px solid #282c34;
 }
 
 .modal-header h2 {
   margin: 0;
-  color: #e0e0e0;
-  font-size: 16px;
+  color: #eff1f5;
+  font-size: 15px;
   font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
 }
 
 .close-btn {
   background: none;
   border: none;
-  font-size: 20px;
-  color: #888;
+  font-size: 18px;
+  color: #6b7280;
   cursor: pointer;
   padding: 0;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 4px;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 
 .close-btn:hover {
-  background: #2d313d;
-  color: #e0e0e0;
+  background: #282c34;
+  color: #eff1f5;
 }
 
 .modal-content .form-group {
   padding: 0 20px;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
 .modal-content .form-group:first-of-type {
-  margin-top: 20px;
+  margin-top: 16px;
 }
 
 .modal-content label {
-  color: #b0b0b0;
-  font-size: 13px;
+  color: #9ca3af;
+  font-size: 12px;
   font-weight: 500;
   margin-bottom: 6px;
+  font-family: 'JetBrains Mono', monospace;
 }
 
 .modal-content input {
-  background: #0f111a;
-  border: 1px solid #2d313d;
-  color: #e0e0e0;
+  background: #0b0e14;
+  border: 1px solid #282c34;
+  color: #eff1f5;
   padding: 10px 12px;
   border-radius: 4px;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
 }
 
 .modal-content input:focus {
-  border-color: #3498db;
+  border-color: #3b82f6;
   outline: none;
-  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
 .modal-content input::placeholder {
-  color: #666;
+  color: #4b5563;
 }
 
 .modal-actions {
   display: flex;
   gap: 10px;
-  padding: 20px;
-  border-top: 1px solid #2d313d;
+  padding: 16px 20px;
+  border-top: 1px solid #282c34;
   justify-content: flex-end;
-  background: #1a1c25;
+  background: #151921;
 }
 
 .modal-actions .btn {
@@ -1258,15 +1274,16 @@ onUnmounted(() => {
     min-height: 100vh;
   }
 
-  .page-title {
-    font-size: 20px;
-    margin-bottom: 15px;
+  .content-container {
+    flex-direction: column;
+    height: auto;
   }
 
-  .content-container {
-    grid-template-columns: 1fr;
-    gap: 0;
-    height: auto;
+  .servers-section {
+    width: 100%;
+    min-width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #282c34;
   }
 
   .content-container.servers-hidden .servers-section {
@@ -1274,15 +1291,7 @@ onUnmounted(() => {
   }
 
   .content-container.servers-hidden .terminal-section {
-    grid-row: 1;
     min-height: 80vh;
-  }
-
-  .servers-section {
-    padding: 0;
-    order: 2;
-    border-right: none;
-    border-bottom: 1px solid #2d313d;
   }
 
   .server-item {
@@ -1290,11 +1299,11 @@ onUnmounted(() => {
   }
 
   .server-info h3 {
-    font-size: 14px;
+    font-size: 13px;
   }
 
   .server-info p {
-    font-size: 12px;
+    font-size: 11px;
   }
 
   .server-actions {
@@ -1302,27 +1311,28 @@ onUnmounted(() => {
   }
 
   .btn {
-    padding: 6px 10px;
-    font-size: 12px;
+    padding: 5px 8px;
+    font-size: 11px;
   }
 
   .terminal-section {
     min-height: 60vh;
-    order: 1;
+    padding: 8px;
   }
 
   .terminal-header {
-    padding: 12px 15px;
+    height: 32px;
+    padding: 0 12px;
   }
 
   .terminal-header h2 {
-    font-size: 14px;
+    font-size: 12px;
     padding-left: 50px;
   }
 
   .terminal-output {
-    padding: 15px;
-    font-size: 13px;
+    padding: 12px;
+    font-size: 12px;
     line-height: 1.5;
   }
 }
@@ -1332,14 +1342,9 @@ onUnmounted(() => {
     padding: 0;
   }
 
-  .page-title {
-    font-size: 18px;
-    margin-bottom: 10px;
-  }
-
   .mobile-toggle {
     padding: 10px;
-    font-size: 14px;
+    font-size: 12px;
   }
 
   .servers-section {
@@ -1351,11 +1356,11 @@ onUnmounted(() => {
   }
 
   .server-info h3 {
-    font-size: 13px;
+    font-size: 12px;
   }
 
   .server-info p {
-    font-size: 11px;
+    font-size: 10px;
   }
 
   .server-actions {
@@ -1363,26 +1368,28 @@ onUnmounted(() => {
   }
 
   .btn {
-    padding: 5px 8px;
-    font-size: 11px;
+    padding: 4px 7px;
+    font-size: 10px;
   }
 
   .terminal-section {
     min-height: 70vh;
+    padding: 6px;
   }
 
   .terminal-header {
-    padding: 10px 12px;
+    height: 30px;
+    padding: 0 10px;
   }
 
   .terminal-header h2 {
-    font-size: 13px;
+    font-size: 11px;
     padding-left: 45px;
   }
 
   .terminal-output {
-    padding: 12px;
-    font-size: 12px;
+    padding: 10px;
+    font-size: 11px;
     line-height: 1.4;
   }
 }
