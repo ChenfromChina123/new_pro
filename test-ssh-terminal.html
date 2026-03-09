@@ -76,21 +76,21 @@
 <body>
     <div class="container">
         <h1>SSH终端测试页面</h1>
-        
+
         <div class="controls">
             <button id="connectBtn" onclick="connect()">连接服务器</button>
             <button id="disconnectBtn" onclick="disconnect()" disabled>断开连接</button>
             <button onclick="clearTerminal()">清空终端</button>
         </div>
-        
+
         <div class="status">
             状态: <span id="status" class="disconnected">未连接</span>
         </div>
-        
+
         <div class="terminal" id="terminal">
             等待连接...
         </div>
-        
+
         <div class="controls" style="margin-top: 10px;">
             <input type="text" id="commandInput" placeholder="输入命令..." onkeypress="handleKeyPress(event)" disabled>
             <button id="sendBtn" onclick="sendCommand()" disabled>发送</button>
@@ -101,20 +101,20 @@
         let ws = null;
         const serverId = 1; // 服务器ID
         const userId = 1; // 用户ID
-        
+
         function appendOutput(text) {
             const terminal = document.getElementById('terminal');
             terminal.innerHTML += text;
             terminal.scrollTop = terminal.scrollHeight;
         }
-        
+
         function updateStatus(connected) {
             const status = document.getElementById('status');
             const connectBtn = document.getElementById('connectBtn');
             const disconnectBtn = document.getElementById('disconnectBtn');
             const commandInput = document.getElementById('commandInput');
             const sendBtn = document.getElementById('sendBtn');
-            
+
             if (connected) {
                 status.textContent = '已连接';
                 status.className = 'connected';
@@ -132,33 +132,33 @@
                 sendBtn.disabled = true;
             }
         }
-        
+
         function connect() {
             if (ws && ws.readyState === WebSocket.OPEN) {
                 appendOutput('\r\n已经连接，请先断开\r\n');
                 return;
             }
-            
+
             appendOutput('\r\n正在连接到服务器...\r\n');
-            
+
             // 使用相对路径或完整URL
             const wsUrl = `ws://localhost:5000/ws/terminal/${serverId}`;
             console.log('WebSocket URL:', wsUrl);
-            
+
             ws = new WebSocket(wsUrl);
-            
+
             ws.onopen = () => {
                 console.log('WebSocket 已打开');
                 appendOutput('WebSocket 连接已建立\r\n');
-                
+
                 // 发送连接请求
                 ws.send(`connect:${userId}`);
             };
-            
+
             ws.onmessage = (event) => {
                 const message = event.data;
                 console.log('收到消息:', message);
-                
+
                 if (message.startsWith('connected:')) {
                     const msg = message.substring(10);
                     appendOutput(msg + '\r\n');
@@ -175,19 +175,19 @@
                     updateStatus(false);
                 }
             };
-            
+
             ws.onerror = (error) => {
                 console.error('WebSocket 错误:', error);
                 appendOutput('\r\n连接错误\r\n');
             };
-            
+
             ws.onclose = () => {
                 console.log('WebSocket 已关闭');
                 appendOutput('\r\n连接已关闭\r\n');
                 updateStatus(false);
             };
         }
-        
+
         function disconnect() {
             if (ws) {
                 ws.send('disconnect');
@@ -196,26 +196,26 @@
                 updateStatus(false);
             }
         }
-        
+
         function sendCommand() {
             const input = document.getElementById('commandInput');
             const command = input.value.trim();
-            
+
             if (!command) return;
-            
+
             if (ws && ws.readyState === WebSocket.OPEN) {
                 appendOutput(`\r\n$ ${command}\r\n`);
                 ws.send(`input:${command}\n`);
                 input.value = '';
             }
         }
-        
+
         function handleKeyPress(event) {
             if (event.key === 'Enter') {
                 sendCommand();
             }
         }
-        
+
         function clearTerminal() {
             document.getElementById('terminal').innerHTML = '';
         }

@@ -2,22 +2,27 @@
   <div class="server-terminal-view">
     <h1 class="page-title">多服务器终端控制</h1>
 
-    <div class="content-container">
-      <!-- 服务器列表 -->
+    <!-- 移动端折叠按钮 -->
+    <button class="mobile-toggle" @click="toggleServers" v-if="isMobile">
+      <span v-if="showServers">📋 隐藏服务器列表</span>
+      <span v-else>📋 显示服务器列表</span>
+    </button>
+
+    <!-- 服务器列表区域 -->
+    <div class="content-container" :class="{ 'servers-hidden': !showServers && isMobile }">
       <div class="servers-section">
-        <h2>服务器列表</h2>
         <div class="servers-list">
+          <h2>服务器列表</h2>
           <div
             v-for="server in servers"
             :key="server.id"
-            class="server-item"
-            :class="{ 'selected': selectedServer === server.id, 'connected': connectedServers.includes(server.id) }"
+            :class="['server-item', { selected: selectedServer === server.id, connected: connectedServers.includes(server.id) }]"
             @click="selectServer(server.id)"
           >
             <div class="server-info">
-              <h3>{{ server.serverName }}</h3>
+              <h3>{{ server.name || server.host }}</h3>
               <p>{{ server.host }}:{{ server.port }}</p>
-              <p>用户: {{ server.username }}</p>
+              <p>用户：{{ server.username }}</p>
             </div>
             <div class="server-actions">
               <button
@@ -130,6 +135,20 @@ const currentCommand = ref('')
 const commandHistory = ref([])
 const commandHistoryIndex = ref(-1)
 const terminalOutput = ref('')
+
+// 移动端折叠控制
+const showServers = ref(true)
+const isMobile = ref(false)
+
+// 检测设备类型
+const checkMobile = () => {
+  isMobile.value = window.innerWidth <= 768
+}
+
+// 切换服务器列表显示
+const toggleServers = () => {
+  showServers.value = !showServers.value
+}
 
 // WebSocket 连接
 let ws = null
@@ -627,6 +646,15 @@ const getServerName = (serverId) => {
 // 初始化
 onMounted(async () => {
   await fetchServers()
+  // 检测设备类型
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+})
+
+// 组件卸载时移除监听器
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
+  disconnectWebSocket()
 })
 
 // 组件卸载时断开WebSocket
@@ -793,6 +821,7 @@ onUnmounted(() => {
   align-items: center;
   flex-wrap: wrap;
   gap: 10px;
+  color: #f0f0f0;
 }
 
 .terminal-header h2 {
@@ -854,6 +883,7 @@ onUnmounted(() => {
   word-wrap: break-word;
   outline: none;
   -webkit-overflow-scrolling: touch;
+  color: #f0f0f0;
 }
 
 .terminal-output:focus {
@@ -899,23 +929,55 @@ onUnmounted(() => {
 }
 
 /* 移动端适配 */
+.mobile-toggle {
+  display: none;
+  width: 100%;
+  padding: 12px;
+  background: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-bottom: 15px;
+  transition: all 0.3s ease;
+}
+
+.mobile-toggle:hover {
+  background: #0b7dda;
+}
+
 @media (max-width: 768px) {
+  .mobile-toggle {
+    display: block;
+  }
+
   .server-terminal-view {
     padding: 10px;
   }
 
   .page-title {
     font-size: 20px;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
   }
 
   .content-container {
     grid-template-columns: 1fr;
-    gap: 20px;
+    gap: 15px;
+  }
+
+  .content-container.servers-hidden .servers-section {
+    display: none;
+  }
+
+  .content-container.servers-hidden .terminal-section {
+    grid-row: 1;
   }
 
   .servers-section {
     padding: 15px;
+    order: 2;
   }
 
   .server-item {
@@ -953,7 +1015,8 @@ onUnmounted(() => {
   }
 
   .terminal-section {
-    min-height: 400px;
+    min-height: 60vh;
+    order: 1;
   }
 
   .terminal-header {
@@ -978,7 +1041,12 @@ onUnmounted(() => {
 
   .page-title {
     font-size: 18px;
-    margin-bottom: 15px;
+    margin-bottom: 10px;
+  }
+
+  .mobile-toggle {
+    padding: 10px;
+    font-size: 14px;
   }
 
   .servers-section {
@@ -1007,7 +1075,7 @@ onUnmounted(() => {
   }
 
   .terminal-section {
-    min-height: 350px;
+    min-height: 70vh;
   }
 
   .terminal-header {
