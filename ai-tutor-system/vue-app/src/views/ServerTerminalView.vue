@@ -244,10 +244,19 @@ const deleteServer = async (serverId) => {
 }
 
 // 选择服务器
-const selectServer = (serverId) => {
+const selectServer = (serverId, keepOutput = false) => {
   selectedServer.value = serverId
-  terminalOutput.value = ''
-  currentCommand.value = ''
+  // 只有在切换服务器或明确指定时才清空输出
+  if (!keepOutput) {
+    terminalOutput.value = ''
+    currentCommand.value = ''
+  }
+  // 聚焦终端
+  nextTick(() => {
+    if (terminalContainer.value) {
+      terminalContainer.value.focus()
+    }
+  })
 }
 
 // 连接服务器（通过 WebSocket）
@@ -678,9 +687,9 @@ onMounted(async () => {
         const conn = connections[index]
         // 检查服务器是否仍然存在
         if (servers.value.find(s => s.id === conn.serverId)) {
-          // 如果是第一个连接，自动选中该服务器
+          // 如果是第一个连接，自动选中该服务器（保持输出）
           if (index === 0 && !selectedServer.value) {
-            selectServer(conn.serverId)
+            selectServer(conn.serverId, true) // keepOutput = true
           }
           // 重新建立 WebSocket 连接
           connectWebSocket(conn.serverId)
