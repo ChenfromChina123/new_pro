@@ -128,8 +128,14 @@ public class SSHWebSocketHandler extends TextWebSocketHandler {
             if (existingChannel != null && existingChannel.isConnected()) {
                 log.info("用户 {} 已连接到服务器 {}，复用现有连接", userId, serverId);
                 sendMessage(session, "connected:连接成功（已连接）");
-                // 更新 WebSocket 会话映射
+                // 更新所有映射，使用新的 sessionId
                 sessions.put(session.getId(), session);
+                // 复用现有通道的输出流
+                OutputStream existingOutputStream = outputStreams.get(existingSessionId);
+                if (existingOutputStream != null) {
+                    outputStreams.put(session.getId(), existingOutputStream);
+                }
+                log.info("复用连接成功：oldSessionId={}, newSessionId={}", existingSessionId, session.getId());
                 return;
             }
         }
