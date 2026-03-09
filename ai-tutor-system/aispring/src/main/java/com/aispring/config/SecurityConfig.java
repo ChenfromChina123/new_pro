@@ -21,9 +21,9 @@ import jakarta.servlet.DispatcherType;
 @EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
-    
+
     private final JwtAuthenticationFilter jwtAuthFilter;
-    
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -32,9 +32,11 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // 允许所有 OPTIONS 请求（预检请求）
                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
-                // 允许异步分发（用于SSE等）
+                // 允许异步分发（用于 SSE 等）
                 .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
-                // 公开端点
+                // WebSocket 端点
+                .requestMatchers("/ws/**").permitAll()
+                // 允许所有认证端点
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/users/avatar/**").permitAll()
@@ -56,15 +58,15 @@ public class SecurityConfig {
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
-        
+
         return http.build();
     }
-    
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-    
+
     @Bean
     public AuthenticationManager authenticationManager(
             AuthenticationConfiguration config) throws Exception {

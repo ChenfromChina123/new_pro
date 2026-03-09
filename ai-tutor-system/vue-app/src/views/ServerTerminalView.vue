@@ -1,40 +1,41 @@
 <template>
   <div class="server-terminal-view">
     <h1 class="page-title">多服务器终端控制</h1>
-    
+
     <div class="content-container">
       <!-- 服务器列表 -->
       <div class="servers-section">
         <h2>服务器列表</h2>
         <div class="servers-list">
-          <div 
-            v-for="server in servers" 
+          <div
+            v-for="server in servers"
             :key="server.id"
             class="server-item"
-            :class="{ 'connected': connectedServers.includes(server.id) }"
+            :class="{ 'selected': selectedServer === server.id, 'connected': connectedServers.includes(server.id) }"
+            @click="selectServer(server.id)"
           >
             <div class="server-info">
-              <h3>{{ server.name }}</h3>
+              <h3>{{ server.serverName }}</h3>
               <p>{{ server.host }}:{{ server.port }}</p>
-              <p>用户: {{ server.user }}</p>
+              <p>用户: {{ server.username }}</p>
             </div>
             <div class="server-actions">
-              <button 
+              <button
                 v-if="!connectedServers.includes(server.id)"
-                @click="connectServer(server.id)"
+                @click.stop="connectServer(server.id)"
                 class="btn btn-primary"
               >
                 连接
               </button>
-              <button 
+              <button
                 v-else
-                @click="disconnectServer(server.id)"
+                @click.stop="disconnectServer(server.id)"
                 class="btn btn-danger"
               >
                 断开
               </button>
-              <button 
-                @click="deleteServer(server.id)"
+              <button
+                @click.stop="deleteServer(server.id)"
                 class="btn btn-secondary"
               >
                 删除
@@ -42,7 +43,7 @@
             </div>
           </div>
         </div>
-        
+
         <!-- 添加服务器 -->
         <div class="add-server-form">
           <h3>添加服务器</h3>
@@ -71,40 +72,32 @@
           </form>
         </div>
       </div>
-      
+
       <!-- 终端控制 -->
       <div class="terminal-section">
-        <h2>终端控制</h2>
-        <div v-if="selectedServer">
-          <h3>当前服务器: {{ getServerName(selectedServer) }}</h3>
-          <div class="terminal-container">
-            <div class="terminal-output">
-              <div v-for="(output, index) in terminalOutput" :key="index" class="output-line">
-                <span class="prompt">{{ getServerName(selectedServer) }} $</span>
-                <span class="command">{{ output.command }}</span>
-                <div class="output-content">
-                  <pre>{{ output.result.stdout }}</pre>
-                  <pre v-if="output.result.stderr" class="error">{{ output.result.stderr }}</pre>
-                  <div v-if="output.result.return_code !== 0" class="return-code error">
-                    返回码: {{ output.result.return_code }}
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="terminal-input">
-              <input 
-                type="text" 
-                v-model="currentCommand"
-                @keyup.enter="executeCommand"
-                placeholder="输入命令..."
-                class="command-input"
-              >
-              <button @click="executeCommand" class="btn btn-primary">执行</button>
+        <h2>交互式终端</h2>
+        <div v-if="selectedServer" class="terminal-wrapper">
+          <div class="terminal-header">
+            <span>当前服务器：{{ getServerName(selectedServer) }}</span>
+            <span v-if="wsConnected" class="connection-status connected">已连接</span>
+            <span v-else class="connection-status disconnected">未连接</span>
+          </div>
+          <div
+            ref="terminalContainer"
+            class="terminal-output"
+            tabindex="0"
+            @click="focusTerminal"
+            @keydown="handleKeyDown"
+          >
+            <div v-html="terminalOutput"></div>
+            <div v-if="wsConnected" class="terminal-input-line">
+              <span class="prompt">$</span>
+              <span class="cursor">{{ currentCommand }}</span><span class="cursor-blink">_</span>
             </div>
           </div>
         </div>
         <div v-else class="no-server-selected">
-          请选择一个已连接的服务器
+          请选择一个服务器进行连接
         </div>
       </div>
     </div>
@@ -112,8 +105,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import request from '@/utils/request'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
 
 // 服务器列表
 const servers = ref([])
@@ -124,12 +120,19 @@ const newServer = ref({ name: '', host: '', user: '', password: '', port: 22 })
 // 选中的服务器
 const selectedServer = ref(null)
 
-// 终端输出
-const terminalOutput = ref([])
-// 当前命令
+// 终端相关
+const terminalContainer = ref(null)
+const terminalInput = ref(null)
 const currentCommand = ref('')
+const commandHistory = ref([])
+const commandHistoryIndex = ref(-1)
+const terminalOutput = ref('')
 
-// API基础URL
+// WebSocket连接
+let ws = null
+const wsConnected = ref(false)
+
+// API基础URL（Spring Boot后端）
 const API_BASE = '/api/server-terminal'
 
 // 获取服务器列表
@@ -145,37 +148,20 @@ const fetchServers = async () => {
 // 添加服务器
 const addServer = async () => {
   try {
-    console.log('发送的服务器数据:', {
-      serverName: newServer.value.name,
-      host: newServer.value.host,
-      username: newServer.value.user,
-      password: newServer.value.password,
-      port: newServer.value.port
-    })
-    
-    // 使用FormData来发送请求
     const formData = new FormData()
     formData.append('serverName', newServer.value.name)
     formData.append('host', newServer.value.host)
     formData.append('username', newServer.value.user)
     formData.append('password', newServer.value.password)
     formData.append('port', newServer.value.port)
-    
+
     const response = await request.post(`${API_BASE}/servers`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
     })
-    console.log('服务器响应:', response)
     if (response.data) {
-      servers.value.push({
-        id: response.data.id,
-        name: response.data.serverName,
-        host: response.data.host,
-        user: response.data.username,
-        port: response.data.port
-      })
-      // 重置表单
+      servers.value.push(response.data)
       newServer.value = { name: '', host: '', user: '', password: '', port: 22 }
     }
   } catch (error) {
@@ -192,6 +178,7 @@ const deleteServer = async (serverId) => {
       connectedServers.value = connectedServers.value.filter(id => id !== serverId)
       if (selectedServer.value === serverId) {
         selectedServer.value = null
+        disconnectWebSocket()
       }
     }
   } catch (error) {
@@ -199,85 +186,208 @@ const deleteServer = async (serverId) => {
   }
 }
 
-// 连接服务器
+// 选择服务器
+const selectServer = (serverId) => {
+  selectedServer.value = serverId
+  terminalOutput.value = ''
+  currentCommand.value = ''
+}
+
+// 连接服务器（通过 WebSocket）
 const connectServer = async (serverId) => {
   try {
     const response = await request.post(`${API_BASE}/servers/${serverId}/connect`)
     if (response.code === 200) {
-      connectedServers.value.push(serverId)
-      // 自动选中连接的服务器
-      if (!selectedServer.value) {
-        selectedServer.value = serverId
+      if (!connectedServers.value.includes(serverId)) {
+        connectedServers.value.push(serverId)
       }
+      // 自动选择该服务器
+      selectServer(serverId)
+      // 连接 WebSocket
+      connectWebSocket(serverId)
     } else {
-      alert('连接失败: ' + response.message)
+      alert('连接失败：' + response.message)
     }
   } catch (error) {
     console.error('连接服务器失败:', error)
-    alert('连接失败: ' + error.message)
+    alert('连接失败：' + error.message)
   }
 }
 
 // 断开服务器
 const disconnectServer = async (serverId) => {
   try {
+    disconnectWebSocket()
     const response = await request.post(`${API_BASE}/servers/${serverId}/disconnect`)
     if (response.code === 200) {
       connectedServers.value = connectedServers.value.filter(id => id !== serverId)
-      if (selectedServer.value === serverId) {
-        selectedServer.value = null
-      }
     }
   } catch (error) {
     console.error('断开服务器失败:', error)
   }
 }
 
-// 执行命令
-const executeCommand = async () => {
-  if (!selectedServer.value || !currentCommand.value) return
-  
+// WebSocket 连接（使用普通 WebSocket 连接到 Spring Boot 后端）
+const connectWebSocket = (serverId) => {
+  // 连接到 Spring Boot 后端的 WebSocket（端口 5000）
+  const wsUrl = `ws://localhost:5000/ws/terminal/${serverId}`
+
+  ws = new WebSocket(wsUrl)
+
+  ws.onopen = () => {
+    console.log('WebSocket 连接已建立')
+    wsConnected.value = true
+    appendOutput('正在连接服务器...\r\n')
+
+    // 发送连接命令
+    const userId = authStore.user?.id || '1'
+    ws.send(`connect:${userId}`)
+  }
+
+  ws.onmessage = (event) => {
+    const message = event.data
+    console.log('收到 WebSocket 消息:', message)
+
+    if (message.startsWith('connected:')) {
+      const msg = message.substring(10)
+      appendOutput(msg + '\r\n')
+    } else if (message.startsWith('output:')) {
+      const output = message.substring(7)
+      appendOutput(output)
+    } else if (message.startsWith('error:')) {
+      const error = message.substring(6)
+      appendOutput(`错误: ${error}\r\n`)
+    } else if (message.startsWith('disconnected:')) {
+      const msg = message.substring(13)
+      appendOutput(msg + '\r\n')
+    }
+  }
+
+  ws.onerror = (error) => {
+    console.error('WebSocket 错误:', error)
+    appendOutput(`连接错误\r\n`)
+  }
+
+  ws.onclose = () => {
+    console.log('WebSocket 连接已关闭')
+    wsConnected.value = false
+    appendOutput('\r\n连接已关闭\r\n')
+  }
+}
+
+// 断开 WebSocket
+const disconnectWebSocket = () => {
+  if (ws) {
+    ws.send('disconnect')
+    ws.close()
+    ws = null
+    wsConnected.value = false
+  }
+}
+
+// 发送命令
+const sendCommand = () => {
+  if (!currentCommand.value || !wsConnected.value) return
+
   const command = currentCommand.value
+
+  // 添加到命令历史
+  commandHistory.value.push(command)
+  commandHistoryIndex.value = commandHistory.value.length
+
+  // 发送命令到服务器
+  ws.send(`input:${command}\n`)
+
   // 清空输入
   currentCommand.value = ''
-  
-  try {
-    // 使用FormData来发送请求
-    const formData = new FormData()
-    formData.append('command', command)
-    
-    // 发送命令
-    const response = await request.post(`${API_BASE}/servers/${selectedServer.value}/execute`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    })
-    
-    if (response.code === 200 && response.data) {
-      terminalOutput.value.push({
-        command,
-        result: {
-          stdout: response.data.stdout,
-          stderr: response.data.stderr,
-          return_code: response.data.returnCode,
-          completed: true
-        }
-      })
+}
+
+// 上一条命令
+const previousCommand = () => {
+  if (commandHistoryIndex.value > 0) {
+    commandHistoryIndex.value--
+    currentCommand.value = commandHistory.value[commandHistoryIndex.value]
+  }
+}
+
+// 下一条命令
+const nextCommand = () => {
+  if (commandHistoryIndex.value < commandHistory.value.length - 1) {
+    commandHistoryIndex.value++
+    currentCommand.value = commandHistory.value[commandHistoryIndex.value]
+  } else {
+    commandHistoryIndex.value = commandHistory.value.length
+    currentCommand.value = ''
+  }
+}
+
+// 处理键盘输入
+const handleKeyDown = (event) => {
+  // console.log('键盘事件:', event.key, 'wsConnected:', wsConnected.value)
+
+  if (!wsConnected.value) {
+    // console.log('WebSocket 未连接，忽略输入')
+    return
+  }
+
+  // 阻止默认行为
+  if (event.key === 'Enter' || event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+    event.preventDefault()
+  }
+
+  if (event.key === 'Enter') {
+    // console.log('发送命令:', currentCommand.value)
+    // 追加当前命令到输出
+    if (currentCommand.value) {
+      appendOutput(`${currentCommand.value}\r\n`)
     }
-  } catch (error) {
-    console.error('执行命令失败:', error)
+    sendCommand()
+  } else if (event.key === 'ArrowUp') {
+    previousCommand()
+  } else if (event.key === 'ArrowDown') {
+    nextCommand()
+  } else if (event.key === 'Backspace') {
+    if (currentCommand.value.length > 0) {
+      currentCommand.value = currentCommand.value.slice(0, -1)
+    }
+  } else if (event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey) {
+    // 普通字符输入
+    currentCommand.value += event.key
+    // console.log('输入字符:', event.key, '当前命令:', currentCommand.value)
+  }
+}
+
+// 追加输出
+const appendOutput = (text) => {
+  terminalOutput.value += text
+  nextTick(() => {
+    if (terminalContainer.value) {
+      terminalContainer.value.scrollTop = terminalContainer.value.scrollHeight
+    }
+  })
+}
+
+// 聚焦终端输入框
+const focusTerminal = () => {
+  if (terminalContainer.value) {
+    terminalContainer.value.focus()
   }
 }
 
 // 根据ID获取服务器名称
 const getServerName = (serverId) => {
   const server = servers.value.find(s => s.id === serverId)
-  return server ? server.name : '未知服务器'
+  return server ? server.serverName : '未知服务器'
 }
 
 // 初始化
 onMounted(() => {
   fetchServers()
+})
+
+// 组件卸载时断开WebSocket
+onUnmounted(() => {
+  disconnectWebSocket()
 })
 </script>
 
@@ -317,6 +427,15 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.server-item:hover {
+  transform: translateX(5px);
+}
+
+.server-item.selected {
+  border: 2px solid #4CAF50;
 }
 
 .server-item.connected {
@@ -421,13 +540,39 @@ onMounted(() => {
   border-radius: 8px;
 }
 
-.terminal-container {
-  background: #2d2d2d;
+.terminal-wrapper {
+  background: #1e1e1e;
   border-radius: 6px;
   overflow: hidden;
-  height: 400px;
+  height: 500px;
   display: flex;
   flex-direction: column;
+}
+
+.terminal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  background: #2d2d2d;
+  color: #ccc;
+  font-size: 14px;
+}
+
+.connection-status {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.connection-status.connected {
+  background: #4CAF50;
+  color: white;
+}
+
+.connection-status.disconnected {
+  background: #f44336;
+  color: white;
 }
 
 .terminal-output {
@@ -437,10 +582,21 @@ onMounted(() => {
   color: #f0f0f0;
   font-family: 'Courier New', monospace;
   font-size: 14px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-all;
+  outline: none;
+  cursor: text;
 }
 
-.output-line {
-  margin-bottom: 15px;
+.terminal-output:focus {
+  outline: none;
+}
+
+.terminal-input-line {
+  display: flex;
+  align-items: center;
+  margin-top: 5px;
 }
 
 .prompt {
@@ -449,53 +605,23 @@ onMounted(() => {
   margin-right: 8px;
 }
 
-.command {
-  color: #f0f0f0;
-  margin-right: 8px;
-}
-
-.output-content {
-  margin-left: 20px;
-  margin-top: 5px;
-}
-
-.output-content pre {
-  margin: 0;
-  white-space: pre-wrap;
+.cursor {
   color: #f0f0f0;
 }
 
-.output-content pre.error {
-  color: #f44336;
+.cursor-blink {
+  color: #4CAF50;
+  animation: blink 1s step-end infinite;
+  font-weight: bold;
 }
 
-.return-code {
-  margin-top: 5px;
-  font-size: 12px;
-}
-
-.terminal-input {
-  display: flex;
-  padding: 10px;
-  background: #3d3d3d;
-  border-top: 1px solid #555;
-}
-
-.command-input {
-  flex: 1;
-  background: #2d2d2d;
-  border: 1px solid #555;
-  border-radius: 4px;
-  padding: 8px 12px;
-  color: #f0f0f0;
-  font-family: 'Courier New', monospace;
-  font-size: 14px;
-  margin-right: 10px;
-}
-
-.command-input:focus {
-  outline: none;
-  border-color: #4CAF50;
+@keyframes blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
 }
 
 .no-server-selected {
@@ -505,6 +631,10 @@ onMounted(() => {
   text-align: center;
   color: #666;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  height: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 @media (max-width: 768px) {

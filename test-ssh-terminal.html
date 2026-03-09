@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSH终端测试</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #4ec9b0;
+        }
+        .terminal {
+            background-color: #000;
+            border: 1px solid #3c3c3c;
+            border-radius: 5px;
+            padding: 15px;
+            height: 500px;
+            overflow-y: auto;
+            font-size: 14px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        button {
+            background-color: #0e639c;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin-right: 10px;
+            cursor: pointer;
+            border-radius: 3px;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #1177bb;
+        }
+        button:disabled {
+            background-color: #3c3c3c;
+            cursor: not-allowed;
+        }
+        input[type="text"] {
+            background-color: #3c3c3c;
+            color: #d4d4d4;
+            border: 1px solid #3c3c3c;
+            padding: 10px;
+            width: 300px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #2d2d2d;
+            border-radius: 3px;
+        }
+        .connected {
+            color: #4ec9b0;
+        }
+        .disconnected {
+            color: #f48771;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SSH终端测试页面</h1>
+        
+        <div class="controls">
+            <button id="connectBtn" onclick="connect()">连接服务器</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled>断开连接</button>
+            <button onclick="clearTerminal()">清空终端</button>
+        </div>
+        
+        <div class="status">
+            状态: <span id="status" class="disconnected">未连接</span>
+        </div>
+        
+        <div class="terminal" id="terminal">
+            等待连接...
+        </div>
+        
+        <div class="controls" style="margin-top: 10px;">
+            <input type="text" id="commandInput" placeholder="输入命令..." onkeypress="handleKeyPress(event)" disabled>
+            <button id="sendBtn" onclick="sendCommand()" disabled>发送</button>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        const serverId = 1; // 服务器ID
+        const userId = 1; // 用户ID
+        
+        function appendOutput(text) {
+            const terminal = document.getElementById('terminal');
+            terminal.innerHTML += text;
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+        
+        function updateStatus(connected) {
+            const status = document.getElementById('status');
+            const connectBtn = document.getElementById('connectBtn');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+            const commandInput = document.getElementById('commandInput');
+            const sendBtn = document.getElementById('sendBtn');
+            
+            if (connected) {
+                status.textContent = '已连接';
+                status.className = 'connected';
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+                commandInput.disabled = false;
+                sendBtn.disabled = false;
+                commandInput.focus();
+            } else {
+                status.textContent = '未连接';
+                status.className = 'disconnected';
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+                commandInput.disabled = true;
+                sendBtn.disabled = true;
+            }
+        }
+        
+        function connect() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                appendOutput('\r\n已经连接，请先断开\r\n');
+                return;
+            }
+            
+            appendOutput('\r\n正在连接到服务器...\r\n');
+            
+            // 使用相对路径或完整URL
+            const wsUrl = `ws://localhost:5000/ws/terminal/${serverId}`;
+            console.log('WebSocket URL:', wsUrl);
+            
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = () => {
+                console.log('WebSocket 已打开');
+                appendOutput('WebSocket 连接已建立\r\n');
+                
+                // 发送连接请求
+                ws.send(`connect:${userId}`);
+            };
+            
+            ws.onmessage = (event) => {
+                const message = event.data;
+                console.log('收到消息:', message);
+                
+                if (message.startsWith('connected:')) {
+                    const msg = message.substring(10);
+                    appendOutput(msg + '\r\n');
+                    updateStatus(true);
+                } else if (message.startsWith('output:')) {
+                    const output = message.substring(7);
+                    appendOutput(output);
+                } else if (message.startsWith('error:')) {
+                    const error = message.substring(6);
+                    appendOutput(`\r\n错误: ${error}\r\n`);
+                } else if (message.startsWith('disconnected:')) {
+                    const msg = message.substring(13);
+                    appendOutput(msg + '\r\n');
+                    updateStatus(false);
+                }
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket 错误:', error);
+                appendOutput('\r\n连接错误\r\n');
+            };
+            
+            ws.onclose = () => {
+                console.log('WebSocket 已关闭');
+                appendOutput('\r\n连接已关闭\r\n');
+                updateStatus(false);
+            };
+        }
+        
+        function disconnect() {
+            if (ws) {
+                ws.send('disconnect');
+                ws.close();
+                ws = null;
+                updateStatus(false);
+            }
+        }
+        
+        function sendCommand() {
+            const input = document.getElementById('commandInput');
+            const command = input.value.trim();
+            
+            if (!command) return;
+            
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                appendOutput(`\r\n$ ${command}\r\n`);
+                ws.send(`input:${command}\n`);
+                input.value = '';
+            }
+        }
+        
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendCommand();
+            }
+        }
+        
+        function clearTerminal() {
+            document.getElementById('terminal').innerHTML = '';
+        }
+    </script>
+</body>
+</html>
