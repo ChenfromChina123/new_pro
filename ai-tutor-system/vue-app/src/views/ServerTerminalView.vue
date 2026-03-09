@@ -667,9 +667,13 @@ onMounted(async () => {
     console.log('恢复持久化连接:', connections)
     // 等待服务器列表加载完成后再连接
     setTimeout(() => {
-      connections.forEach(conn => {
+      connections.forEach((conn, index) => {
         // 检查服务器是否仍然存在
         if (servers.value.find(s => s.id === conn.serverId)) {
+          // 如果是第一个连接，自动选中该服务器
+          if (index === 0 && !selectedServer.value) {
+            selectServer(conn.serverId)
+          }
           // 重新建立 WebSocket 连接
           connectWebSocket(conn.serverId)
         } else {
