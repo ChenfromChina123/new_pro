@@ -90,7 +90,7 @@
             @keydown="handleKeyDown"
           >
             <div v-html="terminalOutput"></div>
-            <div v-if="wsConnected" class="terminal-input-line">
+            <div v-if="wsConnected" class="terminal-input-inline">
               <span class="prompt">$</span>
               <span class="cursor">{{ currentCommand }}</span><span class="cursor-blink">_</span>
             </div>
@@ -253,10 +253,16 @@ const connectWebSocket = (serverId) => {
       appendOutput(msg + '\r\n')
     } else if (message.startsWith('output:')) {
       const output = message.substring(7)
-      appendOutput(output)
+      // 检查输出是否以换行符结尾，如果不是，说明是提示符，需要特殊处理
+      if (!output.endsWith('\n') && !output.endsWith('\r')) {
+        // 这是提示符，追加输出并在下一行添加输入提示符
+        appendOutput(output)
+      } else {
+        appendOutput(output)
+      }
     } else if (message.startsWith('error:')) {
       const error = message.substring(6)
-      appendOutput(`错误: ${error}\r\n`)
+      appendOutput(`错误：${error}\r\n`)
     } else if (message.startsWith('disconnected:')) {
       const msg = message.substring(13)
       appendOutput(msg + '\r\n')
@@ -593,10 +599,9 @@ onUnmounted(() => {
   outline: none;
 }
 
-.terminal-input-line {
-  display: flex;
+.terminal-input-inline {
+  display: inline-flex;
   align-items: center;
-  margin-top: 5px;
 }
 
 .prompt {
