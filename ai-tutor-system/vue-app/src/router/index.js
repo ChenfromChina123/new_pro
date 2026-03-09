@@ -85,7 +85,9 @@ const router = createRouter({
           name: 'TerminalWindow',
           component: () => import('@/views/TerminalWindowView.vue'),
           meta: { requiresAuth: true }
-        },
+        }
+      ]
+    },
     {
       path: '/agent/:platform?',
       name: 'Agent',
