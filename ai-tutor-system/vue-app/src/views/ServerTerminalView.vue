@@ -89,11 +89,7 @@
             @click="focusTerminal"
             @keydown="handleKeyDown"
           >
-            <div v-html="terminalOutput"></div>
-            <div v-if="wsConnected" class="terminal-input-inline">
-              <span class="prompt">$</span>
-              <span class="cursor">{{ currentCommand }}</span><span class="cursor-blink">_</span>
-            </div>
+            <div v-html="getTerminalContent()"></div>
           </div>
         </div>
         <div v-else class="no-server-selected">
@@ -361,6 +357,15 @@ const handleKeyDown = (event) => {
     currentCommand.value += event.key
     // console.log('输入字符:', event.key, '当前命令:', currentCommand.value)
   }
+}
+
+// 获取终端内容（包含输入提示符）
+const getTerminalContent = () => {
+  if (!wsConnected.value) {
+    return terminalOutput.value
+  }
+  // 在输出后面追加输入提示符和当前命令
+  return terminalOutput.value + '<span class="prompt">$</span><span class="cursor">' + currentCommand.value + '</span><span class="cursor-blink">_</span>'
 }
 
 // 追加输出
