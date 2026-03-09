@@ -441,10 +441,7 @@ const handleKeyDown = (event) => {
   // 处理普通按键
   if (event.key === 'Enter') {
     // console.log('发送命令:', currentCommand.value)
-    // 追加当前命令到输出
-    if (currentCommand.value) {
-      appendOutput(`${currentCommand.value}\r\n`)
-    }
+    // 发送命令，不需要本地回显（SSH 服务器会回显）
     sendCommand()
   } else if (event.key === 'ArrowUp') {
     previousCommand()
