@@ -3,10 +3,56 @@
     <h1 class="page-title">多服务器终端控制</h1>
 
     <!-- 移动端折叠按钮 -->
-    <button class="mobile-toggle" @click="toggleServers" v-if="isMobile">
-      <span v-if="showServers">📋 隐藏服务器列表</span>
-      <span v-else>📋 显示服务器列表</span>
+    <div class="top-actions" v-if="isMobile">
+      <button class="mobile-toggle" @click="toggleServers">
+        <span v-if="showServers">📋 隐藏服务器列表</span>
+        <span v-else>📋 显示服务器列表</span>
+      </button>
+      <button class="add-server-btn" @click="toggleAddForm">
+        ➕ 添加服务器
+      </button>
+    </div>
+
+    <!-- PC 端添加服务器按钮 -->
+    <button class="add-server-btn-pc" @click="toggleAddForm" v-else>
+      ➕ 添加服务器
     </button>
+
+    <!-- 添加服务器弹窗 -->
+    <div class="modal-overlay" v-if="showAddForm" @click.self="toggleAddForm">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>添加服务器</h2>
+          <button class="close-btn" @click="toggleAddForm">✕</button>
+        </div>
+        <form @submit.prevent="addServerAndClose">
+          <div class="form-group">
+            <label>服务器名称</label>
+            <input v-model="newServer.name" type="text" placeholder="可选，如：生产服务器 1" />
+          </div>
+          <div class="form-group">
+            <label>主机地址</label>
+            <input v-model="newServer.host" type="text" placeholder="如：192.168.1.100" required />
+          </div>
+          <div class="form-group">
+            <label>用户名</label>
+            <input v-model="newServer.user" type="text" placeholder="如：root" required />
+          </div>
+          <div class="form-group">
+            <label>密码</label>
+            <input v-model="newServer.password" type="password" placeholder="服务器密码" required />
+          </div>
+          <div class="form-group">
+            <label>端口</label>
+            <input v-model="newServer.port" type="number" placeholder="22" required />
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-secondary" @click="toggleAddForm">取消</button>
+            <button type="submit" class="btn btn-primary">添加</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <!-- 服务器列表区域 -->
     <div class="content-container" :class="{ 'servers-hidden': !showServers && isMobile }">
@@ -52,40 +98,6 @@
                 删除
               </button>
             </div>
-          </div>
-        </div>
-
-        <!-- 添加服务器 -->
-        <div class="add-server-section">
-          <button class="toggle-form-btn" @click="toggleAddForm" :class="{ 'active': showAddForm }">
-            <span v-if="showAddForm">✕ 关闭添加服务器</span>
-            <span v-else>➕ 添加服务器</span>
-          </button>
-          <div class="add-server-form" v-show="showAddForm">
-            <h3>添加服务器</h3>
-            <form @submit.prevent="addServer">
-              <div class="form-group">
-                <label>服务器名称</label>
-                <input type="text" v-model="newServer.name" placeholder="可选，如：生产服务器 1">
-              </div>
-              <div class="form-group">
-                <label>主机地址</label>
-                <input type="text" v-model="newServer.host" placeholder="如：192.168.1.100" required>
-              </div>
-              <div class="form-group">
-                <label>用户名</label>
-                <input type="text" v-model="newServer.user" placeholder="如：root" required>
-              </div>
-              <div class="form-group">
-                <label>密码</label>
-                <input type="password" v-model="newServer.password" placeholder="服务器密码" required>
-              </div>
-              <div class="form-group">
-                <label>端口</label>
-                <input type="number" v-model="newServer.port" placeholder="22" required>
-              </div>
-              <button type="submit" class="btn btn-primary">添加</button>
-            </form>
           </div>
         </div>
       </div>
@@ -203,6 +215,12 @@ const addServer = async () => {
   } catch (error) {
     console.error('添加服务器失败:', error)
   }
+}
+
+// 添加服务器并关闭弹窗
+const addServerAndClose = async () => {
+  await addServer()
+  toggleAddForm()
 }
 
 // 删除服务器
@@ -989,6 +1007,135 @@ onUnmounted(() => {
 
 .toggle-form-btn.active:hover {
   background: #da190b;
+}
+
+/* 顶部操作栏（移动端） */
+.top-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.top-actions .mobile-toggle {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+/* 添加服务器按钮（PC 端） */
+.add-server-btn-pc {
+  width: 100%;
+  padding: 12px;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-bottom: 15px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.add-server-btn-pc:hover {
+  background: #45a049;
+}
+
+/* 移动端添加服务器按钮 */
+.add-server-btn {
+  flex: 1;
+  padding: 12px;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.add-server-btn:hover {
+  background: #45a049;
+}
+
+/* 弹窗样式 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.modal-header h2 {
+  margin: 0;
+  color: #333;
+  font-size: 20px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #999;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.close-btn:hover {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  padding: 20px;
+  border-top: 1px solid #eee;
+  justify-content: flex-end;
+}
+
+.modal-actions .btn {
+  min-width: 80px;
 }
 
 @media (max-width: 768px) {
