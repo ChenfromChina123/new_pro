@@ -56,31 +56,37 @@
         </div>
 
         <!-- 添加服务器 -->
-        <div class="add-server-form">
-          <h3>添加服务器</h3>
-          <form @submit.prevent="addServer">
-            <div class="form-group">
-              <label>服务器名称</label>
-              <input type="text" v-model="newServer.name" required>
-            </div>
-            <div class="form-group">
-              <label>主机地址</label>
-              <input type="text" v-model="newServer.host" required>
-            </div>
-            <div class="form-group">
-              <label>用户名</label>
-              <input type="text" v-model="newServer.user" required>
-            </div>
-            <div class="form-group">
-              <label>密码</label>
-              <input type="password" v-model="newServer.password" required>
-            </div>
-            <div class="form-group">
-              <label>端口</label>
-              <input type="number" v-model="newServer.port" required>
-            </div>
-            <button type="submit" class="btn btn-success">添加</button>
-          </form>
+        <div class="add-server-section">
+          <button class="toggle-form-btn" @click="toggleAddForm" :class="{ 'active': showAddForm }">
+            <span v-if="showAddForm">✕ 关闭添加服务器</span>
+            <span v-else>➕ 添加服务器</span>
+          </button>
+          <div class="add-server-form" v-show="showAddForm">
+            <h3>添加服务器</h3>
+            <form @submit.prevent="addServer">
+              <div class="form-group">
+                <label>服务器名称</label>
+                <input type="text" v-model="newServer.name" placeholder="可选，如：生产服务器 1">
+              </div>
+              <div class="form-group">
+                <label>主机地址</label>
+                <input type="text" v-model="newServer.host" placeholder="如：192.168.1.100" required>
+              </div>
+              <div class="form-group">
+                <label>用户名</label>
+                <input type="text" v-model="newServer.user" placeholder="如：root" required>
+              </div>
+              <div class="form-group">
+                <label>密码</label>
+                <input type="password" v-model="newServer.password" placeholder="服务器密码" required>
+              </div>
+              <div class="form-group">
+                <label>端口</label>
+                <input type="number" v-model="newServer.port" placeholder="22" required>
+              </div>
+              <button type="submit" class="btn btn-primary">添加</button>
+            </form>
+          </div>
         </div>
       </div>
 
@@ -138,6 +144,7 @@ const terminalOutput = ref('')
 
 // 移动端折叠控制
 const showServers = ref(true)
+const showAddForm = ref(false) // 默认隐藏添加表单
 const isMobile = ref(false)
 
 // 检测设备类型
@@ -148,6 +155,11 @@ const checkMobile = () => {
 // 切换服务器列表显示
 const toggleServers = () => {
   showServers.value = !showServers.value
+}
+
+// 切换添加表单显示
+const toggleAddForm = () => {
+  showAddForm.value = !showAddForm.value
 }
 
 // WebSocket 连接
@@ -946,6 +958,37 @@ onUnmounted(() => {
 
 .mobile-toggle:hover {
   background: #0b7dda;
+}
+
+/* 添加服务器表单折叠按钮 */
+.toggle-form-btn {
+  width: 100%;
+  padding: 12px;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-bottom: 15px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.toggle-form-btn:hover {
+  background: #45a049;
+}
+
+.toggle-form-btn.active {
+  background: #f44336;
+}
+
+.toggle-form-btn.active:hover {
+  background: #da190b;
 }
 
 @media (max-width: 768px) {
