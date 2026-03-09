@@ -359,13 +359,96 @@ const handleKeyDown = (event) => {
   }
 }
 
+// 将 ANSI 转义序列转换为 HTML 样式
+const ansiToHtml = (text) => {
+  if (!text) return text
+
+  let html = text
+    // 转义 HTML 特殊字符
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+
+  // ANSI 颜色代码映射
+  const colorMap = {
+    '30': '#000000', // 黑色
+    '31': '#cd3131', // 红色
+    '32': '#0dbc79', // 绿色
+    '33': '#e5e510', // 黄色
+    '34': '#2472c8', // 蓝色
+    '35': '#bc3fbc', // 紫色
+    '36': '#11a8cd', // 青色
+    '37': '#e5e5e5', // 白色
+    '90': '#666666', // 亮黑色
+    '91': '#f14c4c', // 亮红色
+    '92': '#23d18b', // 亮绿色
+    '93': '#f5f543', // 亮黄色
+    '94': '#3b8eea', // 亮蓝色
+    '95': '#d670d6', // 亮紫色
+    '96': '#29b8db', // 亮青色
+    '97': '#ffffff'  // 亮白色
+  }
+
+  // 处理 ANSI 转义序列
+  html = html.replace(/\x1b\[([0-9;]*)m/g, (match, codes) => {
+    const codeArray = codes.split(';')
+    const styles = []
+    let color = null
+    let bgColor = null
+
+    for (const code of codeArray) {
+      if (code === '0') {
+        // 重置所有样式
+        return '</span>'
+      } else if (code === '1') {
+        styles.push('font-weight: bold')
+      } else if (code === '3' || code === '4') {
+        // 斜体或下划线（可选）
+        styles.push(`font-style: ${code === '3' ? 'italic' : 'underline'}`)
+      } else if (code.startsWith('3') || code.startsWith('9')) {
+        // 前景色
+        color = colorMap[code]
+      } else if (code.startsWith('4')) {
+        // 背景色
+        const bgCode = code.replace('4', '')
+        const bgMap = {
+          '0': '#000000', '1': '#cd3131', '2': '#0dbc79', '3': '#e5e510',
+          '4': '#2472c8', '5': '#bc3fbc', '6': '#11a8cd', '7': '#e5e5e5'
+        }
+        bgColor = bgMap[bgCode]
+      }
+    }
+
+    if (color) {
+      styles.push(`color: ${color}`)
+    }
+    if (bgColor) {
+      styles.push(`background-color: ${bgColor}`)
+    }
+
+    if (styles.length > 0) {
+      return `<span style="${styles.join(';')}">`
+    }
+    return '<span>'
+  })
+
+  // 确保所有 span 标签都正确关闭
+  const openSpans = (html.match(/<span/g) || []).length
+  const closeSpans = (html.match(/<\/span>/g) || []).length
+  if (openSpans > closeSpans) {
+    html += '</span>'.repeat(openSpans - closeSpans)
+  }
+
+  return html
+}
+
 // 获取终端内容（包含输入提示符）
 const getTerminalContent = () => {
   if (!wsConnected.value) {
-    return terminalOutput.value
+    return ansiToHtml(terminalOutput.value)
   }
   // 在输出后面追加输入提示符和当前命令
-  return terminalOutput.value + '<span class="prompt">$</span><span class="cursor">' + currentCommand.value + '</span><span class="cursor-blink">_</span>'
+  return ansiToHtml(terminalOutput.value) + '<span class="prompt">$</span><span class="cursor">' + currentCommand.value + '</span><span class="cursor-blink">_</span>'
 }
 
 // 追加输出

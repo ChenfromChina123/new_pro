@@ -154,16 +154,15 @@ public class SSHWebSocketHandler extends TextWebSocketHandler {
                     try {
                         log.info("SSH 输出读取线程启动：sessionId={}", finalSession.getId());
                         byte[] buffer = new byte[8192];
-                        
+
                         while (finalChannel.isConnected() && !Thread.interrupted()) {
                             if (finalInputStream.available() > 0) {
                                 int len = finalInputStream.read(buffer);
                                 if (len > 0) {
                                     String output = new String(buffer, 0, len, "UTF-8");
-                                    String cleanOutput = stripAnsiCodes(output);
-                                    log.info("读取到 SSH 输出 ({} 字节): {}", len, 
-                                        cleanOutput.replaceAll("\n", "\\\\n").replaceAll("\r", "\\\\r"));
-                                    sendMessage(finalSession, "output:" + cleanOutput);
+                                    log.info("读取到 SSH 输出 ({} 字节): {}", len,
+                                        output.replaceAll("\n", "\\\\n").replaceAll("\r", "\\\\r"));
+                                    sendMessage(finalSession, "output:" + output);
                                 }
                             } else {
                                 Thread.sleep(50);
@@ -171,7 +170,7 @@ public class SSHWebSocketHandler extends TextWebSocketHandler {
                         }
                         log.info("SSH 输出读取线程结束：sessionId={}", finalSession.getId());
                     } catch (Exception e) {
-                        log.error("读取 SSH 输出异常：sessionId={}, error={}", 
+                        log.error("读取 SSH 输出异常：sessionId={}, error={}",
                             finalSession.getId(), e.getMessage(), e);
                     }
                 }, "SSH-Output-" + session.getId());
@@ -270,17 +269,5 @@ public class SSHWebSocketHandler extends TextWebSocketHandler {
                 log.error("发送消息失败：{}", e.getMessage());
             }
         }
-    }
-
-    /**
-     * 移除 ANSI 转义序列（终端颜色代码）
-     * @param input 包含 ANSI 代码的字符串
-     * @return 清理后的字符串
-     */
-    private String stripAnsiCodes(String input) {
-        if (input == null || input.isEmpty()) {
-            return input;
-        }
-        return input.replaceAll("\\x1b\\[[0-9;]*[a-zA-Z]", "");
     }
 }
