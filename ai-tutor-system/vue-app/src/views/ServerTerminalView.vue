@@ -570,7 +570,20 @@ const getTerminalContent = () => {
     return ansiToHtml(terminalOutput.value)
   }
   // 在输出后面追加输入提示符和当前命令
-  return ansiToHtml(terminalOutput.value) + '<span class="prompt">$</span><span class="cursor">' + currentCommand.value + '</span><span class="cursor-blink">_</span>'
+  const content = ansiToHtml(terminalOutput.value) + '<span class="prompt">$</span><span class="cursor">' + currentCommand.value + '</span><span class="cursor-blink">_</span>'
+
+  // 确保终端容器保持焦点
+  nextTick(() => {
+    if (terminalContainer.value && document.activeElement !== terminalContainer.value) {
+      terminalContainer.value.focus()
+    }
+    // 滚动到底部
+    if (terminalContainer.value) {
+      terminalContainer.value.scrollTop = terminalContainer.value.scrollHeight
+    }
+  })
+
+  return content
 }
 
 // 追加输出
