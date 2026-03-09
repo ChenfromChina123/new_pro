@@ -179,10 +179,14 @@ const removeConnection = (serverId) => {
 // 从后端获取终端输出历史
 const fetchTerminalOutput = async (serverId) => {
   try {
+    console.log('正在获取终端输出历史，serverId:', serverId)
     const response = await request.get(`${API_BASE}/servers/${serverId}/output`)
+    console.log('获取终端输出历史响应:', response)
     if (response.code === 200 && response.data) {
       terminalOutput.value = response.data
       console.log('从后端加载终端输出历史:', serverId, response.data.length, '字符')
+    } else {
+      console.log('获取终端输出历史失败：响应码不是 200 或数据为空')
     }
   } catch (error) {
     console.error('获取终端输出历史失败:', error)
