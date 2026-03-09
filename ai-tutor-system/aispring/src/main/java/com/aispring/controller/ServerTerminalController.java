@@ -1,5 +1,7 @@
 package com.aispring.controller;
 
+import com.aispring.dto.request.CommandExecutionRequest;
+import com.aispring.dto.request.ServerConnectionRequest;
 import com.aispring.dto.response.ApiResponse;
 import com.aispring.entity.ServerConnection;
 import com.aispring.entity.ServerCommandExecution;
@@ -42,7 +44,21 @@ public class ServerTerminalController {
             @RequestParam String username,
             @RequestParam String password,
             @RequestParam(required = false, defaultValue = "22") Integer port) {
-        ServerConnection server = serverTerminalService.addServer(user.getId(), serverName, host, username, password, port);
+        System.out.println("接收到的服务器数据:");
+        System.out.println("serverName: " + serverName);
+        System.out.println("host: " + host);
+        System.out.println("username: " + username);
+        System.out.println("password: " + password);
+        System.out.println("port: " + port);
+        
+        ServerConnection server = serverTerminalService.addServer(
+                user.getId(), 
+                serverName, 
+                host, 
+                username, 
+                password, 
+                port
+        );
         return ResponseEntity.ok(ApiResponse.success("添加服务器成功", server));
     }
     

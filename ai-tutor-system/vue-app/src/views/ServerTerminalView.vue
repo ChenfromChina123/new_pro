@@ -145,13 +145,28 @@ const fetchServers = async () => {
 // 添加服务器
 const addServer = async () => {
   try {
-    const response = await request.post(`${API_BASE}/servers`, {
+    console.log('发送的服务器数据:', {
       serverName: newServer.value.name,
       host: newServer.value.host,
       username: newServer.value.user,
       password: newServer.value.password,
       port: newServer.value.port
     })
+    
+    // 使用FormData来发送请求
+    const formData = new FormData()
+    formData.append('serverName', newServer.value.name)
+    formData.append('host', newServer.value.host)
+    formData.append('username', newServer.value.user)
+    formData.append('password', newServer.value.password)
+    formData.append('port', newServer.value.port)
+    
+    const response = await request.post(`${API_BASE}/servers`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    console.log('服务器响应:', response)
     if (response.data) {
       servers.value.push({
         id: response.data.id,
@@ -227,9 +242,15 @@ const executeCommand = async () => {
   currentCommand.value = ''
   
   try {
+    // 使用FormData来发送请求
+    const formData = new FormData()
+    formData.append('command', command)
+    
     // 发送命令
-    const response = await request.post(`${API_BASE}/servers/${selectedServer.value}/execute`, {
-      command: command
+    const response = await request.post(`${API_BASE}/servers/${selectedServer.value}/execute`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
     })
     
     if (response.code === 200 && response.data) {

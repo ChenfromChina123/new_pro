@@ -1,5 +1,6 @@
 package com.aispring.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -22,6 +23,7 @@ public class ServerConnection {
     
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
+    @JsonIgnore
     private User user;
     
     @Column(name = "server_name", nullable = false)
@@ -33,6 +35,7 @@ public class ServerConnection {
     @Column(name = "username", nullable = false)
     private String username;
     
+    @JsonIgnore
     @Column(name = "password", nullable = false)
     private String password;
     

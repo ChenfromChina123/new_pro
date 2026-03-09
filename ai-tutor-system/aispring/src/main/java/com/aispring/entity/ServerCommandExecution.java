@@ -1,5 +1,6 @@
 package com.aispring.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -22,10 +23,12 @@ public class ServerCommandExecution {
     
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
+    @JsonIgnore
     private User user;
     
     @ManyToOne
     @JoinColumn(name = "server_id", nullable = false)
+    @JsonIgnore
     private ServerConnection server;
     
     @Column(name = "command", nullable = false, columnDefinition = "TEXT")
