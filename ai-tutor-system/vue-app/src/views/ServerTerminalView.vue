@@ -681,11 +681,15 @@ onMounted(async () => {
           // 如果是第一个连接，自动选中该服务器
           if (index === 0 && !selectedServer.value) {
             selectServer(conn.serverId)
-            // 从后端获取历史终端输出
-            await fetchTerminalOutput(conn.serverId)
           }
           // 重新建立 WebSocket 连接
           connectWebSocket(conn.serverId)
+          // 等待 WebSocket 连接建立后再获取历史输出
+          if (index === 0) {
+            // 等待 100ms 确保 WebSocket 已建立
+            await new Promise(resolve => setTimeout(resolve, 100))
+            await fetchTerminalOutput(conn.serverId)
+          }
         } else {
           // 服务器已删除，清除连接状态
           removeConnection(conn.serverId)
