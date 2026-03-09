@@ -694,112 +694,144 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* 主容器 - 深色主题 */
 .server-terminal-view {
-  padding: 20px;
-  max-width: 100%;
-  overflow-x: hidden;
+  background-color: #0f111a;
+  padding: 0;
+  height: 100vh;
+  overflow: hidden;
+  color: #e0e0e0;
 }
 
 .page-title {
-  color: #333;
-  margin-bottom: 30px;
-  font-size: 24px;
+  color: #e0e0e0;
+  margin: 0;
+  padding: 20px;
+  font-size: 16px;
+  font-weight: 600;
+  background: #1a1c25;
+  border-bottom: 1px solid #2d313d;
+  display: none;
 }
 
 .content-container {
   display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: 30px;
+  grid-template-columns: 280px 1fr;
+  gap: 0;
+  height: calc(100vh - 0px);
 }
 
 .servers-section {
-  background: #f5f5f5;
-  padding: 20px;
-  border-radius: 8px;
+  background: #1a1c25;
+  padding: 0;
+  border-right: 1px solid #2d313d;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .servers-list {
-  margin-bottom: 30px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.servers-list h2 {
+  margin: 0;
+  padding: 15px 20px;
+  color: #888;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  background: #1a1c25;
+  border-bottom: 1px solid #2d313d;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .server-item {
-  background: white;
-  padding: 15px;
-  margin-bottom: 10px;
-  border-radius: 6px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  background: transparent;
+  padding: 12px 20px;
+  border-bottom: 1px solid #2d313d;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  transition: all 0.3s ease;
+  gap: 8px;
+  transition: all 0.2s ease;
   cursor: pointer;
 }
 
 .server-item:hover {
-  transform: translateX(5px);
+  background: #232732;
 }
 
 .server-item.selected {
-  border: 2px solid #4CAF50;
+  background: #232732;
+  border-left: 3px solid #3498db;
 }
 
 .server-item.connected {
-  border-left: 4px solid #4CAF50;
+  border-left: 3px solid #2ecc71;
 }
 
 .server-info h3 {
-  margin: 0 0 5px 0;
-  color: #333;
-  font-size: 16px;
+  margin: 0 0 4px 0;
+  color: #e0e0e0;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
 }
 
 .server-info p {
   margin: 0;
-  color: #666;
-  font-size: 14px;
+  color: #888;
+  font-size: 12px;
 }
 
 .server-actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
 .btn {
-  padding: 8px 16px;
+  padding: 6px 12px;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s ease;
-  white-space: nowrap;
+  font-size: 12px;
+  transition: all 0.2s ease;
+  font-weight: 500;
 }
 
 .btn-primary {
-  background: #4CAF50;
+  background: #3498db;
   color: white;
 }
 
 .btn-primary:hover {
-  background: #45a049;
+  background: #2980b9;
+  transform: translateY(-1px);
 }
 
 .btn-danger {
-  background: #f44336;
+  background: #e74c3c;
   color: white;
 }
 
 .btn-danger:hover {
-  background: #da190b;
+  background: #c0392b;
+  transform: translateY(-1px);
 }
 
 .btn-secondary {
-  background: #2196F3;
-  color: white;
+  background: #34495e;
+  color: #bdc3c7;
 }
 
 .btn-secondary:hover {
-  background: #0b7dda;
+  background: #2c3e50;
+  transform: translateY(-1px);
 }
 
 .add-server-form {
@@ -834,30 +866,59 @@ onUnmounted(() => {
   box-sizing: border-box;
 }
 
+/* 终端区域 - macOS 风格 */
 .terminal-section {
-  background: #1e1e1e;
-  border-radius: 8px;
+  background: #0f111a;
+  border-radius: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  min-height: 500px;
+  height: 100%;
+  border: 1px solid #2d313d;
 }
 
 .terminal-header {
-  background: #2d2d2d;
-  padding: 15px 20px;
+  background: #1a1c25;
+  padding: 12px 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
   gap: 10px;
-  color: #f0f0f0;
+  color: #e0e0e0;
+  border-bottom: 1px solid #2d313d;
+  position: relative;
+}
+
+/* macOS 风格的三个小圆点 */
+.terminal-header::before {
+  content: '';
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 8px;
+}
+
+.terminal-header::after {
+  content: '● ● ●';
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  letter-spacing: 4px;
+  color: #ff5f56;
+  text-shadow: 16px 0 #ffbd2e, 32px 0 #27c93f;
 }
 
 .terminal-header h2 {
   margin: 0;
-  color: #f0f0f0;
-  font-size: 18px;
+  color: #e0e0e0;
+  font-size: 14px;
+  font-weight: 500;
+  padding-left: 60px;
 }
 
 .terminal-status {
@@ -867,19 +928,19 @@ onUnmounted(() => {
 }
 
 .status {
-  padding: 5px 12px;
+  padding: 4px 10px;
   border-radius: 4px;
-  font-size: 14px;
-  font-weight: bold;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .status.connected {
-  background: #4CAF50;
+  background: #2ecc71;
   color: white;
 }
 
 .status.disconnected {
-  background: #f44336;
+  background: #e74c3c;
   color: white;
 }
 
@@ -1012,50 +1073,58 @@ onUnmounted(() => {
 /* 顶部操作栏（移动端） */
 .top-actions {
   display: flex;
-  gap: 10px;
-  margin-bottom: 15px;
+  gap: 0;
+  background: #1a1c25;
+  border-bottom: 1px solid #2d313d;
+  padding: 10px;
 }
 
 .top-actions .mobile-toggle {
   flex: 1;
   margin-bottom: 0;
+  background: #34495e;
+}
+
+.top-actions .mobile-toggle:hover {
+  background: #2c3e50;
 }
 
 /* 添加服务器按钮（PC 端） */
 .add-server-btn-pc {
   width: 100%;
-  padding: 12px;
-  background: #4CAF50;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #3498db, #2980b9);
   color: white;
   border: none;
-  border-radius: 6px;
-  font-size: 16px;
-  font-weight: bold;
+  border-radius: 0;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  margin-bottom: 15px;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
+  border-bottom: 1px solid #2d313d;
 }
 
 .add-server-btn-pc:hover {
-  background: #45a049;
+  background: linear-gradient(135deg, #2980b9, #1f6dad);
+  transform: translateY(-1px);
 }
 
 /* 移动端添加服务器按钮 */
 .add-server-btn {
   flex: 1;
-  padding: 12px;
-  background: #4CAF50;
+  padding: 10px;
+  background: linear-gradient(135deg, #3498db, #2980b9);
   color: white;
   border: none;
-  border-radius: 6px;
-  font-size: 15px;
-  font-weight: bold;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1063,32 +1132,35 @@ onUnmounted(() => {
 }
 
 .add-server-btn:hover {
-  background: #45a049;
+  background: linear-gradient(135deg, #2980b9, #1f6dad);
+  transform: translateY(-1px);
 }
 
-/* 弹窗样式 */
+/* 弹窗样式 - 深色主题 */
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
   padding: 20px;
+  backdrop-filter: blur(4px);
 }
 
 .modal-content {
-  background: white;
+  background: #1a1c25;
   border-radius: 8px;
   width: 100%;
-  max-width: 500px;
+  max-width: 480px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  border: 1px solid #2d313d;
 }
 
 .modal-header {
@@ -1096,20 +1168,21 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 20px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #2d313d;
 }
 
 .modal-header h2 {
   margin: 0;
-  color: #333;
-  font-size: 20px;
+  color: #e0e0e0;
+  font-size: 16px;
+  font-weight: 600;
 }
 
 .close-btn {
   background: none;
   border: none;
-  font-size: 24px;
-  color: #999;
+  font-size: 20px;
+  color: #888;
   cursor: pointer;
   padding: 0;
   width: 30px;
@@ -1118,24 +1191,61 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   border-radius: 4px;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
 }
 
 .close-btn:hover {
-  background: #f5f5f5;
-  color: #333;
+  background: #2d313d;
+  color: #e0e0e0;
+}
+
+.modal-content .form-group {
+  padding: 0 20px;
+  margin-bottom: 16px;
+}
+
+.modal-content .form-group:first-of-type {
+  margin-top: 20px;
+}
+
+.modal-content label {
+  color: #b0b0b0;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.modal-content input {
+  background: #0f111a;
+  border: 1px solid #2d313d;
+  color: #e0e0e0;
+  padding: 10px 12px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.modal-content input:focus {
+  border-color: #3498db;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+.modal-content input::placeholder {
+  color: #666;
 }
 
 .modal-actions {
   display: flex;
   gap: 10px;
   padding: 20px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid #2d313d;
   justify-content: flex-end;
+  background: #1a1c25;
 }
 
 .modal-actions .btn {
   min-width: 80px;
+  padding: 8px 16px;
 }
 
 @media (max-width: 768px) {
@@ -1144,7 +1254,8 @@ onUnmounted(() => {
   }
 
   .server-terminal-view {
-    padding: 10px;
+    height: auto;
+    min-height: 100vh;
   }
 
   .page-title {
@@ -1154,7 +1265,8 @@ onUnmounted(() => {
 
   .content-container {
     grid-template-columns: 1fr;
-    gap: 15px;
+    gap: 0;
+    height: auto;
   }
 
   .content-container.servers-hidden .servers-section {
@@ -1163,23 +1275,26 @@ onUnmounted(() => {
 
   .content-container.servers-hidden .terminal-section {
     grid-row: 1;
+    min-height: 80vh;
   }
 
   .servers-section {
-    padding: 15px;
+    padding: 0;
     order: 2;
+    border-right: none;
+    border-bottom: 1px solid #2d313d;
   }
 
   .server-item {
-    padding: 12px;
+    padding: 12px 15px;
   }
 
   .server-info h3 {
-    font-size: 15px;
+    font-size: 14px;
   }
 
   .server-info p {
-    font-size: 13px;
+    font-size: 12px;
   }
 
   .server-actions {
@@ -1187,21 +1302,8 @@ onUnmounted(() => {
   }
 
   .btn {
-    padding: 6px 12px;
-    font-size: 13px;
-  }
-
-  .add-server-form {
-    padding: 15px;
-  }
-
-  .add-server-form h3 {
-    font-size: 16px;
-  }
-
-  .form-group input {
-    padding: 8px;
-    font-size: 13px;
+    padding: 6px 10px;
+    font-size: 12px;
   }
 
   .terminal-section {
@@ -1214,7 +1316,8 @@ onUnmounted(() => {
   }
 
   .terminal-header h2 {
-    font-size: 16px;
+    font-size: 14px;
+    padding-left: 50px;
   }
 
   .terminal-output {
@@ -1226,7 +1329,7 @@ onUnmounted(() => {
 
 @media (max-width: 480px) {
   .server-terminal-view {
-    padding: 8px;
+    padding: 0;
   }
 
   .page-title {
@@ -1240,19 +1343,19 @@ onUnmounted(() => {
   }
 
   .servers-section {
-    padding: 12px;
+    padding: 0;
   }
 
   .server-item {
-    padding: 10px;
+    padding: 10px 12px;
   }
 
   .server-info h3 {
-    font-size: 14px;
+    font-size: 13px;
   }
 
   .server-info p {
-    font-size: 12px;
+    font-size: 11px;
   }
 
   .server-actions {
@@ -1260,8 +1363,8 @@ onUnmounted(() => {
   }
 
   .btn {
-    padding: 5px 10px;
-    font-size: 12px;
+    padding: 5px 8px;
+    font-size: 11px;
   }
 
   .terminal-section {
@@ -1273,7 +1376,8 @@ onUnmounted(() => {
   }
 
   .terminal-header h2 {
-    font-size: 15px;
+    font-size: 13px;
+    padding-left: 45px;
   }
 
   .terminal-output {
