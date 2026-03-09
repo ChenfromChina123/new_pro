@@ -218,6 +218,13 @@
             <version>3.0.5</version>
         </dependency>
 
+        <!-- JSch for SSH Connections -->
+        <dependency>
+            <groupId>com.jcraft</groupId>
+            <artifactId>jsch</artifactId>
+            <version>0.1.55</version>
+        </dependency>
+
         <!-- Spring for GraphQL -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

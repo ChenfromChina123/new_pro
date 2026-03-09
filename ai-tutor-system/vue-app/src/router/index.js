@@ -73,6 +73,12 @@ const router = createRouter({
           name: 'Settings',
           component: () => import('@/views/SettingsView.vue'),
           meta: { requiresAuth: true }
+        },
+        {
+          path: 'server-terminal',
+          name: 'ServerTerminal',
+          component: () => import('@/views/ServerTerminalView.vue'),
+          meta: { requiresAuth: true }
         }
       ]
     },
