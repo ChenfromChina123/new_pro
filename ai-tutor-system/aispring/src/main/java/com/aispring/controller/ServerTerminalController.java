@@ -128,31 +128,4 @@ public class ServerTerminalController {
         List<ServerCommandExecution> executions = serverTerminalService.getExecutionHistory(user.getId(), serverId);
         return ResponseEntity.ok(ApiResponse.success("获取执行历史成功", executions));
     }
-
-    /**
-     * 获取终端输出历史
-     * @param serverId 服务器 ID
-     * @return 终端输出历史
-     */
-    @GetMapping("/servers/{serverId}/output")
-    public ResponseEntity<ApiResponse<String>> getTerminalOutput(
-            @CurrentUser User user,
-            @PathVariable Long serverId) {
-        try {
-            // 根据 userId 和 serverId 获取 sessionId
-            String sessionId = com.aispring.config.SSHWebSocketHandler.getSessionIdByUserServer(
-                String.valueOf(user.getId()),
-                String.valueOf(serverId)
-            );
-            if (sessionId == null) {
-                return ResponseEntity.ok(ApiResponse.success("", ""));
-            }
-
-            // 获取终端输出历史
-            String output = com.aispring.config.SSHWebSocketHandler.getTerminalOutput(sessionId);
-            return ResponseEntity.ok(ApiResponse.success("获取输出历史成功", output));
-        } catch (Exception e) {
-            return ResponseEntity.ok(ApiResponse.success("", ""));
-        }
-    }
 }

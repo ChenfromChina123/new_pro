@@ -79,9 +79,19 @@ const router = createRouter({
           name: 'ServerTerminal',
           component: () => import('@/views/ServerTerminalView.vue'),
           meta: { requiresAuth: true }
-        }
-      ]
-    },
+        },
+        {
+          path: 'terminal/:serverId',
+          name: 'TerminalWindow',
+          component: () => import('@/views/TerminalWindowView.vue'),
+          meta: { requiresAuth: true }
+        },
+        {
+          path: 'terminal/:serverId',
+          name: 'TerminalWindow',
+          component: () => import('@/views/TerminalWindowView.vue'),
+          meta: { requiresAuth: true }
+        },
     {
       path: '/agent/:platform?',
       name: 'Agent',
