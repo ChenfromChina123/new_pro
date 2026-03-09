@@ -31,7 +31,9 @@ public class SSHWebSocketHandler extends TextWebSocketHandler {
     private static final Map<String, OutputStream> outputStreams = new ConcurrentHashMap<>();
     // 用户连接映射（userId+serverId -> sessionId），用于持久化连接
     private static final Map<String, String> userServerSessions = new ConcurrentHashMap<>();
-    // 终端输出历史缓存（sessionId -> 输出内容）
+    // sessionId 到 userServerKey 的映射
+    private static final Map<String, String> sessionToUserServer = new ConcurrentHashMap<>();
+    // 终端输出历史缓存（userServerKey -> 输出内容）
     private static final Map<String, StringBuilder> terminalOutputs = new ConcurrentHashMap<>();
     // 最大输出历史长度（字符数）
     private static final int MAX_OUTPUT_LENGTH = 50000;
@@ -137,11 +139,10 @@ public class SSHWebSocketHandler extends TextWebSocketHandler {
                 }
                 // 复用现有通道
                 channels.put(session.getId(), existingChannel);
-                // 复制输出历史到新 sessionId
-                String existingOutput = getTerminalOutput(existingSessionId);
-                if (existingOutput != null && !existingOutput.isEmpty()) {
-                    terminalOutputs.put(session.getId(), new StringBuilder(existingOutput));
-                }
+                // 更新 userServerSessions 映射
+                userServerSessions.put(userServerKey, session.getId());
+                // 更新 sessionToUserServer 映射
+                sessionToUserServer.put(session.getId(), userServerKey);
                 log.info("复用连接成功：oldSessionId={}, newSessionId={}", existingSessionId, session.getId());
                 return;
             }
@@ -185,6 +186,8 @@ public class SSHWebSocketHandler extends TextWebSocketHandler {
                 outputStreams.put(session.getId(), outputStream);
                 // 保存用户 + 服务器到 sessionId 的映射
                 userServerSessions.put(userServerKey, session.getId());
+                // 保存 sessionId 到 userServerKey 的映射
+                sessionToUserServer.put(session.getId(), userServerKey);
 
                 sendMessage(session, "connected:连接成功");
                 log.info("用户 {} 连接到服务器 {} 成功，sessionId={}", userId, server.getHost(), session.getId());
@@ -192,6 +195,7 @@ public class SSHWebSocketHandler extends TextWebSocketHandler {
                 final ChannelShell finalChannel = channel;
                 final WebSocketSession finalSession = session;
                 final InputStream finalInputStream = inputStream;
+                final String finalUserServerKey = userServerKey;
 
                 Thread outputThread = new Thread(() -> {
                     try {
@@ -206,8 +210,10 @@ public class SSHWebSocketHandler extends TextWebSocketHandler {
                                     log.info("读取到 SSH 输出 ({} 字节): {}", len,
                                         output.replaceAll("\n", "\\\\n").replaceAll("\r", "\\\\r"));
 
-                                    // 保存输出历史
-                                    appendTerminalOutput(finalSession.getId(), output);
+                                    // 保存输出历史（使用 userServerKey）
+                                    if (finalUserServerKey != null) {
+                                        appendTerminalOutput(finalUserServerKey, output);
+                                    }
 
                                     // 发送到 WebSocket
                                     sendMessage(finalSession, "output:" + output);
@@ -356,7 +362,13 @@ public class SSHWebSocketHandler extends TextWebSocketHandler {
      * @return 输出历史内容
      */
     public static String getTerminalOutput(String sessionId) {
-        StringBuilder sb = terminalOutputs.get(sessionId);
+        // 通过 sessionId 获取 userServerKey
+        String userServerKey = sessionToUserServer.get(sessionId);
+        if (userServerKey == null) {
+            return "";
+        }
+
+        StringBuilder sb = terminalOutputs.get(userServerKey);
         if (sb != null) {
             synchronized (sb) {
                 return sb.toString();
