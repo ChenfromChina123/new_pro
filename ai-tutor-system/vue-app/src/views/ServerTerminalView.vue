@@ -343,6 +343,16 @@ const handleKeyDown = (event) => {
   // 处理 Ctrl 组合键（只在第一次按下时触发）
   if (event.ctrlKey && !ctrlKeyPressed) {
     ctrlKeyPressed = true
+
+    // 特殊处理：Ctrl+V 应该执行粘贴操作，不阻止默认行为
+    if (event.key.toLowerCase() === 'v') {
+      // 允许浏览器默认行为（粘贴）
+      return
+    }
+
+    // 阻止其他 Ctrl 组合键的默认行为
+    event.preventDefault()
+
     switch (event.key.toLowerCase()) {
       case 'c':
         // Ctrl+C - 中断当前命令
