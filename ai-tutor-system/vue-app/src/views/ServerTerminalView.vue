@@ -133,6 +133,7 @@ let ctrlKeyPressed = false
 
 // localStorage 键名
 const STORAGE_KEY = 'ssh_terminal_connections'
+const STORAGE_OUTPUT_KEY = 'ssh_terminal_outputs'
 
 // 从 localStorage 加载连接状态
 const loadConnections = () => {
@@ -170,10 +171,44 @@ const removeConnection = (serverId) => {
     const connections = loadConnections()
     const filtered = connections.filter(c => c.serverId !== serverId)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered))
+    // 同时清除对应的输出
+    localStorage.removeItem(`${STORAGE_OUTPUT_KEY}_${serverId}`)
     console.log('移除连接状态:', serverId)
   } catch (error) {
     console.error('移除连接状态失败:', error)
   }
+}
+
+// 保存终端输出到 localStorage
+const saveTerminalOutput = (serverId, output) => {
+  try {
+    localStorage.setItem(`${STORAGE_OUTPUT_KEY}_${serverId}`, JSON.stringify({
+      output: output,
+      timestamp: Date.now()
+    }))
+  } catch (error) {
+    console.error('保存终端输出失败:', error)
+  }
+}
+
+// 从 localStorage 加载终端输出
+const loadTerminalOutput = (serverId) => {
+  try {
+    const stored = localStorage.getItem(`${STORAGE_OUTPUT_KEY}_${serverId}`)
+    if (stored) {
+      const data = JSON.parse(stored)
+      // 检查是否是最近的输出（30 分钟内）
+      if (Date.now() - data.timestamp < 30 * 60 * 1000) {
+        return data.output
+      } else {
+        // 超过 30 分钟，清除旧数据
+        localStorage.removeItem(`${STORAGE_OUTPUT_KEY}_${serverId}`)
+      }
+    }
+  } catch (error) {
+    console.error('加载终端输出失败:', error)
+  }
+  return ''
 }
 
 // API 基础 URL（Spring Boot 后端）
@@ -299,21 +334,29 @@ const connectWebSocket = (serverId) => {
     if (message.startsWith('connected:')) {
       const msg = message.substring(10)
       appendOutput(msg + '\r\n')
+      // 保存输出
+      if (selectedServer.value) {
+        saveTerminalOutput(selectedServer.value, terminalOutput.value)
+      }
     } else if (message.startsWith('output:')) {
       const output = message.substring(7)
-      // 检查输出是否以换行符结尾，如果不是，说明是提示符，需要特殊处理
-      if (!output.endsWith('\n') && !output.endsWith('\r')) {
-        // 这是提示符，追加输出并在下一行添加输入提示符
-        appendOutput(output)
-      } else {
-        appendOutput(output)
+      appendOutput(output)
+      // 保存输出（防抖，避免频繁写入）
+      if (selectedServer.value) {
+        saveTerminalOutput(selectedServer.value, terminalOutput.value)
       }
     } else if (message.startsWith('error:')) {
       const error = message.substring(6)
       appendOutput(`错误：${error}\r\n`)
+      if (selectedServer.value) {
+        saveTerminalOutput(selectedServer.value, terminalOutput.value)
+      }
     } else if (message.startsWith('disconnected:')) {
       const msg = message.substring(13)
       appendOutput(msg + '\r\n')
+      if (selectedServer.value) {
+        saveTerminalOutput(selectedServer.value, terminalOutput.value)
+      }
     }
   }
 
@@ -673,6 +716,12 @@ onMounted(async () => {
           // 如果是第一个连接，自动选中该服务器
           if (index === 0 && !selectedServer.value) {
             selectServer(conn.serverId)
+            // 恢复历史终端输出
+            const savedOutput = loadTerminalOutput(conn.serverId)
+            if (savedOutput) {
+              terminalOutput.value = savedOutput
+              console.log('恢复历史终端输出:', conn.serverId)
+            }
           }
           // 重新建立 WebSocket 连接
           connectWebSocket(conn.serverId)
