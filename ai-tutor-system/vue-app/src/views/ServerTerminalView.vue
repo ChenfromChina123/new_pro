@@ -131,7 +131,52 @@ const wsConnected = ref(false)
 // 防止 Ctrl 键重复触发
 let ctrlKeyPressed = false
 
-// API基础URL（Spring Boot后端）
+// localStorage 键名
+const STORAGE_KEY = 'ssh_terminal_connections'
+
+// 从 localStorage 加载连接状态
+const loadConnections = () => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored) {
+      const connections = JSON.parse(stored)
+      connectedServers.value = connections.map(c => c.serverId)
+      console.log('从 localStorage 加载连接状态:', connections)
+      return connections
+    }
+  } catch (error) {
+    console.error('加载连接状态失败:', error)
+  }
+  return []
+}
+
+// 保存连接状态到 localStorage
+const saveConnection = (serverId) => {
+  try {
+    const connections = loadConnections()
+    if (!connections.find(c => c.serverId === serverId)) {
+      connections.push({ serverId, timestamp: Date.now() })
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(connections))
+      console.log('保存连接状态:', serverId)
+    }
+  } catch (error) {
+    console.error('保存连接状态失败:', error)
+  }
+}
+
+// 从 localStorage 移除连接状态
+const removeConnection = (serverId) => {
+  try {
+    const connections = loadConnections()
+    const filtered = connections.filter(c => c.serverId !== serverId)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered))
+    console.log('移除连接状态:', serverId)
+  } catch (error) {
+    console.error('移除连接状态失败:', error)
+  }
+}
+
+// API 基础 URL（Spring Boot 后端）
 const API_BASE = '/api/server-terminal'
 
 // 获取服务器列表
@@ -200,6 +245,8 @@ const connectServer = async (serverId) => {
       if (!connectedServers.value.includes(serverId)) {
         connectedServers.value.push(serverId)
       }
+      // 保存连接状态到 localStorage
+      saveConnection(serverId)
       // 自动选择该服务器
       selectServer(serverId)
       // 连接 WebSocket
@@ -220,6 +267,8 @@ const disconnectServer = async (serverId) => {
     const response = await request.post(`${API_BASE}/servers/${serverId}/disconnect`)
     if (response.code === 200) {
       connectedServers.value = connectedServers.value.filter(id => id !== serverId)
+      // 从 localStorage 移除连接状态
+      removeConnection(serverId)
     }
   } catch (error) {
     console.error('断开服务器失败:', error)
@@ -610,8 +659,26 @@ const getServerName = (serverId) => {
 }
 
 // 初始化
-onMounted(() => {
-  fetchServers()
+onMounted(async () => {
+  await fetchServers()
+  // 加载并恢复持久化连接
+  const connections = loadConnections()
+  if (connections.length > 0) {
+    console.log('恢复持久化连接:', connections)
+    // 等待服务器列表加载完成后再连接
+    setTimeout(() => {
+      connections.forEach(conn => {
+        // 检查服务器是否仍然存在
+        if (servers.value.find(s => s.id === conn.serverId)) {
+          // 重新建立 WebSocket 连接
+          connectWebSocket(conn.serverId)
+        } else {
+          // 服务器已删除，清除连接状态
+          removeConnection(conn.serverId)
+        }
+      })
+    }, 500)
+  }
 })
 
 // 组件卸载时断开WebSocket
