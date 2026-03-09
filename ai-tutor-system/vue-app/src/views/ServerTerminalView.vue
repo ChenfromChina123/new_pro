@@ -333,10 +333,112 @@ const handleKeyDown = (event) => {
   }
 
   // 阻止默认行为
-  if (event.key === 'Enter' || event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+  if (event.key === 'Enter' || event.key === 'ArrowUp' || event.key === 'ArrowDown' || event.ctrlKey) {
     event.preventDefault()
   }
 
+  // 处理 Ctrl 组合键
+  if (event.ctrlKey) {
+    switch (event.key.toLowerCase()) {
+      case 'c':
+        // Ctrl+C - 中断当前命令
+        sendControlCharacter('\x03')
+        appendOutput('^C\r\n')
+        currentCommand.value = ''
+        break
+
+      case 'l':
+        // Ctrl+L - 清屏
+        sendControlCharacter('\x0c')
+        terminalOutput.value = ''
+        currentCommand.value = ''
+        break
+
+      case 'u':
+        // Ctrl+U - 删除整行
+        sendControlCharacter('\x15')
+        currentCommand.value = ''
+        break
+
+      case 'a':
+        // Ctrl+A - 光标移到行首
+        sendControlCharacter('\x01')
+        break
+
+      case 'e':
+        // Ctrl+E - 光标移到行尾
+        sendControlCharacter('\x05')
+        break
+
+      case 'w':
+        // Ctrl+W - 删除前一个单词
+        sendControlCharacter('\x17')
+        // 删除前一个单词
+        const lastSpaceIndex = currentCommand.value.trimEnd().lastIndexOf(' ')
+        if (lastSpaceIndex === -1) {
+          currentCommand.value = ''
+        } else {
+          currentCommand.value = currentCommand.value.substring(0, lastSpaceIndex + 1)
+        }
+        break
+
+      case 'k':
+        // Ctrl+K - 删除从光标到行尾
+        sendControlCharacter('\x0b')
+        currentCommand.value = ''
+        break
+
+      case 'r':
+        // Ctrl+R - 搜索历史命令（简单实现：使用上一条命令）
+        sendControlCharacter('\x12')
+        if (commandHistory.value.length > 0) {
+          commandHistoryIndex.value = commandHistory.value.length - 1
+          currentCommand.value = commandHistory.value[commandHistoryIndex.value]
+        }
+        break
+
+      case 'z':
+        // Ctrl+Z - 挂起当前进程
+        sendControlCharacter('\x1a')
+        appendOutput('^Z\r\n')
+        currentCommand.value = ''
+        break
+
+      case 'd':
+        // Ctrl+D - 发送 EOF（End Of File）
+        sendControlCharacter('\x04')
+        break
+
+      case 'h':
+        // Ctrl+H - 删除前一个字符（退格）
+        sendControlCharacter('\x08')
+        if (currentCommand.value.length > 0) {
+          currentCommand.value = currentCommand.value.slice(0, -1)
+        }
+        break
+
+      case 't':
+        // Ctrl+T - 交换光标前的两个字符
+        sendControlCharacter('\x14')
+        if (currentCommand.value.length >= 2) {
+          const chars = currentCommand.value.split('')
+          const temp = chars[chars.length - 1]
+          chars[chars.length - 1] = chars[chars.length - 2]
+          chars[chars.length - 2] = temp
+          currentCommand.value = chars.join('')
+        }
+        break
+
+      default:
+        // 其他 Ctrl 组合键，发送对应的控制字符
+        const controlChar = String.fromCharCode(event.key.charCodeAt(0) - 96)
+        sendControlCharacter(controlChar)
+        break
+    }
+    return
+  }
+
+  // 处理普通按键
   if (event.key === 'Enter') {
     // console.log('发送命令:', currentCommand.value)
     // 追加当前命令到输出
@@ -352,10 +454,17 @@ const handleKeyDown = (event) => {
     if (currentCommand.value.length > 0) {
       currentCommand.value = currentCommand.value.slice(0, -1)
     }
-  } else if (event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey) {
+  } else if (event.key.length === 1 && !event.altKey && !event.metaKey) {
     // 普通字符输入
     currentCommand.value += event.key
     // console.log('输入字符:', event.key, '当前命令:', currentCommand.value)
+  }
+}
+
+// 发送控制字符到 SSH
+const sendControlCharacter = (char) => {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(`input:${char}`)
   }
 }
 
