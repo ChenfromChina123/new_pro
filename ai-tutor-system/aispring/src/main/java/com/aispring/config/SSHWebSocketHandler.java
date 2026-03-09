@@ -31,6 +31,10 @@ public class SSHWebSocketHandler extends TextWebSocketHandler {
     private static final Map<String, OutputStream> outputStreams = new ConcurrentHashMap<>();
     // 用户连接映射（userId+serverId -> sessionId），用于持久化连接
     private static final Map<String, String> userServerSessions = new ConcurrentHashMap<>();
+    // 终端输出历史缓存（sessionId -> 输出内容）
+    private static final Map<String, StringBuilder> terminalOutputs = new ConcurrentHashMap<>();
+    // 最大输出历史长度（字符数）
+    private static final int MAX_OUTPUT_LENGTH = 50000;
     private static final ExecutorService executorService = Executors.newCachedThreadPool();
 
     @Autowired
@@ -188,6 +192,11 @@ public class SSHWebSocketHandler extends TextWebSocketHandler {
                                     String output = new String(buffer, 0, len, "UTF-8");
                                     log.info("读取到 SSH 输出 ({} 字节): {}", len,
                                         output.replaceAll("\n", "\\\\n").replaceAll("\r", "\\\\r"));
+
+                                    // 保存输出历史
+                                    appendTerminalOutput(finalSession.getId(), output);
+
+                                    // 发送到 WebSocket
                                     sendMessage(finalSession, "output:" + output);
                                 }
                             } else {
@@ -310,5 +319,47 @@ public class SSHWebSocketHandler extends TextWebSocketHandler {
                 log.error("发送消息失败：{}", e.getMessage());
             }
         }
+    }
+
+    /**
+     * 追加终端输出到历史缓存
+     * @param sessionId WebSocket 会话 ID
+     * @param output 输出内容
+     */
+    private void appendTerminalOutput(String sessionId, String output) {
+        StringBuilder sb = terminalOutputs.computeIfAbsent(sessionId, k -> new StringBuilder());
+        synchronized (sb) {
+            sb.append(output);
+            // 限制历史长度，避免内存溢出
+            if (sb.length() > MAX_OUTPUT_LENGTH) {
+                sb.delete(0, sb.length() - MAX_OUTPUT_LENGTH);
+            }
+        }
+    }
+
+    /**
+     * 获取终端输出历史
+     * @param sessionId WebSocket 会话 ID
+     * @return 输出历史内容
+     */
+    public static String getTerminalOutput(String sessionId) {
+        StringBuilder sb = terminalOutputs.get(sessionId);
+        if (sb != null) {
+            synchronized (sb) {
+                return sb.toString();
+            }
+        }
+        return "";
+    }
+
+    /**
+     * 根据 userId 和 serverId 获取 sessionId
+     * @param userId 用户 ID
+     * @param serverId 服务器 ID
+     * @return sessionId，如果不存在则返回 null
+     */
+    public static String getSessionIdByUserServer(String userId, String serverId) {
+        String userServerKey = userId + "_" + serverId;
+        return userServerSessions.get(userServerKey);
     }
 }

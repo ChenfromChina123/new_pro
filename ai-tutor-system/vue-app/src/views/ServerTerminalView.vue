@@ -133,7 +133,6 @@ let ctrlKeyPressed = false
 
 // localStorage 键名
 const STORAGE_KEY = 'ssh_terminal_connections'
-const STORAGE_OUTPUT_KEY = 'ssh_terminal_outputs'
 
 // 从 localStorage 加载连接状态
 const loadConnections = () => {
@@ -171,44 +170,23 @@ const removeConnection = (serverId) => {
     const connections = loadConnections()
     const filtered = connections.filter(c => c.serverId !== serverId)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered))
-    // 同时清除对应的输出
-    localStorage.removeItem(`${STORAGE_OUTPUT_KEY}_${serverId}`)
     console.log('移除连接状态:', serverId)
   } catch (error) {
     console.error('移除连接状态失败:', error)
   }
 }
 
-// 保存终端输出到 localStorage
-const saveTerminalOutput = (serverId, output) => {
+// 从后端获取终端输出历史
+const fetchTerminalOutput = async (serverId) => {
   try {
-    localStorage.setItem(`${STORAGE_OUTPUT_KEY}_${serverId}`, JSON.stringify({
-      output: output,
-      timestamp: Date.now()
-    }))
-  } catch (error) {
-    console.error('保存终端输出失败:', error)
-  }
-}
-
-// 从 localStorage 加载终端输出
-const loadTerminalOutput = (serverId) => {
-  try {
-    const stored = localStorage.getItem(`${STORAGE_OUTPUT_KEY}_${serverId}`)
-    if (stored) {
-      const data = JSON.parse(stored)
-      // 检查是否是最近的输出（30 分钟内）
-      if (Date.now() - data.timestamp < 30 * 60 * 1000) {
-        return data.output
-      } else {
-        // 超过 30 分钟，清除旧数据
-        localStorage.removeItem(`${STORAGE_OUTPUT_KEY}_${serverId}`)
-      }
+    const response = await request.get(`${API_BASE}/servers/${serverId}/output`)
+    if (response.code === 200 && response.data) {
+      terminalOutput.value = response.data
+      console.log('从后端加载终端输出历史:', serverId, response.data.length, '字符')
     }
   } catch (error) {
-    console.error('加载终端输出失败:', error)
+    console.error('获取终端输出历史失败:', error)
   }
-  return ''
 }
 
 // API 基础 URL（Spring Boot 后端）
@@ -334,29 +312,15 @@ const connectWebSocket = (serverId) => {
     if (message.startsWith('connected:')) {
       const msg = message.substring(10)
       appendOutput(msg + '\r\n')
-      // 保存输出
-      if (selectedServer.value) {
-        saveTerminalOutput(selectedServer.value, terminalOutput.value)
-      }
     } else if (message.startsWith('output:')) {
       const output = message.substring(7)
       appendOutput(output)
-      // 保存输出（防抖，避免频繁写入）
-      if (selectedServer.value) {
-        saveTerminalOutput(selectedServer.value, terminalOutput.value)
-      }
     } else if (message.startsWith('error:')) {
       const error = message.substring(6)
       appendOutput(`错误：${error}\r\n`)
-      if (selectedServer.value) {
-        saveTerminalOutput(selectedServer.value, terminalOutput.value)
-      }
     } else if (message.startsWith('disconnected:')) {
       const msg = message.substring(13)
       appendOutput(msg + '\r\n')
-      if (selectedServer.value) {
-        saveTerminalOutput(selectedServer.value, terminalOutput.value)
-      }
     }
   }
 
@@ -709,19 +673,16 @@ onMounted(async () => {
   if (connections.length > 0) {
     console.log('恢复持久化连接:', connections)
     // 等待服务器列表加载完成后再连接
-    setTimeout(() => {
-      connections.forEach((conn, index) => {
+    setTimeout(async () => {
+      for (let index = 0; index < connections.length; index++) {
+        const conn = connections[index]
         // 检查服务器是否仍然存在
         if (servers.value.find(s => s.id === conn.serverId)) {
           // 如果是第一个连接，自动选中该服务器
           if (index === 0 && !selectedServer.value) {
             selectServer(conn.serverId)
-            // 恢复历史终端输出
-            const savedOutput = loadTerminalOutput(conn.serverId)
-            if (savedOutput) {
-              terminalOutput.value = savedOutput
-              console.log('恢复历史终端输出:', conn.serverId)
-            }
+            // 从后端获取历史终端输出
+            await fetchTerminalOutput(conn.serverId)
           }
           // 重新建立 WebSocket 连接
           connectWebSocket(conn.serverId)
@@ -729,7 +690,7 @@ onMounted(async () => {
           // 服务器已删除，清除连接状态
           removeConnection(conn.serverId)
         }
-      })
+      }
     }, 500)
   }
 })
