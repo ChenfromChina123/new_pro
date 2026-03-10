@@ -22,8 +22,29 @@
         @click="focusTerminal"
         @keydown="handleKeyDown"
         @keyup="handleKeyUp"
+        @paste="handlePaste"
       >
         <div v-html="getTerminalContent()"></div>
+      </div>
+    </div>
+
+    <!-- 粘贴确认对话框 -->
+    <div v-if="showPasteModal" class="paste-modal-overlay">
+      <div class="paste-modal">
+        <div class="paste-modal-header">
+          <span>检测到粘贴内容</span>
+          <button @click="showPasteModal = false" class="close-btn">&times;</button>
+        </div>
+        <div class="paste-modal-body">
+          <textarea v-model="pasteBuffer" placeholder="在这里编辑要粘贴的内容..."></textarea>
+        </div>
+        <div class="paste-modal-footer">
+          <span class="hint">可以检查内容后点击粘贴</span>
+          <div class="actions">
+            <button @click="confirmPaste" class="btn-confirm">粘贴</button>
+            <button @click="showPasteModal = false" class="btn-cancel">取消</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -48,6 +69,10 @@ const currentCommand = ref('')
 const commandHistory = ref([])
 const commandHistoryIndex = ref(-1)
 const terminalOutput = ref('')
+
+// 粘贴确认相关
+const showPasteModal = ref(false)
+const pasteBuffer = ref('')
 
 let ws = null
 const wsConnected = ref(false)
@@ -276,6 +301,46 @@ const focusTerminal = () => {
   if (terminalContainer.value) {
     terminalContainer.value.focus()
   }
+}
+
+/**
+ * 处理粘贴事件
+ * @param {ClipboardEvent} event - 粘贴事件对象
+ */
+const handlePaste = (event) => {
+  event.preventDefault()
+  const text = (event.clipboardData || window.clipboardData).getData('text')
+  if (!text) return
+
+  // 如果是多行或者内容较长，弹出确认框
+  if (text.includes('\n') || text.length > 20) {
+    pasteBuffer.value = text
+    showPasteModal.value = true
+  } else {
+    // 短文本直接输入
+    currentCommand.value += text
+  }
+}
+
+/**
+ * 确认粘贴操作
+ */
+const confirmPaste = () => {
+  if (pasteBuffer.value) {
+    // 发送粘贴内容到服务器
+    sendMessage(`input:${pasteBuffer.value}`)
+
+    // 如果粘贴内容包含换行，通常意味着执行了命令，清空当前输入行
+    if (pasteBuffer.value.includes('\n')) {
+      currentCommand.value = ''
+    }
+
+    // 在终端显示粘贴的内容
+    appendOutput(pasteBuffer.value.replace(/\n/g, '\r\n'))
+  }
+  showPasteModal.value = false
+  pasteBuffer.value = ''
+  focusTerminal()
 }
 
 const handleKeyDown = (event) => {
@@ -524,5 +589,131 @@ onUnmounted(() => {
 
 .terminal-output::-webkit-scrollbar-thumb:hover {
   background: #666;
+}
+
+/* 粘贴确认对话框样式 */
+.paste-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.paste-modal {
+  background: #ffffff;
+  width: 600px;
+  max-width: 90vw;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.paste-modal-header {
+  padding: 12px 16px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #333;
+  font-weight: bold;
+}
+
+.paste-modal-body {
+  padding: 15px;
+}
+
+.paste-modal-body textarea {
+  width: 100%;
+  height: 250px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  padding: 10px;
+  font-family: 'Courier New', 'Monaco', 'Consolas', monospace;
+  font-size: 13px;
+  resize: none;
+  outline: none;
+  background: #fdfdfd;
+  box-sizing: border-box;
+}
+
+.paste-modal-body textarea:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.paste-modal-footer {
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid #e9ecef;
+}
+
+.paste-modal-footer .hint {
+  color: #6c757d;
+  font-size: 12px;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-confirm {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 6px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.btn-confirm:hover {
+  background: #0056b3;
+}
+
+.btn-cancel {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 6px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.btn-cancel:hover {
+  background: #5a6268;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #999;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+}
+
+.close-btn:hover {
+  color: #333;
 }
 </style>
