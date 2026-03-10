@@ -24,8 +24,10 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SFTPClientFactory implements PooledObjectFactory<SFTPClient> {
 
     private static ServerConnectionRepository serverConnectionRepository;
-    
+
     private static final Map<Long, ServerConnection> serverCache = new ConcurrentHashMap<>();
+
+    private static final Map<SFTPClient, SSHClient> sshClientMap = new ConcurrentHashMap<>();
 
     @Autowired
     public void setServerConnectionRepository(ServerConnectionRepository repository) {
@@ -46,12 +48,12 @@ public class SFTPClientFactory implements PooledObjectFactory<SFTPClient> {
     }
 
     /**
-     * 创建 SFTP 客户端对象
-     * @return SFTP 客户端
+     * 创建 SFTP 客户端对象（Pool2 新版本要求的方法）
+     * @return 可池化对象
      * @throws Exception 创建失败时抛出异常
      */
     @Override
-    public SFTPClient create() throws Exception {
+    public PooledObject<SFTPClient> makeObject() throws Exception {
         Long serverId = currentServerId.get();
         if (serverId == null) {
             throw new IllegalStateException("未设置服务器 ID，请先调用 setCurrentServerId");
@@ -65,26 +67,28 @@ public class SFTPClientFactory implements PooledObjectFactory<SFTPClient> {
         log.info("正在创建 SFTP 连接: {}@{}:{}", server.getUsername(), server.getHost(), server.getPort());
 
         SSHClient ssh = new SSHClient();
-        
+
         try {
             ssh.addHostKeyVerifier(new PromiscuousVerifier());
             ssh.setConnectTimeout(30000);
             ssh.connect(server.getHost(), server.getPort());
-            
+
             ssh.authPassword(server.getUsername(), server.getPassword());
-            
-            ssh.getConnection().setKeepAliveInterval(30);
-            
+
+            ssh.getConnection().getKeepAlive().setKeepAliveInterval(30);
+
             SFTPClient sftp = ssh.newSFTPClient();
-            
+
+            sshClientMap.put(sftp, ssh);
+
             log.info("SFTP 连接创建成功: {}@{}:{}", server.getUsername(), server.getHost(), server.getPort());
-            
-            return sftp;
-            
+
+            return new DefaultPooledObject<>(sftp);
+
         } catch (Exception e) {
-            log.error("SFTP 连接创建失败: {}@{}:{} - {}", server.getUsername(), server.getHost(), 
+            log.error("SFTP 连接创建失败: {}@{}:{} - {}", server.getUsername(), server.getHost(),
                 server.getPort(), e.getMessage());
-            
+
             if (ssh.isConnected()) {
                 try {
                     ssh.disconnect();
@@ -93,16 +97,6 @@ public class SFTPClientFactory implements PooledObjectFactory<SFTPClient> {
             }
             throw e;
         }
-    }
-
-    /**
-     * 将对象包装为可池化对象
-     * @param sftp SFTP 客户端
-     * @return 可池化对象
-     */
-    @Override
-    public PooledObject<SFTPClient> wrap(SFTPClient sftp) {
-        return new DefaultPooledObject<>(sftp);
     }
 
     /**
@@ -115,7 +109,7 @@ public class SFTPClientFactory implements PooledObjectFactory<SFTPClient> {
         SFTPClient sftp = pooledObject.getObject();
         if (sftp != null) {
             try {
-                SSHClient ssh = sftp.getSSHClient();
+                SSHClient ssh = sshClientMap.remove(sftp);
                 sftp.close();
                 if (ssh != null && ssh.isConnected()) {
                     ssh.disconnect();
@@ -139,7 +133,7 @@ public class SFTPClientFactory implements PooledObjectFactory<SFTPClient> {
         if (sftp == null) {
             return false;
         }
-        
+
         try {
             sftp.stat("/");
             return true;

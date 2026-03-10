@@ -14,8 +14,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -63,11 +66,11 @@ public class SFTPController {
             @RequestParam(defaultValue = "/") String path) {
         try {
             List<FileInfo> files = sftpService.listFiles(serverId, path);
-            
+
             Map<String, Object> result = new HashMap<>();
             result.put("path", path);
             result.put("files", files);
-            
+
             return ResponseEntity.ok(Map.of(
                 "code", 200,
                 "message", "获取成功",
@@ -96,22 +99,22 @@ public class SFTPController {
             @RequestParam String path,
             @RequestParam("file") MultipartFile file,
             HttpServletRequest request) {
-        
+
         String taskId = UUID.randomUUID().toString();
         String userId = getCurrentUserId(request);
         String fileName = file.getOriginalFilename();
         String remotePath = path.endsWith("/") ? path + fileName : path + "/" + fileName;
-        
+
         try {
             long fileSize = file.getSize();
-            
+
             try (InputStream inputStream = file.getInputStream()) {
                 sftpService.uploadFile(serverId, remotePath, inputStream, fileSize, progress -> {
                     progress.setTaskId(taskId);
                     progressService.sendProgressUpdate(userId, taskId, progress);
                 });
             }
-            
+
             TransferProgress completed = TransferProgress.builder()
                 .taskId(taskId)
                 .fileName(fileName)
@@ -122,9 +125,9 @@ public class SFTPController {
                 .status(TransferProgress.TransferStatus.COMPLETED)
                 .build();
             progressService.forceSendProgress(userId, taskId, completed);
-            
+
             log.info("文件上传成功: serverId={}, path={}, size={}", serverId, remotePath, fileSize);
-            
+
             return ResponseEntity.ok(Map.of(
                 "code", 200,
                 "message", "上传成功",
@@ -135,10 +138,10 @@ public class SFTPController {
                     "size", fileSize
                 )
             ));
-            
+
         } catch (Exception e) {
             log.error("文件上传失败: serverId={}, path={}, error={}", serverId, remotePath, e.getMessage());
-            
+
             TransferProgress failed = TransferProgress.builder()
                 .taskId(taskId)
                 .fileName(fileName)
@@ -147,7 +150,7 @@ public class SFTPController {
                 .errorMessage(e.getMessage())
                 .build();
             progressService.forceSendProgress(userId, taskId, failed);
-            
+
             return ResponseEntity.ok(Map.of(
                 "code", 500,
                 "message", "上传失败: " + e.getMessage()
@@ -167,39 +170,39 @@ public class SFTPController {
             @PathVariable Long serverId,
             @RequestParam String path,
             HttpServletRequest request) {
-        
+
         String taskId = UUID.randomUUID().toString();
         String userId = getCurrentUserId(request);
         String fileName = path.substring(path.lastIndexOf('/') + 1);
-        
+
         try {
             FileInfo fileInfo = sftpService.getFileInfo(serverId, path);
-            
+
             if (fileInfo.isDirectory()) {
                 return ResponseEntity.ok(Map.of(
                     "code", 400,
                     "message", "不能下载目录，请选择文件"
                 ));
             }
-            
+
             long fileSize = fileInfo.getSize();
-            
+
             String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8)
                 .replaceAll("\\+", "%20");
-            
+
             return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .header(HttpHeaders.CONTENT_DISPOSITION, 
+                .header(HttpHeaders.CONTENT_DISPOSITION,
                     "attachment; filename*=UTF-8''" + encodedFileName)
                 .header("X-Task-Id", taskId)
                 .header("X-File-Size", String.valueOf(fileSize))
-                .body(outputStream -> {
+                .body((StreamingResponseBody) outputStream -> {
                     try {
                         sftpService.downloadFile(serverId, path, outputStream, progress -> {
                             progress.setTaskId(taskId);
                             progressService.sendProgressUpdate(userId, taskId, progress);
                         });
-                        
+
                         TransferProgress completed = TransferProgress.builder()
                             .taskId(taskId)
                             .fileName(fileName)
@@ -210,12 +213,12 @@ public class SFTPController {
                             .status(TransferProgress.TransferStatus.COMPLETED)
                             .build();
                         progressService.forceSendProgress(userId, taskId, completed);
-                        
+
                         log.info("文件下载成功: serverId={}, path={}", serverId, path);
-                        
+
                     } catch (Exception e) {
                         log.error("文件下载失败: serverId={}, path={}, error={}", serverId, path, e.getMessage());
-                        
+
                         TransferProgress failed = TransferProgress.builder()
                             .taskId(taskId)
                             .fileName(fileName)
@@ -226,7 +229,7 @@ public class SFTPController {
                         progressService.forceSendProgress(userId, taskId, failed);
                     }
                 });
-            
+
         } catch (Exception e) {
             log.error("文件下载失败: serverId={}, path={}, error={}", serverId, path, e.getMessage());
             return ResponseEntity.ok(Map.of(
@@ -254,14 +257,14 @@ public class SFTPController {
             } else {
                 sftpService.deleteFile(serverId, path);
             }
-            
+
             log.info("删除成功: serverId={}, path={}, isDirectory={}", serverId, path, isDirectory);
-            
+
             return ResponseEntity.ok(Map.of(
                 "code", 200,
                 "message", "删除成功"
             ));
-            
+
         } catch (Exception e) {
             log.error("删除失败: serverId={}, path={}, error={}", serverId, path, e.getMessage());
             return ResponseEntity.ok(Map.of(
@@ -285,14 +288,14 @@ public class SFTPController {
             @RequestParam String newPath) {
         try {
             sftpService.rename(serverId, oldPath, newPath);
-            
+
             log.info("重命名成功: serverId={}, {} -> {}", serverId, oldPath, newPath);
-            
+
             return ResponseEntity.ok(Map.of(
                 "code", 200,
                 "message", "重命名成功"
             ));
-            
+
         } catch (Exception e) {
             log.error("重命名失败: serverId={}, {} -> {}, error={}", serverId, oldPath, newPath, e.getMessage());
             return ResponseEntity.ok(Map.of(
@@ -314,14 +317,14 @@ public class SFTPController {
             @RequestParam String path) {
         try {
             sftpService.mkdir(serverId, path);
-            
+
             log.info("创建目录成功: serverId={}, path={}", serverId, path);
-            
+
             return ResponseEntity.ok(Map.of(
                 "code", 200,
                 "message", "创建成功"
             ));
-            
+
         } catch (Exception e) {
             log.error("创建目录失败: serverId={}, path={}, error={}", serverId, path, e.getMessage());
             return ResponseEntity.ok(Map.of(
@@ -343,13 +346,13 @@ public class SFTPController {
             @RequestParam String path) {
         try {
             boolean exists = sftpService.exists(serverId, path);
-            
+
             return ResponseEntity.ok(Map.of(
                 "code", 200,
                 "message", "查询成功",
                 "data", Map.of("exists", exists)
             ));
-            
+
         } catch (Exception e) {
             log.error("检查路径失败: serverId={}, path={}, error={}", serverId, path, e.getMessage());
             return ResponseEntity.ok(Map.of(
@@ -371,13 +374,13 @@ public class SFTPController {
             @RequestParam String path) {
         try {
             FileInfo fileInfo = sftpService.getFileInfo(serverId, path);
-            
+
             return ResponseEntity.ok(Map.of(
                 "code", 200,
                 "message", "获取成功",
                 "data", fileInfo
             ));
-            
+
         } catch (Exception e) {
             log.error("获取文件信息失败: serverId={}, path={}, error={}", serverId, path, e.getMessage());
             return ResponseEntity.ok(Map.of(
