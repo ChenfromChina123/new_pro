@@ -177,7 +177,7 @@ const newFolderInput = ref(null)
 
 const showRename = ref(false)
 const renameNewName = ref('')
-const renameFile = ref(null)
+const fileToRename = ref(null)
 const renameInput = ref(null)
 
 const contextMenu = ref({
@@ -275,11 +275,11 @@ function showNewFolderDialog() {
  */
 async function createFolder() {
   if (!newFolderName.value.trim()) return
-  
-  const path = currentPath.value === '/' 
-    ? `/${newFolderName.value}` 
+
+  const path = currentPath.value === '/'
+    ? `/${newFolderName.value}`
     : `${currentPath.value}/${newFolderName.value}`
-  
+
   const success = await sftpStore.createDirectory(path)
   if (success) {
     showNewFolder.value = false
@@ -291,7 +291,7 @@ async function createFolder() {
  * @param {object} file - 文件对象
  */
 function renameFile(file) {
-  renameFile.value = file
+  fileToRename.value = file
   renameNewName.value = file.name
   showRename.value = true
   nextTick(() => {
@@ -303,16 +303,16 @@ function renameFile(file) {
  * 执行重命名
  */
 async function doRename() {
-  if (!renameNewName.value.trim() || !renameFile.value) return
-  
-  const oldPath = renameFile.value.path
+  if (!renameNewName.value.trim() || !fileToRename.value) return
+
+  const oldPath = fileToRename.value.path
   const parentPath = oldPath.substring(0, oldPath.lastIndexOf('/'))
   const newPath = parentPath ? `${parentPath}/${renameNewName.value}` : `/${renameNewName.value}`
-  
+
   const success = await sftpStore.renameItem(oldPath, newPath)
   if (success) {
     showRename.value = false
-    renameFile.value = null
+    fileToRename.value = null
   }
 }
 
@@ -322,7 +322,7 @@ async function doRename() {
  */
 async function deleteFile(file) {
   if (!confirm(`确定要删除 "${file.name}" 吗？`)) return
-  
+
   await sftpStore.deleteItem(file.path, file.isDirectory)
 }
 
@@ -332,7 +332,7 @@ async function deleteFile(file) {
  */
 async function downloadFile(file) {
   if (file.isDirectory) return
-  
+
   try {
     const blob = await sftpService.downloadFileBlob(props.serverId, file.path)
     const url = URL.createObjectURL(blob)
@@ -354,7 +354,7 @@ async function downloadFile(file) {
 async function handleUpload(event) {
   const fileList = event.target.files
   if (!fileList.length) return
-  
+
   for (const file of fileList) {
     try {
       sftpStore.addTransferTask({
@@ -363,16 +363,16 @@ async function handleUpload(event) {
         totalSize: file.size,
         type: 'upload'
       })
-      
+
       await sftpService.uploadFile(props.serverId, currentPath.value, file)
-      
+
       await sftpStore.fetchFiles()
     } catch (error) {
       console.error('上传失败:', error)
       alert('上传失败: ' + error.message)
     }
   }
-  
+
   event.target.value = ''
 }
 
