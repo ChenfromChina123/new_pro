@@ -61,15 +61,13 @@
               <input type="checkbox" @change="toggleSelectAll" :checked="isAllSelected" />
             </th>
             <th class="col-name">名称</th>
-            <th class="col-size">大小</th>
-            <th class="col-modified">修改时间</th>
             <th class="col-permissions">权限</th>
             <th class="col-actions">操作</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="files.length === 0">
-            <td colspan="6" class="empty-row">
+            <td colspan="4" class="empty-row">
               <div class="empty-content">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5">
                   <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
@@ -98,10 +96,6 @@
                   <span class="file-badge directory-badge">目录</span>
                 </div>
               </td>
-              <td class="col-size">
-                <span class="size-text directory-size">—</span>
-              </td>
-              <td class="col-modified">{{ formatDateTime(file.modifiedTime) }}</td>
               <td class="col-permissions">
                 <span class="permission-text">{{ file.permissions }}</span>
               </td>
@@ -138,21 +132,10 @@
                   <span class="file-ext" v-if="getFileExtension(file.name)">{{ getFileExtension(file.name) }}</span>
                 </div>
               </td>
-              <td class="col-size">
-                <span class="size-text">{{ formatSize(file.size) }}</span>
-              </td>
-              <td class="col-modified">{{ formatDateTime(file.modifiedTime) }}</td>
               <td class="col-permissions">
                 <span class="permission-text">{{ file.permissions }}</span>
               </td>
               <td class="col-actions">
-                <button class="btn-action" @click.stop="downloadFile(file)" title="下载">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                    <polyline points="7 10 12 15 17 10"/>
-                    <line x1="12" y1="15" x2="12" y2="3"/>
-                  </svg>
-                </button>
                 <button class="btn-action" @click.stop="renameFile(file)" title="重命名">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
@@ -252,12 +235,12 @@
 <script setup>
 /**
  * 文件面板组件
- * 显示SFTP文件列表，支持文件操作
+ * 显示 SFTP 文件列表，支持文件操作
  */
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useSFTPStore } from '@/stores/sftp'
 import sftpService from '@/services/sftpService'
-import { formatFileSize, formatDateTime } from '@/utils/fileIcons'
+import { formatDateTime } from '@/utils/fileIcons'
 import Breadcrumb from './Breadcrumb.vue'
 import FileIcon from './FileIcon.vue'
 
@@ -353,9 +336,8 @@ function handleClick(file, event) {
 function handleDoubleClick(file) {
   if (file.isDirectory) {
     sftpStore.enterDirectory(file.name)
-  } else {
-    downloadFile(file)
   }
+  // 文件不处理双击，只能通过右键菜单下载
 }
 
 /**
@@ -478,7 +460,7 @@ async function downloadFile(file) {
     URL.revokeObjectURL(url)
   } catch (error) {
     console.error('下载失败:', error)
-    alert('下载失败: ' + error.message)
+    alert('下载失败：' + error.message)
   }
 }
 
@@ -504,7 +486,7 @@ async function handleUpload(event) {
       await sftpStore.fetchFiles()
     } catch (error) {
       console.error('上传失败:', error)
-      alert('上传失败: ' + error.message)
+      alert('上传失败：' + error.message)
     }
   }
 
@@ -533,15 +515,6 @@ function hideContextMenu() {
 }
 
 /**
- * 格式化文件大小
- * @param {number} bytes - 字节数
- * @returns {string} 格式化的大小
- */
-function formatSize(bytes) {
-  return formatFileSize(bytes)
-}
-
-/**
  * 获取文件扩展名
  * @param {string} fileName - 文件名
  * @returns {string} 扩展名（带点）
@@ -553,7 +526,7 @@ function getFileExtension(fileName) {
 }
 
 /**
- * 获取文件类型CSS类名
+ * 获取文件类型 CSS 类名
  * @param {object} file - 文件对象
  * @returns {string} 类型类名
  */
@@ -825,15 +798,6 @@ onUnmounted(() => {
   min-width: 200px;
 }
 
-.col-size {
-  width: 100px;
-  text-align: right;
-}
-
-.col-modified {
-  width: 160px;
-}
-
 .col-permissions {
   width: 100px;
 }
@@ -890,15 +854,6 @@ onUnmounted(() => {
   padding: 2px 5px;
   border-radius: 3px;
   font-family: monospace;
-}
-
-.size-text {
-  font-family: monospace;
-  font-size: 12px;
-}
-
-.directory-size {
-  color: var(--text-dim);
 }
 
 .permission-text {
