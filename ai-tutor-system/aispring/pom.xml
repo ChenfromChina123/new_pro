@@ -231,6 +231,19 @@
             <version>0.1.55</version>
         </dependency>
 
+        <!-- SSHJ - Modern SFTP Client -->
+        <dependency>
+            <groupId>com.hierynomus</groupId>
+            <artifactId>sshj</artifactId>
+            <version>0.38.0</version>
+        </dependency>
+
+        <!-- Apache Commons Pool2 - Connection Pool -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-pool2</artifactId>
+        </dependency>
+
         <!-- Spring for GraphQL -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

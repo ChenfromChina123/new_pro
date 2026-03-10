@@ -85,6 +85,12 @@ const router = createRouter({
           name: 'TerminalWindow',
           component: () => import('@/views/TerminalWindowView.vue'),
           meta: { requiresAuth: true }
+        },
+        {
+          path: 'sftp',
+          name: 'SFTPManager',
+          component: () => import('@/views/SFTPManagerView.vue'),
+          meta: { requiresAuth: true }
         }
       ]
     },

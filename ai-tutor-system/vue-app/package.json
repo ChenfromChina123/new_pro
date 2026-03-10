@@ -18,10 +18,12 @@
     "marked": "^11.0.0",
     "pinia": "^2.1.7",
     "socket.io-client": "^4.8.3",
+    "splitpanes": "^4.0.4",
     "vue": "^3.4.0",
     "vue-router": "^4.2.5",
     "vue-virtual-scroller": "^2.0.0-beta.8",
-    "vue3-katex": "^0.8.0"
+    "vue3-katex": "^0.8.0",
+    "vxe-table": "^4.18.1"
   },
   "devDependencies": {
     "@types/node": "^25.0.3",

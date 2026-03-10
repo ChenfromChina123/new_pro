@@ -133,6 +133,15 @@
           <i class="fas fa-server"></i>
           <span>服务器终端</span>
         </router-link>
+        <router-link
+          v-if="authStore.isAuthenticated"
+          to="/sftp"
+          class="nav-item"
+          active-class="active"
+        >
+          <i class="fas fa-folder-open"></i>
+          <span>SFTP 文件管理</span>
+        </router-link>
       </div>
 
       <!-- 存储配额显示 -->
