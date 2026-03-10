@@ -1,22 +1,72 @@
 <template>
-  <div class="server-terminal-view">
-    <h1 class="page-title">多服务器终端控制</h1>
+  <div class="terminal-app" :class="{ 'light-mode': !isDarkMode }">
+    <!-- 移动端头部 -->
+    <header v-if="isMobile" class="mobile-header">
+      <button @click="toggleServers">☰ 列表</button>
+      <span class="current-title">{{ getServerName(selectedServer) }}</span>
+      <button @click="toggleAddForm">✚ 添加</button>
+    </header>
 
-    <!-- 移动端折叠按钮 -->
-    <div class="top-actions" v-if="isMobile">
-      <button class="mobile-toggle" @click="toggleServers">
-        <span v-if="showServers">📋 隐藏服务器列表</span>
-        <span v-else>📋 显示服务器列表</span>
-      </button>
-      <button class="add-server-btn" @click="toggleAddForm">
-        ➕ 添加服务器
-      </button>
+    <!-- 主布局 -->
+    <div class="main-layout">
+      <!-- 侧边栏 -->
+      <aside :class="['sidebar', { 'mobile-hidden': isMobile && !showServers }]">
+        <div class="sidebar-header">
+          <h2>SERVERS</h2>
+          <button class="icon-add-btn" @click="toggleAddForm" title="添加服务器">✚</button>
+        </div>
+
+        <nav class="server-list">
+          <div
+            v-for="server in servers"
+            :key="server.id"
+            :class="['server-item', { active: selectedServer === server.id }]"
+            @click="selectServer(server.id)"
+          >
+            <div class="status-indicator" :class="{ connected: connectedServers.includes(server.id) }"></div>
+            <div class="server-meta">
+              <span class="name">{{ server.name || server.host }}</span>
+              <span class="addr">{{ server.host }}</span>
+            </div>
+            <div class="item-actions">
+              <button @click.stop="openNewTerminal(server.id)" title="新窗口">↗</button>
+              <button @click.stop="deleteServer(server.id)" class="del" title="删除">×</button>
+            </div>
+          </div>
+        </nav>
+      </aside>
+
+      <!-- 终端主区域 -->
+      <main class="terminal-container">
+        <div v-if="selectedServer" class="terminal-view">
+          <header class="terminal-toolbar">
+            <div class="server-info">
+              <span class="tag">SSH</span>
+              <code>{{ getServerName(selectedServer) }}</code>
+            </div>
+            <div class="ctrl-group">
+              <button v-if="!connectedServers.includes(selectedServer)" @click="connectServer(selectedServer)" class="btn-connect">连接</button>
+              <button v-else @click="disconnectServer(selectedServer)" class="btn-disconnect">断开</button>
+            </div>
+          </header>
+
+          <div
+            ref="terminalContainer"
+            class="xterm-wrapper"
+            tabindex="0"
+            @keydown="handleKeyDown"
+            @keyup="handleKeyUp"
+          >
+            <div class="terminal-content" v-html="getTerminalContent()"></div>
+          </div>
+        </div>
+
+        <div v-else class="empty-state">
+          <div class="placeholder-icon">⌨️</div>
+          <p>请从左侧选择一个服务器开始工作</p>
+        </div>
+      </main>
     </div>
-
-    <!-- PC 端添加服务器按钮 -->
-    <button class="add-server-btn-pc" @click="toggleAddForm" v-else>
-      ➕ 添加服务器
-    </button>
 
     <!-- 添加服务器弹窗 -->
     <div class="modal-overlay" v-if="showAddForm" @click.self="toggleAddForm">
@@ -53,80 +103,6 @@
         </form>
       </div>
     </div>
-
-    <!-- 服务器列表区域 -->
-    <div class="content-container" :class="{ 'servers-hidden': !showServers && isMobile }">
-      <div class="servers-section">
-        <div class="servers-list">
-          <h2>服务器列表</h2>
-          <div
-            v-for="server in servers"
-            :key="server.id"
-            :class="['server-item', { selected: selectedServer === server.id, connected: connectedServers.includes(server.id) }]"
-            @click="selectServer(server.id)"
-          >
-            <div class="server-info">
-              <h3>{{ server.name || server.host }}</h3>
-              <p>{{ server.host }}:{{ server.port }}</p>
-              <p>用户：{{ server.username }}</p>
-            </div>
-            <div class="server-actions">
-              <button
-                v-if="!connectedServers.includes(server.id)"
-                @click.stop="connectServer(server.id)"
-                class="btn btn-primary"
-              >
-                连接
-              </button>
-              <button
-                v-else
-                @click.stop="disconnectServer(server.id)"
-                class="btn btn-danger"
-              >
-                断开
-              </button>
-              <button
-                @click.stop="openNewTerminal(server.id)"
-                class="btn btn-secondary"
-              >
-                新开窗口
-              </button>
-              <button
-                @click.stop="deleteServer(server.id)"
-                class="btn btn-secondary"
-              >
-                删除
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 终端控制 -->
-      <div class="terminal-section">
-        <h2>交互式终端</h2>
-        <div v-if="selectedServer" class="terminal-wrapper">
-          <div class="terminal-header">
-            <span>当前服务器：{{ getServerName(selectedServer) }}</span>
-            <span v-if="wsConnected" class="connection-status connected">已连接</span>
-            <span v-else class="connection-status disconnected">未连接</span>
-          </div>
-          <div
-            ref="terminalContainer"
-            class="terminal-output"
-            tabindex="0"
-            @click="focusTerminal"
-            @keydown="handleKeyDown"
-            @keyup="handleKeyUp"
-          >
-            <div v-html="getTerminalContent()"></div>
-          </div>
-        </div>
-        <div v-else class="no-server-selected">
-          请选择一个服务器进行连接
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -156,8 +132,9 @@ const terminalOutput = ref('')
 
 // 移动端折叠控制
 const showServers = ref(true)
-const showAddForm = ref(false) // 默认隐藏添加表单
+const showAddForm = ref(false)
 const isMobile = ref(false)
+const isDarkMode = ref(true) // 默认夜间模式
 
 // 检测设备类型
 const checkMobile = () => {
@@ -172,6 +149,17 @@ const toggleServers = () => {
 // 切换添加表单显示
 const toggleAddForm = () => {
   showAddForm.value = !showAddForm.value
+}
+
+// 切换夜间模式
+const toggleDarkMode = () => {
+  isDarkMode.value = !isDarkMode.value
+}
+
+// 获取服务器名称
+const getServerName = (serverId) => {
+  const server = servers.value.find(s => s.id === serverId)
+  return server ? (server.name || server.host) : '未选择服务器'
 }
 
 // WebSocket 连接
