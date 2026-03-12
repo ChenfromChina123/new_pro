@@ -43,7 +43,10 @@
     </div>
 
     <!-- 文件列表 -->
-    <div v-else class="file-list-container">
+    <div v-else class="file-list-container" ref="listContainer" @mousedown="handleMouseDown" @mousemove="handleMouseMove" @mouseup="handleMouseUp" @mouseleave="handleMouseUp">
+      <!-- 框选遮罩 -->
+      <div v-if="isSelecting" class="selection-marquee" :style="marqueeStyle"></div>
+
       <div v-if="loading" class="loading-overlay">
         <div class="loading-spinner"></div>
         <span>加载中...</span>
@@ -265,6 +268,25 @@ const contextMenu = ref({
   x: 0,
   y: 0,
   file: null
+})
+
+// 框选相关
+const listContainer = ref(null)
+const isSelecting = ref(false)
+const marqueeStart = ref({ x: 0, y: 0 })
+const marqueeEnd = ref({ x: 0, y: 0 })
+const marqueeStyle = computed(() => {
+  const left = Math.min(marqueeStart.value.x, marqueeEnd.value.x)
+  const top = Math.min(marqueeStart.value.y, marqueeEnd.value.y)
+  const width = Math.abs(marqueeEnd.value.x - marqueeStart.value.x)
+  const height = Math.abs(marqueeEnd.value.y - marqueeStart.value.y)
+
+  return {
+    left: left + 'px',
+    top: top + 'px',
+    width: width + 'px',
+    height: height + 'px'
+  }
 })
 
 /**
@@ -577,6 +599,76 @@ function getFileTypeClass(file) {
   }
 
   return 'unknown'
+}
+
+/**
+ * 框选相关函数
+ */
+function handleMouseDown(e) {
+  // 只处理左键，且不在表头和按钮上
+  if (e.button !== 0 || e.target.closest('th') || e.target.closest('button')) return
+
+  const rect = listContainer.value.getBoundingClientRect()
+  marqueeStart.value = {
+    x: e.clientX - rect.left,
+    y: e.clientY - rect.top
+  }
+  marqueeEnd.value = { ...marqueeStart.value }
+  isSelecting.value = true
+}
+
+function handleMouseMove(e) {
+  if (!isSelecting.value) return
+
+  const rect = listContainer.value.getBoundingClientRect()
+  marqueeEnd.value = {
+    x: e.clientX - rect.left,
+    y: e.clientY - rect.top
+  }
+}
+
+function handleMouseUp(e) {
+  if (!isSelecting.value) return
+
+  isSelecting.value = false
+
+  // 计算选中的行
+  const selectLeft = Math.min(marqueeStart.value.x, marqueeEnd.value.x)
+  const selectTop = Math.min(marqueeStart.value.y, marqueeEnd.value.y)
+  const selectRight = Math.max(marqueeStart.value.x, marqueeEnd.value.x)
+  const selectBottom = Math.max(marqueeStart.value.y, marqueeEnd.value.y)
+
+  // 如果框选区域太小，忽略（防止误触）
+  if (selectRight - selectLeft < 10 || selectBottom - selectTop < 10) return
+
+  // 获取所有行元素
+  const rows = listContainer.value.querySelectorAll('.file-row')
+  const newlySelected = []
+
+  rows.forEach(row => {
+    const rowRect = row.getBoundingClientRect()
+    const containerRect = listContainer.value.getBoundingClientRect()
+
+    const rowTop = rowRect.top - containerRect.top
+    const rowBottom = rowRect.bottom - containerRect.top
+
+    // 检查行是否与选框重叠
+    if (rowBottom > selectTop && rowTop < selectBottom) {
+      // 找到对应的文件对象
+      const file = sortedFiles.value.find(f => {
+        const fileRow = rows.find(r => r === row)
+        return fileRow && fileRow.querySelector('.file-name')?.textContent?.trim() === f.name
+      })
+
+      if (file && !selectedFiles.value.some(f => f.path === file.path)) {
+        newlySelected.push(file)
+      }
+    }
+  })
+
+  if (newlySelected.length > 0) {
+    sftpStore.selectedFiles = [...selectedFiles.value, ...newlySelected]
+  }
 }
 
 /**
@@ -1119,6 +1211,16 @@ onUnmounted(() => {
 
 .btn-clear:hover {
   background: rgba(255, 255, 255, 0.3);
+}
+
+/* 框选遮罩 */
+.selection-marquee {
+  position: absolute;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.5);
+  pointer-events: none;
+  z-index: 100;
+  transition: all 0.05s ease;
 }
 
 /* 滚动条样式 */
