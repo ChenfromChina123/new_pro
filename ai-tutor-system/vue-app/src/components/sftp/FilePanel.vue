@@ -43,7 +43,16 @@
     </div>
 
     <!-- 文件列表 -->
-    <div v-else class="file-list-container" ref="listContainer" @mousedown="handleMouseDown" @mousemove="handleMouseMove" @mouseup="handleMouseUp" @mouseleave="handleMouseUp">
+    <div
+      v-else
+      class="file-list-container"
+      :class="{ 'is-selecting': isSelecting }"
+      ref="listContainer"
+      @mousedown="handleMouseDown"
+      @mousemove="handleMouseMove"
+      @mouseup="handleMouseUp"
+      @mouseleave="handleMouseUp"
+    >
       <!-- 框选遮罩 -->
       <div v-if="isSelecting" class="selection-marquee" :style="marqueeStyle"></div>
 
@@ -73,6 +82,7 @@
             <tr
               v-for="file in sortedFiles.filter(f => f.isDirectory)"
               :key="file.path"
+              :data-path="file.path"
               :class="['file-row', 'is-directory', { selected: isSelected(file) }]"
               @dblclick="handleDoubleClick(file)"
               @click="handleClick(file, $event)"
@@ -93,6 +103,7 @@
             <tr
               v-for="file in sortedFiles.filter(f => !f.isDirectory)"
               :key="file.path"
+              :data-path="file.path"
               :class="['file-row', 'is-file', `file-type-${getFileTypeClass(file)}`, { selected: isSelected(file) }]"
               @dblclick="handleDoubleClick(file)"
               @click="handleClick(file, $event)"
@@ -602,72 +613,98 @@ function getFileTypeClass(file) {
 }
 
 /**
- * 框选相关函数
+ * 框选相关函数优化版
  */
 function handleMouseDown(e) {
   // 只处理左键，且不在表头和按钮上
   if (e.button !== 0 || e.target.closest('th') || e.target.closest('button')) return
 
-  const rect = listContainer.value.getBoundingClientRect()
+  const container = listContainer.value
+  const rect = container.getBoundingClientRect()
+
+  // 必须加上 scrollLeft/scrollTop 以应对列表滚动的情况
   marqueeStart.value = {
-    x: e.clientX - rect.left,
-    y: e.clientY - rect.top
+    x: e.clientX - rect.left + container.scrollLeft,
+    y: e.clientY - rect.top + container.scrollTop
   }
   marqueeEnd.value = { ...marqueeStart.value }
   isSelecting.value = true
+
+  // 清除浏览器原生的文字选中，防止拖拽干扰
+  window.getSelection()?.removeAllRanges()
 }
 
 function handleMouseMove(e) {
   if (!isSelecting.value) return
 
-  const rect = listContainer.value.getBoundingClientRect()
+  const container = listContainer.value
+  const rect = container.getBoundingClientRect()
+
   marqueeEnd.value = {
-    x: e.clientX - rect.left,
-    y: e.clientY - rect.top
+    x: e.clientX - rect.left + container.scrollLeft,
+    y: e.clientY - rect.top + container.scrollTop
   }
 }
 
 function handleMouseUp(e) {
   if (!isSelecting.value) return
-
   isSelecting.value = false
 
-  // 计算选中的行
   const selectLeft = Math.min(marqueeStart.value.x, marqueeEnd.value.x)
   const selectTop = Math.min(marqueeStart.value.y, marqueeEnd.value.y)
   const selectRight = Math.max(marqueeStart.value.x, marqueeEnd.value.x)
   const selectBottom = Math.max(marqueeStart.value.y, marqueeEnd.value.y)
 
-  // 如果框选区域太小，忽略（防止误触）
-  if (selectRight - selectLeft < 10 || selectBottom - selectTop < 10) return
+  // 如果框选区域太小，忽略（防止单纯点击被误判为框选）
+  if (selectRight - selectLeft < 5 || selectBottom - selectTop < 5) return
 
-  // 获取所有行元素
-  const rows = listContainer.value.querySelectorAll('.file-row')
-  const newlySelected = []
+  const container = listContainer.value
+  const containerRect = container.getBoundingClientRect()
+  const rows = container.querySelectorAll('.file-row')
+
+  const newlySelectedPaths = new Set()
 
   rows.forEach(row => {
     const rowRect = row.getBoundingClientRect()
-    const containerRect = listContainer.value.getBoundingClientRect()
 
-    const rowTop = rowRect.top - containerRect.top
-    const rowBottom = rowRect.bottom - containerRect.top
+    // 转换为相对于容器滚动内容的绝对坐标
+    const rowTop = rowRect.top - containerRect.top + container.scrollTop
+    const rowBottom = rowRect.bottom - containerRect.top + container.scrollTop
+    const rowLeft = rowRect.left - containerRect.left + container.scrollLeft
+    const rowRight = rowRect.right - containerRect.left + container.scrollLeft
 
-    // 检查行是否与选框重叠
-    if (rowBottom > selectTop && rowTop < selectBottom) {
-      // 找到对应的文件对象
-      const file = sortedFiles.value.find(f => {
-        const fileRow = rows.find(r => r === row)
-        return fileRow && fileRow.querySelector('.file-name')?.textContent?.trim() === f.name
-      })
-
-      if (file && !selectedFiles.value.some(f => f.path === file.path)) {
-        newlySelected.push(file)
+    // 标准 AABB 碰撞检测
+    if (
+      rowLeft < selectRight &&
+      rowRight > selectLeft &&
+      rowTop < selectBottom &&
+      rowBottom > selectTop
+    ) {
+      // O(1) 复杂度直接读取 path，抛弃缓慢的 DOM 文本比对
+      const path = row.getAttribute('data-path')
+      if (path) {
+        newlySelectedPaths.add(path)
       }
     }
   })
 
-  if (newlySelected.length > 0) {
-    sftpStore.selectedFiles = [...selectedFiles.value, ...newlySelected]
+  if (newlySelectedPaths.size > 0) {
+    // 映射回文件对象
+    const newlySelectedFiles = sortedFiles.value.filter(f => newlySelectedPaths.has(f.path))
+
+    // 如果没有按住 Ctrl/Cmd 键，标准的 OS 交互逻辑是：覆盖之前的选中；按住则追加
+    let combined = []
+    if (e.ctrlKey || e.metaKey || e.shiftKey) {
+      combined = [...selectedFiles.value, ...newlySelectedFiles]
+    } else {
+      combined = [...newlySelectedFiles]
+    }
+
+    // 去重
+    const unique = combined.filter((item, index, self) =>
+      index === self.findIndex(t => t.path === item.path)
+    )
+    sftpStore.selectedFiles = unique
   }
 }
 
@@ -1221,6 +1258,12 @@ onUnmounted(() => {
   pointer-events: none;
   z-index: 100;
   transition: all 0.05s ease;
+}
+
+/* 拖拽框选时禁止选中文字内容 */
+.file-list-container.is-selecting {
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* 滚动条样式 */
