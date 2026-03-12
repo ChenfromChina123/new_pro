@@ -6,12 +6,12 @@
         <Breadcrumb :path="currentPath" @navigate="navigateTo" />
       </div>
       <div class="toolbar-right">
-        <button class="btn-toolbar" @click="goUp" :disabled="currentPath === '/'" title="上级目录">
+        <button class="btn-toolbar" @click="goUp" :disabled="currentPath === '/'" title="上级目录 (Alt+↑)">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 19V5M5 12l7-7 7 7"/>
           </svg>
         </button>
-        <button class="btn-toolbar" @click="refresh" :disabled="loading" title="刷新">
+        <button class="btn-toolbar" @click="refresh" :disabled="loading" title="刷新 (F5)">
           <svg :class="{ spinning: loading }" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M23 4v6h-6M1 20v-6h6"/>
             <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
@@ -37,12 +37,7 @@
 
     <!-- 连接状态提示 -->
     <div v-if="!connected" class="connect-prompt">
-      <div class="connect-icon">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
-          <line x1="12" y1="2" x2="12" y2="12"/>
-        </svg>
-      </div>
+      <div class="connect-icon">🔌</div>
       <p>未连接到服务器</p>
       <button class="btn-connect" @click="$emit('connect', serverId)">连接</button>
     </div>
@@ -62,16 +57,13 @@
             </th>
             <th class="col-name">名称</th>
             <th class="col-permissions">权限</th>
-            <th class="col-actions">操作</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="files.length === 0">
-            <td colspan="4" class="empty-row">
+            <td colspan="3" class="empty-row">
               <div class="empty-content">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5">
-                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-                </svg>
+                <span class="empty-icon">📂</span>
                 <span>此目录为空</span>
               </div>
             </td>
@@ -99,19 +91,6 @@
               <td class="col-permissions">
                 <span class="permission-text">{{ file.permissions }}</span>
               </td>
-              <td class="col-actions">
-                <button class="btn-action" @click.stop="renameFile(file)" title="重命名">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-                  </svg>
-                </button>
-                <button class="btn-action btn-danger" @click.stop="deleteFile(file)" title="删除">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="3 6 5 6 21 6"/>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                  </svg>
-                </button>
-              </td>
             </tr>
             <!-- 再显示文件 -->
             <tr
@@ -134,19 +113,6 @@
               </td>
               <td class="col-permissions">
                 <span class="permission-text">{{ file.permissions }}</span>
-              </td>
-              <td class="col-actions">
-                <button class="btn-action" @click.stop="renameFile(file)" title="重命名">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-                  </svg>
-                </button>
-                <button class="btn-action btn-danger" @click.stop="deleteFile(file)" title="删除">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="3 6 5 6 21 6"/>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                  </svg>
-                </button>
               </td>
             </tr>
           </template>
@@ -236,11 +202,11 @@
 /**
  * 文件面板组件
  * 显示 SFTP 文件列表，支持文件操作
+ * 所有操作通过右键菜单执行
  */
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useSFTPStore } from '@/stores/sftp'
 import sftpService from '@/services/sftpService'
-import { formatDateTime } from '@/utils/fileIcons'
 import Breadcrumb from './Breadcrumb.vue'
 import FileIcon from './FileIcon.vue'
 
@@ -297,8 +263,6 @@ const sortedFiles = computed(() => {
 
 /**
  * 检查文件是否被选中
- * @param {object} file - 文件对象
- * @returns {boolean} 是否选中
  */
 function isSelected(file) {
   return selectedFiles.value.some(f => f.path === file.path)
@@ -306,7 +270,6 @@ function isSelected(file) {
 
 /**
  * 切换全选
- * @param {Event} event - 事件对象
  */
 function toggleSelectAll(event) {
   if (event.target.checked) {
@@ -318,8 +281,6 @@ function toggleSelectAll(event) {
 
 /**
  * 处理单击事件
- * @param {object} file - 文件对象
- * @param {Event} event - 事件对象
  */
 function handleClick(file, event) {
   if (event.ctrlKey || event.metaKey) {
@@ -330,8 +291,7 @@ function handleClick(file, event) {
 }
 
 /**
- * 处理双击事件
- * @param {object} file - 文件对象
+ * 处理双击事件 - 目录进入，文件无操作
  */
 function handleDoubleClick(file) {
   if (file.isDirectory) {
@@ -342,7 +302,6 @@ function handleDoubleClick(file) {
 
 /**
  * 进入目录
- * @param {object} file - 目录对象
  */
 function enterDirectory(file) {
   if (file.isDirectory) {
@@ -353,7 +312,6 @@ function enterDirectory(file) {
 
 /**
  * 导航到指定路径
- * @param {string} path - 目标路径
  */
 function navigateTo(path) {
   sftpStore.fetchFiles(path)
@@ -402,7 +360,6 @@ async function createFolder() {
 
 /**
  * 显示重命名对话框
- * @param {object} file - 文件对象
  */
 function renameFile(file) {
   hideContextMenu()
@@ -433,7 +390,6 @@ async function doRename() {
 
 /**
  * 删除文件
- * @param {object} file - 文件对象
  */
 async function deleteFile(file) {
   hideContextMenu()
@@ -444,7 +400,6 @@ async function deleteFile(file) {
 
 /**
  * 下载文件
- * @param {object} file - 文件对象
  */
 async function downloadFile(file) {
   hideContextMenu()
@@ -466,7 +421,6 @@ async function downloadFile(file) {
 
 /**
  * 处理文件上传
- * @param {Event} event - 事件对象
  */
 async function handleUpload(event) {
   const fileList = event.target.files
@@ -482,7 +436,6 @@ async function handleUpload(event) {
       })
 
       await sftpService.uploadFile(props.serverId, currentPath.value, file)
-
       await sftpStore.fetchFiles()
     } catch (error) {
       console.error('上传失败:', error)
@@ -495,8 +448,6 @@ async function handleUpload(event) {
 
 /**
  * 显示右键菜单
- * @param {object} file - 文件对象
- * @param {Event} event - 事件对象
  */
 function showContextMenu(file, event) {
   contextMenu.value = {
@@ -516,8 +467,6 @@ function hideContextMenu() {
 
 /**
  * 获取文件扩展名
- * @param {string} fileName - 文件名
- * @returns {string} 扩展名（带点）
  */
 function getFileExtension(fileName) {
   const lastDot = fileName.lastIndexOf('.')
@@ -527,8 +476,6 @@ function getFileExtension(fileName) {
 
 /**
  * 获取文件类型 CSS 类名
- * @param {object} file - 文件对象
- * @returns {string} 类型类名
  */
 function getFileTypeClass(file) {
   if (file.isDirectory) return 'folder'
@@ -554,6 +501,33 @@ function getFileTypeClass(file) {
   return 'unknown'
 }
 
+/**
+ * 键盘快捷键
+ */
+function handleKeyDown(e) {
+  // F5 刷新
+  if (e.key === 'F5') {
+    e.preventDefault()
+    refresh()
+  }
+
+  // Alt + ↑ 返回上级
+  if (e.altKey && e.key === 'ArrowUp') {
+    e.preventDefault()
+    goUp()
+  }
+
+  // Delete 删除选中
+  if (e.key === 'Delete' && selectedFiles.value.length > 0) {
+    e.preventDefault()
+    if (confirm(`确定要删除选中的 ${selectedFiles.value.length} 项吗？`)) {
+      selectedFiles.value.forEach(file => {
+        sftpStore.deleteItem(file.path, file.isDirectory)
+      })
+    }
+  }
+}
+
 watch(() => props.connected, (connected) => {
   if (connected) {
     sftpStore.fetchFiles()
@@ -562,10 +536,12 @@ watch(() => props.connected, (connected) => {
 
 onMounted(() => {
   document.addEventListener('click', hideContextMenu)
+  document.addEventListener('keydown', handleKeyDown)
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', hideContextMenu)
+  document.removeEventListener('keydown', handleKeyDown)
 })
 </script>
 
@@ -575,7 +551,8 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--panel-bg);
+  background: #1e1e1e;
+  color: #d4d4d4;
 }
 
 .panel-toolbar {
@@ -583,8 +560,8 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 10px 16px;
-  background: var(--sidebar-bg);
-  border-bottom: 1px solid var(--border);
+  background: #252526;
+  border-bottom: 1px solid #3e3e42;
 }
 
 .toolbar-left {
@@ -598,9 +575,9 @@ onUnmounted(() => {
 }
 
 .btn-toolbar {
-  background: var(--panel-bg);
-  border: 1px solid var(--border);
-  color: var(--text-main);
+  background: #3e3e42;
+  border: 1px solid #505054;
+  color: #cccccc;
   padding: 6px 10px;
   border-radius: 4px;
   cursor: pointer;
@@ -612,17 +589,13 @@ onUnmounted(() => {
 }
 
 .btn-toolbar:hover {
-  background: var(--hover-bg);
-  border-color: var(--accent);
+  background: #505054;
+  border-color: #007acc;
 }
 
 .btn-toolbar:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.btn-toolbar:disabled:hover {
-  border-color: var(--border);
 }
 
 .upload-btn {
@@ -643,16 +616,17 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: var(--text-dim);
+  color: #808080;
 }
 
 .connect-icon {
+  font-size: 48px;
   margin-bottom: 16px;
   opacity: 0.5;
 }
 
 .btn-connect {
-  background: var(--accent);
+  background: #007acc;
   color: white;
   border: none;
   padding: 10px 24px;
@@ -664,13 +638,14 @@ onUnmounted(() => {
 }
 
 .btn-connect:hover {
-  background: var(--accent-hover);
+  background: #005a9e;
 }
 
 .file-list-container {
   flex: 1;
   overflow: auto;
   position: relative;
+  background: #1e1e1e;
 }
 
 .loading-overlay {
@@ -679,7 +654,7 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.7);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -690,8 +665,8 @@ onUnmounted(() => {
 .loading-spinner {
   width: 32px;
   height: 32px;
-  border: 3px solid var(--border);
-  border-top-color: var(--accent);
+  border: 3px solid #3e3e42;
+  border-top-color: #007acc;
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 12px;
@@ -706,9 +681,9 @@ onUnmounted(() => {
 .file-table th {
   text-align: left;
   padding: 10px 12px;
-  background: var(--sidebar-bg);
-  border-bottom: 1px solid var(--border);
-  color: var(--text-dim);
+  background: #252526;
+  border-bottom: 1px solid #3e3e42;
+  color: #808080;
   font-weight: 500;
   font-size: 11px;
   text-transform: uppercase;
@@ -720,7 +695,7 @@ onUnmounted(() => {
 
 .file-table td {
   padding: 10px 12px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid #3e3e42;
 }
 
 .file-row {
@@ -729,15 +704,15 @@ onUnmounted(() => {
 }
 
 .file-row:hover {
-  background: var(--hover-bg);
+  background: #2a2d2e;
 }
 
 .file-row.selected {
-  background: rgba(59, 130, 246, 0.15);
+  background: rgba(59, 130, 246, 0.2);
 }
 
 .file-row.selected:hover {
-  background: rgba(59, 130, 246, 0.2);
+  background: rgba(59, 130, 246, 0.25);
 }
 
 /* 目录行样式 */
@@ -802,14 +777,9 @@ onUnmounted(() => {
   width: 100px;
 }
 
-.col-actions {
-  width: 100px;
-  text-align: center;
-}
-
 .empty-row {
   text-align: center;
-  color: var(--text-dim);
+  color: #808080;
   padding: 40px !important;
 }
 
@@ -818,6 +788,11 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   gap: 12px;
+}
+
+.empty-icon {
+  font-size: 48px;
+  opacity: 0.5;
 }
 
 .file-name-cell {
@@ -849,8 +824,8 @@ onUnmounted(() => {
 
 .file-ext {
   font-size: 10px;
-  color: var(--text-dim);
-  background: var(--hover-bg);
+  color: #808080;
+  background: #2a2d2e;
   padding: 2px 5px;
   border-radius: 3px;
   font-family: monospace;
@@ -859,29 +834,7 @@ onUnmounted(() => {
 .permission-text {
   font-family: monospace;
   font-size: 11px;
-  color: var(--text-dim);
-}
-
-.btn-action {
-  background: transparent;
-  border: none;
-  padding: 4px 6px;
-  cursor: pointer;
-  opacity: 0.5;
-  transition: all 0.2s;
-  border-radius: 4px;
-  color: var(--text-main);
-}
-
-.btn-action:hover {
-  opacity: 1;
-  background: var(--hover-bg);
-}
-
-.btn-action.btn-danger:hover {
-  opacity: 1;
-  background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
+  color: #808080;
 }
 
 /* 对话框样式 */
@@ -891,32 +844,35 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 2000;
 }
 
 .dialog-content {
-  background: var(--sidebar-bg);
+  background: #252526;
+  border: 1px solid #3e3e42;
   border-radius: 8px;
   padding: 20px;
   width: 320px;
-  border: 1px solid var(--border);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 }
 
 .dialog-content h4 {
   margin: 0 0 16px;
   font-size: 15px;
+  color: #cccccc;
 }
 
 .dialog-content input {
   width: 100%;
   padding: 10px 12px;
-  background: var(--bg-dark);
-  border: 1px solid var(--border);
-  color: var(--text-main);
+  background: #1e1e1e;
+  border: 1px solid #3e3e42;
+  color: #d4d4d4;
   border-radius: 6px;
   font-size: 13px;
   box-sizing: border-box;
@@ -925,7 +881,7 @@ onUnmounted(() => {
 
 .dialog-content input:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: #007acc;
 }
 
 .dialog-actions {
@@ -934,16 +890,43 @@ onUnmounted(() => {
   justify-content: flex-end;
 }
 
+.btn {
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.btn-primary {
+  background: #007acc;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #005a9e;
+}
+
+.btn-secondary {
+  background: #3e3e42;
+  color: #cccccc;
+}
+
+.btn-secondary:hover {
+  background: #505054;
+}
+
 /* 右键菜单 */
 .context-menu {
   position: fixed;
-  background: var(--sidebar-bg);
-  border: 1px solid var(--border);
+  background: #252526;
+  border: 1px solid #3e3e42;
   border-radius: 8px;
   padding: 6px 0;
   min-width: 160px;
   z-index: 2000;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
 }
 
 .menu-item {
@@ -954,11 +937,11 @@ onUnmounted(() => {
   cursor: pointer;
   font-size: 13px;
   transition: background 0.15s;
-  color: var(--text-main);
+  color: #cccccc;
 }
 
 .menu-item:hover {
-  background: var(--hover-bg);
+  background: #3e3e42;
 }
 
 .menu-item.danger {
@@ -971,36 +954,26 @@ onUnmounted(() => {
 
 .menu-divider {
   height: 1px;
-  background: var(--border);
+  background: #3e3e42;
   margin: 6px 0;
 }
 
-/* 按钮样式 */
-.btn {
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
+/* 滚动条样式 */
+.file-list-container::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
 }
 
-.btn-primary {
-  background: var(--accent);
-  color: white;
+.file-list-container::-webkit-scrollbar-track {
+  background: #1e1e1e;
 }
 
-.btn-primary:hover {
-  background: var(--accent-hover);
+.file-list-container::-webkit-scrollbar-thumb {
+  background: #424242;
+  border-radius: 5px;
 }
 
-.btn-secondary {
-  background: var(--hover-bg);
-  color: var(--text-main);
-  border: 1px solid var(--border);
-}
-
-.btn-secondary:hover {
-  background: var(--border);
+.file-list-container::-webkit-scrollbar-thumb:hover {
+  background: #505050;
 }
 </style>
