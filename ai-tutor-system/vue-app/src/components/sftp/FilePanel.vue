@@ -286,6 +286,10 @@ const listContainer = ref(null)
 const isSelecting = ref(false)
 const marqueeStart = ref({ x: 0, y: 0 })
 const marqueeEnd = ref({ x: 0, y: 0 })
+
+// 用于实时框选缓存的非响应式变量
+let initialSelectedFiles = []
+let rowCache = []
 const marqueeStyle = computed(() => {
   const left = Math.min(marqueeStart.value.x, marqueeEnd.value.x)
   const top = Math.min(marqueeStart.value.y, marqueeEnd.value.y)
@@ -355,20 +359,22 @@ function handleClick(file, event) {
 
 /**
  * 处理双击事件 - 目录进入，文件无操作
+ * 修复：改用 file.path 替代 file.name，确保路径准确无误
  */
 function handleDoubleClick(file) {
   if (file.isDirectory) {
-    sftpStore.enterDirectory(file.name)
+    sftpStore.enterDirectory(file.path)
   }
   // 文件不处理双击，只能通过右键菜单下载
 }
 
 /**
  * 进入目录
+ * 修复：同样改用 file.path
  */
 function enterDirectory(file) {
   if (file.isDirectory) {
-    sftpStore.enterDirectory(file.name)
+    sftpStore.enterDirectory(file.path)
   }
   hideContextMenu()
 }
@@ -612,8 +618,12 @@ function getFileTypeClass(file) {
   return 'unknown'
 }
 
+// --- 用于实时框选缓存的非响应式变量 ---
+let initialSelectedFiles = []
+let rowCache = []
+
 /**
- * 框选相关函数优化版
+ * 框选：鼠标按下 (初始化与缓存)
  */
 function handleMouseDown(e) {
   // 只处理左键，且不在表头和按钮上
@@ -622,18 +632,37 @@ function handleMouseDown(e) {
   const container = listContainer.value
   const rect = container.getBoundingClientRect()
 
-  // 必须加上 scrollLeft/scrollTop 以应对列表滚动的情况
   marqueeStart.value = {
     x: e.clientX - rect.left + container.scrollLeft,
     y: e.clientY - rect.top + container.scrollTop
   }
   marqueeEnd.value = { ...marqueeStart.value }
+
+  // 核心优化：在按下时一次性计算并缓存所有行的绝对位置坐标
+  // 避免在 MouseMove 中频繁读取 DOM 导致卡顿
+  const rows = container.querySelectorAll('.file-row')
+  rowCache = Array.from(rows).map(row => {
+    const rowRect = row.getBoundingClientRect()
+    return {
+      path: row.getAttribute('data-path'),
+      top: rowRect.top - rect.top + container.scrollTop,
+      bottom: rowRect.bottom - rect.top + container.scrollTop,
+      left: rowRect.left - rect.left + container.scrollLeft,
+      right: rowRect.right - rect.left + container.scrollLeft
+    }
+  })
+
+  // 记录下 mousedown 时的初始选中状态，用于后续结合 Shift/Ctrl 键做增量运算
+  initialSelectedFiles = [...sftpStore.selectedFiles]
   isSelecting.value = true
 
   // 清除浏览器原生的文字选中，防止拖拽干扰
   window.getSelection()?.removeAllRanges()
 }
 
+/**
+ * 框选：鼠标拖动 (实时计算与高亮)
+ */
 function handleMouseMove(e) {
   if (!isSelecting.value) return
 
@@ -644,68 +673,56 @@ function handleMouseMove(e) {
     x: e.clientX - rect.left + container.scrollLeft,
     y: e.clientY - rect.top + container.scrollTop
   }
-}
-
-function handleMouseUp(e) {
-  if (!isSelecting.value) return
-  isSelecting.value = false
 
   const selectLeft = Math.min(marqueeStart.value.x, marqueeEnd.value.x)
   const selectTop = Math.min(marqueeStart.value.y, marqueeEnd.value.y)
   const selectRight = Math.max(marqueeStart.value.x, marqueeEnd.value.x)
   const selectBottom = Math.max(marqueeStart.value.y, marqueeEnd.value.y)
 
-  // 如果框选区域太小，忽略（防止单纯点击被误判为框选）
-  if (selectRight - selectLeft < 5 || selectBottom - selectTop < 5) return
-
-  const container = listContainer.value
-  const containerRect = container.getBoundingClientRect()
-  const rows = container.querySelectorAll('.file-row')
+  // 拖动距离太小不视为框选，防止单纯的点击被误判
+  if (selectRight - selectLeft < 5 && selectBottom - selectTop < 5) return
 
   const newlySelectedPaths = new Set()
 
-  rows.forEach(row => {
-    const rowRect = row.getBoundingClientRect()
-
-    // 转换为相对于容器滚动内容的绝对坐标
-    const rowTop = rowRect.top - containerRect.top + container.scrollTop
-    const rowBottom = rowRect.bottom - containerRect.top + container.scrollTop
-    const rowLeft = rowRect.left - containerRect.left + container.scrollLeft
-    const rowRight = rowRect.right - containerRect.left + container.scrollLeft
-
-    // 标准 AABB 碰撞检测
+  // O(n) 复杂度遍历缓存，性能极佳
+  for (const row of rowCache) {
     if (
-      rowLeft < selectRight &&
-      rowRight > selectLeft &&
-      rowTop < selectBottom &&
-      rowBottom > selectTop
+      row.left < selectRight &&
+      row.right > selectLeft &&
+      row.top < selectBottom &&
+      row.bottom > selectTop
     ) {
-      // O(1) 复杂度直接读取 path，抛弃缓慢的 DOM 文本比对
-      const path = row.getAttribute('data-path')
-      if (path) {
-        newlySelectedPaths.add(path)
-      }
+      newlySelectedPaths.add(row.path)
     }
-  })
-
-  if (newlySelectedPaths.size > 0) {
-    // 映射回文件对象
-    const newlySelectedFiles = sortedFiles.value.filter(f => newlySelectedPaths.has(f.path))
-
-    // 如果没有按住 Ctrl/Cmd 键，标准的 OS 交互逻辑是：覆盖之前的选中；按住则追加
-    let combined = []
-    if (e.ctrlKey || e.metaKey || e.shiftKey) {
-      combined = [...selectedFiles.value, ...newlySelectedFiles]
-    } else {
-      combined = [...newlySelectedFiles]
-    }
-
-    // 去重
-    const unique = combined.filter((item, index, self) =>
-      index === self.findIndex(t => t.path === item.path)
-    )
-    sftpStore.selectedFiles = unique
   }
+
+  // 映射回文件对象
+  const newlySelectedFiles = sortedFiles.value.filter(f => newlySelectedPaths.has(f.path))
+
+  let combined = []
+  if (e.ctrlKey || e.metaKey || e.shiftKey) {
+    // 如果按住了修饰键，在原有的基础上追加
+    combined = [...initialSelectedFiles, ...newlySelectedFiles]
+  } else {
+    // 否则实时覆盖选中（产生原生资源管理器那样的实时高亮感）
+    combined = [...newlySelectedFiles]
+  }
+
+  // 去重并触发响应式更新
+  const unique = combined.filter((item, index, self) =>
+    index === self.findIndex(t => t.path === item.path)
+  )
+
+  sftpStore.selectedFiles = unique
+}
+
+/**
+ * 框选：鼠标松开 (清理状态)
+ */
+function handleMouseUp(e) {
+  if (!isSelecting.value) return
+  isSelecting.value = false
+  rowCache = [] // 清空缓存释放内存
 }
 
 /**
@@ -857,6 +874,9 @@ onUnmounted(() => {
   overflow: auto;
   position: relative;
   background: #1e1e1e;
+  /* 全局禁止文字被选中，从根源解决双击失效或拖拽卡顿的冲突 */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .loading-overlay {
@@ -1258,12 +1278,6 @@ onUnmounted(() => {
   pointer-events: none;
   z-index: 100;
   transition: all 0.05s ease;
-}
-
-/* 拖拽框选时禁止选中文字内容 */
-.file-list-container.is-selecting {
-  user-select: none;
-  -webkit-user-select: none;
 }
 
 /* 滚动条样式 */

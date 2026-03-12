@@ -43,7 +43,7 @@ const fileTypeConfig = computed(() => {
 
   const typeConfigs = {
     folder: { type: 'folder', icon: 'folder', color: '#f0c674', bgColor: 'rgba(240, 198, 116, 0.15)' },
-    
+
     javascript: { type: 'code', icon: 'js', color: '#f7df1e', bgColor: 'rgba(247, 223, 30, 0.15)' },
     typescript: { type: 'code', icon: 'ts', color: '#3178c6', bgColor: 'rgba(49, 120, 198, 0.15)' },
     vue: { type: 'code', icon: 'vue', color: '#42b883', bgColor: 'rgba(66, 184, 131, 0.15)' },
@@ -51,7 +51,7 @@ const fileTypeConfig = computed(() => {
     html: { type: 'code', icon: 'html', color: '#e34c26', bgColor: 'rgba(227, 76, 38, 0.15)' },
     css: { type: 'code', icon: 'css', color: '#264de4', bgColor: 'rgba(38, 77, 228, 0.15)' },
     json: { type: 'data', icon: 'json', color: '#cbcb41', bgColor: 'rgba(203, 203, 65, 0.15)' },
-    
+
     python: { type: 'code', icon: 'py', color: '#3776ab', bgColor: 'rgba(55, 118, 171, 0.15)' },
     java: { type: 'code', icon: 'java', color: '#b07219', bgColor: 'rgba(176, 114, 25, 0.15)' },
     go: { type: 'code', icon: 'go', color: '#00add8', bgColor: 'rgba(0, 173, 216, 0.15)' },
@@ -63,28 +63,28 @@ const fileTypeConfig = computed(() => {
     csharp: { type: 'code', icon: 'cs', color: '#178600', bgColor: 'rgba(23, 134, 0, 0.15)' },
     swift: { type: 'code', icon: 'swift', color: '#f05138', bgColor: 'rgba(240, 81, 56, 0.15)' },
     kotlin: { type: 'code', icon: 'kt', color: '#7f52ff', bgColor: 'rgba(127, 82, 255, 0.15)' },
-    
+
     shell: { type: 'script', icon: 'shell', color: '#89e051', bgColor: 'rgba(137, 224, 81, 0.15)' },
-    
+
     image: { type: 'image', icon: 'image', color: '#a855f7', bgColor: 'rgba(168, 85, 247, 0.15)' },
     video: { type: 'video', icon: 'video', color: '#ef4444', bgColor: 'rgba(239, 68, 68, 0.15)' },
     audio: { type: 'audio', icon: 'audio', color: '#22c55e', bgColor: 'rgba(34, 197, 94, 0.15)' },
-    
+
     archive: { type: 'archive', icon: 'archive', color: '#f59e0b', bgColor: 'rgba(245, 158, 11, 0.15)' },
-    
+
     document: { type: 'document', icon: 'doc', color: '#3b82f6', bgColor: 'rgba(59, 130, 246, 0.15)' },
     pdf: { type: 'document', icon: 'pdf', color: '#dc2626', bgColor: 'rgba(220, 38, 38, 0.15)' },
     excel: { type: 'document', icon: 'excel', color: '#16a34a', bgColor: 'rgba(22, 163, 74, 0.15)' },
     ppt: { type: 'document', icon: 'ppt', color: '#ea580c', bgColor: 'rgba(234, 88, 12, 0.15)' },
-    
+
     config: { type: 'config', icon: 'config', color: '#6b7280', bgColor: 'rgba(107, 114, 128, 0.15)' },
     database: { type: 'database', icon: 'db', color: '#8b5cf6', bgColor: 'rgba(139, 92, 246, 0.15)' },
-    
+
     executable: { type: 'executable', icon: 'exe', color: '#10b981', bgColor: 'rgba(16, 185, 129, 0.15)' },
-    
+
     markdown: { type: 'document', icon: 'md', color: '#083fa6', bgColor: 'rgba(8, 63, 166, 0.15)' },
     text: { type: 'document', icon: 'txt', color: '#6b7280', bgColor: 'rgba(107, 114, 128, 0.15)' },
-    
+
     default: { type: 'file', icon: 'file', color: '#6b7280', bgColor: 'rgba(107, 114, 128, 0.1)' }
   }
 
@@ -138,7 +138,7 @@ const fileTypeConfig = computed(() => {
     less: typeConfigs.css,
     sass: typeConfigs.css,
     json: typeConfigs.json,
-    
+
     py: typeConfigs.python,
     pyw: typeConfigs.python,
     java: typeConfigs.java,
@@ -156,14 +156,14 @@ const fileTypeConfig = computed(() => {
     swift: typeConfigs.swift,
     kt: typeConfigs.kotlin,
     kts: typeConfigs.kotlin,
-    
+
     sh: typeConfigs.shell,
     bash: typeConfigs.shell,
     zsh: typeConfigs.shell,
     bat: typeConfigs.shell,
     cmd: typeConfigs.shell,
     ps1: typeConfigs.shell,
-    
+
     png: typeConfigs.image,
     jpg: typeConfigs.image,
     jpeg: typeConfigs.image,
@@ -172,7 +172,7 @@ const fileTypeConfig = computed(() => {
     webp: typeConfigs.image,
     ico: typeConfigs.image,
     bmp: typeConfigs.image,
-    
+
     mp4: typeConfigs.video,
     avi: typeConfigs.video,
     mkv: typeConfigs.video,
@@ -180,14 +180,14 @@ const fileTypeConfig = computed(() => {
     wmv: typeConfigs.video,
     flv: typeConfigs.video,
     webm: typeConfigs.video,
-    
+
     mp3: typeConfigs.audio,
     wav: typeConfigs.audio,
     flac: typeConfigs.audio,
     aac: typeConfigs.audio,
     ogg: typeConfigs.audio,
     wma: typeConfigs.audio,
-    
+
     zip: typeConfigs.archive,
     rar: typeConfigs.archive,
     tar: typeConfigs.archive,
@@ -195,7 +195,7 @@ const fileTypeConfig = computed(() => {
     '7z': typeConfigs.archive,
     bz2: typeConfigs.archive,
     xz: typeConfigs.archive,
-    
+
     pdf: typeConfigs.pdf,
     doc: typeConfigs.document,
     docx: typeConfigs.document,
@@ -203,30 +203,30 @@ const fileTypeConfig = computed(() => {
     xlsx: typeConfigs.excel,
     ppt: typeConfigs.ppt,
     pptx: typeConfigs.ppt,
-    
+
     md: typeConfigs.markdown,
     markdown: typeConfigs.markdown,
     txt: typeConfigs.text,
     log: typeConfigs.text,
-    
+
     sql: typeConfigs.database,
     db: typeConfigs.database,
     sqlite: typeConfigs.database,
-    
+
     xml: typeConfigs.data,
     yaml: typeConfigs.config,
     yml: typeConfigs.config,
     toml: typeConfigs.config,
     ini: typeConfigs.config,
     env: typeConfigs.config,
-    
+
     exe: typeConfigs.executable,
     msi: typeConfigs.executable,
     app: typeConfigs.executable,
     dmg: typeConfigs.executable,
     deb: typeConfigs.executable,
     rpm: typeConfigs.executable,
-    
+
     lock: { ...typeConfigs.default, icon: 'lock' },
     map: typeConfigs.default
   }
