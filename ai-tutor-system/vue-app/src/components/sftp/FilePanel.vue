@@ -52,16 +52,13 @@
       <table class="file-table" v-else>
         <thead>
           <tr>
-            <th class="col-checkbox">
-              <input type="checkbox" @change="toggleSelectAll" :checked="isAllSelected" />
-            </th>
             <th class="col-name">名称</th>
             <th class="col-permissions">权限</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="files.length === 0">
-            <td colspan="3" class="empty-row">
+            <td colspan="2" class="empty-row">
               <div class="empty-content">
                 <span class="empty-icon">📂</span>
                 <span>此目录为空</span>
@@ -78,9 +75,6 @@
               @click="handleClick(file, $event)"
               @contextmenu.prevent="showContextMenu(file, $event)"
             >
-              <td class="col-checkbox">
-                <input type="checkbox" :checked="isSelected(file)" @click.stop />
-              </td>
               <td class="col-name">
                 <div class="file-name-cell">
                   <FileIcon :fileName="file.name" :isDirectory="true" size="md" />
@@ -101,9 +95,6 @@
               @click="handleClick(file, $event)"
               @contextmenu.prevent="showContextMenu(file, $event)"
             >
-              <td class="col-checkbox">
-                <input type="checkbox" :checked="isSelected(file)" @click.stop />
-              </td>
               <td class="col-name">
                 <div class="file-name-cell">
                   <FileIcon :fileName="file.name" :isDirectory="false" size="md" />
@@ -162,38 +153,68 @@
       class="context-menu"
       :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }"
     >
-      <template v-if="contextMenu.file?.isDirectory">
-        <div class="menu-item" @click="enterDirectory(contextMenu.file)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-          </svg>
-          <span>打开</span>
-        </div>
-      </template>
-      <template v-else>
-        <div class="menu-item" @click="downloadFile(contextMenu.file)">
+      <!-- 多文件选中时的批量操作 -->
+      <template v-if="selectedFiles.length > 1">
+        <div class="menu-header">已选中 {{ selectedFiles.length }} 项</div>
+        <div class="menu-item" @click="downloadSelected">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
             <polyline points="7 10 12 15 17 10"/>
             <line x1="12" y1="15" x2="12" y2="3"/>
           </svg>
-          <span>下载</span>
+          <span>批量下载</span>
+        </div>
+        <div class="menu-divider"></div>
+        <div class="menu-item danger" @click="deleteSelected">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          </svg>
+          <span>批量删除</span>
         </div>
       </template>
-      <div class="menu-item" @click="renameFile(contextMenu.file)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-        </svg>
-        <span>重命名</span>
-      </div>
-      <div class="menu-divider"></div>
-      <div class="menu-item danger" @click="deleteFile(contextMenu.file)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="3 6 5 6 21 6"/>
-          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-        </svg>
-        <span>删除</span>
-      </div>
+
+      <!-- 单个文件操作 -->
+      <template v-else-if="contextMenu.file">
+        <template v-if="contextMenu.file?.isDirectory">
+          <div class="menu-item" @click="enterDirectory(contextMenu.file)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+            </svg>
+            <span>打开</span>
+          </div>
+        </template>
+        <template v-else>
+          <div class="menu-item" @click="downloadFile(contextMenu.file)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <span>下载</span>
+          </div>
+        </template>
+        <div class="menu-item" @click="renameFile(contextMenu.file)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+          </svg>
+          <span>重命名</span>
+        </div>
+        <div class="menu-divider"></div>
+        <div class="menu-item danger" @click="deleteFile(contextMenu.file)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          </svg>
+          <span>删除</span>
+        </div>
+      </template>
+    </div>
+
+    <!-- 状态提示 -->
+    <div v-if="selectedFiles.length > 0" class="selection-status">
+      <span>已选中 {{ selectedFiles.length }} 项</span>
+      <button class="btn-clear" @click="clearSelection">✕ 清除选择</button>
     </div>
   </div>
 </template>
@@ -246,10 +267,6 @@ const contextMenu = ref({
   file: null
 })
 
-const isAllSelected = computed(() => {
-  return files.value.length > 0 && files.value.every(f => isSelected(f))
-})
-
 /**
  * 排序后的文件列表（目录在前，文件在后）
  */
@@ -269,23 +286,36 @@ function isSelected(file) {
 }
 
 /**
- * 切换全选
- */
-function toggleSelectAll(event) {
-  if (event.target.checked) {
-    sftpStore.selectedFiles = [...files.value]
-  } else {
-    sftpStore.selectedFiles = []
-  }
-}
-
-/**
- * 处理单击事件
+ * 处理单击事件 - 支持 Ctrl/Shift 多选
  */
 function handleClick(file, event) {
   if (event.ctrlKey || event.metaKey) {
-    sftpStore.selectFile(file, !isSelected(file))
+    // Ctrl 点击：切换选中状态
+    const index = selectedFiles.value.findIndex(f => f.path === file.path)
+    if (index === -1) {
+      sftpStore.selectedFiles = [...selectedFiles.value, file]
+    } else {
+      const newSelected = selectedFiles.value.filter((_, i) => i !== index)
+      sftpStore.selectedFiles = newSelected
+    }
+  } else if (event.shiftKey && selectedFiles.value.length > 0) {
+    // Shift 点击：范围选中
+    const lastSelected = selectedFiles.value[selectedFiles.value.length - 1]
+    const currentIndex = sortedFiles.value.findIndex(f => f.path === file.path)
+    const lastIndex = sortedFiles.value.findIndex(f => f.path === lastSelected.path)
+
+    const start = Math.min(currentIndex, lastIndex)
+    const end = Math.max(currentIndex, lastIndex)
+    const range = sortedFiles.value.slice(start, end + 1)
+
+    // 合并选中项，去重
+    const merged = [...selectedFiles.value, ...range]
+    const unique = merged.filter((item, index, self) =>
+      index === self.findIndex(t => t.path === item.path)
+    )
+    sftpStore.selectedFiles = unique
   } else {
+    // 普通点击：单选
     sftpStore.selectedFiles = [file]
   }
 }
@@ -420,6 +450,54 @@ async function downloadFile(file) {
 }
 
 /**
+ * 批量下载选中的文件
+ */
+async function downloadSelected() {
+  hideContextMenu()
+  const filesToDownload = selectedFiles.value.filter(f => !f.isDirectory)
+
+  if (filesToDownload.length === 0) {
+    alert('没有可下载的文件')
+    return
+  }
+
+  for (const file of filesToDownload) {
+    try {
+      await downloadFile(file)
+    } catch (error) {
+      console.error(`下载 ${file.name} 失败:`, error)
+    }
+  }
+
+  sftpStore.selectedFiles = []
+}
+
+/**
+ * 批量删除选中的项
+ */
+async function deleteSelected() {
+  hideContextMenu()
+  if (!confirm(`确定要删除选中的 ${selectedFiles.value.length} 项吗？`)) return
+
+  for (const file of selectedFiles.value) {
+    try {
+      await sftpStore.deleteItem(file.path, file.isDirectory)
+    } catch (error) {
+      console.error(`删除 ${file.name} 失败:`, error)
+    }
+  }
+
+  sftpStore.selectedFiles = []
+}
+
+/**
+ * 清除选中
+ */
+function clearSelection() {
+  sftpStore.selectedFiles = []
+}
+
+/**
  * 处理文件上传
  */
 async function handleUpload(event) {
@@ -520,11 +598,14 @@ function handleKeyDown(e) {
   // Delete 删除选中
   if (e.key === 'Delete' && selectedFiles.value.length > 0) {
     e.preventDefault()
-    if (confirm(`确定要删除选中的 ${selectedFiles.value.length} 项吗？`)) {
-      selectedFiles.value.forEach(file => {
-        sftpStore.deleteItem(file.path, file.isDirectory)
-      })
-    }
+    deleteSelected()
+  }
+
+  // Esc 清除选中
+  if (e.key === 'Escape') {
+    e.preventDefault()
+    clearSelection()
+    hideContextMenu()
   }
 }
 
@@ -553,6 +634,7 @@ onUnmounted(() => {
   overflow: hidden;
   background: #1e1e1e;
   color: #d4d4d4;
+  position: relative;
 }
 
 .panel-toolbar {
@@ -708,11 +790,12 @@ onUnmounted(() => {
 }
 
 .file-row.selected {
-  background: rgba(59, 130, 246, 0.2);
+  background: rgba(59, 130, 246, 0.25);
+  box-shadow: inset 3px 0 0 0 #3b82f6;
 }
 
 .file-row.selected:hover {
-  background: rgba(59, 130, 246, 0.25);
+  background: rgba(59, 130, 246, 0.3);
 }
 
 /* 目录行样式 */
@@ -726,47 +809,76 @@ onUnmounted(() => {
 
 .file-row.is-directory.selected {
   background: rgba(240, 198, 116, 0.2);
+  box-shadow: inset 3px 0 0 0 #f0c674;
 }
 
 /* 文件行样式 - 根据类型 */
 .file-row.is-file.file-type-code {
-  border-left: 3px solid #61dafb;
+  border-left: 3px solid transparent;
+}
+
+.file-row.is-file.file-type-code.selected {
+  border-left-color: #61dafb;
 }
 
 .file-row.is-file.file-type-image {
-  border-left: 3px solid #a855f7;
+  border-left: 3px solid transparent;
+}
+
+.file-row.is-file.file-type-image.selected {
+  border-left-color: #a855f7;
 }
 
 .file-row.is-file.file-type-video {
-  border-left: 3px solid #ef4444;
+  border-left: 3px solid transparent;
+}
+
+.file-row.is-file.file-type-video.selected {
+  border-left-color: #ef4444;
 }
 
 .file-row.is-file.file-type-audio {
-  border-left: 3px solid #22c55e;
+  border-left: 3px solid transparent;
+}
+
+.file-row.is-file.file-type-audio.selected {
+  border-left-color: #22c55e;
 }
 
 .file-row.is-file.file-type-archive {
-  border-left: 3px solid #f59e0b;
+  border-left: 3px solid transparent;
+}
+
+.file-row.is-file.file-type-archive.selected {
+  border-left-color: #f59e0b;
 }
 
 .file-row.is-file.file-type-document {
-  border-left: 3px solid #3b82f6;
+  border-left: 3px solid transparent;
+}
+
+.file-row.is-file.file-type-document.selected {
+  border-left-color: #3b82f6;
 }
 
 .file-row.is-file.file-type-config {
-  border-left: 3px solid #6b7280;
+  border-left: 3px solid transparent;
+}
+
+.file-row.is-file.file-type-config.selected {
+  border-left-color: #6b7280;
 }
 
 .file-row.is-file.file-type-database {
-  border-left: 3px solid #8b5cf6;
+  border-left: 3px solid transparent;
+}
+
+.file-row.is-file.file-type-database.selected {
+  border-left-color: #8b5cf6;
 }
 
 .file-row.is-file.file-type-unknown {
   border-left: 3px solid transparent;
-}
-
-.col-checkbox {
-  width: 40px;
 }
 
 .col-name {
@@ -924,9 +1036,18 @@ onUnmounted(() => {
   border: 1px solid #3e3e42;
   border-radius: 8px;
   padding: 6px 0;
-  min-width: 160px;
+  min-width: 200px;
   z-index: 2000;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.menu-header {
+  padding: 8px 14px;
+  font-size: 11px;
+  color: #808080;
+  font-weight: 600;
+  border-bottom: 1px solid #3e3e42;
+  margin-bottom: 6px;
 }
 
 .menu-item {
@@ -956,6 +1077,48 @@ onUnmounted(() => {
   height: 1px;
   background: #3e3e42;
   margin: 6px 0;
+}
+
+/* 状态提示 */
+.selection-status {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(59, 130, 246, 0.9);
+  color: white;
+  padding: 8px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.btn-clear {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.2s;
+}
+
+.btn-clear:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 /* 滚动条样式 */
