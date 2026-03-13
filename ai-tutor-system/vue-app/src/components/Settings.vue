@@ -3,7 +3,7 @@
     <h2 class="settings-title">
       设置
     </h2>
-    
+
     <div
       v-if="settingsStore.isLoading"
       class="loading-indicator"
@@ -11,7 +11,7 @@
       <div class="loading-spinner"></div>
       <p>加载中...</p>
     </div>
-    
+
     <div
       v-else-if="settingsStore.error"
       class="error-message"
@@ -24,7 +24,7 @@
         重试
       </button>
     </div>
-    
+
     <div
       v-else
       class="settings-content"
@@ -34,33 +34,33 @@
         <h3 class="section-title">
           个人资料
         </h3>
-        
+
         <div class="setting-item avatar-upload-item">
           <label class="setting-label">用户头像</label>
           <div class="setting-control avatar-upload-control">
             <div class="avatar-preview-wrapper">
-              <img 
-                v-if="authStore.userInfo?.avatar" 
-                :src="avatarPreviewUrl || authStore.userInfo.avatar" 
+              <img
+                v-if="authStore.userInfo?.avatar"
+                :src="avatarPreviewUrl || authStore.userInfo.avatar"
                 class="avatar-preview"
                 alt="头像预览"
               >
-              <div 
-                v-else 
+              <div
+                v-else
                 class="avatar-placeholder"
               >
                 <i class="fas fa-user"></i>
               </div>
-              
-              <div 
-                v-if="isUploading" 
+
+              <div
+                v-if="isUploading"
                 class="upload-loading"
               >
                 <div class="loading-spinner-small"></div>
                 <span class="upload-percent">{{ uploadProgress }}%</span>
               </div>
             </div>
-            
+
             <div class="avatar-actions">
               <input
                 ref="fileInput"
@@ -69,8 +69,8 @@
                 style="display: none"
                 @change="onFileChange"
               >
-              <button 
-                class="btn btn-secondary btn-sm" 
+              <button
+                class="btn btn-secondary btn-sm"
                 :disabled="isUploading"
                 @click="$refs.fileInput.click()"
               >
@@ -141,12 +141,12 @@
         <h3 class="section-title">
           常规设置
         </h3>
-        
+
         <div class="setting-item">
           <label class="setting-label">界面主题</label>
           <div class="setting-control">
-            <select 
-              v-model="localSettings.theme" 
+            <select
+              v-model="localSettings.theme"
               class="select-control"
               @change="handleUpdate('theme')"
             >
@@ -159,12 +159,12 @@
             </select>
           </div>
         </div>
-        
+
         <div class="setting-item">
           <label class="setting-label">语言</label>
           <div class="setting-control">
-            <select 
-              v-model="localSettings.language" 
+            <select
+              v-model="localSettings.language"
               class="select-control"
               @change="handleUpdate('language')"
             >
@@ -178,18 +178,18 @@
           </div>
         </div>
       </div>
-      
+
       <!-- AI 模型设置 -->
       <div class="settings-section">
         <h3 class="section-title">
           AI 设置
         </h3>
-        
+
         <div class="setting-item">
           <label class="setting-label">默认模型</label>
           <div class="setting-control">
-            <select 
-              v-model="localSettings.aiModel" 
+            <select
+              v-model="localSettings.aiModel"
               class="select-control"
               @change="handleUpdate('aiModel')"
             >
@@ -206,13 +206,13 @@
         <h3 class="section-title">
           通知设置
         </h3>
-        
+
         <div class="setting-item">
           <label class="setting-label">启用系统通知</label>
           <div class="setting-control">
             <label class="switch">
-              <input 
-                v-model="localSettings.notificationsEnabled" 
+              <input
+                v-model="localSettings.notificationsEnabled"
                 type="checkbox"
                 @change="handleUpdate('notificationsEnabled')"
               >
@@ -220,13 +220,13 @@
             </label>
           </div>
         </div>
-        
+
         <div class="setting-item">
           <label class="setting-label">启用邮件通知</label>
           <div class="setting-control">
             <label class="switch">
-              <input 
-                v-model="localSettings.emailNotifications" 
+              <input
+                v-model="localSettings.emailNotifications"
                 type="checkbox"
                 @change="handleUpdate('emailNotifications')"
               >
@@ -235,13 +235,13 @@
           </div>
         </div>
       </div>
-      
+
       <!-- 危险区域 -->
       <div class="settings-section danger-zone">
         <h3 class="section-title danger-title">
           危险区域
         </h3>
-        
+
         <div class="setting-item">
           <label class="setting-label">重置所有设置</label>
           <div class="setting-control">
@@ -253,7 +253,7 @@
             </button>
           </div>
         </div>
-        
+
         <div class="setting-item">
           <label class="setting-label">退出登录</label>
           <div class="setting-control">
@@ -320,7 +320,7 @@ const saveUsername = async () => {
     uiStore.showToast('用户名不能为空', 'error')
     return
   }
-  
+
   if (newUsername.value === authStore.userInfo?.username) {
     isEditingUsername.value = false
     return
@@ -375,7 +375,7 @@ const onFileChange = async (event) => {
 
   isUploading.value = true
   uploadProgress.value = 0
-  
+
   try {
     const response = await request.post(API_ENDPOINTS.auth.uploadAvatar, formData, {
       headers: {
@@ -395,7 +395,7 @@ const onFileChange = async (event) => {
       // 更新本地状态
       authStore.updateUserInfo({ avatar: avatarPath })
       uiStore.showToast('头像上传成功')
-      
+
       // 触发 AppHeader/Sidebar 刷新
       authStore.forceRefreshUserInfo()
     } else {
@@ -419,7 +419,7 @@ const onFileChange = async (event) => {
 const handleUpdate = async (field) => {
   const updatePayload = {}
   updatePayload[field] = localSettings.value[field]
-  
+
   const result = await settingsStore.updateSettings(updatePayload)
   if (result.success) {
     uiStore.showToast('设置已保存')
@@ -679,7 +679,7 @@ const handleLogout = () => {
   height: 24px;
 }
 
-.switch input { 
+.switch input {
   opacity: 0;
   width: 0;
   height: 0;
@@ -797,13 +797,13 @@ input:checked + .slider:before {
   .settings-container {
     padding: 20px;
   }
-  
+
   .setting-item {
     flex-direction: column;
     align-items: flex-start;
     gap: 10px;
   }
-  
+
   .setting-control {
     width: 100%;
     justify-content: flex-start;

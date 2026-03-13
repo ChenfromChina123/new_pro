@@ -23,6 +23,7 @@
         @keydown="handleKeyDown"
         @keyup="handleKeyUp"
         @paste="handlePaste"
+        @contextmenu.prevent="handleContextMenu"
       >
         <div v-html="getTerminalContent()"></div>
       </div>
@@ -45,6 +46,33 @@
             <button @click="showPasteModal = false" class="btn-cancel">取消</button>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- 右键菜单 -->
+    <div v-if="contextMenu.visible" class="context-menu" :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }">
+      <div class="menu-item" @click="copyContent">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+        </svg>
+        <span>复制</span>
+      </div>
+      <div class="menu-divider"></div>
+      <div class="menu-item" @click="selectAll">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 11l3 3L22 4"></path>
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+        </svg>
+        <span>全选</span>
+      </div>
+      <div class="menu-divider"></div>
+      <div class="menu-item" @click="clearScreen">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+        <span>清屏</span>
       </div>
     </div>
   </div>
@@ -73,6 +101,13 @@ const terminalOutput = ref('')
 // 粘贴确认相关
 const showPasteModal = ref(false)
 const pasteBuffer = ref('')
+
+// 右键菜单相关
+const contextMenu = ref({
+  visible: false,
+  x: 0,
+  y: 0
+})
 
 let ws = null
 const wsConnected = ref(false)
@@ -343,6 +378,86 @@ const confirmPaste = () => {
   focusTerminal()
 }
 
+/**
+ * 处理右键菜单
+ */
+const handleContextMenu = (event) => {
+  event.preventDefault()
+  contextMenu.value = {
+    visible: true,
+    x: event.clientX,
+    y: event.clientY
+  }
+}
+
+/**
+ * 隐藏右键菜单
+ */
+const hideContextMenu = () => {
+  contextMenu.value.visible = false
+}
+
+/**
+ * 复制内容
+ */
+const copyContent = async () => {
+  try {
+    const selection = window.getSelection()
+    const selectedText = selection.toString()
+
+    if (selectedText) {
+      // 如果有选中的文本，直接复制
+      await navigator.clipboard.writeText(selectedText)
+    } else {
+      // 如果没有选中，复制全部终端内容
+      await navigator.clipboard.writeText(terminalOutput.value)
+    }
+
+    // 显示复制成功提示
+    const toast = document.createElement('div')
+    toast.textContent = '已复制到剪贴板'
+    toast.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-size: 14px;
+      z-index: 10000;
+    `
+    document.body.appendChild(toast)
+    setTimeout(() => document.body.removeChild(toast), 2000)
+  } catch (error) {
+    console.error('复制失败:', error)
+    alert('复制失败：' + error.message)
+  }
+  hideContextMenu()
+}
+
+/**
+ * 全选
+ */
+const selectAll = () => {
+  const range = document.createRange()
+  range.selectNode(terminalContainer.value)
+  const selection = window.getSelection()
+  selection.removeAllRanges()
+  selection.addRange(range)
+  hideContextMenu()
+}
+
+/**
+ * 清屏
+ */
+const clearScreen = () => {
+  terminalOutput.value = ''
+  currentCommand.value = ''
+  hideContextMenu()
+}
+
 const handleKeyDown = (event) => {
   if (!wsConnected.value) return
 
@@ -452,10 +567,12 @@ const handleKeyUp = (event) => {
 onMounted(async () => {
   await fetchServerInfo()
   await connectServer()
+  document.addEventListener('click', hideContextMenu)
 })
 
 onUnmounted(() => {
   disconnectWebSocket()
+  document.removeEventListener('click', hideContextMenu)
 })
 </script>
 
@@ -715,5 +832,42 @@ onUnmounted(() => {
 
 .close-btn:hover {
   color: #333;
+}
+
+/* 右键菜单样式 */
+.context-menu {
+  position: fixed;
+  background: #2d2d2d;
+  border: 1px solid #3e3e3e;
+  border-radius: 6px;
+  padding: 6px 0;
+  min-width: 180px;
+  z-index: 10000;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.15s;
+  color: #f0f0f0;
+}
+
+.menu-item:hover {
+  background: #3e3e3e;
+}
+
+.menu-item svg {
+  flex-shrink: 0;
+}
+
+.menu-divider {
+  height: 1px;
+  background: #3e3e3e;
+  margin: 6px 0;
 }
 </style>
