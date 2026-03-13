@@ -1,6 +1,5 @@
-import { nextTick, reactive, ref } from "vue";
+import { nextTick, reactive, ref, watch } from "vue";
 import type { WatchStopHandle } from "vue";
-import { watchEffect } from "vue";
 
 /**
  * 单词在输入框中的状态
@@ -44,14 +43,6 @@ enum Mode {
 
 const separator = " ";
 
-/** 全局共享的输入值（与 input 元素 v-model 绑定） */
-const inputValue = ref("");
-
-/** 清空输入框 */
-export function clearQuestionInput() {
-  inputValue.value = "";
-}
-
 /**
  * 判断字符串是否是"单词"（包含字母或数字），用于区分标点与单词
  */
@@ -59,15 +50,10 @@ export function isWord(content: string) {
   return /[a-zA-Z0-9]/.test(content);
 }
 
-const mode = ref<Mode>(Mode.Input);
-let currentEditWord: Word;
-const userInputWords = reactive<Word[]>([]);
-let stopWatchEffect: WatchStopHandle | null = null;
-
 /**
  * 核心打字输入逻辑
  * 移植自 earthworm apps/client/composables/main/question.ts
- * 已去除所有 Nuxt 相关 import
+ * 已针对 Vue 3 独立项目优化，修复了全局变量污染与 watchEffect 循环触发问题
  */
 export function useInput({
   source,
@@ -75,13 +61,26 @@ export function useInput({
   getInputCursorPosition,
   inputChangedCallback,
 }: InputOptions) {
+  // --- 状态移入函数内部，避免全局污染 ---
+  const mode = ref<Mode>(Mode.Input);
+  const inputValue = ref("");
+  const userInputWords = reactive<Word[]>([]);
+  let currentEditWord: Word | null = null;
+  let stopWatch: WatchStopHandle | null = null;
+
   /** 初始化/重置输入状态，每次切换新题目时调用 */
   function initialize() {
-    stopWatchEffect && stopWatchEffect();
+    stopWatch && stopWatch();
     mode.value = Mode.Input;
+    inputValue.value = "";
     userInputWords.length = 0;
     setupUserInputWords();
     updateActiveWord(getInputCursorPosition());
+  }
+
+  /** 清空输入内容（外部可用） */
+  function clearInput() {
+    inputValue.value = "";
   }
 
   /** 外部设置 inputValue 时同步更新各 word 的 userInput */
@@ -108,19 +107,37 @@ export function useInput({
 
   /** 监听 source() 变化，解析单词列表 */
   function setupUserInputWords() {
-    stopWatchEffect = watchEffect(() => {
-      resetUserInputWords();
-      const english = source();
-      let inputWordIndex = 0;
-      english.split(separator).forEach((text, index) => {
-        if (isWord(text)) {
-          const word = createWord(text, index);
-          userInputWords[inputWordIndex] = word;
-          inputWordIndex === 0 && (userInputWords[0].isActive = true);
-          inputWordIndex++;
-        }
-      });
-    });
+    // 修复：改用 watch 明确监听 source()，避免 watchEffect 自动追踪 resetUserInputWords 里的 inputValue 导致死循环
+    stopWatch = watch(
+      source,
+      (english) => {
+        resetUserInputWords();
+        if (!english) return;
+
+        console.log('[调试 useInput] 正在解析英文句子:', english);
+        let inputWordIndex = 0;
+        const words = english.split(separator);
+
+        words.forEach((text, index) => {
+          if (isWord(text)) {
+            const word = createWord(text, index);
+            // 修复：使用 push 确保 Vue 3 数组响应式
+            userInputWords.push(word);
+            // 第一个单词设为激活
+            if (inputWordIndex === 0) {
+              word.isActive = true;
+            }
+            inputWordIndex++;
+          }
+        });
+        console.log('[调试 useInput] 解析完成，userInputWords 长度:', userInputWords.length);
+
+        // 解析完成后，同步当前输入内容
+        inputSyncUserInputWords();
+        updateActiveWord(getInputCursorPosition());
+      },
+      { immediate: true }
+    );
   }
 
   /** 将 userInputWords 的 userInput 同步回 inputValue */

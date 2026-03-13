@@ -57,26 +57,50 @@ export const useCourseStore = defineStore("course", () => {
     loadingCourse.value = true;
     currentPackageId.value = packageId;
     _sessionStart = Date.now();
+    console.log('[调试 loadCourse] courseIndex:', courseIndex, 'packageId:', packageId);
 
     try {
       // ① 尝试从后端 API 加载题目（用户课程包传 packageId）
       const statements = await fetchCourseQuestions(courseIndex, packageId);
-      const meta =
-        packageId?.startsWith("up-")
-          ? { index: 1, title: "第一课", count: statements.length }
-          : courseMetas.find((m) => m.index === courseIndex);
-      if (!meta) throw new Error("元数据不存在");
-      currentCourse.value = { ...meta, statements };
-    } catch {
-      // ② 降级到静态数据（仅内置包）
-      if (packageId?.startsWith("up-")) {
-        loadingCourse.value = false;
-        return;
+      console.log('[调试 loadCourse] API 返回的 statements:', statements, '长度:', statements?.length);
+      
+      if (!statements || statements.length === 0) {
+        throw new Error("API 返回题目为空");
       }
-      const meta = courseMetas.find((m) => m.index === courseIndex);
-      if (!meta) { loadingCourse.value = false; return; }
-      const statements = getCourseStatements(courseIndex);
+
+      // 寻找元数据：用户上传包(up-) 或 静态包
+      let meta;
+      if (packageId?.startsWith("up-")) {
+        meta = { index: courseIndex, title: `第 ${courseIndex} 节`, count: statements.length };
+      } else {
+        meta = courseMetas.find((m) => m.index === courseIndex);
+      }
+
+      console.log('[调试 loadCourse] 找到的 meta:', meta);
+      
+      if (!meta) {
+        // 如果找不到元数据但有题目，创建一个兜底元数据
+        meta = { index: courseIndex, title: `第 ${courseIndex} 课`, count: statements.length };
+      }
+      
       currentCourse.value = { ...meta, statements };
+      console.log('[调试 loadCourse] currentCourse.value 设置成功:', currentCourse.value);
+    } catch (e) {
+      console.error('[调试 loadCourse] 优先加载流程失败，尝试降级:', e);
+      // ② 降级到静态数据（仅对非用户包尝试）
+      if (!packageId?.startsWith("up-")) {
+        const meta = courseMetas.find((m) => m.index === courseIndex);
+        const statements = getCourseStatements(courseIndex);
+        if (meta && statements && statements.length > 0) {
+          currentCourse.value = { ...meta, statements };
+          console.log('[调试 loadCourse] 降级加载成功');
+        } else {
+          console.error('[调试 loadCourse] 降级加载也失败了');
+          currentCourse.value = null;
+        }
+      } else {
+        currentCourse.value = null;
+      }
     }
 
     showCompletion.value = false;

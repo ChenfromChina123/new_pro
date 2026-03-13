@@ -25,9 +25,9 @@ export default defineConfig({
       allow: [resolve(__dirname, ".."), resolve(__dirname)],
     },
     proxy: {
-      // 开发时将 /api 代理到 word-game API 服务器
+      // 开发时将 /api 代理到 word-game API 服务器 (后端端口为 5201)
       "/api": {
-        target: "http://localhost:5200",
+        target: "http://127.0.0.1:5201",
         changeOrigin: true,
       },
     },

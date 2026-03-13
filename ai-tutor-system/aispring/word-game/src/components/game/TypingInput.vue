@@ -58,7 +58,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted } from "vue";
 import { useCourseStore } from "@/stores/courseStore";
-import { useInput, isWord, clearQuestionInput } from "@/composables/useQuestion";
+import { useInput, isWord } from "@/composables/useQuestion";
 import { useGameMode } from "@/composables/useGameMode";
 import { playEnglishSound } from "@/composables/useEnglishSound";
 
@@ -120,12 +120,20 @@ function setInputCursorPosition(pos: number) {
   }
 }
 
-const { inputValue, findWordById, submitAnswer, handleKeyboardInput, isFixMode, initialize, setInputValue } =
-  useInput({
-    source: () => courseStore.currentStatement?.english ?? "",
-    setInputCursorPosition,
-    getInputCursorPosition,
-  });
+const { 
+  inputValue, 
+  findWordById, 
+  submitAnswer, 
+  handleKeyboardInput, 
+  isFixMode, 
+  initialize, 
+  setInputValue,
+  resetUserInputWords
+} = useInput({
+  source: () => courseStore.currentStatement?.english ?? "",
+  setInputCursorPosition,
+  getInputCursorPosition,
+});
 
 /** 每次切换题目时重新初始化 */
 onMounted(() => {
@@ -144,7 +152,7 @@ onUnmounted(() => {
 watch(
   () => courseStore.statementIndex,
   () => {
-    clearQuestionInput();
+    resetUserInputWords();
     initialize();
     showAnswerTip.value = false;
     focusInput();

@@ -141,30 +141,38 @@ function toChineseTitle(num) {
 /** 读取并缓存所有课程元数据 */
 function buildCourseMetas() {
   console.log(`[调试] COURSES_DIR 路径：${COURSES_DIR}`);
-  console.log(`[调试] 当前工作目录：${process.cwd()}`);
-  console.log(`[调试] __dirname: ${__dirname}`);
   if (!existsSync(COURSES_DIR)) {
     console.warn(`[警告] 课程目录不存在：${COURSES_DIR}`);
     return [];
   }
-  const files = readdirSync(COURSES_DIR)
-    .filter((f) => f.endsWith(".json"))
-    .sort((a, b) => {
-      const na = parseInt(a, 10);
-      const nb = parseInt(b, 10);
-      return na - nb;
-    });
+  try {
+    const files = readdirSync(COURSES_DIR)
+      .filter((f) => f.endsWith(".json"))
+      .sort((a, b) => {
+        const na = parseInt(a, 10);
+        const nb = parseInt(b, 10);
+        return na - nb;
+      });
 
-  return files.map((f) => {
-    const idx = parseInt(f, 10);
-    const raw = readFileSync(join(COURSES_DIR, f), "utf-8");
-    const statements = JSON.parse(raw);
-    return {
-      index: idx,
-      title: toChineseTitle(idx),
-      count: statements.length,
-    };
-  });
+    return files.map((f) => {
+      try {
+        const idx = parseInt(f, 10);
+        const raw = readFileSync(join(COURSES_DIR, f), "utf-8");
+        const statements = JSON.parse(raw);
+        return {
+          index: idx,
+          title: toChineseTitle(idx),
+          count: Array.isArray(statements) ? statements.length : 0,
+        };
+      } catch (e) {
+        console.error(`[错误] 无法解析课程文件 ${f}:`, e.message);
+        return null;
+      }
+    }).filter(Boolean);
+  } catch (e) {
+    console.error(`[错误] 无法读取课程目录:`, e.message);
+    return [];
+  }
 }
 
 const courseMetas = buildCourseMetas();
@@ -724,7 +732,7 @@ app.use((err, req, res, next) => {
 
 // ── 启动 ──────────────────────────────────────────────────────────────────────
 
-app.listen(PORT, () => {
-  console.log(`[word-game API] 服务已启动: http://localhost:${PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`[word-game API] 服务已启动: http://0.0.0.0:${PORT}`);
   console.log(`[word-game API] 进度数据库: ${join(__dirname, "progress.db")}`);
 });

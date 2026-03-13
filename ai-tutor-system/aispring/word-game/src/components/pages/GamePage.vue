@@ -53,8 +53,19 @@
         <!-- 游戏区域 -->
         <Transition name="fade">
           <div v-if="gameStarted" class="playing-area">
+            <!-- 加载中 -->
+            <div v-if="courseStore.loadingCourse" class="loading-state">
+              正在加载课程数据...
+            </div>
+
+            <!-- 数据加载失败或为空 -->
+            <div v-else-if="!courseStore.currentStatement" class="error-state">
+              <p>暂无题目数据，请返回重试。</p>
+              <button class="btn btn-primary" @click="goBack">返回列表</button>
+            </div>
+
             <!-- 问题模式 -->
-            <template v-if="isQuestion()">
+            <template v-else-if="isQuestion()">
               <!-- 中文提示 -->
               <div class="chinese-hint">
                 {{ courseStore.currentStatement?.chinese }}
@@ -121,12 +132,26 @@ const progressPercent = computed(() => {
 // ---- 生命周期 ----
 
 onMounted(() => {
+  console.log('[调试 GamePage onMounted] route.params:', route.params);
+  console.log('[调试 GamePage onMounted] route.query:', route.query);
+
+  // 确保初始进入时是问题模式
+  resetMode();
+
   // 如果从 URL 直接访问（如刷新页面），重新加载课程；用户课程包从 query 取 packageId
   const courseIndex = Number(route.params.courseIndex);
   const packageId = (route.query.packageId as string) || undefined;
-  // 修复：courseIndex 可能为 0，需要用 != null 判断
-  if (courseIndex != null && !courseStore.currentCourse) {
+  console.log('[调试 GamePage onMounted] courseIndex:', courseIndex, 'packageId:', packageId);
+  // 修复：需要检查当前课程是否与 URL 中的 courseIndex 及 packageId 匹配
+  const needsLoad = !courseStore.currentCourse ||
+                    courseStore.currentCourse.index !== courseIndex ||
+                    courseStore.currentPackageId !== packageId;
+
+  if (courseIndex != null && needsLoad) {
+    console.log('[调试 GamePage onMounted] 调用 loadCourse');
     courseStore.loadCourse(courseIndex, packageId);
+  } else {
+    console.log('[调试 GamePage onMounted] 不调用 loadCourse, courseIndex:', courseIndex, 'currentCourse:', courseStore.currentCourse?.index);
   }
 
   // 监听任意键启动游戏（桌面端）
@@ -330,6 +355,21 @@ function handleAgain() {
   flex-direction: column;
   align-items: center;
   gap: 24px;
+}
+
+.loading-state,
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 200px;
+  color: var(--text-secondary);
+}
+
+.error-state p {
+  margin-bottom: 8px;
 }
 
 /* 中文提示 */
