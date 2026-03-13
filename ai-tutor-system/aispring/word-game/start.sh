@@ -11,10 +11,15 @@ cd "$(dirname "$0")"
 echo ">>> [1/3] 检查 Node.js 环境..."
 node -v || { echo "错误: 未找到 Node.js，请先安装。"; exit 1; }
 
-echo ">>> [2/3] 安装依赖项..."
-npm install --production
+echo ">>> [2/4] 安装依赖项..."
+npm install
 
-echo ">>> [3/3] 启动后端服务 (PM2)..."
+echo ">>> [3/4] 构建前端静态资源 (用于生产环境)..."
+# 如果 dist 目录不存在，或者你想强制更新，运行 build
+npm run build
+
+echo ">>> [4/4] 启动后端服务 (PM2)..."
+# 生产环境下，后端服务 (5201) 会自动托管 dist 目录下的前端页面
 # 检查是否安装了 pm2，如果没有则尝试临时运行
 if command -v pm2 &> /dev/null
 then
