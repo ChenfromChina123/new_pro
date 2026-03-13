@@ -124,7 +124,8 @@ onMounted(() => {
   // 如果从 URL 直接访问（如刷新页面），重新加载课程；用户课程包从 query 取 packageId
   const courseIndex = Number(route.params.courseIndex);
   const packageId = (route.query.packageId as string) || undefined;
-  if (courseIndex && !courseStore.currentCourse) {
+  // 修复：courseIndex 可能为 0，需要用 != null 判断
+  if (courseIndex != null && !courseStore.currentCourse) {
     courseStore.loadCourse(courseIndex, packageId);
   }
 

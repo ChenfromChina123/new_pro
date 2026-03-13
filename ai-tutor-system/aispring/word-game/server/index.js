@@ -255,6 +255,12 @@ function requireAispringAuth(req, res, next) {
 
 const app = express();
 
+// 请求日志中间件
+app.use((req, res, next) => {
+  console.log(`[请求] ${req.method} ${req.path}`);
+  next();
+});
+
 app.use(
   cors({
     origin: true,        // 允许所有来源（iframe 场景）

@@ -272,8 +272,13 @@ const isEmbedded = window.self !== window.top;
 /** 加载课程包列表，支持搜索 */
 async function loadPackages(search?: string) {
   try {
-    packages.value = await fetchPackages(search || undefined);
-  } catch {
+    const data = await fetchPackages(search || undefined);
+    console.log('[调试] API 返回的课程包数据:', data);
+    console.log('[调试] 课程包数量:', data.length);
+    packages.value = data;
+    console.log('[调试] packages.value 已更新:', packages.value);
+  } catch (error) {
+    console.error('[错误] 加载课程包失败:', error);
     let list = staticPackages.map((p) => ({
       id: p.id,
       name: p.name,
@@ -293,6 +298,8 @@ async function loadPackages(search?: string) {
     }
     packages.value = list;
   }
+  console.log('[调试] 最终 packages.value:', packages.value);
+  console.log('[调试] loading 状态:', loading.value);
   for (const pkg of packages.value) {
     progressStore.loadProgress(pkg.id);
   }
