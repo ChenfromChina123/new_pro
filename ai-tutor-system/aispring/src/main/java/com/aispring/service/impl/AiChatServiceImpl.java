@@ -56,7 +56,7 @@ import jakarta.annotation.PreDestroy;
 @Service
 @Slf4j
 public class AiChatServiceImpl implements AiChatService {
-    
+
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private final ObjectProvider<ChatClient> chatClientProvider;
     private final ObjectProvider<StreamingChatClient> streamingChatClientProvider;
@@ -65,19 +65,13 @@ public class AiChatServiceImpl implements AiChatService {
     private final com.aispring.service.ChatRecordService chatRecordService; // 注入 ChatRecordService
     private final TokenUsageAuditService tokenUsageAuditService;
     private final OkHttpClient okHttpClient;
-    
+
     @Value("${ai.max-tokens:4096}")
     private Integer maxTokens;
-    
-    @Value("${ai.doubao.api-key:}")
-    private String doubaoApiKey;
-    
-    @Value("${ai.doubao.api-url:}")
-    private String doubaoApiUrl;
-    
+
     @Value("${ai.deepseek.api-key:}")
     private String deepseekApiKey;
-    
+
     @Value("${ai.deepseek.api-url:}")
     private String deepseekApiUrl;
 
@@ -95,10 +89,7 @@ public class AiChatServiceImpl implements AiChatService {
 
     @Value("${ai.context.max-saved-reasoning-chars:200000}")
     private Integer maxSavedReasoningChars;
-    
-    private ChatClient doubaoChatClient;
-    private StreamingChatClient doubaoStreamingChatClient;
-    
+
     private ChatClient deepseekChatClient;
     private StreamingChatClient deepseekStreamingChatClient;
 
@@ -146,15 +137,13 @@ public class AiChatServiceImpl implements AiChatService {
         if (s.length() <= maxChars) return s;
         return s.substring(0, maxChars);
     }
-    
+
     public AiChatServiceImpl(ObjectProvider<ChatClient> chatClientProvider,
                              ObjectProvider<StreamingChatClient> streamingChatClientProvider,
                              ChatRecordRepository chatRecordRepository,
                              AnonymousChatRecordRepository anonymousChatRecordRepository,
                              com.aispring.service.ChatRecordService chatRecordService,
                              TokenUsageAuditService tokenUsageAuditService,
-                             @Value("${ai.doubao.api-key:}") String doubaoApiKey,
-                             @Value("${ai.doubao.api-url:}") String doubaoApiUrl,
                              @Value("${ai.deepseek.api-key:}") String deepseekApiKey,
                              @Value("${ai.deepseek.api-url:}") String deepseekApiUrl) {
         this.chatClientProvider = chatClientProvider;
@@ -163,62 +152,39 @@ public class AiChatServiceImpl implements AiChatService {
         this.anonymousChatRecordRepository = anonymousChatRecordRepository;
         this.chatRecordService = chatRecordService;
         this.tokenUsageAuditService = tokenUsageAuditService;
-        this.doubaoApiKey = doubaoApiKey;
-        this.doubaoApiUrl = doubaoApiUrl;
         this.deepseekApiKey = deepseekApiKey;
         this.deepseekApiUrl = deepseekApiUrl;
-        
+
         // Initialize OkHttpClient with custom timeouts and unsafe SSL
         this.okHttpClient = createUnsafeOkHttpClient();
 
-        log.info("Initializing Doubao AI client");
-        
-        if (doubaoApiKey != null && !doubaoApiKey.isEmpty() && doubaoApiUrl != null && !doubaoApiUrl.isEmpty()) {
+        log.info("Initializing DeepSeek AI client with Aliyun Bailian API");
+
+        // Initialize DeepSeek Client (Aliyun Bailian)
+        if (deepseekApiKey != null && !deepseekApiKey.isEmpty() && deepseekApiUrl != null && !deepseekApiUrl.isEmpty()) {
             try {
-                // Doubao requires /api/v3 appended to base URL for OpenAiApi
-                String doubaoBaseUrl = doubaoApiUrl;
-                if (!doubaoBaseUrl.endsWith("/api/v3") && !doubaoBaseUrl.endsWith("/api/v3/")) {
-                    if (doubaoBaseUrl.endsWith("/")) {
-                        doubaoBaseUrl += "api/v3";
-                    } else {
-                        doubaoBaseUrl += "/api/v3";
-                    }
-                }
-                OpenAiApi doubaoApi = new OpenAiApi(doubaoBaseUrl, doubaoApiKey);
-                
-                OpenAiChatOptions doubaoOptions = OpenAiChatOptions.builder()
-                        .withModel("doubao-pro-32k") // 设置豆包模型名称
+                // Aliyun Bailian uses compatible OpenAI mode
+                OpenAiApi deepseekApi = new OpenAiApi(deepseekApiUrl, deepseekApiKey);
+                OpenAiChatOptions deepseekOptions = OpenAiChatOptions.builder()
+                        .withModel("deepseek-v3.2")
                         .withTemperature(0.7f)
                         .withMaxTokens(maxTokens)
                         .build();
-                
-                OpenAiChatClient client = new OpenAiChatClient(doubaoApi, doubaoOptions);
-                this.doubaoChatClient = client;
-                this.doubaoStreamingChatClient = client;
-                log.info("Doubao AI client initialized successfully");
-            } catch (Exception e) {
-                log.warn("Failed to initialize Doubao AI client: {}", e.getMessage());
-            }
-        } else {
-            log.info("Doubao client initialization skipped (missing api-key or api-url)");
-        }
-        
-        // Initialize DeepSeek Client
-        if (deepseekApiKey != null && !deepseekApiKey.isEmpty() && deepseekApiUrl != null && !deepseekApiUrl.isEmpty()) {
-            try {
-                OpenAiApi deepseekApi = new OpenAiApi(deepseekApiUrl, deepseekApiKey);
-                OpenAiChatClient client = new OpenAiChatClient(deepseekApi);
+
+                OpenAiChatClient client = new OpenAiChatClient(deepseekApi, deepseekOptions);
                 this.deepseekChatClient = client;
                 this.deepseekStreamingChatClient = client;
-                System.out.println("DeepSeek AI client initialized successfully with URL: " + deepseekApiUrl);
+                log.info("DeepSeek AI client initialized successfully with Aliyun Bailian API: " + deepseekApiUrl);
             } catch (Exception e) {
-                System.err.println("Failed to initialize DeepSeek AI client: " + e.getMessage());
+                log.error("Failed to initialize DeepSeek AI client: {}", e.getMessage());
             }
+        } else {
+            log.info("DeepSeek client initialization skipped (missing api-key or api-url)");
         }
     }
 
 
-    
+
     /**
      * 统一发送聊天响应（SSE）- 优化流畅度
      */
@@ -263,11 +229,11 @@ public class AiChatServiceImpl implements AiChatService {
     private SseEmitter askStreamInternal(String initialPrompt, String sessionId, String model, Long userId, String ipAddress) {
         // 创建SSE发射器，设置超时时间为5分钟
         SseEmitter emitter = new SseEmitter(300_000L);
-        
+
         log.info("=== askStreamInternal Called ===");
         log.info("Model: {}, SessionId: {}, UserId: {}, IP: {}", model, sessionId, userId, ipAddress);
         log.info("Prompt: {} chars, preview={}", initialPrompt == null ? 0 : initialPrompt.length(), safePreview(initialPrompt, 200));
-        
+
         // 提前生成会话ID（针对匿名用户）
         final String finalSessionId = (sessionId == null || sessionId.isEmpty())
                 ? java.util.UUID.randomUUID().toString().replace("-", "")
@@ -276,11 +242,11 @@ public class AiChatServiceImpl implements AiChatService {
         chatExecutor.execute(() -> {
             try {
                 log.info("=== Chat Thread Started ===");
-                
+
                 StringBuilder fullReasoning = new StringBuilder();
                 // 执行对话并获取完整回复（内部已处理 SSE 发送）
                 String fullContent = performBlockingChat(initialPrompt, finalSessionId, model, userId, null, emitter, ipAddress, fullReasoning);
-                
+
                 // 异步保存聊天记录
                 if (userId != null) {
                     // 已登录用户逻辑保持不变
@@ -298,7 +264,7 @@ public class AiChatServiceImpl implements AiChatService {
                         .createdAt(java.time.LocalDateTime.now())
                         .build();
                     anonymousChatRecordRepository.save(userRecord);
-                    
+
                     // 保存AI消息
                     AnonymousChatRecord aiRecord = AnonymousChatRecord.builder()
                         .sessionId(finalSessionId)
@@ -320,13 +286,13 @@ public class AiChatServiceImpl implements AiChatService {
                 } catch (Exception e) {
                     log.error("发送完成事件失败 - sessionId={}", sessionId, e);
                 }
-                
+
             } catch (Exception e) {
                 // log.error("对话异常: sessionId={}", sessionId, e); // Removed to avoid duplicate logging, handled in handleError
                 handleError(emitter, e);
             }
         });
-        
+
         return emitter;
     }
 
@@ -334,37 +300,36 @@ public class AiChatServiceImpl implements AiChatService {
         // 敏感信息脱敏：发送给大模型前过滤身份证号、手机号等隐私数据
         String maskedPrompt = SensitiveDataMasker.mask(prompt);
         StringBuilder fullContent = new StringBuilder();
-        
-        // 检查是否为推理模型
-        boolean isReasoner = "deepseek-reasoner".equals(model) || "doubao-reasoner".equals(model);
-        
-        if (isReasoner) {
-             performBlockingOkHttpChat(maskedPrompt, sessionId, model, userId, systemPrompt, emitter, fullContent, ipAddress, fullReasoning);
-        } else {
-             performBlockingSpringAiChat(maskedPrompt, sessionId, model, userId, systemPrompt, emitter, fullContent, ipAddress, fullReasoning);
-        }
-        
+
+        // 判断是否为思考模式
+        // deepseek-reasoner 或 deepseek-r1 表示思考模式
+        boolean enableThinking = "deepseek-reasoner".equals(model) || "deepseek-r1".equals(model);
+
+        // 使用 OkHttp 发送请求，支持思考过程
+        performBlockingOkHttpChatWithThinking(maskedPrompt, sessionId, model, userId, systemPrompt, emitter, fullContent, ipAddress, fullReasoning, enableThinking);
+
         return fullContent.toString();
     }
-    
+
     private void performBlockingSpringAiChat(String prompt, String sessionId, String model, Long userId, String systemPrompt, SseEmitter emitter, StringBuilder fullContent, String ipAddress, StringBuilder fullReasoning) {
-        // Determine client
+        // Determine client - only DeepSeek now
         StreamingChatClient clientToUse = streamingChatClientProvider.getIfAvailable();
-        if ("doubao".equals(model) && doubaoStreamingChatClient != null) clientToUse = doubaoStreamingChatClient;
-        if (("deepseek".equals(model) || "deepseek-chat".equals(model)) && deepseekStreamingChatClient != null) clientToUse = deepseekStreamingChatClient;
-        
-        String actualModel = (model == null || model.isEmpty()) ? "deepseek-chat" : model;
-        if ("deepseek".equals(actualModel)) actualModel = "deepseek-chat";
-        String provider = "doubao".equals(model) ? "doubao" : ("deepseek".equals(model) || "deepseek-chat".equals(actualModel) ? "deepseek" : "default");
-        
+        if (("deepseek".equals(model) || "deepseek-chat".equals(model)) && deepseekStreamingChatClient != null) {
+            clientToUse = deepseekStreamingChatClient;
+        }
+
+        // 阿里百炼使用 deepseek-v3.2 模型，开启思考模式
+        String actualModel = "deepseek-v3.2";
+        String provider = "deepseek";
+
         OpenAiChatOptions options = OpenAiChatOptions.builder()
                 .withModel(actualModel)
                 .withTemperature(0.7f)
                 .withMaxTokens(maxTokens)
                 .build();
-        
+
         Prompt promptObj = buildPrompt(prompt, sessionId, userId, ipAddress, options, systemPrompt);
-        
+
         if (clientToUse == null) {
              String content = fallbackAnswer(prompt);
              sendChatResponse(emitter, content, null);
@@ -391,28 +356,26 @@ public class AiChatServiceImpl implements AiChatService {
         tokenUsageAuditService.recordEstimated(provider, actualModel, userId, sessionId, prompt.length(), fullContent.length(), responseTimeMs, true);
     }
 
-    private void performBlockingOkHttpChat(String prompt, String sessionId, String model, Long userId, String systemPrompt, SseEmitter emitter, StringBuilder fullContent, String ipAddress, StringBuilder fullReasoning) throws IOException {
+    /**
+     * 使用 OkHttp 发送流式请求，支持思考过程
+     * @param enableThinking 是否开启思考模式
+     */
+    private void performBlockingOkHttpChatWithThinking(String prompt, String sessionId, String model, Long userId, String systemPrompt, SseEmitter emitter, StringBuilder fullContent, String ipAddress, StringBuilder fullReasoning, boolean enableThinking) throws IOException {
          long startMs = System.currentTimeMillis();
          if (userId != null) {
              generateTitleAndSuggestionsAsync(prompt, sessionId, userId, emitter);
          }
-         
-         String apiKey = "";
-         String apiUrl = "";
-         String requestModel = "";
-         boolean isDoubao = false;
 
-         if ("deepseek-reasoner".equals(model)) {
-             apiKey = deepseekApiKey;
+         String apiKey = deepseekApiKey;
+         String apiUrl = "";
+         String requestModel = "deepseek-v3.2";
+
+         // 阿里百炼 API URL - 需要包含 /v1/chat/completions
+         if (deepseekApiUrl.contains("dashscope.aliyuncs.com")) {
+             // 阿里百炼兼容模式 URL: https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
              apiUrl = deepseekApiUrl + "/v1/chat/completions";
-             requestModel = "deepseek-reasoner";
-         } else if ("doubao-reasoner".equals(model)) {
-             apiKey = doubaoApiKey;
-             apiUrl = doubaoApiUrl + "/api/v3/chat/completions";
-             if (doubaoApiUrl.endsWith("/chat/completions")) apiUrl = doubaoApiUrl;
-             else if (doubaoApiUrl.endsWith("/")) apiUrl = doubaoApiUrl + "api/v3/chat/completions";
-             requestModel = "doubao-seed-1-6-251015";
-             isDoubao = true;
+         } else {
+             apiUrl = deepseekApiUrl + "/v1/chat/completions";
          }
 
          List<Map<String, String>> messages = new ArrayList<>();
@@ -422,7 +385,7 @@ public class AiChatServiceImpl implements AiChatService {
              sysMsg.put("content", systemPrompt);
              messages.add(sysMsg);
          }
-         
+
         if (sessionId != null && !sessionId.isEmpty()) {
             int budget = maxHistoryChars == null ? 0 : Math.max(0, maxHistoryChars);
             List<Map<String, String>> reversedIncluded = new ArrayList<>();
@@ -476,7 +439,7 @@ public class AiChatServiceImpl implements AiChatService {
             Collections.reverse(reversedIncluded);
             messages.addAll(reversedIncluded);
         }
-         
+
          Map<String, String> currentMsg = new HashMap<>();
          currentMsg.put("role", "user");
          currentMsg.put("content", prompt);  // prompt 已在 performBlockingChat 中脱敏后传入
@@ -488,7 +451,10 @@ public class AiChatServiceImpl implements AiChatService {
          payload.put("stream", true);
          payload.put("temperature", 0.6);
          payload.put("max_tokens", maxTokens);
-         if (isDoubao) payload.put("thinking", Map.of("type", "enabled"));
+         // 根据参数决定是否开启思考模式
+         if (enableThinking) {
+             payload.put("enable_thinking", true);
+         }
 
          String jsonPayload = objectMapper.writeValueAsString(payload);
          RequestBody body = RequestBody.create(jsonPayload, MediaType.get("application/json; charset=utf-8"));
@@ -500,9 +466,9 @@ public class AiChatServiceImpl implements AiChatService {
 
          try (Response response = okHttpClient.newCall(request).execute()) {
              if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
-             
+
              if (response.body() == null) throw new IOException("Response body is null");
-             
+
                     InputStream is = response.body().byteStream();
                     // 使用更小的缓冲区，减少延迟
                     BufferedReader reader = new BufferedReader(new InputStreamReader(is, java.nio.charset.StandardCharsets.UTF_8), 8192);
@@ -519,7 +485,7 @@ public class AiChatServiceImpl implements AiChatService {
                                     JsonNode delta = choices.get(0).path("delta");
                                     String reasoningContent = delta.path("reasoning_content").asText("");
                                     String content = delta.path("content").asText("");
-                                    
+
                                     // 立即发送，不等待累积
                                     if (!reasoningContent.isEmpty() || !content.isEmpty()) {
                                         sendChatResponse(emitter, content, reasoningContent);
@@ -536,7 +502,7 @@ public class AiChatServiceImpl implements AiChatService {
                     }
          }
          long responseTimeMs = System.currentTimeMillis() - startMs;
-         String provider = "deepseek-reasoner".equals(model) ? "deepseek" : ("doubao-reasoner".equals(model) ? "doubao" : "default");
+         String provider = "deepseek-reasoner".equals(model) ? "deepseek" : "default";
          tokenUsageAuditService.recordEstimated(provider, requestModel, userId, sessionId, prompt.length(), fullContent.length(), responseTimeMs, true);
     }
 
@@ -558,7 +524,7 @@ public class AiChatServiceImpl implements AiChatService {
                 boolean needTitle = true;
                 if (sessionId != null && !sessionId.isEmpty()) {
                     Optional<ChatSession> sessionOpt = chatRecordService.getChatSession(sessionId);
-                    if (sessionOpt.isPresent() && sessionOpt.get().getTitle() != null && 
+                    if (sessionOpt.isPresent() && sessionOpt.get().getTitle() != null &&
                         !"新对话".equals(sessionOpt.get().getTitle()) && !sessionOpt.get().getTitle().isEmpty()) {
                         needTitle = false;
                     }
@@ -600,7 +566,7 @@ public class AiChatServiceImpl implements AiChatService {
                 if (jsonStart >= 0 && jsonEnd > jsonStart) {
                     String jsonStr = content.substring(jsonStart, jsonEnd + 1);
                     JsonNode root = objectMapper.readTree(jsonStr);
-                    
+
                     String title = needTitle ? root.path("title").asText() : null;
                     JsonNode suggestionsNode = root.path("suggestions");
                     List<String> suggestionsList = new ArrayList<>();
@@ -660,11 +626,11 @@ public class AiChatServiceImpl implements AiChatService {
         final int maxHistoryQuestions = 6;
         final int maxEachQuestionChars = 180;
         final int maxHistoryTotalChars = 1200;
-        
+
         String current = userPrompt == null ? "" : userPrompt.trim();
         if (current.isEmpty()) current = "(空)";
         String currentForCompare = current.replaceAll("\\s+", " ").trim();
-        
+
         if (sessionId == null || sessionId.isEmpty()) {
             return "【当前用户询问（最重要）】\n" + current + "\n";
         }
@@ -675,7 +641,7 @@ public class AiChatServiceImpl implements AiChatService {
         } else {
             history = chatRecordRepository.findBySessionIdOrderByMessageOrderAsc(sessionId);
         }
-        
+
         if (history == null || history.isEmpty()) {
             return "【当前用户询问（最重要）】\n" + current + "\n";
         }
@@ -714,7 +680,7 @@ public class AiChatServiceImpl implements AiChatService {
 
     private Prompt buildPrompt(String promptText, String sessionId, Long userId, String ipAddress, OpenAiChatOptions options, String systemPrompt) {
         List<Message> messages = new ArrayList<>();
-        
+
         // Add System Prompt if exists
         if (systemPrompt != null && !systemPrompt.isEmpty()) {
             log.debug("添加系统提示词到消息列表: length={}", systemPrompt.length());
@@ -783,10 +749,10 @@ public class AiChatServiceImpl implements AiChatService {
                 messages.addAll(reversedIncluded);
             }
         }
-        
+
         // 添加当前用户消息
         messages.add(new UserMessage(promptText));
-        
+
         return new Prompt(messages, options);
     }
 
@@ -806,7 +772,7 @@ public class AiChatServiceImpl implements AiChatService {
 
         // 记录错误日志
         log.error("AI Chat Error: ", e);
-        
+
         try {
             String errorMsg = "AI服务暂时不可用: " + (e.getMessage() != null ? e.getMessage() : "未知错误");
             String json = objectMapper.writeValueAsString(Map.of("content", errorMsg));
@@ -818,26 +784,21 @@ public class AiChatServiceImpl implements AiChatService {
             log.warn("Failed to send error response to client: {}", ex.getMessage());
         }
     }
-    
+
     @Override
     public String ask(String prompt, String sessionId, String model, Long userId, String systemPrompt) {
         try {
             // 敏感信息脱敏
             String maskedPrompt = SensitiveDataMasker.mask(prompt);
-            
+
             // 异步生成标题（仅限第一条消息）和建议问题（每条消息）
             generateTitleAndSuggestionsAsync(prompt, sessionId, userId, null);
 
             ChatClient clientToUse = null;
             String actualModel = model;
-            
-            if ("doubao".equals(model)) {
-                if (doubaoChatClient != null) {
-                    clientToUse = doubaoChatClient;
-                } else {
-                    clientToUse = chatClientProvider.getIfAvailable();
-                }
-            } else if ("deepseek".equals(model) || "deepseek-chat".equals(model)) {
+
+            // Only DeepSeek is supported now
+            if ("deepseek".equals(model) || "deepseek-chat".equals(model)) {
                 if (deepseekChatClient != null) {
                     clientToUse = deepseekChatClient;
                 } else {
@@ -850,39 +811,39 @@ public class AiChatServiceImpl implements AiChatService {
                     actualModel = "deepseek-chat";
                 }
             }
-            
+
             if (clientToUse == null) {
                 return fallbackAnswer(prompt);
             }
-            
+
             if (actualModel == null || actualModel.isEmpty()) {
                 actualModel = "deepseek-chat";
             }
 
-            String provider = "doubao".equals(model) ? "doubao" : ("deepseek".equals(model) || "deepseek-chat".equals(actualModel) ? "deepseek" : "default");
-            
+            String provider = "deepseek".equals(model) || "deepseek-chat".equals(actualModel) ? "deepseek" : "default";
+
             OpenAiChatOptions options = OpenAiChatOptions.builder()
                     .withModel(actualModel)
                     .withTemperature(0.7f)
                     .withMaxTokens(maxTokens)
                     .build();
-            
+
             Prompt promptObj = buildPrompt(maskedPrompt, sessionId, userId, null, options, systemPrompt);
-            
+
             final ChatClient finalClient = clientToUse;
             log.info("Sending request to AI. Model: {}, Prompt length: {}", actualModel, prompt.length());
-            
+
             long startMs = System.currentTimeMillis();
             ChatResponse response = finalClient.call(promptObj);
             long responseTimeMs = System.currentTimeMillis() - startMs;
-            
+
             String content = response.getResult().getOutput().getContent();
             log.info("AI Response received. Length: {}", content != null ? content.length() : 0);
-            
+
             // 记录 Token 消耗审计
-            tokenUsageAuditService.recordEstimated(provider, actualModel, userId, sessionId, 
+            tokenUsageAuditService.recordEstimated(provider, actualModel, userId, sessionId,
                     prompt.length(), content != null ? content.length() : 0, responseTimeMs, false);
-            
+
             return content;
         } catch (Exception e) {
             log.error("AI Chat Error in ask(): {}", e.getMessage(), e);
@@ -944,7 +905,7 @@ public class AiChatServiceImpl implements AiChatService {
             OkHttpClient.Builder builder = new OkHttpClient.Builder();
             builder.sslSocketFactory(sslSocketFactory, (X509TrustManager) trustAllCerts[0]);
             builder.hostnameVerifier((hostname, session) -> true);
-            
+
             builder.connectTimeout(60, TimeUnit.SECONDS)
                    .writeTimeout(60, TimeUnit.SECONDS)
                    .readTimeout(300, TimeUnit.SECONDS);
@@ -954,5 +915,5 @@ public class AiChatServiceImpl implements AiChatService {
             throw new RuntimeException(e);
         }
     }
-    
+
 }

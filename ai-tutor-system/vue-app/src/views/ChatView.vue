@@ -253,7 +253,7 @@
                       >
                         <div class="item-info">
                           <span class="item-name">{{ brand.name }}</span>
-                          <span class="item-desc">{{ brand.id === 'deepseek' ? 'DeepSeek-V3' : '豆包-pro-128k' }}</span>
+                          <span class="item-desc">{{ brand.id === 'deepseek' ? 'DeepSeek-V3.2' : 'DeepSeek-V3.2' }}</span>
                         </div>
                         <i 
                           v-if="currentBrand.id === brand.id" 
@@ -1549,13 +1549,6 @@ const brands = [
     icon: 'fas fa-brain',
     standard: 'deepseek-chat',
     reasoner: 'deepseek-reasoner'
-  },
-  {
-    id: 'doubao',
-    name: '豆包',
-    icon: 'fas fa-robot',
-    standard: 'doubao',
-    reasoner: 'doubao-reasoner'
   }
 ]
 
@@ -1567,14 +1560,9 @@ const currentBrand = computed(() => {
 
 // 切换品牌
 const selectBrand = (brand) => {
-  if (brand.id === 'doubao') {
-    // 豆包强制开启深度思考
-    chatStore.setModel(brand.reasoner)
-  } else {
-    const isReasoning = chatStore.selectedModel.includes('reasoner')
-    const newModel = isReasoning ? brand.reasoner : brand.standard
-    chatStore.setModel(newModel)
-  }
+  const isReasoning = chatStore.selectedModel.includes('reasoner')
+  const newModel = isReasoning ? brand.reasoner : brand.standard
+  chatStore.setModel(newModel)
   isModelMenuOpen.value = false
 }
 
@@ -1584,12 +1572,6 @@ const selectBrand = (brand) => {
 const toggleDeepThinking = () => {
   const brand = currentBrand.value
   const isReasoning = chatStore.selectedModel.includes('reasoner')
-  
-  // 豆包限制：不能关闭深度思考
-  if (brand.id === 'doubao' && isReasoning) {
-    uiStore.showToast('豆包模型目前仅支持在“深度思考”模式下运行，以提供更优质的回复。')
-    return
-  }
   
   const newModel = isReasoning ? brand.standard : brand.reasoner
   chatStore.setModel(newModel)

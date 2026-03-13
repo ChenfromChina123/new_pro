@@ -194,10 +194,7 @@
               @change="handleUpdate('aiModel')"
             >
               <option value="deepseek">
-                DeepSeek
-              </option>
-              <option value="doubao">
-                豆包
+                DeepSeek-V3.2
               </option>
             </select>
           </div>

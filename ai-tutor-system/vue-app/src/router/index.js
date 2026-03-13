@@ -91,6 +91,12 @@ const router = createRouter({
           name: 'SFTPManager',
           component: () => import('@/views/SFTPManagerView.vue'),
           meta: { requiresAuth: true }
+        },
+        {
+          path: 'editor',
+          name: 'Editor',
+          component: () => import('@/views/EditorView.vue'),
+          meta: { requiresAuth: true }
         }
       ]
     },

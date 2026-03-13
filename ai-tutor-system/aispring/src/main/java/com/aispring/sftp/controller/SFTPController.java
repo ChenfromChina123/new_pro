@@ -15,8 +15,10 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URLEncoder;
@@ -163,13 +165,14 @@ public class SFTPController {
      * @param serverId 服务器 ID
      * @param path 文件路径
      * @param request HTTP 请求
-     * @return 文件内容
+     * @param response HTTP 响应
      */
     @GetMapping("/{serverId}/download")
-    public ResponseEntity<?> downloadFile(
+    public void downloadFile(
             @PathVariable Long serverId,
             @RequestParam String path,
-            HttpServletRequest request) {
+            HttpServletRequest request,
+            HttpServletResponse response) {
 
         String taskId = UUID.randomUUID().toString();
         String userId = getCurrentUserId(request);
@@ -179,10 +182,9 @@ public class SFTPController {
             FileInfo fileInfo = sftpService.getFileInfo(serverId, path);
 
             if (fileInfo.isDirectory()) {
-                return ResponseEntity.ok(Map.of(
-                    "code", 400,
-                    "message", "不能下载目录，请选择文件"
-                ));
+                response.setContentType("application/json");
+                response.getWriter().write("{\"code\":400,\"message\":\"不能下载目录，请选择文件\"}");
+                return;
             }
 
             long fileSize = fileInfo.getSize();
@@ -190,52 +192,59 @@ public class SFTPController {
             String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8)
                 .replaceAll("\\+", "%20");
 
-            return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                    "attachment; filename*=UTF-8''" + encodedFileName)
-                .header("X-Task-Id", taskId)
-                .header("X-File-Size", String.valueOf(fileSize))
-                .body((StreamingResponseBody) outputStream -> {
+            response.setContentType("application/octet-stream");
+            response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + encodedFileName);
+            response.setHeader("X-Task-Id", taskId);
+            response.setHeader("X-File-Size", String.valueOf(fileSize));
+
+            try (OutputStream outputStream = response.getOutputStream()) {
+                sftpService.downloadFile(serverId, path, outputStream, progress -> {
+                    progress.setTaskId(taskId);
                     try {
-                        sftpService.downloadFile(serverId, path, outputStream, progress -> {
-                            progress.setTaskId(taskId);
-                            progressService.sendProgressUpdate(userId, taskId, progress);
-                        });
-
-                        TransferProgress completed = TransferProgress.builder()
-                            .taskId(taskId)
-                            .fileName(fileName)
-                            .filePath(path)
-                            .totalSize(fileSize)
-                            .transferredSize(fileSize)
-                            .progress(100)
-                            .status(TransferProgress.TransferStatus.COMPLETED)
-                            .build();
-                        progressService.forceSendProgress(userId, taskId, completed);
-
-                        log.info("文件下载成功: serverId={}, path={}", serverId, path);
-
-                    } catch (Exception e) {
-                        log.error("文件下载失败: serverId={}, path={}, error={}", serverId, path, e.getMessage());
-
-                        TransferProgress failed = TransferProgress.builder()
-                            .taskId(taskId)
-                            .fileName(fileName)
-                            .filePath(path)
-                            .status(TransferProgress.TransferStatus.FAILED)
-                            .errorMessage(e.getMessage())
-                            .build();
-                        progressService.forceSendProgress(userId, taskId, failed);
+                        progressService.sendProgressUpdate(userId, taskId, progress);
+                    } catch (Exception ex) {
+                        log.error("发送进度更新失败：{}", ex.getMessage());
                     }
                 });
 
+                TransferProgress completed = TransferProgress.builder()
+                    .taskId(taskId)
+                    .fileName(fileName)
+                    .filePath(path)
+                    .totalSize(fileSize)
+                    .transferredSize(fileSize)
+                    .progress(100)
+                    .status(TransferProgress.TransferStatus.COMPLETED)
+                    .build();
+                progressService.forceSendProgress(userId, taskId, completed);
+
+                log.info("文件下载成功：serverId={}, path={}", serverId, path);
+
+            } catch (Exception e) {
+                log.error("文件下载失败：serverId={}, path={}, error={}", serverId, path, e.getMessage());
+
+                TransferProgress failed = TransferProgress.builder()
+                    .taskId(taskId)
+                    .fileName(fileName)
+                    .filePath(path)
+                    .status(TransferProgress.TransferStatus.FAILED)
+                    .errorMessage(e.getMessage())
+                    .build();
+                try {
+                    progressService.forceSendProgress(userId, taskId, failed);
+                } catch (Exception ex) {
+                    log.error("发送失败进度更新失败：{}", ex.getMessage());
+                }
+            }
+
         } catch (Exception e) {
             log.error("文件下载失败: serverId={}, path={}, error={}", serverId, path, e.getMessage());
-            return ResponseEntity.ok(Map.of(
-                "code", 500,
-                "message", "下载失败: " + e.getMessage()
-            ));
+            try {
+                response.setContentType("application/json");
+                response.getWriter().write("{\"code\":500,\"message\":\"下载失败: " + e.getMessage() + "\"}");
+            } catch (IOException ex) {
+                log.error("写入错误响应失败：{}", ex.getMessage());
+            }
         }
     }
 
@@ -383,6 +392,36 @@ public class SFTPController {
 
         } catch (Exception e) {
             log.error("获取文件信息失败: serverId={}, path={}, error={}", serverId, path, e.getMessage());
+            return ResponseEntity.ok(Map.of(
+                "code", 500,
+                "message", "获取失败: " + e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * 获取文件内容
+     * @param serverId 服务器 ID
+     * @param path 文件路径
+     * @param maxSize 最大读取大小（可选，默认 1MB）
+     * @return 文件内容
+     */
+    @GetMapping("/{serverId}/content")
+    public ResponseEntity<Map<String, Object>> getFileContent(
+            @PathVariable Long serverId,
+            @RequestParam String path,
+            @RequestParam(defaultValue = "1048576") long maxSize) {
+        try {
+            String content = sftpService.readFileContent(serverId, path, maxSize);
+
+            return ResponseEntity.ok(Map.of(
+                "code", 200,
+                "message", "获取成功",
+                "content", content
+            ));
+
+        } catch (Exception e) {
+            log.error("获取文件内容失败: serverId={}, path={}, error={}", serverId, path, e.getMessage());
             return ResponseEntity.ok(Map.of(
                 "code", 500,
                 "message", "获取失败: " + e.getMessage()

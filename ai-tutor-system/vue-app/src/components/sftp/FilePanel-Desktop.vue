@@ -195,10 +195,21 @@ async function handleDownloadFile(file) {
  * 处理右键菜单
  */
 function handleContextMenu({ action, file }) {
-  if (action === 'rename') {
-    renameFile(file)
-  } else if (action === 'delete') {
-    deleteFile(file)
+  switch (action) {
+    case 'rename':
+      renameFile(file)
+      break
+    case 'delete':
+      deleteFile(file)
+      break
+    case 'cut':
+      // 处理剪切操作
+      sftpStore.cutItem(file.path)
+      break
+    case 'copy':
+      // 处理复制操作
+      sftpStore.copyToClipboard(file.path)
+      break
   }
 }
 
@@ -323,13 +334,13 @@ function handleKeyDown(e) {
     e.preventDefault()
     refresh()
   }
-  
+
   // Alt + ↑ 返回上级
   if (e.altKey && e.key === 'ArrowUp') {
     e.preventDefault()
     goUp()
   }
-  
+
   // Delete 删除选中
   if (e.key === 'Delete' && selectedFiles.value.length > 0) {
     e.preventDefault()

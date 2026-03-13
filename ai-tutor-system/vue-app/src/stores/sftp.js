@@ -8,36 +8,43 @@ import request from '@/utils/request'
 export const useSFTPStore = defineStore('sftp', () => {
   // 当前选中的服务器 ID
   const currentServerId = ref(null)
-  
+
   // 当前路径
   const currentPath = ref('/')
-  
+
   // 文件列表
   const files = ref([])
-  
+
   // 选中的文件
   const selectedFiles = ref([])
-  
+
   // 加载状态
   const loading = ref(false)
-  
+
   // 错误信息
   const error = ref(null)
-  
+
   // 传输任务列表
   const transferTasks = ref([])
-  
+
   // 连接状态
   const connected = ref(false)
 
+  // 剪切板
+  const clipboard = ref({
+    type: null, // 'cut' or 'copy'
+    path: null,
+    isDirectory: false
+  })
+
   // 计算属性：选中的文件数量
   const selectedCount = computed(() => selectedFiles.value.length)
-  
+
   // 计算属性：选中的文件总大小
   const selectedSize = computed(() => {
     return selectedFiles.value.reduce((total, file) => total + file.size, 0)
   })
-  
+
   // 计算属性：传输中的任务数量
   const transferCount = computed(() => {
     return transferTasks.value.filter(t => t.status === 'transferring').length
@@ -60,38 +67,61 @@ export const useSFTPStore = defineStore('sftp', () => {
    * @param {string} path - 目录路径
    */
   async function fetchFiles(path = currentPath.value) {
-    if (!currentServerId.value) return
-    
+    console.log('fetchFiles 被调用:', path)
+    if (!currentServerId.value) {
+      console.log('没有选中服务器')
+      return
+    }
+
     loading.value = true
     error.value = null
-    
+
     try {
+      console.log('发送请求获取文件列表:', path)
       const response = await request.get(`/api/sftp/${currentServerId.value}/files`, {
         params: { path }
       })
-      
+
+      console.log('请求响应:', response)
       if (response.code === 200) {
+        console.log('获取文件列表成功:', response.data.files?.length || 0, '个文件')
         files.value = response.data.files || []
         currentPath.value = response.data.path
+        console.log('当前路径更新为:', currentPath.value)
         selectedFiles.value = []
       } else {
+        console.log('获取文件列表失败:', response.message)
         error.value = response.message
       }
     } catch (e) {
+      console.error('获取文件列表异常:', e)
       error.value = e.message || '获取文件列表失败'
     } finally {
       loading.value = false
+      console.log('fetchFiles 完成')
     }
   }
 
   /**
    * 进入目录
-   * @param {string} dirName - 目录名
+   * @param {string} path - 目录路径（可以是完整路径或目录名）
    */
-  async function enterDirectory(dirName) {
-    const newPath = currentPath.value === '/' 
-      ? `/${dirName}` 
-      : `${currentPath.value}/${dirName}`
+  async function enterDirectory(path) {
+    console.log('enterDirectory 被调用:', path)
+    console.log('当前路径:', currentPath.value)
+    // 如果是完整路径，直接使用
+    // 如果是目录名，拼接当前路径
+    let newPath
+    if (path.startsWith('/')) {
+      newPath = path
+      console.log('使用完整路径:', newPath)
+    } else {
+      newPath = currentPath.value === '/'
+        ? `/${path}`
+        : `${currentPath.value}/${path}`
+      console.log('拼接路径:', newPath)
+    }
+    console.log('最终路径:', newPath)
     await fetchFiles(newPath)
   }
 
@@ -100,7 +130,7 @@ export const useSFTPStore = defineStore('sftp', () => {
    */
   async function goUp() {
     if (currentPath.value === '/') return
-    
+
     const parts = currentPath.value.split('/').filter(Boolean)
     parts.pop()
     const newPath = parts.length === 0 ? '/' : '/' + parts.join('/')
@@ -142,16 +172,16 @@ export const useSFTPStore = defineStore('sftp', () => {
    */
   async function createDirectory(dirName) {
     if (!currentServerId.value) return false
-    
-    const newPath = currentPath.value === '/' 
-      ? `/${dirName}` 
+
+    const newPath = currentPath.value === '/'
+      ? `/${dirName}`
       : `${currentPath.value}/${dirName}`
-    
+
     try {
       const response = await request.post(`/api/sftp/${currentServerId.value}/mkdir`, null, {
         params: { path: newPath }
       })
-      
+
       if (response.code === 200) {
         await fetchFiles()
         return true
@@ -172,12 +202,12 @@ export const useSFTPStore = defineStore('sftp', () => {
    */
   async function deleteItem(path, isDirectory) {
     if (!currentServerId.value) return false
-    
+
     try {
       const response = await request.delete(`/api/sftp/${currentServerId.value}/file`, {
         params: { path, isDirectory }
       })
-      
+
       if (response.code === 200) {
         await fetchFiles()
         return true
@@ -198,12 +228,12 @@ export const useSFTPStore = defineStore('sftp', () => {
    */
   async function renameItem(oldPath, newPath) {
     if (!currentServerId.value) return false
-    
+
     try {
       const response = await request.put(`/api/sftp/${currentServerId.value}/rename`, null, {
         params: { oldPath, newPath }
       })
-      
+
       if (response.code === 200) {
         await fetchFiles()
         return true
@@ -214,6 +244,63 @@ export const useSFTPStore = defineStore('sftp', () => {
     } catch (e) {
       error.value = e.message || '重命名失败'
       return false
+    }
+  }
+
+  /**
+   * 复制文件或目录
+   * @param {string} sourcePath - 源路径
+   * @param {string} targetPath - 目标路径
+   * @param {boolean} isDirectory - 是否为目录
+   */
+  async function copyItem(sourcePath, targetPath, isDirectory) {
+    if (!currentServerId.value) return false
+
+    try {
+      const response = await request.post(`/api/sftp/${currentServerId.value}/copy`, null, {
+        params: { sourcePath, targetPath, isDirectory }
+      })
+
+      if (response.code === 200) {
+        await fetchFiles()
+        return true
+      } else {
+        error.value = response.message
+        return false
+      }
+    } catch (e) {
+      error.value = e.message || '复制失败'
+      return false
+    }
+  }
+
+  /**
+   * 剪切文件或目录
+   * @param {string} path - 路径
+   */
+  function cutItem(path) {
+    const file = files.value.find(f => f.path === path)
+    if (file) {
+      clipboard.value = {
+        type: 'cut',
+        path: path,
+        isDirectory: file.isDirectory
+      }
+    }
+  }
+
+  /**
+   * 复制到剪切板
+   * @param {string} path - 路径
+   */
+  function copyToClipboard(path) {
+    const file = files.value.find(f => f.path === path)
+    if (file) {
+      clipboard.value = {
+        type: 'copy',
+        path: path,
+        isDirectory: file.isDirectory
+      }
     }
   }
 
@@ -247,7 +334,7 @@ export const useSFTPStore = defineStore('sftp', () => {
       task.progress = progress.progress
       task.speed = progress.speed
       task.status = progress.status.toLowerCase()
-      
+
       if (progress.status === 'COMPLETED' || progress.status === 'FAILED' || progress.status === 'CANCELLED') {
         task.endTime = Date.now()
       }
@@ -284,12 +371,13 @@ export const useSFTPStore = defineStore('sftp', () => {
     error,
     transferTasks,
     connected,
-    
+    clipboard,
+
     // 计算属性
     selectedCount,
     selectedSize,
     transferCount,
-    
+
     // 方法
     setCurrentServer,
     fetchFiles,
@@ -300,6 +388,9 @@ export const useSFTPStore = defineStore('sftp', () => {
     createDirectory,
     deleteItem,
     renameItem,
+    copyItem,
+    cutItem,
+    copyToClipboard,
     addTransferTask,
     updateTransferProgress,
     removeTransferTask,

@@ -18,7 +18,7 @@
       class="xftp-table"
     >
       <vxe-column type="checkbox" width="40" fixed="left" :resizable="false" />
-      
+
       <vxe-column field="name" title="名称" min-width="250" sortable>
         <template #default="{ row }">
           <div class="file-item">
@@ -29,7 +29,7 @@
           </div>
         </template>
       </vxe-column>
-      
+
       <vxe-column field="permissions" title="权限" width="120" />
       <vxe-column field="modifiedTime" title="修改日期" width="180">
         <template #default="{ row }">
@@ -68,6 +68,14 @@
               <span class="label">大小：</span>
               <span class="value">{{ formatSize(selectedFile?.size || 0) }}</span>
             </div>
+            <div class="property-row" v-if="!selectedFile?.isDirectory">
+              <span class="label">扩展名：</span>
+              <span class="value">{{ getFileExtension(selectedFile?.name || '') }}</span>
+            </div>
+            <div class="property-row">
+              <span class="label">名称：</span>
+              <span class="value">{{ selectedFile?.name }}</span>
+            </div>
             <div class="property-row">
               <span class="label">位置：</span>
               <span class="value path-value">{{ selectedFile?.path }}</span>
@@ -82,6 +90,17 @@
             <div class="property-row">
               <span class="label">权限：</span>
               <span class="value permission-value">{{ selectedFile?.permissions }}</span>
+            </div>
+            <div class="property-row">
+              <span class="label">权限说明：</span>
+              <span class="value">{{ getPermissionDescription(selectedFile?.permissions) }}</span>
+            </div>
+          </div>
+          <div class="property-section" v-if="!selectedFile?.isDirectory">
+            <h5>其他信息</h5>
+            <div class="property-row">
+              <span class="label">MIME 类型：</span>
+              <span class="value">{{ getMimeType(selectedFile?.name || '') }}</span>
             </div>
           </div>
         </div>
@@ -125,25 +144,39 @@ const zoomLevel = ref(1.0)
 const showProperties = ref(false)
 const selectedFile = ref(null)
 
-// 右键菜单配置
-const menuConfig = ref({
-  visible: true,
-  trigger: 'contextmenu',
-  items: [
-    { code: 'download', name: '下载', icon: 'vxe-icon-download' },
-    { code: 'upload', name: '上传到此处', icon: 'vxe-icon-upload' },
-    { code: 'refresh', name: '刷新', icon: 'vxe-icon-refresh' },
-    { code: '-', }, // 分割线
-    { code: 'rename', name: '重命名', icon: 'vxe-icon-edit' },
-    { code: 'move', name: '移动到...', icon: 'vxe-icon-move' },
-    { code: 'copy', name: '复制', icon: 'vxe-icon-copy' },
-    { code: 'delete', name: '删除', icon: 'vxe-icon-delete' },
-    { code: '-', },
-    { code: 'chmod', name: '修改权限', icon: 'vxe-icon-settings' },
-    { code: 'edit', name: '在线编辑', icon: 'vxe-icon-edit' },
-    { code: '-', },
-    { code: 'properties', name: '属性', icon: 'vxe-icon-info' }
-  ]
+// 右键菜单配置 - 动态生成
+const menuConfig = computed(() => {
+  const selectedCount = props.selectedFiles.length
+
+  if (selectedCount > 1) {
+    // 批量选中时的菜单
+    return {
+      visible: true,
+      trigger: 'contextmenu',
+      items: [
+        { code: 'batch-download', name: '批量下载', icon: 'vxe-icon-download' },
+        { code: '-', },
+        { code: 'batch-delete', name: '批量删除', icon: 'vxe-icon-delete' }
+      ]
+    }
+  } else {
+    // 单个文件时的菜单
+    return {
+      visible: true,
+      trigger: 'contextmenu',
+      items: [
+        { code: 'open', name: '打开', icon: 'vxe-icon-open' },
+        { code: '-', },
+        { code: 'cut', name: '剪切', icon: 'vxe-icon-cut' },
+        { code: 'copy', name: '复制', icon: 'vxe-icon-copy' },
+        { code: 'rename', name: '重命名', icon: 'vxe-icon-edit' },
+        { code: '-', },
+        { code: 'delete', name: '删除', icon: 'vxe-icon-delete' },
+        { code: '-', },
+        { code: 'properties', name: '属性', icon: 'vxe-icon-info' }
+      ]
+    }
+  }
 })
 
 // 框选相关
@@ -157,7 +190,7 @@ const marqueeStyle = computed(() => {
   const top = Math.min(marqueeStart.value.y, marqueeEnd.value.y)
   const width = Math.abs(marqueeEnd.value.x - marqueeStart.value.x)
   const height = Math.abs(marqueeEnd.value.y - marqueeStart.value.y)
-  
+
   return {
     left: left + 'px',
     top: top + 'px',
@@ -174,6 +207,59 @@ const getFileExtension = (fileName) => {
   const lastDot = fileName.lastIndexOf('.')
   if (lastDot === -1 || lastDot === 0) return ''
   return fileName.substring(lastDot).toLowerCase()
+}
+
+// 获取权限说明
+const getPermissionDescription = (permissions) => {
+  if (!permissions) return '未知'
+
+  const parts = permissions.split('')
+  if (parts.length < 9) return '无效权限'
+
+  const owner = parts.slice(0, 3).join('')
+  const group = parts.slice(3, 6).join('')
+  const others = parts.slice(6, 9).join('')
+
+  const getPermissionText = (perm) => {
+    let text = ''
+    if (perm[0] === 'r') text += '读取 '
+    if (perm[1] === 'w') text += '写入 '
+    if (perm[2] === 'x') text += '执行'
+    return text || '无'
+  }
+
+  return `所有者: ${getPermissionText(owner)}, 组: ${getPermissionText(group)}, 其他: ${getPermissionText(others)}`
+}
+
+// 获取 MIME 类型
+const getMimeType = (fileName) => {
+  const ext = getFileExtension(fileName).toLowerCase()
+  const mimeTypes = {
+    '.txt': 'text/plain',
+    '.js': 'application/javascript',
+    '.json': 'application/json',
+    '.html': 'text/html',
+    '.css': 'text/css',
+    '.md': 'text/markdown',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.pdf': 'application/pdf',
+    '.zip': 'application/zip',
+    '.tar': 'application/x-tar',
+    '.gz': 'application/gzip',
+    '.mp3': 'audio/mpeg',
+    '.mp4': 'video/mp4',
+    '.doc': 'application/msword',
+    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    '.xls': 'application/vnd.ms-excel',
+    '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    '.ppt': 'application/vnd.ms-powerpoint',
+    '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+  }
+
+  return mimeTypes[ext] || 'application/octet-stream'
 }
 
 // 行样式
@@ -202,11 +288,11 @@ const handleCellClick = (e) => {
     const lastSelected = props.selectedFiles[props.selectedFiles.length - 1]
     const currentIndex = props.fileList.findIndex(f => f.path === e.row.path)
     const lastIndex = props.fileList.findIndex(f => f.path === lastSelected.path)
-    
+
     const start = Math.min(currentIndex, lastIndex)
     const end = Math.max(currentIndex, lastIndex)
     const range = props.fileList.slice(start, end + 1)
-    
+
     emit('update:selectedFiles', [...props.selectedFiles, ...range])
   } else {
     // 普通点击：单选
@@ -230,16 +316,21 @@ const handleMenuClick = ({ row, option }) => {
   if (!props.selectedFiles.some(f => f.path === row.path)) {
     emit('update:selectedFiles', [row])
   }
-  
+
   switch (option.code) {
-    case 'download':
-      emit('downloadFile', row)
+    // 单个文件操作
+    case 'open':
+      if (row.isDirectory) {
+        emit('openDirectory', row)
+      } else {
+        emit('downloadFile', row)
+      }
       break
-    case 'upload':
-      // 触发上传
+    case 'cut':
+      emit('showContextMenu', { action: 'cut', file: row })
       break
-    case 'refresh':
-      emit('refresh')
+    case 'copy':
+      emit('showContextMenu', { action: 'copy', file: row })
       break
     case 'rename':
       emit('showContextMenu', { action: 'rename', file: row })
@@ -250,6 +341,23 @@ const handleMenuClick = ({ row, option }) => {
     case 'properties':
       showPropertiesDialog(row)
       break
+
+    // 批量操作
+    case 'batch-download':
+      props.selectedFiles.forEach(file => {
+        if (!file.isDirectory) {
+          emit('downloadFile', file)
+        }
+      })
+      break
+    case 'batch-delete':
+      if (confirm(`确定要删除选中的 ${props.selectedFiles.length} 项吗？`)) {
+        props.selectedFiles.forEach(file => {
+          emit('showContextMenu', { action: 'delete', file: file })
+        })
+      }
+      break
+
     default:
       emit('showContextMenu', { action: option.code, file: row })
   }
@@ -305,7 +413,7 @@ const handleMouseUp = (e) => {
       const selectTop = Math.min(marqueeStart.value.y, marqueeEnd.value.y) - rect.top
       const selectWidth = Math.abs(marqueeEnd.value.x - marqueeStart.value.x)
       const selectHeight = Math.abs(marqueeEnd.value.y - marqueeStart.value.y)
-      
+
       // 这里需要根据实际行高计算选中的行
       // 简化处理：遍历所有行，检查是否在选框内
       const selectedRows = []
@@ -315,7 +423,7 @@ const handleMouseUp = (e) => {
           selectedRows.push(row)
         }
       })
-      
+
       if (selectedRows.length > 0) {
         emit('update:selectedFiles', selectedRows)
       }

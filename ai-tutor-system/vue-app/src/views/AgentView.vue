@@ -230,7 +230,7 @@
         <div class="glass-card intro-card">
           <h2><i class="fas fa-info-circle"></i> 软件简介</h2>
           <p>小晨 Agent 终端助手是一款面向开发者和高级用户的智能自动化工具。它不仅是一个 AI 聊天机器人，更是一个拥有“手脚”的执行引擎。通过与本地文件系统和终端环境的深度集成，Agent 能够根据您的自然语言指令，自动完成代码生成、文件重构、日志分析、环境配置等一系列复杂任务。</p>
-          <p class="mt-4">它支持包括 DeepSeek、豆包在内的多种主流大模型，并内置了完善的权限控制与操作回退机制，确保在提升开发效率的同时，保障您的数据安全与系统稳定。</p>
+          <p class="mt-4">它支持阿里 DeepSeek 等主流大模型，并内置了完善的权限控制与操作回退机制，确保在提升开发效率的同时，保障您的数据安全与系统稳定。</p>
         </div>
       </div>
     </section>
@@ -309,7 +309,7 @@
             </div>
             <div class="step-content">
               <h3>配置模型</h3>
-              <p>首次启动程序会提示输入 API Key，支持 DeepSeek、豆包等主流模型。配置自动保存至 <code>config.json</code>。</p>
+              <p>首次启动程序会提示输入 API Key，支持阿里 DeepSeek 等主流模型。配置自动保存至 <code>config.json</code>。</p>
             </div>
           </div>
           <div 
@@ -568,7 +568,7 @@ onUnmounted(() => {
 const features = [
   {
     title: 'AI 智能核心',
-    description: '深度集成 DeepSeek、豆包等大模型，智能理解复杂指令并执行任务。',
+    description: '深度集成阿里 DeepSeek 等大模型，智能理解复杂指令并执行任务。',
     icon: 'fas fa-robot',
     color: 'rgba(6, 182, 212, 0.1)',
     items: ['多模型无缝切换', '长文本上下文压缩', '工具调用可视化']

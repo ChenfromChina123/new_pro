@@ -137,5 +137,18 @@ export default {
     return request.get(`${API_BASE}/${serverId}/info`, {
       params: { path }
     })
+  },
+
+  /**
+   * 获取文件内容
+   * @param {number} serverId - 服务器 ID
+   * @param {string} path - 文件路径
+   * @param {number} maxSize - 最大读取大小（可选，默认 1MB）
+   * @returns {Promise} 文件内容
+   */
+  async getFileContent(serverId, path, maxSize = 1048576) {
+    return request.get(`${API_BASE}/${serverId}/content`, {
+      params: { path, maxSize }
+    })
   }
 }

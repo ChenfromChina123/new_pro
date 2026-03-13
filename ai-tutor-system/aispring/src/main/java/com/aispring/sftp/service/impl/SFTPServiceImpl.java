@@ -394,6 +394,66 @@ public class SFTPServiceImpl implements SFTPService {
     }
 
     /**
+     * 读取文件内容
+     * @param serverId 服务器 ID
+     * @param path 文件路径
+     * @param maxSize 最大读取大小（字节），超过则截断
+     * @return 文件内容
+     * @throws Exception 操作失败时抛出异常
+     */
+    @Override
+    public String readFileContent(Long serverId, String path, long maxSize) throws Exception {
+        SFTPClient sftp = null;
+        try {
+            sftp = sftpPool.borrowObject(serverId);
+            
+            // 获取文件大小
+            long fileSize = sftp.size(path);
+            
+            // 如果文件太大，只读取前 maxSize 字节
+            long readSize = Math.min(fileSize, maxSize);
+            
+            // 打开文件并读取内容
+            RemoteFile file = sftp.open(path, EnumSet.of(OpenMode.READ));
+            
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            byte[] buffer = new byte[BUFFER_SIZE];
+            long transferred = 0;
+            int bytesRead;
+            
+            while (transferred < readSize) {
+                int toRead = (int) Math.min(buffer.length, readSize - transferred);
+                bytesRead = file.read(transferred, buffer, 0, toRead);
+                
+                if (bytesRead == -1) {
+                    break;
+                }
+                
+                outputStream.write(buffer, 0, bytesRead);
+                transferred += bytesRead;
+            }
+            
+            file.close();
+            
+            String content = outputStream.toString("UTF-8");
+            
+            // 如果文件被截断，添加提示
+            if (fileSize > maxSize) {
+                content += "\n\n... [文件过大，只显示前 " + maxSize + " 字节]";
+            }
+            
+            log.info("文件内容读取完成: serverId={}, path={}, size={}", serverId, path, transferred);
+            
+            return content;
+            
+        } finally {
+            if (sftp != null) {
+                sftpPool.returnObject(serverId, sftp);
+            }
+        }
+    }
+
+    /**
      * 将 Unix 时间戳转换为 LocalDateTime
      * @param timestamp Unix 时间戳（秒）
      * @return LocalDateTime

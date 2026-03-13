@@ -105,4 +105,14 @@ public interface SFTPService {
      * @throws Exception 操作失败时抛出异常
      */
     long getFileSize(Long serverId, String path) throws Exception;
+
+    /**
+     * 读取文件内容
+     * @param serverId 服务器 ID
+     * @param path 文件路径
+     * @param maxSize 最大读取大小（字节），超过则截断
+     * @return 文件内容
+     * @throws Exception 操作失败时抛出异常
+     */
+    String readFileContent(Long serverId, String path, long maxSize) throws Exception;
 }

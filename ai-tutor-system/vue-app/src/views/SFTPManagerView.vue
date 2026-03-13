@@ -4,24 +4,8 @@
     <header class="manager-header">
       <div class="header-left">
         <h1 class="title">SFTP 文件管理器</h1>
-        <div class="server-selector">
-          <select v-model="selectedServerId" @change="handleServerChange">
-            <option :value="null">选择服务器</option>
-            <option v-for="server in servers" :key="server.id" :value="server.id">
-              {{ server.name || server.host }}
-            </option>
-          </select>
-          <button class="btn-icon" @click="showAddServerModal = true" title="添加服务器">
-            <span>+</span>
-          </button>
-        </div>
-      </div>
-      <div class="header-right">
-        <button class="btn-icon" @click="refreshFiles" :disabled="!selectedServerId || loading">
-          <span>↻</span>
-        </button>
-        <button class="btn-icon" @click="toggleTheme" :title="isDarkMode ? '切换到浅色模式' : '切换到深色模式'">
-          <span>{{ isDarkMode ? '☀️' : '🌙' }}</span>
+        <button class="btn-icon" @click="showAddServerModal = true" title="添加服务器">
+          <span>+</span>
         </button>
       </div>
     </header>
@@ -260,7 +244,7 @@ function editServer(server) {
  */
 async function deleteServer(serverId) {
   if (!confirm('确定要删除这个服务器吗？')) return
-  
+
   try {
     await request.delete(`/api/server-terminal/servers/${serverId}`)
     servers.value = servers.value.filter(s => s.id !== serverId)
