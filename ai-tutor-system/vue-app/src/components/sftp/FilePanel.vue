@@ -626,6 +626,7 @@
  * 所有操作通过右键菜单执行
  */
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useSFTPStore } from '@/stores/sftp'
 import { useEditorStore } from '@/stores/editor'
 import { useThemeStore } from '@/stores/theme'
@@ -633,6 +634,7 @@ import sftpService from '@/services/sftpService'
 import Breadcrumb from './Breadcrumb.vue'
 import FileIcon from './FileIcon.vue'
 
+const router = useRouter()
 const themeStore = useThemeStore()
 const isDarkMode = computed(() => themeStore.isDarkMode)
 
@@ -792,8 +794,8 @@ async function openFileInEditor(file) {
         type: getFileType(file.name)
       })
 
-      // 导航到编辑器页面
-      window.location.href = '/editor'
+      // 使用 Vue Router 导航到编辑器页面（保持单页应用状态）
+      router.push('/editor')
     } else {
       alert('无法打开文件: ' + (response.message || '未知错误'))
     }

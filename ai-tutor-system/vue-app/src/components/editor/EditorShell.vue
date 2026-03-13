@@ -35,7 +35,7 @@ const currentEditor = computed(() => editorMap[editorStore.editorType])
       </div>
     </header>
 
-    <main class="flex-1 relative bg-[#1e1e1e]">
+    <main class="flex-1 relative bg-[var(--bg-primary)]">
       <keep-alive>
         <component
           :is="currentEditor"
@@ -45,7 +45,7 @@ const currentEditor = computed(() => editorMap[editorStore.editorType])
         />
       </keep-alive>
 
-      <div v-if="!editorStore.activeFile" class="flex items-center justify-center h-full text-gray-500 text-lg">
+      <div v-if="!editorStore.activeFile" class="flex items-center justify-center h-full text-[var(--text-tertiary)] text-lg">
         <div class="text-center">
           <div class="text-6xl mb-4">📝</div>
           <div>从 SFTP 管理器中选择文件进行编辑</div>
@@ -53,7 +53,7 @@ const currentEditor = computed(() => editorMap[editorStore.editorType])
       </div>
     </main>
 
-    <footer class="h-7 bg-blue-600 text-white flex items-center px-3 text-xs">
+    <footer class="h-7 bg-[var(--primary-color)] text-white flex items-center px-3 text-xs">
       <div class="flex items-center space-x-3">
         <span class="truncate max-w-md">{{ editorStore.activeFilePath || '无文件' }}</span>
         <span>UTF-8</span>
