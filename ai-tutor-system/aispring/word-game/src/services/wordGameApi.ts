@@ -1,12 +1,12 @@
 /**
  * word-game API 客户端
  * 开发：使用相对路径 /api，由 Vite 代理到 5201，避免跨域与 Failed to fetch
- * 生产：使用 VITE_WORD_GAME_API_BASE 或当前域名 /api
+ * 生产：使用 VITE_WORD_GAME_API_BASE 或当前域名:端口 /api
  */
 const BASE =
   import.meta.env.DEV
     ? "/api"
-    : (import.meta.env.VITE_WORD_GAME_API_BASE ?? `${location.protocol}//${location.hostname}/api`);
+    : (import.meta.env.VITE_WORD_GAME_API_BASE ?? `${location.protocol}//${location.hostname}:${location.port}/api`);
 
 /** 从 localStorage 读取 JWT Token（aispring 同步写入） */
 function getToken(): string | null {

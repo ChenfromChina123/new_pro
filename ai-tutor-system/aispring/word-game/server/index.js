@@ -269,10 +269,7 @@ app.get("/api/ping", (req, res) => {
   res.set("Content-Type", "application/json").json({ success: true, message: "pong" });
 });
 
-// 所有其它 /api 请求必须通过 aispring JWT 验证
-app.use("/api", requireAispringAuth);
-
-// ── 路由：课程包 ──────────────────────────────────────────────────────────────
+// ── 路由：课程包（公开访问） ──────────────────────────────────────────────────────────────
 
 /**
  * 获取用户上传的课程包列表（公开 + 当前用户自己的）
