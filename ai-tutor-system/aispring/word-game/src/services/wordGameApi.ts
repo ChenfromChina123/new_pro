@@ -170,10 +170,7 @@ export async function fetchCourseQuestions(
   courseIndex: number,
   packageId?: string
 ): Promise<Statement[]> {
-  const q =
-    packageId && packageId.startsWith("up-")
-      ? `?packageId=${encodeURIComponent(packageId)}`
-      : "";
+  const q = packageId ? `?packageId=${encodeURIComponent(packageId)}` : "";
   const res = await request<{ success: boolean; data: Statement[] }>(
     `/courses/${courseIndex}/questions${q}`
   );
