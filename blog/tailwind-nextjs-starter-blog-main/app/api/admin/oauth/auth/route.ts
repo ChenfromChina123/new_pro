@@ -4,8 +4,12 @@ const oauthAuthorizeUrl = 'https://github.com/login/oauth/authorize'
 const oauthStateCookie = 'decap_oauth_state'
 
 function buildOrigin(request: Request) {
-  const forwardedProto = request.headers.get('x-forwarded-proto')
-  const forwardedHost = request.headers.get('x-forwarded-host')
+  const configuredOrigin = process.env.DECAP_PUBLIC_ORIGIN?.trim()
+  if (configuredOrigin) {
+    return configuredOrigin.replace(/\/+$/, '')
+  }
+  const forwardedProto = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim()
+  const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim()
   const host = forwardedHost || request.headers.get('host') || ''
   const protocol = forwardedProto || new URL(request.url).protocol.replace(':', '')
   return `${protocol}://${host}`

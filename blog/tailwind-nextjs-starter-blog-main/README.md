@@ -34,8 +34,9 @@ Feature request? Check the past discussions to see if it has been brought up pre
 - 图片插入：在后台编辑器中可直接点击图片按钮上传，图片将保存到 `public/static/images` 并写入正文路径
 - 格式兼容：对正文中误写为 `\*\*加粗\*\*` 的内容已做前端兼容渲染，并修复异常代码围栏导致的整段代码块吞并问题
 - 线上登录：已改为自托管 GitHub OAuth（`/api/admin/oauth/auth` 与 `/api/admin/oauth/callback`），不再依赖 Netlify Identity
-- 环境变量：需在服务器配置 `DECAP_GITHUB_CLIENT_ID` 与 `DECAP_GITHUB_CLIENT_SECRET`
+- 环境变量：需在服务器配置 `DECAP_GITHUB_CLIENT_ID`、`DECAP_GITHUB_CLIENT_SECRET`，建议同时配置 `DECAP_PUBLIC_ORIGIN=https://blog.aistudy.icu`
 - OAuth 回调：GitHub OAuth App 的 Authorization callback URL 需设置为 `https://blog.aistudy.icu/api/admin/oauth/callback`
+- 若登录弹窗出现 `about:blank` 后无反应，通常是回传消息被跨域源校验拦截，优先检查 `DECAP_PUBLIC_ORIGIN` 是否与实际访问域名一致
 
 本地编辑模式启动命令：
 

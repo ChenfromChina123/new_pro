@@ -4,8 +4,12 @@ const oauthTokenUrl = 'https://github.com/login/oauth/access_token'
 const oauthStateCookie = 'decap_oauth_state'
 
 function buildOrigin(request: Request) {
-  const forwardedProto = request.headers.get('x-forwarded-proto')
-  const forwardedHost = request.headers.get('x-forwarded-host')
+  const configuredOrigin = process.env.DECAP_PUBLIC_ORIGIN?.trim()
+  if (configuredOrigin) {
+    return configuredOrigin.replace(/\/+$/, '')
+  }
+  const forwardedProto = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim()
+  const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim()
   const host = forwardedHost || request.headers.get('host') || ''
   const protocol = forwardedProto || new URL(request.url).protocol.replace(':', '')
   return `${protocol}://${host}`
@@ -13,12 +17,24 @@ function buildOrigin(request: Request) {
 
 function buildHtml(origin: string, messageType: 'success' | 'error', payload: string) {
   const message = `authorization:github:${messageType}:${payload}`
+  const shouldClose = messageType === 'success'
+  const title = shouldClose ? '授权完成' : '授权失败'
+  const detail = shouldClose
+    ? '正在返回后台页面，请稍候...'
+    : `请关闭此窗口后重试，错误信息：${payload}`
   return `<!doctype html><html><body><script>
   (function() {
     if (window.opener && window.opener !== window) {
       window.opener.postMessage(${JSON.stringify(message)}, ${JSON.stringify(origin)});
+      window.opener.postMessage(${JSON.stringify(message)}, '*');
     }
-    window.close();
+    var messageNode = document.createElement('div');
+    messageNode.style.cssText = 'font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;padding:24px;line-height:1.6;color:#111827;';
+    messageNode.innerHTML = '<h2 style="margin:0 0 8px;">${title}</h2><p style="margin:0;">${detail}</p>';
+    document.body.appendChild(messageNode);
+    if (${shouldClose}) {
+      setTimeout(function() { window.close(); }, 500);
+    }
   })();
   </script></body></html>`
 }
