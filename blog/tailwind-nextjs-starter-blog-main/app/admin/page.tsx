@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation'
+import AdminClient from './AdminClient'
 
 export default function AdminPage() {
-  redirect('/admin/index.html')
+  return <AdminClient />
 }
