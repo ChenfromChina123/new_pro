@@ -236,6 +236,11 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 Edit the layout in `app` or content in `data`. With live reloading, the pages auto-updates as you edit them.
 
+### Linux 服务器启动脚本补充
+
+- 建议使用仓库中的 `blog/start-blog.sh` 启动博客服务（默认端口 `3200`）
+- 脚本已增强端口检测：会识别监听 PID、清理占用并在启动后校验端口归属进程是否来自博客目录，避免误判“启动成功”
+
 ## Extend / Customize
 
 `data/siteMetadata.js` - contains most of the site related information which should be modified for a user's need.

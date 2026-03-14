@@ -55,7 +55,7 @@ const siteMetadata = {
       // Visit the link below, and follow the steps in the 'configuration' section
       // https://giscus.app/
       repo: 'ChenfromChina123/new_pro',
-      repositoryId: process.env.NEXT_PUBLIC_GISCUS_REPO_ID,
+      repositoryId: process.env.NEXT_PUBLIC_GISCUS_REPO_ID || 'R_kgDOQq_xZA',
       category: 'General',
       categoryId: process.env.NEXT_PUBLIC_GISCUS_CATEGORY_ID,
       mapping: 'pathname', // supported options: pathname, url, title
@@ -72,7 +72,7 @@ const siteMetadata = {
       // example: https://giscus.app/themes/custom_example.css
       themeURL: '',
       // This corresponds to the `data-lang="en"` in giscus's configurations
-      lang: 'en',
+      lang: 'zh-CN',
     },
   },
   search: {

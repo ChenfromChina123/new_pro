@@ -31,37 +31,82 @@ BLOG_LOG="$BLOG_DIR/blog.log"
 
 # 辅助函数 - 获取端口占用的 PID
 get_port_pid() {
+  get_port_pids "$1" | head -n 1
+}
+
+get_port_pids() {
   local port="$1"
-  local pid=""
+  local pids=""
 
-  # 方法 1: 使用 ss 命令（推荐）
   if command -v ss >/dev/null 2>&1; then
-    pid=$(ss -tlnp 2>/dev/null | grep ":${port} " | grep -oP 'pid=\K[0-9]+' | head -n 1)
+    pids=$(ss -H -ltnp 2>/dev/null | awk -v p=":${port}" '$4 ~ p {print $NF}' | grep -oE 'pid=[0-9]+' | cut -d= -f2)
   fi
 
-  # 方法 2: 使用 lsof 命令
-  if [ -z "$pid" ] && command -v lsof >/dev/null 2>&1; then
-    pid=$(lsof -ti:"$port" 2>/dev/null | head -n 1)
+  if [ -z "$pids" ] && command -v lsof >/dev/null 2>&1; then
+    pids=$(lsof -tiTCP:"$port" -sTCP:LISTEN 2>/dev/null)
   fi
 
-  # 方法 3: 使用 netstat 命令
-  if [ -z "$pid" ] && command -v netstat >/dev/null 2>&1; then
-    pid=$(netstat -tlnp 2>/dev/null | grep ":${port} " | awk '{print $7}' | cut -d'/' -f1 | head -n 1)
+  if [ -z "$pids" ] && command -v netstat >/dev/null 2>&1; then
+    pids=$(netstat -ltnp 2>/dev/null | awk -v p=":${port}" '$4 ~ p && $7 != "-" {print $7}' | cut -d/ -f1)
   fi
 
-  # 方法 4: 使用 fuser 命令
-  if [ -z "$pid" ] && command -v fuser >/dev/null 2>&1; then
-    pid=$(fuser "${port}/tcp" 2>/dev/null | awk '{print $1}')
+  if [ -z "$pids" ] && command -v fuser >/dev/null 2>&1; then
+    pids=$(fuser -n tcp "$port" 2>/dev/null | tr ' ' '\n')
   fi
 
-  echo "$pid"
+  if [ -n "$pids" ]; then
+    echo "$pids" | tr ' ' '\n' | sed '/^$/d' | sort -u
+  fi
+}
+
+is_pid_running() {
+  local pid="$1"
+  [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null
+}
+
+is_pid_in_blog_dir() {
+  local pid="$1"
+  local cwd=""
+
+  if ! is_pid_running "$pid"; then
+    return 1
+  fi
+
+  if [ -d "/proc/$pid" ] && command -v readlink >/dev/null 2>&1; then
+    cwd=$(readlink -f "/proc/$pid/cwd" 2>/dev/null || true)
+    case "$cwd" in
+      "$BLOG_DIR"|"$BLOG_DIR"/*) return 0 ;;
+      *) return 1 ;;
+    esac
+  fi
+
+  return 1
+}
+
+print_port_owners() {
+  local port="$1"
+  local pids=""
+  pids=$(get_port_pids "$port")
+
+  if [ -z "$pids" ]; then
+    echo "   无监听进程"
+    return 0
+  fi
+
+  while IFS= read -r pid; do
+    [ -z "$pid" ] && continue
+    if command -v ps >/dev/null 2>&1; then
+      echo "   PID $pid: $(ps -p "$pid" -o args= 2>/dev/null || echo '未知命令')"
+    else
+      echo "   PID $pid"
+    fi
+  done <<< "$pids"
 }
 
 # 检查端口是否被占用
 is_port_used() {
   local port="$1"
-  local pid=$(get_port_pid "$port")
-  [ -n "$pid" ]
+  [ -n "$(get_port_pids "$port")" ]
 }
 
 # 等待端口就绪
@@ -154,7 +199,7 @@ if [ -n "$BLOG_PID" ]; then
   fi
 
   # 检查是否还有其他进程占用
-  OTHER_PIDS=$(lsof -ti:"$BLOG_PORT" 2>/dev/null)
+  OTHER_PIDS=$(get_port_pids "$BLOG_PORT")
   if [ -n "$OTHER_PIDS" ]; then
     echo "⚠️  发现其他占用进程，一并终止..."
     echo "$OTHER_PIDS" | xargs -r kill -9 2>/dev/null || true
@@ -192,6 +237,14 @@ echo "⏳ 等待端口 $BLOG_PORT 就绪..."
 
 if wait_for_port "$BLOG_PORT" "博客系统" 60; then
   BLOG_PID=$(get_port_pid "$BLOG_PORT")
+  if ! is_pid_in_blog_dir "$BLOG_PID"; then
+    echo ""
+    echo "❌ 端口 $BLOG_PORT 已监听，但不是博客目录进程"
+    echo "当前监听进程："
+    print_port_owners "$BLOG_PORT"
+    echo "日志文件：$BLOG_LOG"
+    exit 1
+  fi
   echo ""
   echo "=========================================="
   echo "✅ 博客系统启动成功！"

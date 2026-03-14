@@ -1,15 +1,15 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import siteMetadata from '@/data/siteMetadata'
 import { useLanguage } from '@/contexts/LanguageProvider'
 
 export default function Comments({ slug }: { slug: string }) {
   const [loadComments, setLoadComments] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const commentsRef = useRef<HTMLDivElement>(null)
   const { isChina } = useLanguage()
 
-  // 处理 Giscus 消息事件
   const handleMessage = useCallback((event: MessageEvent) => {
     if (
       event.origin === 'https://giscus.app' &&
@@ -24,11 +24,45 @@ export default function Comments({ slug }: { slug: string }) {
     }
   }, [])
 
-  // 检查是否为 Giscus 配置
   const isGiscus = siteMetadata.comments?.provider === 'giscus'
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const giscusConfig = isGiscus ? (siteMetadata.comments as any).giscusConfig : null
-  const isConfigured = isGiscus && giscusConfig?.repo
+  const missingKeys = [
+    !giscusConfig?.repositoryId ? 'NEXT_PUBLIC_GISCUS_REPO_ID' : null,
+    !giscusConfig?.categoryId ? 'NEXT_PUBLIC_GISCUS_CATEGORY_ID' : null,
+  ].filter(Boolean) as string[]
+  const isConfigured =
+    isGiscus && giscusConfig?.repo && giscusConfig?.repositoryId && giscusConfig?.categoryId
+
+  useEffect(() => {
+    window.addEventListener('message', handleMessage)
+    return () => {
+      window.removeEventListener('message', handleMessage)
+    }
+  }, [handleMessage])
+
+  useEffect(() => {
+    if (!loadComments || !isConfigured || !commentsRef.current) return
+    const container = commentsRef.current
+    container.innerHTML = ''
+    const script = document.createElement('script')
+    script.src = 'https://giscus.app/client.js'
+    script.async = true
+    script.crossOrigin = 'anonymous'
+    script.setAttribute('data-repo', giscusConfig.repo)
+    script.setAttribute('data-repo-id', giscusConfig.repositoryId)
+    script.setAttribute('data-category', giscusConfig.category || 'General')
+    script.setAttribute('data-category-id', giscusConfig.categoryId)
+    script.setAttribute('data-mapping', giscusConfig.mapping || 'pathname')
+    script.setAttribute('data-reactions-enabled', giscusConfig.reactions || '1')
+    script.setAttribute('data-emit-metadata', giscusConfig.metadata || '0')
+    script.setAttribute('data-theme', giscusConfig.theme || 'light')
+    script.setAttribute('data-lang', giscusConfig.lang || 'zh-CN')
+    script.onerror = () => {
+      setError(isChina ? '评论加载失败，请检查网络或稍后重试。' : 'Failed to load comments.')
+    }
+    container.appendChild(script)
+  }, [giscusConfig, isChina, isConfigured, loadComments, slug])
 
   if (!isConfigured) {
     return (
@@ -39,9 +73,17 @@ export default function Comments({ slug }: { slug: string }) {
         <div className="rounded-lg bg-yellow-50 p-6 text-center dark:bg-yellow-900/20">
           <p className="text-gray-700 dark:text-gray-300">
             {isChina
-              ? '📝 评论功能尚未配置。管理员需要在 GitHub 仓库启用 Discussions 并配置 Giscus。'
-              : '📝 Comments are not configured yet. Admin needs to enable Discussions on GitHub repo and configure Giscus.'}
+              ? `📝 评论功能尚未完整配置。缺少：${missingKeys.join('、') || 'Giscus 参数'}。`
+              : `📝 Comments are not fully configured. Missing: ${missingKeys.join(', ') || 'giscus config'}.`}
           </p>
+          <a
+            href="https://giscus.app/zh-CN"
+            target="_blank"
+            rel="noreferrer"
+            className="text-primary-600 hover:text-primary-500 mt-3 inline-block text-sm font-medium underline"
+          >
+            {isChina ? '打开 Giscus 配置页' : 'Open Giscus setup page'}
+          </a>
         </div>
       </div>
     )
@@ -69,20 +111,7 @@ export default function Comments({ slug }: { slug: string }) {
               </button>
             </div>
           )}
-          <iframe
-            src={`https://giscus.app/client?repo=${encodeURIComponent(
-              giscusConfig.repo
-            )}&repoId=${giscusConfig.repositoryId || ''}&category=${
-              giscusConfig.category || ''
-            }&categoryId=${giscusConfig.categoryId || ''}&mapping=${
-              giscusConfig.mapping || 'pathname'
-            }&reactions=${giscusConfig.reactions || '1'}&theme=${giscusConfig.theme || 'light'}`}
-            className="min-h-[300px] w-full"
-            onLoad={() => {
-              window.addEventListener('message', handleMessage)
-            }}
-            title="Giscus Comments"
-          />
+          <div ref={commentsRef} className="min-h-[300px] w-full" />
         </div>
       ) : (
         <div className="rounded-lg bg-gray-100 p-6 text-center dark:bg-gray-800">

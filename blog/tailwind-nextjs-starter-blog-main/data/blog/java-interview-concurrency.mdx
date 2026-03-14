@@ -1,0 +1,34 @@
+﻿---
+title: Java面试之------并发编程
+date: 2026-03-14
+tags: ['Java', '并发']
+draft: false
+summary: Java 并发面试高频知识点速览，覆盖线程、JMM、volatile、synchronized 与线程池。
+authors: ['default']
+layout: PostSimple
+---
+
+## 一、线程与进程
+
+- 进程是资源分配单位，线程是调度执行单位。
+- 线程共享进程内存，通信成本低，但同步复杂。
+
+## 二、JMM 与可见性
+
+- 重点理解主内存与工作内存。
+- 重点掌握 happens-before 规则。
+
+## 三、volatile 与 synchronized
+
+- volatile 保证可见性与有序性，不保证复合操作原子性。
+- synchronized 保证互斥与可见性，适合临界区保护。
+
+## 四、线程池面试高频点
+
+- 核心参数：`corePoolSize`、`maximumPoolSize`、`keepAliveTime`、`workQueue`、`RejectedExecutionHandler`。
+- 常见追问：如何定位队列堆积、如何设置拒绝策略、如何防止 OOM。
+
+## 五、实战答题建议
+
+- 先讲原理，再讲场景，最后讲排障方法。
+- 结合一次线上问题排查案例，面试通过率更高。
