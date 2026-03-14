@@ -6,12 +6,20 @@
         <span :class="['status', wsConnected ? 'connected' : 'disconnected']">
           {{ wsConnected ? '已连接' : '未连接' }}
         </span>
-        <button @click="disconnectAndClose" class="btn-danger">关闭窗口</button>
+        <button
+          class="btn-danger"
+          @click="disconnectAndClose"
+        >
+          关闭窗口
+        </button>
       </div>
     </div>
 
     <div class="terminal-container">
-      <div v-if="!wsConnected && !connecting" class="terminal-placeholder">
+      <div
+        v-if="!wsConnected && !connecting"
+        class="terminal-placeholder"
+      >
         <p>正在连接服务器...</p>
       </div>
 
@@ -25,52 +33,114 @@
         @paste="handlePaste"
         @contextmenu.prevent="handleContextMenu"
       >
-        <div v-html="getTerminalContent()"></div>
+        <div v-html="getTerminalContent()" />
       </div>
     </div>
 
     <!-- 粘贴确认对话框 -->
-    <div v-if="showPasteModal" class="paste-modal-overlay">
+    <div
+      v-if="showPasteModal"
+      class="paste-modal-overlay"
+    >
       <div class="paste-modal">
         <div class="paste-modal-header">
           <span>检测到粘贴内容</span>
-          <button @click="showPasteModal = false" class="close-btn">&times;</button>
+          <button
+            class="close-btn"
+            @click="showPasteModal = false"
+          >
+            &times;
+          </button>
         </div>
         <div class="paste-modal-body">
-          <textarea v-model="pasteBuffer" placeholder="在这里编辑要粘贴的内容..."></textarea>
+          <textarea
+            v-model="pasteBuffer"
+            placeholder="在这里编辑要粘贴的内容..."
+          />
         </div>
         <div class="paste-modal-footer">
           <span class="hint">可以检查内容后点击粘贴</span>
           <div class="actions">
-            <button @click="confirmPaste" class="btn-confirm">粘贴</button>
-            <button @click="showPasteModal = false" class="btn-cancel">取消</button>
+            <button
+              class="btn-confirm"
+              @click="confirmPaste"
+            >
+              粘贴
+            </button>
+            <button
+              class="btn-cancel"
+              @click="showPasteModal = false"
+            >
+              取消
+            </button>
           </div>
         </div>
       </div>
     </div>
 
     <!-- 右键菜单 -->
-    <div v-if="contextMenu.visible" class="context-menu" :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }">
-      <div class="menu-item" @click="copyContent">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+    <div
+      v-if="contextMenu.visible"
+      class="context-menu"
+      :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }"
+    >
+      <div
+        class="menu-item"
+        @click="copyContent"
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <rect
+            x="9"
+            y="9"
+            width="13"
+            height="13"
+            rx="2"
+            ry="2"
+          />
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
         </svg>
         <span>复制</span>
       </div>
-      <div class="menu-divider"></div>
-      <div class="menu-item" @click="selectAll">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M9 11l3 3L22 4"></path>
-          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+      <div class="menu-divider" />
+      <div
+        class="menu-item"
+        @click="selectAll"
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path d="M9 11l3 3L22 4" />
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
         </svg>
         <span>全选</span>
       </div>
-      <div class="menu-divider"></div>
-      <div class="menu-item" @click="clearScreen">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="3 6 5 6 21 6"></polyline>
-          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+      <div class="menu-divider" />
+      <div
+        class="menu-item"
+        @click="clearScreen"
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <polyline points="3 6 5 6 21 6" />
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
         </svg>
         <span>清屏</span>
       </div>

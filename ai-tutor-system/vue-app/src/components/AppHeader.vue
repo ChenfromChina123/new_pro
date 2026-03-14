@@ -14,7 +14,7 @@
         aria-label="切换菜单"
         @click="toggleMobileMenu"
       >
-        <i class="fas fa-bars"></i>
+        <i class="fas fa-bars" />
       </button>
       
       <div class="header-right">
@@ -27,11 +27,11 @@
           <i
             v-if="themeStore.isDarkMode"
             class="fas fa-sun"
-          ></i>
+          />
           <i
             v-else
             class="fas fa-moon"
-          ></i>
+          />
         </button>
         
         <div class="user-menu">
@@ -52,11 +52,11 @@
               <i
                 v-else
                 class="fas fa-user"
-              ></i>
+              />
             </span>
             <span class="user-name">{{ authStore.username || '用户' }}</span>
             <span class="user-caret">
-              <i class="fas fa-chevron-down"></i>
+              <i class="fas fa-chevron-down" />
             </span>
           </button>
           <div
@@ -69,7 +69,7 @@
               @click="handleLogout"
             >
               <span class="dropdown-icon">
-                <i class="fas fa-sign-out-alt"></i>
+                <i class="fas fa-sign-out-alt" />
               </span>
               <span class="dropdown-text">退出登录</span>
             </button>

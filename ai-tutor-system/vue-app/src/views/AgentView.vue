@@ -1,132 +1,132 @@
 <template>
   <div class="agent-standalone-page">
     <!-- 导航栏 -->
-    <nav 
-      class="landing-nav" 
+    <nav
+      class="landing-nav"
       :class="{ 'scrolled': isScrolled }"
     >
       <div class="nav-container">
-        <div 
-          class="logo" 
+        <div
+          class="logo"
           @click="router.push('/')"
         >
-          <i class="fas fa-brain"></i>
+          <i class="fas fa-brain" />
           <span>AI 智能学习助手</span>
         </div>
         <div class="nav-links">
-          <router-link 
-            to="/chat" 
+          <router-link
+            to="/chat"
             class="nav-link"
           >
             AI 问答
           </router-link>
-          <router-link 
-            to="/public-files" 
+          <router-link
+            to="/public-files"
             class="nav-link"
           >
             公共资源
           </router-link>
-          
+
           <div class="nav-actions">
             <template v-if="!authStore.isAuthenticated">
-              <router-link 
-                to="/login" 
+              <router-link
+                to="/login"
                 class="btn-login"
               >
                 登录
               </router-link>
-              <router-link 
-                to="/register" 
+              <router-link
+                to="/register"
                 class="btn-register"
               >
                 立即加入
               </router-link>
             </template>
             <template v-else>
-              <router-link 
-                to="/chat" 
+              <router-link
+                to="/chat"
                 class="btn-register"
               >
                 进入工作台
               </router-link>
             </template>
-            <button 
-              class="theme-toggle-btn" 
+            <button
+              class="theme-toggle-btn"
               @click="themeStore.toggleDarkMode()"
             >
-              <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'"></i>
+              <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" />
             </button>
           </div>
         </div>
 
         <!-- 移动端菜单按钮 -->
-        <button 
+        <button
           class="mobile-menu-btn"
           @click="isMobileMenuOpen = !isMobileMenuOpen"
         >
-          <i :class="isMobileMenuOpen ? 'fas fa-times' : 'fas fa-bars'"></i>
+          <i :class="isMobileMenuOpen ? 'fas fa-times' : 'fas fa-bars'" />
         </button>
       </div>
 
       <!-- 移动端侧边栏菜单 -->
       <transition name="slide">
-        <div 
-          v-if="isMobileMenuOpen" 
-          class="mobile-menu-overlay" 
+        <div
+          v-if="isMobileMenuOpen"
+          class="mobile-menu-overlay"
           @click="isMobileMenuOpen = false"
         >
-          <div 
-            class="mobile-menu" 
+          <div
+            class="mobile-menu"
             @click.stop
           >
             <div class="mobile-menu-links">
-              <router-link 
-                to="/chat" 
-                class="mobile-nav-link" 
+              <router-link
+                to="/chat"
+                class="mobile-nav-link"
                 @click="isMobileMenuOpen = false"
               >
-                <i class="fas fa-comments"></i> AI 问答
+                <i class="fas fa-comments" /> AI 问答
               </router-link>
-              <router-link 
-                to="/public-files" 
-                class="mobile-nav-link" 
+              <router-link
+                to="/public-files"
+                class="mobile-nav-link"
                 @click="isMobileMenuOpen = false"
               >
-                <i class="fas fa-folder-open"></i> 公共资源
+                <i class="fas fa-folder-open" /> 公共资源
               </router-link>
-              <div class="mobile-menu-divider"></div>
+              <div class="mobile-menu-divider" />
               <template v-if="!authStore.isAuthenticated">
-                <router-link 
-                  to="/login" 
-                  class="mobile-nav-link" 
+                <router-link
+                  to="/login"
+                  class="mobile-nav-link"
                   @click="isMobileMenuOpen = false"
                 >
-                  <i class="fas fa-sign-in-alt"></i> 登录
+                  <i class="fas fa-sign-in-alt" /> 登录
                 </router-link>
-                <router-link 
-                  to="/register" 
-                  class="mobile-nav-link highlight" 
+                <router-link
+                  to="/register"
+                  class="mobile-nav-link highlight"
                   @click="isMobileMenuOpen = false"
                 >
-                  <i class="fas fa-user-plus"></i> 立即加入
+                  <i class="fas fa-user-plus" /> 立即加入
                 </router-link>
               </template>
               <template v-else>
-                <router-link 
-                  to="/chat" 
-                  class="mobile-nav-link highlight" 
+                <router-link
+                  to="/chat"
+                  class="mobile-nav-link highlight"
                   @click="isMobileMenuOpen = false"
                 >
-                  <i class="fas fa-rocket"></i> 进入工作台
+                  <i class="fas fa-rocket" /> 进入工作台
                 </router-link>
               </template>
             </div>
             <div class="mobile-menu-footer">
-              <button 
-                class="mobile-theme-toggle" 
+              <button
+                class="mobile-theme-toggle"
                 @click="themeStore.toggleDarkMode()"
               >
-                <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'"></i>
+                <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" />
                 {{ themeStore.isDarkMode ? '切换浅色模式' : '切换深色模式' }}
               </button>
             </div>
@@ -148,27 +148,27 @@
           一个强大的 AI 终端助手，支持多种 LLM 模型，提供智能的命令行交互体验。<strong>现已全面适配 Linux 发行版</strong>，为您提供极致的跨平台开发生产力。
         </p>
         <div class="hero-actions">
-          <a 
-            :href="winDownloadUrl" 
-            download 
+          <a
+            :href="winDownloadUrl"
+            download
             class="btn-primary-lg"
           >
-            <i class="fab fa-windows"></i> Windows 全量版 ({{ version }})
+            <i class="fab fa-windows" /> Windows 全量版 ({{ version }})
           </a>
-          <a 
-            :href="linuxDownloadUrl" 
-            download 
+          <a
+            :href="linuxDownloadUrl"
+            download
             class="btn-secondary-lg"
           >
-            <i class="fab fa-linux"></i> Linux 独立版
+            <i class="fab fa-linux" /> Linux 独立版
           </a>
-          <a 
+          <a
             v-if="githubUrl"
-            :href="githubUrl" 
-            target="_blank" 
+            :href="githubUrl"
+            target="_blank"
             class="btn-github-lg"
           >
-            <i class="fab fa-github"></i> GitHub
+            <i class="fab fa-github" /> GitHub
           </a>
         </div>
         <div class="hero-stats">
@@ -190,9 +190,9 @@
         <div class="visual-card terminal-mockup-wrapper">
           <div class="terminal-mockup">
             <div class="terminal-header">
-              <span class="dot red"></span>
-              <span class="dot yellow"></span>
-              <span class="dot green"></span>
+              <span class="dot red" />
+              <span class="dot yellow" />
+              <span class="dot green" />
               <span class="terminal-title">xiaochen-agent --bash</span>
             </div>
             <div class="terminal-body">
@@ -220,7 +220,7 @@
             </div>
           </div>
         </div>
-        <div class="visual-blob"></div>
+        <div class="visual-blob" />
       </div>
     </header>
 
@@ -228,15 +228,17 @@
     <section class="info-section reveal">
       <div class="container">
         <div class="glass-card intro-card">
-          <h2><i class="fas fa-info-circle"></i> 软件简介</h2>
+          <h2><i class="fas fa-info-circle" /> 软件简介</h2>
           <p>小晨 Agent 终端助手是一款面向开发者和高级用户的智能自动化工具。它不仅是一个 AI 聊天机器人，更是一个拥有“手脚”的执行引擎。通过与本地文件系统和终端环境的深度集成，Agent 能够根据您的自然语言指令，自动完成代码生成、文件重构、日志分析、环境配置等一系列复杂任务。</p>
-          <p class="mt-4">它支持阿里 DeepSeek 等主流大模型，并内置了完善的权限控制与操作回退机制，确保在提升开发效率的同时，保障您的数据安全与系统稳定。</p>
+          <p class="mt-4">
+            它支持阿里 DeepSeek 等主流大模型，并内置了完善的权限控制与操作回退机制，确保在提升开发效率的同时，保障您的数据安全与系统稳定。
+          </p>
         </div>
       </div>
     </section>
 
-    <section 
-      id="features" 
+    <section
+      id="features"
       class="features-section"
     >
       <div class="section-header reveal">
@@ -248,17 +250,17 @@
         </p>
       </div>
       <div class="features-grid">
-        <div 
-          v-for="(feature, index) in features" 
-          :key="index" 
+        <div
+          v-for="(feature, index) in features"
+          :key="index"
           class="feature-card reveal"
           :style="{ transitionDelay: `${index * 150}ms` }"
         >
-          <div 
-            class="feature-icon" 
+          <div
+            class="feature-icon"
             :style="{ backgroundColor: feature.color }"
           >
-            <i :class="feature.icon"></i>
+            <i :class="feature.icon" />
           </div>
           <h3 class="feature-title">
             {{ feature.title }}
@@ -267,11 +269,11 @@
             {{ feature.description }}
           </p>
           <ul class="feature-list">
-            <li 
-              v-for="item in feature.items" 
+            <li
+              v-for="item in feature.items"
               :key="item"
             >
-              <i class="fas fa-check-circle"></i> {{ item }}
+              <i class="fas fa-check-circle" /> {{ item }}
             </li>
           </ul>
         </div>
@@ -289,7 +291,7 @@
             简单几步，即可开启智能开发之旅
           </p>
         </div>
-        
+
         <div class="guide-steps">
           <div class="step-item reveal">
             <div class="step-number">
@@ -300,8 +302,8 @@
               <p>下载压缩包并解压，无需安装。直接运行 <code>xiaochen_agent.exe</code> (Windows) 或 <code>xiaochen_agent</code> (Linux) 即可开始使用。</p>
             </div>
           </div>
-          <div 
-            class="step-item reveal" 
+          <div
+            class="step-item reveal"
             style="transition-delay: 150ms;"
           >
             <div class="step-number">
@@ -312,8 +314,8 @@
               <p>首次启动程序会提示输入 API Key，支持阿里 DeepSeek 等主流模型。配置自动保存至 <code>config.json</code>。</p>
             </div>
           </div>
-          <div 
-            class="step-item reveal" 
+          <div
+            class="step-item reveal"
             style="transition-delay: 300ms;"
           >
             <div class="step-number">
@@ -384,15 +386,15 @@
             <p>内置强大的版本控制模块，为您提供多级文件回退、快照管理和版本对比功能。即使 AI 误操作，您也可以一键恢复项目状态。</p>
             <div class="rollback-features">
               <div class="r-item">
-                <i class="fas fa-history"></i>
+                <i class="fas fa-history" />
                 <span>多级历史</span>
               </div>
               <div class="r-item">
-                <i class="fas fa-code-branch"></i>
+                <i class="fas fa-code-branch" />
                 <span>自动快照</span>
               </div>
               <div class="r-item">
-                <i class="fas fa-search-plus"></i>
+                <i class="fas fa-search-plus" />
                 <span>差异对比</span>
               </div>
             </div>
@@ -400,9 +402,9 @@
           <div class="rollback-visual">
             <div class="code-window">
               <div class="code-header">
-                <span class="dot red"></span>
-                <span class="dot yellow"></span>
-                <span class="dot green"></span>
+                <span class="dot red" />
+                <span class="dot yellow" />
+                <span class="dot green" />
               </div>
               <pre><code><span class="c-prompt">小晨助手 ></span> undo
 <span class="c-success">✓ 已撤销上一次对话涉及的所有 3 个文件修改</span>
@@ -417,11 +419,11 @@
     <footer class="landing-footer">
       <div class="footer-container">
         <div class="footer-brand">
-          <div 
-            class="logo" 
+          <div
+            class="logo"
             @click="router.push('/')"
           >
-            <i class="fas fa-brain"></i>
+            <i class="fas fa-brain" />
             <span>AI 智能学习助手</span>
           </div>
           <p>让科技服务于学习，打造您的第二大脑。</p>
@@ -477,14 +479,14 @@ const fetchSoftwareInfo = async () => {
   try {
     const response = await request.get(API_ENDPOINTS.admin.publicResources)
     const softwareList = response.data || []
-    
+
     // 查找 Agent 的不同平台版本
-    const agentWin = softwareList.find(item => 
-      item.title.toLowerCase().includes('agent') && 
+    const agentWin = softwareList.find(item =>
+      item.title.toLowerCase().includes('agent') &&
       (item.platform === 'Windows' || !item.platform)
     )
-    const agentLinux = softwareList.find(item => 
-      item.title.toLowerCase().includes('agent') && 
+    const agentLinux = softwareList.find(item =>
+      item.title.toLowerCase().includes('agent') &&
       item.platform === 'Linux'
     )
 
@@ -500,13 +502,13 @@ const fetchSoftwareInfo = async () => {
       } else {
         winDownloadUrl.value = '#';
       }
-      
+
       // 如果后端返回了 GitHub 链接，则使用它
       if (agentWin.url && agentWin.url.includes('github.com')) {
         githubUrl.value = agentWin.url;
       }
     }
-    
+
     if (agentLinux) {
       if (agentLinux.filePath) {
         let fileName = agentLinux.title.trim();
@@ -517,7 +519,7 @@ const fetchSoftwareInfo = async () => {
       } else {
         linuxDownloadUrl.value = '#';
       }
-      
+
       // 如果 Linux 版有 GitHub 链接且 Win 版没提供，也使用它
       if (!githubUrl.value && agentLinux.url && agentLinux.url.includes('github.com')) {
         githubUrl.value = agentLinux.url;
@@ -603,7 +605,7 @@ const features = [
   --primary-gradient: linear-gradient(135deg, #06b6d4 0%, #10b981 100%);
   --gradient-primary: var(--primary-gradient);
   --bg-primary-transparent: rgba(249, 250, 251, 0.8);
-  
+
   min-height: 100vh;
   background-color: var(--bg-primary);
   color: var(--text-primary);
@@ -1220,7 +1222,7 @@ code {
 }
 
 .rollback-layout {
-  display: grid; 
+  display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 5rem;
   align-items: center;
@@ -1323,16 +1325,16 @@ code {
       padding-top: 140px;
       gap: 4rem;
     }
-    
+
     .hero-subtitle {
       margin-left: auto;
       margin-right: auto;
     }
-    
+
     .hero-actions, .hero-stats {
       justify-content: center;
     }
-    
+
     .rollback-layout {
       grid-template-columns: 1fr;
       gap: 3rem;
@@ -1347,7 +1349,7 @@ code {
     .nav-links {
       display: none;
     }
-    
+
     .hero-title {
       font-size: 2.5rem;
     }
@@ -1369,7 +1371,7 @@ code {
       flex-direction: column;
       gap: 1.5rem;
     }
-    
+
     .features-grid {
       grid-template-columns: 1fr;
     }

@@ -9,3 +9,14 @@
 9. 单词记忆（word-game）模块：完成与 aispring 登录系统的 JWT 集成（前端 `/word-game` 路由需登录，后端 `/api` 必须携带有效 JWT）；在课程包功能上支持内置/自定义课程包、搜索与点击量排名，以及通过 JSON/CSV 上传与分节管理用户自定义课程。
 10. earthworm 与前端子模块导航：在本地与服务器上成功部署 earthworm 项目，并将单词记忆等子模块通过 iframe 或独立域名方式与主站集成；当前前端侧边栏与首页/Agent 页已暂时隐藏「语言学习」「需求分析」入口，仅保留 word-game 与核心模块，相关路由与代码依旧存在以便后续恢复。
 11. 文档维护与压缩说明：2026-02-26 起，将原有详尽的 100 条细粒度经验迁移到备份文件 `.experience.20260226.bak` 中，本文件仅保留按主题归纳后的高层摘要；如需回溯具体改动细节，可直接查阅该备份文档或对应的提交记录。
+12. Windows 批处理脚本 (BAT) 启动优化：
+    - 编码问题：在 Windows CMD 下运行包含中文的 UTF-8 脚本时，需使用 `chcp 65001 >nul` 并确保文件以 UTF-8 格式保存（推荐不带 BOM 或带 BOM 均可，但内容需保持整洁），避免因乱码导致 `if` 等关键字失效。
+    - 路径健壮性：在执行多级 `cd` 跳转时，建议在脚本开头保存 `ROOT_DIR=%~dp0`，并在每次执行目录依赖检查或 `cd` 操作前重新 `cd /d "%ROOT_DIR%"`，防止某次跳转失败导致后续操作进入错误路径（如根目录之上的父目录）。
+    - 依赖检测：使用 `java -version`、`node -v` 等具体命令的执行状态 (`%errorlevel%`) 代替 `where` 命令，在某些受限或沙箱环境下更为可靠。
+    - 项目结构对齐：启动脚本必须与实际项目目录（如 `ai-tutor-system/apps/client` 而非过时的 `vue-app`）保持一致，避免因路径硬编码导致启动失败。
+13. 前后端服务启动方法：
+    - 后端：在 `ai-tutor-system/aispring` 目录下执行 `mvn spring-boot:run`（或通过 IDE 运行），默认端口 5000。
+    - 前端：在 `ai-tutor-system/vue-app` 目录下执行 `npm run dev`（Vite 启动），默认端口 3000。
+    - 验证：可通过 `curl.exe -I http://localhost:5000` (后端) 和 `http://localhost:3000` (前端) 确认服务是否存活。
+    - 注意：若端口被占用，请使用 `netstat -ano | findstr :<port>` 查找 PID 并结束进程，或修改相应配置文件（`application.yml` 或 `vite.config.js`）。
+14. 生产环境 Server Terminal 500 修复经验：`application-prod.yml` 使用 `ddl-auto: none` 时，若仅依赖历史自动建表会导致 `server_connections`/`server_command_executions` 缺失，从而使 `/api/server-terminal/servers` 的 GET/POST 直接报 500；应通过 Flyway 新增显式建表迁移，并将添加接口中的 `serverName` 设为可选且默认回退 `host`，同时禁止打印明文密码到日志。

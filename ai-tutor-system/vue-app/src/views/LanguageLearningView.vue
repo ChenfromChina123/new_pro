@@ -308,7 +308,7 @@
               v-if="isLoading"
               class="loading-state"
             >
-              <div class="spinner"></div>
+              <div class="spinner" />
               <p>正在获取词汇...</p>
             </div>
             <div
@@ -676,7 +676,7 @@
                 v-if="isLoadingArticles"
                 class="loading-state"
               >
-                <div class="spinner"></div>
+                <div class="spinner" />
                 <p>正在加载文章列表...</p>
               </div>
 
@@ -810,7 +810,7 @@
         v-if="articleGenerationInProgress"
         class="generation-progress"
       >
-        <div class="spinner small"></div>
+        <div class="spinner small" />
         <span>正在生成文章...</span>
       </div>
       <div

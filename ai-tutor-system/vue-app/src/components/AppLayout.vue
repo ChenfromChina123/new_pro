@@ -5,7 +5,7 @@
       v-if="showSidebar && uiStore.isMobileSidebarOpen"
       class="mobile-overlay"
       @click="uiStore.closeMobileSidebar()"
-    ></div>
+    />
 
     <AppSidebar 
       v-if="showSidebar" 
@@ -19,7 +19,7 @@
         class="mobile-menu-btn"
         @click="uiStore.toggleMobileSidebar()"
       >
-        <i class="fas fa-bars"></i>
+        <i class="fas fa-bars" />
       </button>
 
       <router-view v-slot="{ Component }">
@@ -42,7 +42,7 @@
         class="toast-container"
       >
         <div class="toast-content">
-          <i class="fas fa-info-circle"></i>
+          <i class="fas fa-info-circle" />
           <span>{{ uiStore.toastMessage }}</span>
         </div>
       </div>

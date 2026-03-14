@@ -268,7 +268,7 @@
                       :src="link.imageUrl" 
                       :alt="link.title"
                       @error="handleImageError"
-                    />
+                    >
                   </div>
                   
                   <!-- 内容区域 -->
@@ -295,7 +295,6 @@
                       </div>
                     </div>
                   </div>
-
                 </div>
               </div>
             </div>

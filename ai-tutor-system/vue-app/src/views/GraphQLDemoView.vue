@@ -6,7 +6,9 @@
   <div class="graphql-demo-view">
     <div class="demo-header">
       <h1>GraphQL 数据分片加载演示</h1>
-      <p class="subtitle">基于 Spring for GraphQL 的声明式按需加载</p>
+      <p class="subtitle">
+        基于 Spring for GraphQL 的声明式按需加载
+      </p>
     </div>
 
     <div class="demo-tabs">
@@ -21,10 +23,17 @@
     </div>
 
     <!-- 场景 1：列表页（最小字段） -->
-    <div v-if="activeTab === 'list-basic'" class="demo-section">
+    <div
+      v-if="activeTab === 'list-basic'"
+      class="demo-section"
+    >
       <div class="section-header">
         <h2>场景 1：列表页 - 只加载基础字段</h2>
-        <button @click="loadBasicList" :disabled="loading" class="btn-primary">
+        <button
+          :disabled="loading"
+          class="btn-primary"
+          @click="loadBasicList"
+        >
           {{ loading ? '加载中...' : '加载数据' }}
         </button>
       </div>
@@ -34,8 +43,15 @@
         <pre><code>{{ basicQueryCode }}</code></pre>
       </div>
 
-      <div v-if="basicList.length > 0" class="result-grid">
-        <div v-for="doc in basicList" :key="doc.id" class="doc-card basic">
+      <div
+        v-if="basicList.length > 0"
+        class="result-grid"
+      >
+        <div
+          v-for="doc in basicList"
+          :key="doc.id"
+          class="doc-card basic"
+        >
           <h3>{{ doc.title }}</h3>
           <p>版本: {{ doc.version }}</p>
           <p>创建时间: {{ formatDate(doc.createdAt) }}</p>
@@ -49,10 +65,17 @@
     </div>
 
     <!-- 场景 2：列表页（带用户信息） -->
-    <div v-if="activeTab === 'list-with-user'" class="demo-section">
+    <div
+      v-if="activeTab === 'list-with-user'"
+      class="demo-section"
+    >
       <div class="section-header">
         <h2>场景 2：列表页 - 带作者信息（DataLoader 批量加载）</h2>
-        <button @click="loadListWithUser" :disabled="loading" class="btn-primary">
+        <button
+          :disabled="loading"
+          class="btn-primary"
+          @click="loadListWithUser"
+        >
           {{ loading ? '加载中...' : '加载数据' }}
         </button>
       </div>
@@ -62,12 +85,25 @@
         <pre><code>{{ withUserQueryCode }}</code></pre>
       </div>
 
-      <div v-if="listWithUser.length > 0" class="result-grid">
-        <div v-for="doc in listWithUser" :key="doc.id" class="doc-card with-user">
+      <div
+        v-if="listWithUser.length > 0"
+        class="result-grid"
+      >
+        <div
+          v-for="doc in listWithUser"
+          :key="doc.id"
+          class="doc-card with-user"
+        >
           <div class="doc-header">
             <h3>{{ doc.title }}</h3>
-            <div v-if="doc.user" class="user-info">
-              <img :src="doc.user.avatar || '/default-avatar.png'" alt="头像" />
+            <div
+              v-if="doc.user"
+              class="user-info"
+            >
+              <img
+                :src="doc.user.avatar || '/default-avatar.png'"
+                alt="头像"
+              >
               <span>{{ doc.user.username }}</span>
             </div>
           </div>
@@ -83,7 +119,10 @@
     </div>
 
     <!-- 场景 3：详情页（完整内容） -->
-    <div v-if="activeTab === 'detail-full'" class="demo-section">
+    <div
+      v-if="activeTab === 'detail-full'"
+      class="demo-section"
+    >
       <div class="section-header">
         <h2>场景 3：详情页 - 加载完整内容</h2>
         <input 
@@ -91,8 +130,12 @@
           type="number" 
           placeholder="输入文档 ID" 
           class="input-field"
-        />
-        <button @click="loadDocDetail" :disabled="loading" class="btn-primary">
+        >
+        <button
+          :disabled="loading"
+          class="btn-primary"
+          @click="loadDocDetail"
+        >
           {{ loading ? '加载中...' : '加载详情' }}
         </button>
       </div>
@@ -102,15 +145,24 @@
         <pre><code>{{ detailQueryCode }}</code></pre>
       </div>
 
-      <div v-if="docDetail" class="doc-detail">
+      <div
+        v-if="docDetail"
+        class="doc-detail"
+      >
         <h2>{{ docDetail.title }}</h2>
         <div class="meta-info">
           <span>版本: {{ docDetail.version }}</span>
           <span>创建: {{ formatDate(docDetail.createdAt) }}</span>
           <span>更新: {{ formatDate(docDetail.updatedAt) }}</span>
         </div>
-        <div v-if="docDetail.user" class="author-info">
-          <img :src="docDetail.user.avatar || '/default-avatar.png'" alt="作者" />
+        <div
+          v-if="docDetail.user"
+          class="author-info"
+        >
+          <img
+            :src="docDetail.user.avatar || '/default-avatar.png'"
+            alt="作者"
+          >
           <div>
             <p><strong>作者：</strong>{{ docDetail.user.username }}</p>
             <p><strong>邮箱：</strong>{{ docDetail.user.email }}</p>
@@ -118,7 +170,7 @@
         </div>
         <div class="content-area">
           <h3>文档内容</h3>
-          <div v-html="formatMarkdown(docDetail.content)"></div>
+          <div v-html="formatMarkdown(docDetail.content)" />
         </div>
       </div>
 
@@ -129,7 +181,10 @@
     </div>
 
     <!-- 场景 4：详情页（带统计和历史） -->
-    <div v-if="activeTab === 'detail-advanced'" class="demo-section">
+    <div
+      v-if="activeTab === 'detail-advanced'"
+      class="demo-section"
+    >
       <div class="section-header">
         <h2>场景 4：详情页 - 带统计和历史版本</h2>
         <input 
@@ -137,8 +192,12 @@
           type="number" 
           placeholder="输入文档 ID" 
           class="input-field"
-        />
-        <button @click="loadAdvancedDetail" :disabled="loading" class="btn-primary">
+        >
+        <button
+          :disabled="loading"
+          class="btn-primary"
+          @click="loadAdvancedDetail"
+        >
           {{ loading ? '加载中...' : '加载完整信息' }}
         </button>
       </div>
@@ -148,11 +207,17 @@
         <pre><code>{{ advancedQueryCode }}</code></pre>
       </div>
 
-      <div v-if="advancedDetail" class="advanced-detail">
+      <div
+        v-if="advancedDetail"
+        class="advanced-detail"
+      >
         <h2>{{ advancedDetail.title }}</h2>
 
         <!-- 统计信息 -->
-        <div v-if="advancedDetail.statistics" class="statistics-panel">
+        <div
+          v-if="advancedDetail.statistics"
+          class="statistics-panel"
+        >
           <h3>📊 文档统计</h3>
           <div class="stats-grid">
             <div class="stat-item">
@@ -175,10 +240,17 @@
         </div>
 
         <!-- 历史版本 -->
-        <div v-if="advancedDetail.historyVersions && advancedDetail.historyVersions.length > 0" class="history-panel">
+        <div
+          v-if="advancedDetail.historyVersions && advancedDetail.historyVersions.length > 0"
+          class="history-panel"
+        >
           <h3>📜 历史版本</h3>
           <div class="history-list">
-            <div v-for="history in advancedDetail.historyVersions" :key="history.id" class="history-item">
+            <div
+              v-for="history in advancedDetail.historyVersions"
+              :key="history.id"
+              class="history-item"
+            >
               <span class="version-badge">v{{ history.version }}</span>
               <span>{{ formatDate(history.createdAt) }}</span>
               <span v-if="history.createdBy">by {{ history.createdBy.username }}</span>
@@ -194,10 +266,17 @@
     </div>
 
     <!-- 场景 5：管理后台（Token 审计） -->
-    <div v-if="activeTab === 'admin-token'" class="demo-section">
+    <div
+      v-if="activeTab === 'admin-token'"
+      class="demo-section"
+    >
       <div class="section-header">
         <h2>场景 5：管理后台 - Token 使用审计</h2>
-        <button @click="loadAdminData" :disabled="loading" class="btn-primary">
+        <button
+          :disabled="loading"
+          class="btn-primary"
+          @click="loadAdminData"
+        >
           {{ loading ? '加载中...' : '加载审计数据' }}
         </button>
       </div>
@@ -207,7 +286,10 @@
         <pre><code>{{ adminQueryCode }}</code></pre>
       </div>
 
-      <div v-if="adminData.length > 0" class="admin-table">
+      <div
+        v-if="adminData.length > 0"
+        class="admin-table"
+      >
         <table>
           <thead>
             <tr>
@@ -221,7 +303,10 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="doc in adminData" :key="doc.id">
+            <tr
+              v-for="doc in adminData"
+              :key="doc.id"
+            >
               <td>{{ doc.title }}</td>
               <td>{{ doc.user?.username }}</td>
               <td>{{ doc.tokenUsage?.totalTokens || 0 }}</td>
@@ -241,7 +326,10 @@
     </div>
 
     <!-- 错误提示 -->
-    <div v-if="error" class="error-message">
+    <div
+      v-if="error"
+      class="error-message"
+    >
       ❌ {{ error }}
     </div>
   </div>

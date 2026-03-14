@@ -1,7 +1,14 @@
 <template>
-  <div class="file-table-container" :style="{ transform: `scale(${zoomLevel})`, transformOrigin: 'top left' }">
+  <div
+    class="file-table-container"
+    :style="{ transform: `scale(${zoomLevel})`, transformOrigin: 'top left' }"
+  >
     <!-- 框选遮罩层 -->
-    <div v-if="isSelecting" class="selection-marquee" :style="marqueeStyle"></div>
+    <div
+      v-if="isSelecting"
+      class="selection-marquee"
+      :style="marqueeStyle"
+    />
 
     <vxe-table
       ref="tableRef"
@@ -12,31 +19,64 @@
       :data="fileList"
       :menu-config="menuConfig"
       :row-class="rowClassName"
+      class="xftp-table"
       @cell-dblclick="handleCellDBLClick"
       @menu-click="handleMenuClick"
       @cell-click="handleCellClick"
-      class="xftp-table"
     >
-      <vxe-column type="checkbox" width="40" fixed="left" :resizable="false" />
+      <vxe-column
+        type="checkbox"
+        width="40"
+        fixed="left"
+        :resizable="false"
+      />
 
-      <vxe-column field="name" title="名称" min-width="250" sortable>
+      <vxe-column
+        field="name"
+        title="名称"
+        min-width="250"
+        sortable
+      >
         <template #default="{ row }">
           <div class="file-item">
-            <FileIcon :fileName="row.name" :isDirectory="row.isDirectory" size="md" />
+            <FileIcon
+              :file-name="row.name"
+              :is-directory="row.isDirectory"
+              size="md"
+            />
             <span class="file-name">{{ row.name }}</span>
-            <span v-if="row.isDirectory" class="file-badge directory-badge">目录</span>
-            <span v-else class="file-ext">{{ getFileExtension(row.name) }}</span>
+            <span
+              v-if="row.isDirectory"
+              class="file-badge directory-badge"
+            >目录</span>
+            <span
+              v-else
+              class="file-ext"
+            >{{ getFileExtension(row.name) }}</span>
           </div>
         </template>
       </vxe-column>
 
-      <vxe-column field="permissions" title="权限" width="120" />
-      <vxe-column field="modifiedTime" title="修改日期" width="180">
+      <vxe-column
+        field="permissions"
+        title="权限"
+        width="120"
+      />
+      <vxe-column
+        field="modifiedTime"
+        title="修改日期"
+        width="180"
+      >
         <template #default="{ row }">
           {{ formatDateTime(row.modifiedTime) }}
         </template>
       </vxe-column>
-      <vxe-column field="size" title="大小" width="100" align="right">
+      <vxe-column
+        field="size"
+        title="大小"
+        width="100"
+        align="right"
+      >
         <template #default="{ row }">
           <span v-if="row.isDirectory">—</span>
           <span v-else>{{ formatSize(row.size) }}</span>
@@ -45,14 +85,27 @@
     </vxe-table>
 
     <!-- 属性对话框 -->
-    <div v-if="showProperties" class="dialog-overlay" @click.self="closeProperties">
+    <div
+      v-if="showProperties"
+      class="dialog-overlay"
+      @click.self="closeProperties"
+    >
       <div class="property-dialog">
         <div class="dialog-header">
           <h4>
-            <FileIcon :fileName="selectedFile?.name || ''" :isDirectory="selectedFile?.isDirectory" size="md" />
+            <FileIcon
+              :file-name="selectedFile?.name || ''"
+              :is-directory="selectedFile?.isDirectory"
+              size="md"
+            />
             {{ selectedFile?.name }} - 属性
           </h4>
-          <button class="close-btn" @click="closeProperties">×</button>
+          <button
+            class="close-btn"
+            @click="closeProperties"
+          >
+            ×
+          </button>
         </div>
         <div class="dialog-content">
           <div class="property-section">
@@ -64,11 +117,17 @@
                 <span v-else>📄 文件</span>
               </span>
             </div>
-            <div class="property-row" v-if="!selectedFile?.isDirectory">
+            <div
+              v-if="!selectedFile?.isDirectory"
+              class="property-row"
+            >
               <span class="label">大小：</span>
               <span class="value">{{ formatSize(selectedFile?.size || 0) }}</span>
             </div>
-            <div class="property-row" v-if="!selectedFile?.isDirectory">
+            <div
+              v-if="!selectedFile?.isDirectory"
+              class="property-row"
+            >
               <span class="label">扩展名：</span>
               <span class="value">{{ getFileExtension(selectedFile?.name || '') }}</span>
             </div>
@@ -96,7 +155,10 @@
               <span class="value">{{ getPermissionDescription(selectedFile?.permissions) }}</span>
             </div>
           </div>
-          <div class="property-section" v-if="!selectedFile?.isDirectory">
+          <div
+            v-if="!selectedFile?.isDirectory"
+            class="property-section"
+          >
             <h5>其他信息</h5>
             <div class="property-row">
               <span class="label">MIME 类型：</span>
@@ -105,7 +167,12 @@
           </div>
         </div>
         <div class="dialog-footer">
-          <button class="btn btn-secondary" @click="closeProperties">关闭</button>
+          <button
+            class="btn btn-secondary"
+            @click="closeProperties"
+          >
+            关闭
+          </button>
         </div>
       </div>
     </div>

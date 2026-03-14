@@ -39,21 +39,18 @@ public class ServerTerminalController {
     @PostMapping("/servers")
     public ResponseEntity<ApiResponse<ServerConnection>> addServer(
             @CurrentUser User user,
-            @RequestParam String serverName,
+            @RequestParam(required = false) String serverName,
             @RequestParam String host,
             @RequestParam String username,
             @RequestParam String password,
             @RequestParam(required = false, defaultValue = "22") Integer port) {
-        System.out.println("接收到的服务器数据:");
-        System.out.println("serverName: " + serverName);
-        System.out.println("host: " + host);
-        System.out.println("username: " + username);
-        System.out.println("password: " + password);
-        System.out.println("port: " + port);
+        String normalizedServerName = serverName == null || serverName.trim().isEmpty()
+                ? host
+                : serverName.trim();
 
         ServerConnection server = serverTerminalService.addServer(
                 user.getId(),
-                serverName,
+                normalizedServerName,
                 host,
                 username,
                 password,

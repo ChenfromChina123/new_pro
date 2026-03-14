@@ -1,13 +1,16 @@
 <template>
   <div class="breadcrumb">
     <span
-      class="breadcrumb-item"
-      :class="{ clickable: index < pathParts.length - 1 }"
       v-for="(part, index) in pathParts"
       :key="index"
+      class="breadcrumb-item"
+      :class="{ clickable: index < pathParts.length - 1 }"
       @click="navigateTo(index)"
     >
-      <span class="separator" v-if="index > 0">/</span>
+      <span
+        v-if="index > 0"
+        class="separator"
+      >/</span>
       <span class="name">{{ part || '/' }}</span>
     </span>
   </div>

@@ -1,7 +1,17 @@
 <template>
-  <span class="file-icon" :class="[iconClass, typeClass]" :style="iconStyle">
-    <component :is="iconComponent" v-if="iconComponent" />
-    <span v-else class="icon-text">{{ iconText }}</span>
+  <span
+    class="file-icon"
+    :class="[iconClass, typeClass]"
+    :style="iconStyle"
+  >
+    <component
+      :is="iconComponent"
+      v-if="iconComponent"
+    />
+    <span
+      v-else
+      class="icon-text"
+    >{{ iconText }}</span>
   </span>
 </template>
 

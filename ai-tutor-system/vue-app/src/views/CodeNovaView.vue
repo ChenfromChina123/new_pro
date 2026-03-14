@@ -1,18 +1,30 @@
 <template>
-  <div class="codenova-page" :class="{ 'dark': themeStore.isDarkMode }">
+  <div
+    class="codenova-page"
+    :class="{ 'dark': themeStore.isDarkMode }"
+  >
     <!-- 顶部导航栏 -->
     <nav class="glass-nav">
       <div class="nav-content">
-        <div class="logo" @click="router.push('/')">
-          <i class="fas fa-brain"></i>
+        <div
+          class="logo"
+          @click="router.push('/')"
+        >
+          <i class="fas fa-brain" />
           <span>AI 智能学习助手</span>
         </div>
         <div class="nav-actions">
-          <button class="btn-back" @click="router.push('/')">
-            <i class="fas fa-arrow-left"></i> 返回首页
+          <button
+            class="btn-back"
+            @click="router.push('/')"
+          >
+            <i class="fas fa-arrow-left" /> 返回首页
           </button>
-          <button class="theme-toggle" @click="themeStore.toggleDarkMode()">
-            <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'"></i>
+          <button
+            class="theme-toggle"
+            @click="themeStore.toggleDarkMode()"
+          >
+            <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" />
           </button>
         </div>
       </div>
@@ -21,29 +33,51 @@
     <!-- Hero 区域 -->
     <header class="hero-section">
       <div class="hero-bg">
-        <div class="blob"></div>
-        <div class="blob"></div>
+        <div class="blob" />
+        <div class="blob" />
       </div>
       <div class="hero-content animate-fade-in">
         <div class="logo-wrapper">
-          <img src="https://img.icons8.com/fluency/240/code.png" alt="CodeNova Logo" class="app-icon" v-if="!imgError" @error="handleImgError">
-          <div class="icon-placeholder" v-if="imgError"><i class="fas fa-code"></i></div>
+          <img
+            v-if="!imgError"
+            src="https://img.icons8.com/fluency/240/code.png"
+            alt="CodeNova Logo"
+            class="app-icon"
+            @error="handleImgError"
+          >
+          <div
+            v-if="imgError"
+            class="icon-placeholder"
+          >
+            <i class="fas fa-code" />
+          </div>
         </div>
-        <h1 class="title">CodeNova</h1>
-        <p class="subtitle">随时随地写代码，开启移动开发新纪元</p>
+        <h1 class="title">
+          CodeNova
+        </h1>
+        <p class="subtitle">
+          随时随地写代码，开启移动开发新纪元
+        </p>
         
         <div class="badge-group">
-          <span class="badge blue"><i class="fas fa-certificate"></i> GPLv3</span>
-          <span class="badge purple"><i class="fas fa-users"></i> 250+ 活跃用户</span>
-          <span class="badge green"><i class="fab fa-android"></i> Android 8+</span>
+          <span class="badge blue"><i class="fas fa-certificate" /> GPLv3</span>
+          <span class="badge purple"><i class="fas fa-users" /> 250+ 活跃用户</span>
+          <span class="badge green"><i class="fab fa-android" /> Android 8+</span>
         </div>
 
         <div class="action-group">
-          <button @click="handleDownload" class="btn-download">
-            <i class="fas fa-cloud-download-alt"></i> 立即下载 APK ({{ version }})
+          <button
+            class="btn-download"
+            @click="handleDownload"
+          >
+            <i class="fas fa-cloud-download-alt" /> 立即下载 APK ({{ version }})
           </button>
-          <a :href="githubUrl" target="_blank" class="btn-github">
-            <i class="fab fa-github"></i> GitHub 开源地址
+          <a
+            :href="githubUrl"
+            target="_blank"
+            class="btn-github"
+          >
+            <i class="fab fa-github" /> GitHub 开源地址
           </a>
         </div>
       </div>
@@ -53,32 +87,51 @@
       <!-- 简介卡片 -->
       <section class="info-section reveal">
         <div class="glass-card intro-card">
-          <h2><i class="fas fa-info-circle"></i> 仓库简介</h2>
+          <h2><i class="fas fa-info-circle" /> 仓库简介</h2>
           <p>CodeNova 是一款专为 Android 打造的集成开发环境 (IDE)。它不仅是一个代码编辑器，更是一个完整的开发工具链，让您能够直接在手机或平板上构建、调试和管理项目。无论是 Python 脚本还是 C/C++ 应用，CodeNova 都能为您提供丝滑的编码体验。</p>
-          <p class="mt-4">此外，CodeNova 深度集成了 <strong>Agent 终端助手</strong> 核心。Agent 是我们的智能自动化引擎，它能理解自然语言指令并自动执行复杂的文件操作、代码分析和终端命令。通过 CodeNova 界面，您可以直接调用 Agent 的能力，实现 AI 驱动的代码编写与项目自动化管理。</p>
+          <p class="mt-4">
+            此外，CodeNova 深度集成了 <strong>Agent 终端助手</strong> 核心。Agent 是我们的智能自动化引擎，它能理解自然语言指令并自动执行复杂的文件操作、代码分析和终端命令。通过 CodeNova 界面，您可以直接调用 Agent 的能力，实现 AI 驱动的代码编写与项目自动化管理。
+          </p>
         </div>
       </section>
 
       <!-- 功能特性 -->
       <section class="features-section reveal">
-        <h2 class="section-title">功能特性</h2>
+        <h2 class="section-title">
+          功能特性
+        </h2>
         <div class="features-grid">
           <div class="feature-category glass-card">
-            <h3><i class="fas fa-star"></i> 核心功能</h3>
+            <h3><i class="fas fa-star" /> 核心功能</h3>
             <ul class="feature-list">
-              <li v-for="feat in coreFeatures" :key="feat"><i class="fas fa-check"></i> {{ feat }}</li>
+              <li
+                v-for="feat in coreFeatures"
+                :key="feat"
+              >
+                <i class="fas fa-check" /> {{ feat }}
+              </li>
             </ul>
           </div>
           <div class="feature-category glass-card">
-            <h3><i class="fas fa-robot"></i> AI & Agent 增强</h3>
+            <h3><i class="fas fa-robot" /> AI & Agent 增强</h3>
             <ul class="feature-list">
-              <li v-for="feat in aiFeatures" :key="feat"><i class="fas fa-magic"></i> {{ feat }}</li>
+              <li
+                v-for="feat in aiFeatures"
+                :key="feat"
+              >
+                <i class="fas fa-magic" /> {{ feat }}
+              </li>
             </ul>
           </div>
           <div class="feature-category glass-card">
-            <h3><i class="fas fa-terminal"></i> 运行环境</h3>
+            <h3><i class="fas fa-terminal" /> 运行环境</h3>
             <ul class="feature-list">
-              <li v-for="feat in runtimeFeatures" :key="feat"><i class="fas fa-microchip"></i> {{ feat }}</li>
+              <li
+                v-for="feat in runtimeFeatures"
+                :key="feat"
+              >
+                <i class="fas fa-microchip" /> {{ feat }}
+              </li>
             </ul>
           </div>
         </div>
@@ -87,18 +140,24 @@
       <!-- 快速开始 -->
       <section class="quickstart-section reveal">
         <div class="glass-card">
-          <h2><i class="fas fa-bolt"></i> 快速开始</h2>
+          <h2><i class="fas fa-bolt" /> 快速开始</h2>
           <div class="steps">
             <div class="step">
-              <div class="step-num">1</div>
+              <div class="step-num">
+                1
+              </div>
               <p>确保设备已开启“允许安装未知来源应用”权限。</p>
             </div>
             <div class="step">
-              <div class="step-num">2</div>
+              <div class="step-num">
+                2
+              </div>
               <p>点击上方按钮下载最新版 CodeNova APK。</p>
             </div>
             <div class="step">
-              <div class="step-num">3</div>
+              <div class="step-num">
+                3
+              </div>
               <p>安装并启动，选择您的工作空间，开始编码！</p>
             </div>
           </div>

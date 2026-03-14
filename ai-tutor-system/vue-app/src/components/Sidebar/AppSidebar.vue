@@ -14,11 +14,11 @@
               :src="avatarUrl || authStore.userInfo.avatar"
               :alt="authStore.username"
               class="sidebar-avatar"
-            />
+            >
             <i
               v-else
               class="fas fa-user-secret default-avatar-icon"
-            ></i>
+            />
           </div>
           <span class="sidebar-user-name">{{ authStore.username || "游客" }}</span>
         </div>
@@ -30,7 +30,7 @@
             title="返回首页"
             @click.stop="router.push('/')"
           >
-            <i class="fas fa-home"></i>
+            <i class="fas fa-home" />
           </div>
 
           <div
@@ -38,7 +38,7 @@
             :title="themeStore.isDarkMode ? '切换到浅色模式' : '切换到深色模式'"
             @click.stop="handleToggleDarkMode"
           >
-            <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'"></i>
+            <i :class="themeStore.isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" />
           </div>
 
           <div
@@ -47,7 +47,7 @@
             title="设置"
             @click.stop="router.push('/settings')"
           >
-            <i class="fas fa-cog"></i>
+            <i class="fas fa-cog" />
           </div>
 
           <div
@@ -56,7 +56,7 @@
             title="登录"
             @click.stop="router.push('/login')"
           >
-            <i class="fas fa-sign-in-alt"></i>
+            <i class="fas fa-sign-in-alt" />
           </div>
         </div>
       </div>
@@ -68,7 +68,7 @@
           class="nav-item"
           active-class="active"
         >
-          <i class="fas fa-comments"></i>
+          <i class="fas fa-comments" />
           <span>AI问答</span>
         </router-link>
         <router-link
@@ -77,7 +77,7 @@
           class="nav-item"
           active-class="active"
         >
-          <i class="fas fa-cloud"></i>
+          <i class="fas fa-cloud" />
           <span>云盘</span>
         </router-link>
         <router-link
@@ -86,7 +86,7 @@
           class="nav-item"
           active-class="active"
         >
-          <i class="fas fa-book"></i>
+          <i class="fas fa-book" />
           <span>语言学习</span>
         </router-link>
         <router-link
@@ -94,7 +94,7 @@
           class="nav-item"
           active-class="active"
         >
-          <i class="fas fa-spell-check"></i>
+          <i class="fas fa-spell-check" />
           <span>单词记忆</span>
         </router-link>
         <!-- PRD/需求分析：始终显示入口，未登录点击时由路由守卫跳转登录 -->
@@ -104,7 +104,7 @@
           class="nav-item"
           active-class="active"
         >
-          <i class="fas fa-project-diagram"></i>
+          <i class="fas fa-project-diagram" />
           <span>需求分析</span>
         </router-link>
         <router-link
@@ -112,7 +112,7 @@
           class="nav-item"
           active-class="active"
         >
-          <i class="fas fa-folder-open"></i>
+          <i class="fas fa-folder-open" />
           <span>公共资源</span>
         </router-link>
         <router-link
@@ -121,7 +121,7 @@
           class="nav-item"
           active-class="active"
         >
-          <i class="fas fa-cog"></i>
+          <i class="fas fa-cog" />
           <span>管理</span>
         </router-link>
         <router-link
@@ -130,7 +130,7 @@
           class="nav-item"
           active-class="active"
         >
-          <i class="fas fa-server"></i>
+          <i class="fas fa-server" />
           <span>服务器终端</span>
         </router-link>
         <router-link
@@ -139,7 +139,7 @@
           class="nav-item"
           active-class="active"
         >
-          <i class="fas fa-folder-open"></i>
+          <i class="fas fa-folder-open" />
           <span>SFTP 文件管理</span>
         </router-link>
       </div>
@@ -175,7 +175,7 @@
               warning: cloudDiskStore.quota.usedSize / cloudDiskStore.quota.limitSize > 0.8,
               danger: cloudDiskStore.quota.usedSize / cloudDiskStore.quota.limitSize > 0.9,
             }"
-          ></div>
+          />
         </div>
         <div
           v-else
@@ -185,7 +185,7 @@
         </div>
       </div>
 
-      <div class="sidebar-divider"></div>
+      <div class="sidebar-divider" />
 
       <!-- 动态内容区域：根据当前路由显示不同内容 -->
       <div class="dynamic-sidebar-content">
@@ -197,13 +197,15 @@
               @click="handleNewChat"
             >
               <span class="btn-icon">
-                <i class="fas fa-plus"></i>
+                <i class="fas fa-plus" />
               </span>
               <span class="btn-text">新建对话</span>
             </button>
           </div>
 
-          <div class="history-section-title">历史对话</div>
+          <div class="history-section-title">
+            历史对话
+          </div>
           <div class="session-list-wrapper">
             <div
               v-if="!authStore.isAuthenticated"
@@ -241,7 +243,7 @@
                   title="删除会话"
                   @click.stop="handleDeleteSession(session.id)"
                 >
-                  <i class="fas fa-trash"></i>
+                  <i class="fas fa-trash" />
                 </button>
               </div>
             </div>
@@ -359,7 +361,9 @@
 
         <!-- 其他路由可以根据需要添加内容 -->
         <template v-else>
-          <div class="sidebar-empty-tip">选择上方功能开始使用</div>
+          <div class="sidebar-empty-tip">
+            选择上方功能开始使用
+          </div>
         </template>
       </div>
 
@@ -377,7 +381,7 @@
             class="input"
             placeholder="输入文件夹名称"
             @keyup.enter="createFolder"
-          />
+          >
           <div class="modal-actions">
             <button
               class="btn btn-primary"
@@ -409,7 +413,7 @@
             class="input"
             placeholder="输入新文件夹名称"
             @keyup.enter="confirmRenameFolder"
-          />
+          >
           <div class="modal-actions">
             <button
               class="btn btn-primary"
@@ -444,7 +448,7 @@
       :title="uiStore.sidebarCollapsed ? '展开侧栏' : '收起侧栏'"
       @click="toggleSidebarCollapse"
     >
-      <i :class="uiStore.sidebarCollapsed ? 'fas fa-chevron-right' : 'fas fa-chevron-left'"></i>
+      <i :class="uiStore.sidebarCollapsed ? 'fas fa-chevron-right' : 'fas fa-chevron-left'" />
     </button>
   </aside>
 </template>

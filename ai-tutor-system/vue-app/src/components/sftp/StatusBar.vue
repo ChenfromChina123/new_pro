@@ -1,10 +1,16 @@
 <template>
   <div class="status-bar">
     <div class="status-left">
-      <span class="connection-status" :class="connected ? 'connected' : 'disconnected'">
+      <span
+        class="connection-status"
+        :class="connected ? 'connected' : 'disconnected'"
+      >
         ● {{ connected ? '已连接' : '未连接' }}
       </span>
-      <span v-if="serverInfo" class="server-info">
+      <span
+        v-if="serverInfo"
+        class="server-info"
+      >
         {{ serverInfo.host }}:{{ serverInfo.port }}
       </span>
     </div>
@@ -14,7 +20,10 @@
       </span>
     </div>
     <div class="status-right">
-      <span v-if="transferCount > 0" class="transfer-info">
+      <span
+        v-if="transferCount > 0"
+        class="transfer-info"
+      >
         传输中: {{ transferCount }} 个任务
       </span>
       <span class="current-time">{{ currentTime }}</span>

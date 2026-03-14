@@ -63,7 +63,10 @@ onBeforeUnmount(cleanup)
 
 <template>
   <div class="w-full h-full bg-[var(--bg-secondary)] text-[var(--text-primary)]">
-    <div ref="editorContainer" class="w-full h-full p-4"></div>
+    <div
+      ref="editorContainer"
+      class="w-full h-full p-4"
+    />
   </div>
 </template>
 

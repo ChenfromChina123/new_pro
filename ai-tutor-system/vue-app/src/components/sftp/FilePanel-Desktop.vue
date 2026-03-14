@@ -3,49 +3,135 @@
     <!-- 工具栏 -->
     <div class="panel-toolbar">
       <div class="toolbar-left">
-        <Breadcrumb :path="currentPath" @navigate="navigateTo" />
+        <Breadcrumb
+          :path="currentPath"
+          @navigate="navigateTo"
+        />
       </div>
       <div class="toolbar-right">
-        <button class="btn-toolbar" @click="goUp" :disabled="currentPath === '/'" title="上级目录 (Alt+↑)">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 19V5M5 12l7-7 7 7"/>
+        <button
+          class="btn-toolbar"
+          :disabled="currentPath === '/'"
+          title="上级目录 (Alt+↑)"
+          @click="goUp"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M12 19V5M5 12l7-7 7 7" />
           </svg>
         </button>
-        <button class="btn-toolbar" @click="refresh" :disabled="loading" title="刷新 (F5)">
-          <svg :class="{ spinning: loading }" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M23 4v6h-6M1 20v-6h6"/>
-            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+        <button
+          class="btn-toolbar"
+          :disabled="loading"
+          title="刷新 (F5)"
+          @click="refresh"
+        >
+          <svg
+            :class="{ spinning: loading }"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M23 4v6h-6M1 20v-6h6" />
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
           </svg>
         </button>
-        <button class="btn-toolbar" @click="showNewFolderDialog" title="新建文件夹">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-            <line x1="12" y1="11" x2="12" y2="17"/>
-            <line x1="9" y1="14" x2="15" y2="14"/>
+        <button
+          class="btn-toolbar"
+          title="新建文件夹"
+          @click="showNewFolderDialog"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+            <line
+              x1="12"
+              y1="11"
+              x2="12"
+              y2="17"
+            />
+            <line
+              x1="9"
+              y1="14"
+              x2="15"
+              y2="14"
+            />
           </svg>
         </button>
-        <label class="btn-toolbar upload-btn" title="上传文件">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="17 8 12 3 7 8"/>
-            <line x1="12" y1="3" x2="12" y2="15"/>
+        <label
+          class="btn-toolbar upload-btn"
+          title="上传文件"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line
+              x1="12"
+              y1="3"
+              x2="12"
+              y2="15"
+            />
           </svg>
-          <input type="file" multiple @change="handleUpload" hidden />
+          <input
+            type="file"
+            multiple
+            hidden
+            @change="handleUpload"
+          >
         </label>
       </div>
     </div>
 
     <!-- 连接状态提示 -->
-    <div v-if="!connected" class="connect-prompt">
-      <div class="connect-icon">🔌</div>
+    <div
+      v-if="!connected"
+      class="connect-prompt"
+    >
+      <div class="connect-icon">
+        🔌
+      </div>
       <p>未连接到服务器</p>
-      <button class="btn-connect" @click="$emit('connect', serverId)">连接</button>
+      <button
+        class="btn-connect"
+        @click="$emit('connect', serverId)"
+      >
+        连接
+      </button>
     </div>
 
     <!-- 文件列表 -->
-    <div v-else class="file-list-container" ref="containerRef">
-      <div v-if="loading" class="loading-overlay">
-        <div class="loading-spinner"></div>
+    <div
+      v-else
+      ref="containerRef"
+      class="file-list-container"
+    >
+      <div
+        v-if="loading"
+        class="loading-overlay"
+      >
+        <div class="loading-spinner" />
         <span>加载中...</span>
       </div>
 
@@ -64,37 +150,65 @@
     </div>
 
     <!-- 新建文件夹对话框 -->
-    <div class="dialog-overlay" v-if="showNewFolder" @click.self="showNewFolder = false">
+    <div
+      v-if="showNewFolder"
+      class="dialog-overlay"
+      @click.self="showNewFolder = false"
+    >
       <div class="dialog-content">
         <h4>新建文件夹</h4>
         <input
+          ref="newFolderInput"
           v-model="newFolderName"
           type="text"
           placeholder="文件夹名称"
           @keyup.enter="createFolder"
-          ref="newFolderInput"
-        />
+        >
         <div class="dialog-actions">
-          <button class="btn btn-secondary" @click="showNewFolder = false">取消</button>
-          <button class="btn btn-primary" @click="createFolder">创建</button>
+          <button
+            class="btn btn-secondary"
+            @click="showNewFolder = false"
+          >
+            取消
+          </button>
+          <button
+            class="btn btn-primary"
+            @click="createFolder"
+          >
+            创建
+          </button>
         </div>
       </div>
     </div>
 
     <!-- 重命名对话框 -->
-    <div class="dialog-overlay" v-if="showRename" @click.self="showRename = false">
+    <div
+      v-if="showRename"
+      class="dialog-overlay"
+      @click.self="showRename = false"
+    >
       <div class="dialog-content">
         <h4>重命名</h4>
         <input
+          ref="renameInput"
           v-model="renameNewName"
           type="text"
           placeholder="新名称"
           @keyup.enter="doRename"
-          ref="renameInput"
-        />
+        >
         <div class="dialog-actions">
-          <button class="btn btn-secondary" @click="showRename = false">取消</button>
-          <button class="btn btn-primary" @click="doRename">确定</button>
+          <button
+            class="btn btn-secondary"
+            @click="showRename = false"
+          >
+            取消
+          </button>
+          <button
+            class="btn btn-primary"
+            @click="doRename"
+          >
+            确定
+          </button>
         </div>
       </div>
     </div>

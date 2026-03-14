@@ -1,19 +1,28 @@
 <template>
   <div class="word-game-view">
-    <div v-if="loading" class="loading-wrapper">
+    <div
+      v-if="loading"
+      class="loading-wrapper"
+    >
       <div class="loading-spinner">
-        <i class="fas fa-circle-notch fa-spin fa-2x"></i>
+        <i class="fas fa-circle-notch fa-spin fa-2x" />
         <p>加载中...</p>
       </div>
     </div>
     
-    <div v-if="loadFailed" class="error-wrapper">
+    <div
+      v-if="loadFailed"
+      class="error-wrapper"
+    >
       <div class="error-content">
-        <i class="fas fa-exclamation-triangle fa-3x"></i>
+        <i class="fas fa-exclamation-triangle fa-3x" />
         <h3>无法连接单词记忆服务</h3>
         <p>请确认 word-game 服务已启动</p>
-        <button @click="retryLoad" class="retry-btn">
-          <i class="fas fa-redo"></i> 重试
+        <button
+          class="retry-btn"
+          @click="retryLoad"
+        >
+          <i class="fas fa-redo" /> 重试
         </button>
       </div>
     </div>
@@ -27,28 +36,47 @@
       title="单词记忆"
       @load="onFrameLoad"
       @error="onFrameError"
-    ></iframe>
+    />
 
     <!-- 加载遮罩 -->
-    <div v-if="loading && !loadFailed" class="loading-mask">
+    <div
+      v-if="loading && !loadFailed"
+      class="loading-mask"
+    >
       <div class="loading-spinner">
-        <i class="fas fa-circle-notch fa-spin"></i>
+        <i class="fas fa-circle-notch fa-spin" />
         <span>加载中...</span>
       </div>
     </div>
 
     <!-- 连接失败时提示（开发环境未启动 word-game 服务时显示） -->
-    <div v-if="loadFailed" class="load-failed-mask">
+    <div
+      v-if="loadFailed"
+      class="load-failed-mask"
+    >
       <div class="load-failed-box">
-        <i class="fas fa-plug-circle-xmark"></i>
-        <p class="load-failed-title">无法连接单词记忆服务</p>
-        <p class="load-failed-desc">localhost 拒绝了我们的连接请求，请确认已启动 word-game 服务。</p>
-        <p class="load-failed-steps" v-if="isDev">
-          在 <code>word-game</code> 目录下执行：<br />
-          <code>npm run dev</code>（前端，端口 5200）<br />
+        <i class="fas fa-plug-circle-xmark" />
+        <p class="load-failed-title">
+          无法连接单词记忆服务
+        </p>
+        <p class="load-failed-desc">
+          localhost 拒绝了我们的连接请求，请确认已启动 word-game 服务。
+        </p>
+        <p
+          v-if="isDev"
+          class="load-failed-steps"
+        >
+          在 <code>word-game</code> 目录下执行：<br>
+          <code>npm run dev</code>（前端，端口 5200）<br>
           <code>npm run server</code>（后端 API，端口 5201）
         </p>
-        <button type="button" class="btn btn-primary" @click="retryLoad">重试</button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          @click="retryLoad"
+        >
+          重试
+        </button>
       </div>
     </div>
   </div>

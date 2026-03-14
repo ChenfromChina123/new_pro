@@ -8,7 +8,7 @@
       v-if="settingsStore.isLoading"
       class="loading-indicator"
     >
-      <div class="loading-spinner"></div>
+      <div class="loading-spinner" />
       <p>加载中...</p>
     </div>
 
@@ -49,14 +49,14 @@
                 v-else
                 class="avatar-placeholder"
               >
-                <i class="fas fa-user"></i>
+                <i class="fas fa-user" />
               </div>
 
               <div
                 v-if="isUploading"
                 class="upload-loading"
               >
-                <div class="loading-spinner-small"></div>
+                <div class="loading-spinner-small" />
                 <span class="upload-percent">{{ uploadProgress }}%</span>
               </div>
             </div>
@@ -122,7 +122,7 @@
                 title="修改用户名"
                 @click="startEditingUsername"
               >
-                <i class="fas fa-edit"></i>
+                <i class="fas fa-edit" />
               </button>
             </div>
           </div>
@@ -216,7 +216,7 @@
                 type="checkbox"
                 @change="handleUpdate('notificationsEnabled')"
               >
-              <span class="slider round"></span>
+              <span class="slider round" />
             </label>
           </div>
         </div>
@@ -230,7 +230,7 @@
                 type="checkbox"
                 @change="handleUpdate('emailNotifications')"
               >
-              <span class="slider round"></span>
+              <span class="slider round" />
             </label>
           </div>
         </div>

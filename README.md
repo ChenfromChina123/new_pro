@@ -40,10 +40,10 @@
 3. 确保端口 5000 可用。如果启动失败并提示端口占用，请使用相应平台的命令查找并终止冲突进程（如 Windows 下使用 `netstat -ano | findstr :5000`）。
 
 #### 前端启动 (Vue 3)
-1. 进入 `vue-app` 目录
+1. 进入 `ai-tutor-system/vue-app` 目录
 2. 运行 `npm install` (首次启动)
 3. 运行 `npm run dev`
-4. 默认访问地址: `http://localhost:5173`
+4. 默认访问地址: `http://localhost:3000` (配置见 `vite.config.js`)
 
 ##### 🚀 最近更新
 
@@ -341,6 +341,14 @@
 - **管理后台交互优化**:
   - 修复了文件编辑弹窗中文件内容无法加载的问题。
   - 优化了管理后台各模块的数据刷新逻辑，确保在切换标签页时能够实时获取最新数据。
+
+### 🖥️ 服务器终端生产环境兼容修复 (2026-03-14)
+- **Flyway 表结构补齐**:
+  - 新增 `V3_7__create_server_terminal_tables.sql`，在生产环境自动创建 `server_connections` 与 `server_command_executions` 表，修复 `/api/server-terminal/servers` 在 `ddl-auto: none` 场景下因缺表导致的 500。
+- **添加服务器接口容错增强**:
+  - `POST /api/server-terminal/servers` 中将 `serverName` 改为可选参数，空值时自动回退到 `host`，避免因字段缺失触发异常。
+- **安全性优化**:
+  - 移除了添加服务器接口中的明文密码输出，避免敏感信息写入日志。
 
 ### 🚀 公共资源下载与管理后台增强 (2026-01-06)
 - **公共资源下载修复**: 

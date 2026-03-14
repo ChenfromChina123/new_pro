@@ -1,5 +1,8 @@
 <template>
-  <div class="file-panel" :class="{ 'light-mode': !isDarkMode }">
+  <div
+    class="file-panel"
+    :class="{ 'light-mode': !isDarkMode }"
+  >
     <!-- 工具栏 -->
     <div class="panel-toolbar">
       <div class="toolbar-left">
@@ -360,8 +363,52 @@
             </svg>
             <span>打开</span>
           </div>
+          <div
+            class="menu-item"
+            @click="openTerminal(contextMenu.file)"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <polyline points="4 17 10 11 4 5" />
+              <line
+                x1="12"
+                y1="19"
+                x2="20"
+                y2="19"
+              />
+            </svg>
+            <span>在终端打开</span>
+          </div>
         </template>
         <template v-else>
+          <div
+            class="menu-item"
+            @click="openTerminal(null)"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <polyline points="4 17 10 11 4 5" />
+              <line
+                x1="12"
+                y1="19"
+                x2="20"
+                y2="19"
+              />
+            </svg>
+            <span>在终端打开</span>
+          </div>
           <div
             class="menu-item"
             @click="downloadFile(contextMenu.file)"
@@ -758,6 +805,24 @@ function handleClick(file, event) {
     // 普通点击：单选
     sftpStore.selectedFiles = [file]
   }
+}
+
+/**
+ * 在终端打开
+ */
+function openTerminal(file) {
+  hideContextMenu()
+  // 如果传入了 file 且是目录，则使用该目录路径
+  // 否则使用当前路径 (currentPath)
+  const path = (file && file.directory) ? file.path : currentPath.value
+
+  router.push({
+    name: 'ServerTerminal',
+    query: {
+      serverId: props.serverId,
+      path: path
+    }
+  })
 }
 
 /**

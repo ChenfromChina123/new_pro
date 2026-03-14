@@ -64,8 +64,8 @@ function openFile(file) {
           'p-2 rounded',
           activeView === view.id ? 'bg-[var(--icon-btn-bg)] text-[var(--primary-color)]' : 'text-[var(--text-secondary)]'
         ]"
-        @click="switchView(view.id)"
         :title="view.label"
+        @click="switchView(view.id)"
       >
         {{ view.icon }}
       </button>
@@ -74,8 +74,13 @@ function openFile(file) {
     <!-- 侧边面板 -->
     <div class="flex-1 overflow-auto p-2">
       <!-- 文件资源管理器 -->
-      <div v-if="activeView === 'explorer'" class="space-y-2">
-        <h3 class="text-xs text-[var(--text-tertiary)] uppercase font-semibold mb-2">文件</h3>
+      <div
+        v-if="activeView === 'explorer'"
+        class="space-y-2"
+      >
+        <h3 class="text-xs text-[var(--text-tertiary)] uppercase font-semibold mb-2">
+          文件
+        </h3>
         <div class="space-y-1">
           <div
             v-for="file in files"
@@ -90,7 +95,10 @@ function openFile(file) {
               <span class="text-sm text-[var(--text-primary)]">{{ file.name }}</span>
             </div>
             <!-- 子文件 -->
-            <div v-if="file.children && file.children.length > 0" class="pl-4 space-y-1">
+            <div
+              v-if="file.children && file.children.length > 0"
+              class="pl-4 space-y-1"
+            >
               <div
                 v-for="child in file.children"
                 :key="child.name"
@@ -104,7 +112,10 @@ function openFile(file) {
                   <span class="text-sm text-[var(--text-primary)]">{{ child.name }}</span>
                 </div>
                 <!-- 孙子文件 -->
-                <div v-if="child.children && child.children.length > 0" class="pl-4 space-y-1">
+                <div
+                  v-if="child.children && child.children.length > 0"
+                  class="pl-4 space-y-1"
+                >
                   <div
                     v-for="grandchild in child.children"
                     :key="grandchild.name"
@@ -126,8 +137,13 @@ function openFile(file) {
       </div>
 
       <!-- 搜索 -->
-      <div v-else-if="activeView === 'search'" class="space-y-2">
-        <h3 class="text-xs text-[var(--text-tertiary)] uppercase font-semibold mb-2">搜索</h3>
+      <div
+        v-else-if="activeView === 'search'"
+        class="space-y-2"
+      >
+        <h3 class="text-xs text-[var(--text-tertiary)] uppercase font-semibold mb-2">
+          搜索
+        </h3>
         <div class="relative">
           <input
             type="text"
@@ -139,16 +155,26 @@ function openFile(file) {
       </div>
 
       <!-- 大纲 -->
-      <div v-else-if="activeView === 'outline'" class="space-y-2">
-        <h3 class="text-xs text-[var(--text-tertiary)] uppercase font-semibold mb-2">大纲</h3>
+      <div
+        v-else-if="activeView === 'outline'"
+        class="space-y-2"
+      >
+        <h3 class="text-xs text-[var(--text-tertiary)] uppercase font-semibold mb-2">
+          大纲
+        </h3>
         <div class="text-sm text-[var(--text-tertiary)]">
           选择一个文件查看大纲
         </div>
       </div>
 
       <!-- Git -->
-      <div v-else-if="activeView === 'git'" class="space-y-2">
-        <h3 class="text-xs text-[var(--text-tertiary)] uppercase font-semibold mb-2">Git</h3>
+      <div
+        v-else-if="activeView === 'git'"
+        class="space-y-2"
+      >
+        <h3 class="text-xs text-[var(--text-tertiary)] uppercase font-semibold mb-2">
+          Git
+        </h3>
         <div class="text-sm text-[var(--text-tertiary)]">
           暂未实现
         </div>

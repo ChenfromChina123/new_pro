@@ -6,11 +6,41 @@ import request from '@/utils/request'
  * SFTP 文件管理状态存储
  */
 export const useSFTPStore = defineStore('sftp', () => {
+  const STORAGE_KEY = 'sftp_manager_state_v1'
+  const loadPersistedState = () => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (!raw) {
+        return {
+          currentServerId: null,
+          currentPath: '/',
+          pathHistory: {}
+        }
+      }
+      const parsed = JSON.parse(raw)
+      return {
+        currentServerId: parsed.currentServerId ?? null,
+        currentPath: parsed.currentPath || '/',
+        pathHistory: parsed.pathHistory || {}
+      }
+    } catch {
+      return {
+        currentServerId: null,
+        currentPath: '/',
+        pathHistory: {}
+      }
+    }
+  }
+
+  const persistedState = loadPersistedState()
+
   // 当前选中的服务器 ID
-  const currentServerId = ref(null)
+  const currentServerId = ref(persistedState.currentServerId)
 
   // 当前路径
-  const currentPath = ref('/')
+  const currentPath = ref(persistedState.currentPath)
+
+  const pathHistory = ref(persistedState.pathHistory)
 
   // 文件列表
   const files = ref([])
@@ -50,16 +80,38 @@ export const useSFTPStore = defineStore('sftp', () => {
     return transferTasks.value.filter(t => t.status === 'transferring').length
   })
 
+  function persistState() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        currentServerId: currentServerId.value,
+        currentPath: currentPath.value,
+        pathHistory: pathHistory.value
+      }))
+    } catch (e) {
+      console.error('持久化 SFTP 状态失败:', e)
+    }
+  }
+
   /**
    * 设置当前服务器
    * @param {number} serverId - 服务器 ID
    */
   function setCurrentServer(serverId) {
     currentServerId.value = serverId
-    currentPath.value = '/'
+    if (serverId === null) {
+      currentPath.value = '/'
+      files.value = []
+      selectedFiles.value = []
+      connected.value = false
+      persistState()
+      return
+    }
+    const rememberedPath = pathHistory.value[String(serverId)]
+    currentPath.value = rememberedPath || '/'
     files.value = []
     selectedFiles.value = []
     connected.value = false
+    persistState()
   }
 
   /**
@@ -87,6 +139,10 @@ export const useSFTPStore = defineStore('sftp', () => {
         console.log('获取文件列表成功:', response.data.files?.length || 0, '个文件')
         files.value = response.data.files || []
         currentPath.value = response.data.path
+        if (currentServerId.value !== null) {
+          pathHistory.value[String(currentServerId.value)] = currentPath.value
+        }
+        persistState()
         console.log('当前路径更新为:', currentPath.value)
         selectedFiles.value = []
       } else {

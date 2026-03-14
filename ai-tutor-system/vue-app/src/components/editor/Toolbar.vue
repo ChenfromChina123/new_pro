@@ -36,10 +36,10 @@ function executeTool(tool) {
   <div class="relative">
     <!-- 全局右键菜单事件监听 -->
     <div
-      class="absolute inset-0 z-10"
       v-if="showToolbar"
+      class="absolute inset-0 z-10"
       @click="hideContextMenu"
-    ></div>
+    />
 
     <!-- 悬浮工具栏 -->
     <div

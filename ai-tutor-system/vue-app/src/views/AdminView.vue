@@ -255,7 +255,7 @@
                 v-if="isLoadingPreview"
                 class="preview-loading"
               >
-                <div class="loading-spinner"></div>
+                <div class="loading-spinner" />
                 <span>正在加载预览内容...</span>
               </div>
 
@@ -264,7 +264,7 @@
                 v-else-if="editContent && editContent !== '加载中...'"
                 class="preview-error"
               >
-                <i class="fas fa-exclamation-circle"></i>
+                <i class="fas fa-exclamation-circle" />
                 <span>{{ editContent }}</span>
               </div>
 
@@ -287,7 +287,7 @@
                     width="100%" 
                     height="100%"
                     style="border: none;"
-                  ></iframe>
+                  />
                 </div>
                 <div
                   v-else-if="previewType === 'word' || previewType === 'other'"
@@ -326,12 +326,12 @@
                 spellcheck="false"
                 placeholder="文件内容加载中..."
                 :disabled="editContent === '加载中...'"
-              ></textarea>
+              />
               <div
                 v-if="editContent === '加载中...'"
                 class="editor-loading-overlay"
               >
-                <div class="loading"></div>
+                <div class="loading" />
                 <span>内容加载中...</span>
               </div>
             </div>
@@ -352,7 +352,7 @@
               <span
                 v-if="saving"
                 class="loading-spinner"
-              ></span>
+              />
               {{ saving ? '保存中...' : '保存' }}
             </button>
           </div>
@@ -366,7 +366,10 @@
       >
         <div class="content-header">
           <h2>软件版本管理</h2>
-          <button class="btn btn-primary" @click="openSoftwareModal()">
+          <button
+            class="btn btn-primary"
+            @click="openSoftwareModal()"
+          >
             添加软件
           </button>
         </div>
@@ -390,14 +393,20 @@
               >
                 <td>{{ item.title }}</td>
                 <td>
-                  <span class="badge" :class="item.platform?.toLowerCase() || 'general'">{{ item.platform || '通用' }}</span>
+                  <span
+                    class="badge"
+                    :class="item.platform?.toLowerCase() || 'general'"
+                  >{{ item.platform || '通用' }}</span>
                 </td>
                 <td>{{ item.version || '未设置' }}</td>
                 <td>
                   <span class="badge secondary">{{ item.type }}</span>
                 </td>
                 <td>
-                  <span class="file-path-cell" :title="item.filePath || item.url">
+                  <span
+                    class="file-path-cell"
+                    :title="item.filePath || item.url"
+                  >
                     {{ item.filePath || item.url || '-' }}
                   </span>
                 </td>
@@ -545,44 +554,66 @@
       >
         <div class="content-header">
           <h2>🔍 Token 消耗审计</h2>
-          <p style="color: var(--text-secondary); margin-top: 8px;">实时监控 AI Token 消耗与成本分析</p>
+          <p style="color: var(--text-secondary); margin-top: 8px;">
+            实时监控 AI Token 消耗与成本分析
+          </p>
         </div>
 
         <!-- 统计卡片组 -->
         <div class="token-stats-grid">
           <div class="token-stat-card">
-            <div class="token-stat-icon">📊</div>
+            <div class="token-stat-icon">
+              📊
+            </div>
             <div class="token-stat-info">
               <h4>总请求数</h4>
-              <p class="token-stat-value">{{ tokenStats.totalRequests || 0 }}</p>
+              <p class="token-stat-value">
+                {{ tokenStats.totalRequests || 0 }}
+              </p>
             </div>
           </div>
           <div class="token-stat-card">
-            <div class="token-stat-icon">⬆️</div>
+            <div class="token-stat-icon">
+              ⬆️
+            </div>
             <div class="token-stat-info">
               <h4>输入 Token</h4>
-              <p class="token-stat-value">{{ formatNumber(tokenStats.totalInputTokens) }}</p>
+              <p class="token-stat-value">
+                {{ formatNumber(tokenStats.totalInputTokens) }}
+              </p>
             </div>
           </div>
           <div class="token-stat-card">
-            <div class="token-stat-icon">⬇️</div>
+            <div class="token-stat-icon">
+              ⬇️
+            </div>
             <div class="token-stat-info">
               <h4>输出 Token</h4>
-              <p class="token-stat-value">{{ formatNumber(tokenStats.totalOutputTokens) }}</p>
+              <p class="token-stat-value">
+                {{ formatNumber(tokenStats.totalOutputTokens) }}
+              </p>
             </div>
           </div>
           <div class="token-stat-card">
-            <div class="token-stat-icon">💰</div>
+            <div class="token-stat-icon">
+              💰
+            </div>
             <div class="token-stat-info">
               <h4>总 Token 数</h4>
-              <p class="token-stat-value">{{ formatNumber(tokenStats.totalTokens) }}</p>
+              <p class="token-stat-value">
+                {{ formatNumber(tokenStats.totalTokens) }}
+              </p>
             </div>
           </div>
           <div class="token-stat-card">
-            <div class="token-stat-icon">⚡</div>
+            <div class="token-stat-icon">
+              ⚡
+            </div>
             <div class="token-stat-info">
               <h4>平均耗时</h4>
-              <p class="token-stat-value">{{ tokenStats.avgResponseTimeMs || 0 }}ms</p>
+              <p class="token-stat-value">
+                {{ tokenStats.avgResponseTimeMs || 0 }}ms
+              </p>
             </div>
           </div>
         </div>
@@ -601,7 +632,7 @@
                 <div 
                   class="provider-bar" 
                   :style="{ width: (count / tokenStats.totalRequests * 100) + '%' }"
-                ></div>
+                />
               </div>
               <span class="provider-count">{{ count }} 次 ({{ Math.round(count / tokenStats.totalRequests * 100) }}%)</span>
             </div>
@@ -626,7 +657,10 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="record in tokenRecords" :key="record.id">
+                <tr
+                  v-for="record in tokenRecords"
+                  :key="record.id"
+                >
                   <td>{{ formatDateTime(record.createdAt) }}</td>
                   <td><span class="badge">{{ record.provider }}</span></td>
                   <td>{{ record.modelName || '-' }}</td>
@@ -637,7 +671,12 @@
                   <td>{{ record.streaming ? '✓' : '✗' }}</td>
                 </tr>
                 <tr v-if="tokenRecords.length === 0">
-                  <td colspan="8" class="empty-row">暂无审计记录</td>
+                  <td
+                    colspan="8"
+                    class="empty-row"
+                  >
+                    暂无审计记录
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -653,48 +692,106 @@
         <div class="modal-content animate-slideIn">
           <div class="modal-header">
             <h3>{{ isEdit ? '编辑软件' : '添加软件' }}</h3>
-            <button class="close-btn" @click="showSoftwareModal = false">&times;</button>
+            <button
+              class="close-btn"
+              @click="showSoftwareModal = false"
+            >
+              &times;
+            </button>
           </div>
           <div class="modal-body">
             <div class="form-group">
               <label>软件名称</label>
-              <input v-model="editingSoftware.title" type="text" class="form-input" placeholder="例如: CodeNova">
+              <input
+                v-model="editingSoftware.title"
+                type="text"
+                class="form-input"
+                placeholder="例如: CodeNova"
+              >
             </div>
             <div class="form-group">
               <label>运行平台</label>
-              <select v-model="editingSoftware.platform" class="form-input">
-                <option value="">通用</option>
-                <option value="Windows">Windows</option>
-                <option value="Linux">Linux</option>
-                <option value="Android">Android</option>
-                <option value="iOS">iOS</option>
-                <option value="macOS">macOS</option>
+              <select
+                v-model="editingSoftware.platform"
+                class="form-input"
+              >
+                <option value="">
+                  通用
+                </option>
+                <option value="Windows">
+                  Windows
+                </option>
+                <option value="Linux">
+                  Linux
+                </option>
+                <option value="Android">
+                  Android
+                </option>
+                <option value="iOS">
+                  iOS
+                </option>
+                <option value="macOS">
+                  macOS
+                </option>
               </select>
             </div>
             <div class="form-group">
               <label>版本号</label>
-              <input v-model="editingSoftware.version" type="text" class="form-input" placeholder="例如: v1.0.0">
+              <input
+                v-model="editingSoftware.version"
+                type="text"
+                class="form-input"
+                placeholder="例如: v1.0.0"
+              >
             </div>
             <div class="form-group">
               <label>类型</label>
-              <select v-model="editingSoftware.type" class="form-input">
-                <option value="software">软件/安装包</option>
-                <option value="source">源代码</option>
-                <option value="article">文档/文章</option>
+              <select
+                v-model="editingSoftware.type"
+                class="form-input"
+              >
+                <option value="software">
+                  软件/安装包
+                </option>
+                <option value="source">
+                  源代码
+                </option>
+                <option value="article">
+                  文档/文章
+                </option>
               </select>
             </div>
             <div class="form-group">
               <label>外部链接 (可选)</label>
-              <input v-model="editingSoftware.url" type="text" class="form-input" placeholder="https://...">
+              <input
+                v-model="editingSoftware.url"
+                type="text"
+                class="form-input"
+                placeholder="https://..."
+              >
             </div>
             <div class="form-group">
               <label>描述</label>
-              <textarea v-model="editingSoftware.description" class="form-input" rows="3"></textarea>
+              <textarea
+                v-model="editingSoftware.description"
+                class="form-input"
+                rows="3"
+              />
             </div>
           </div>
           <div class="modal-footer">
-            <button class="btn btn-secondary" @click="showSoftwareModal = false">取消</button>
-            <button class="btn btn-primary" @click="saveSoftware">保存</button>
+            <button
+              class="btn btn-secondary"
+              @click="showSoftwareModal = false"
+            >
+              取消
+            </button>
+            <button
+              class="btn btn-primary"
+              @click="saveSoftware"
+            >
+              保存
+            </button>
           </div>
         </div>
       </div>
@@ -708,7 +805,10 @@
       >
 
       <!-- 上传进度弹窗 -->
-      <div v-if="uploading" class="modal-overlay upload-progress-overlay">
+      <div
+        v-if="uploading"
+        class="modal-overlay upload-progress-overlay"
+      >
         <div class="modal-content progress-modal">
           <div class="modal-header">
             <h3>正在上传文件...</h3>
@@ -719,9 +819,14 @@
               <span class="percentage">{{ uploadProgress }}%</span>
             </div>
             <div class="progress-bar-container">
-              <div class="progress-bar" :style="{ width: uploadProgress + '%' }"></div>
+              <div
+                class="progress-bar"
+                :style="{ width: uploadProgress + '%' }"
+              />
             </div>
-            <p class="upload-tip">请勿关闭页面，等待上传完成...</p>
+            <p class="upload-tip">
+              请勿关闭页面，等待上传完成...
+            </p>
           </div>
         </div>
       </div>
@@ -749,7 +854,7 @@
                 type="text" 
                 class="form-input" 
                 placeholder="请输入链接标题"
-              />
+              >
             </div>
             <div class="form-group">
               <label>链接地址 <span style="color: red;">*</span></label>
@@ -758,7 +863,7 @@
                 type="url" 
                 class="form-input" 
                 placeholder="https://..."
-              />
+              >
             </div>
             <div class="form-group">
               <label>描述（可选）</label>
@@ -776,7 +881,7 @@
                 type="url" 
                 class="form-input" 
                 placeholder="https://..."
-              />
+              >
             </div>
             <div class="form-group">
               <label>排序顺序（可选）</label>
@@ -785,14 +890,14 @@
                 type="number" 
                 class="form-input" 
                 placeholder="数字越小越靠前"
-              />
+              >
             </div>
             <div class="form-group">
               <label>
                 <input 
                   v-model="editingLink.isActive" 
                   type="checkbox"
-                />
+                >
                 激活状态
               </label>
             </div>

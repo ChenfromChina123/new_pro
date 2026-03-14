@@ -2,24 +2,41 @@
   <div class="transfer-queue">
     <div class="queue-header">
       <span class="queue-title">传输队列 ({{ tasks.length }})</span>
-      <button class="btn-clear" @click="clearCompleted">清除已完成</button>
+      <button
+        class="btn-clear"
+        @click="clearCompleted"
+      >
+        清除已完成
+      </button>
     </div>
     <div class="queue-list">
-      <div v-for="task in tasks" :key="task.id" class="transfer-item">
+      <div
+        v-for="task in tasks"
+        :key="task.id"
+        class="transfer-item"
+      >
         <div class="item-icon">
           {{ task.type === 'upload' ? '📤' : '📥' }}
         </div>
         <div class="item-info">
-          <div class="item-name">{{ task.fileName }}</div>
+          <div class="item-name">
+            {{ task.fileName }}
+          </div>
           <div class="item-progress">
             <div class="progress-bar">
-              <div class="progress-fill" :style="{ width: task.progress + '%' }"></div>
+              <div
+                class="progress-fill"
+                :style="{ width: task.progress + '%' }"
+              />
             </div>
             <span class="progress-text">{{ task.progress }}%</span>
             <span class="speed-text">{{ task.speed }}</span>
           </div>
         </div>
-        <div class="item-status" :class="task.status">
+        <div
+          class="item-status"
+          :class="task.status"
+        >
           {{ getStatusText(task.status) }}
         </div>
       </div>

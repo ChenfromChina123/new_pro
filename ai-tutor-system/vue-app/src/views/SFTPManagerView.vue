@@ -1,10 +1,19 @@
 <template>
-  <div class="sftp-manager" :class="{ 'light-mode': !isDarkMode }">
+  <div
+    class="sftp-manager"
+    :class="{ 'light-mode': !isDarkMode }"
+  >
     <!-- 头部工具栏 -->
     <header class="manager-header">
       <div class="header-left">
-        <h1 class="title">SFTP 文件管理器</h1>
-        <button class="btn-icon" @click="showAddServerModal = true" title="添加服务器">
+        <h1 class="title">
+          SFTP 文件管理器
+        </h1>
+        <button
+          class="btn-icon"
+          title="添加服务器"
+          @click="showAddServerModal = true"
+        >
           <span>+</span>
         </button>
       </div>
@@ -24,14 +33,29 @@
             :class="['server-item', { active: selectedServerId === server.id }]"
             @click="selectServer(server.id)"
           >
-            <div class="server-status" :class="{ connected: connectedServers.includes(server.id) }"></div>
+            <div
+              class="server-status"
+              :class="{ connected: connectedServers.includes(server.id) }"
+            />
             <div class="server-info">
               <span class="server-name">{{ server.name || server.host }}</span>
               <span class="server-host">{{ server.host }}:{{ server.port }}</span>
             </div>
             <div class="server-actions">
-              <button class="btn-small" @click.stop="editServer(server)" title="编辑">✏️</button>
-              <button class="btn-small btn-danger" @click.stop="deleteServer(server.id)" title="删除">🗑️</button>
+              <button
+                class="btn-small"
+                title="编辑"
+                @click.stop="editServer(server)"
+              >
+                ✏️
+              </button>
+              <button
+                class="btn-small btn-danger"
+                title="删除"
+                @click.stop="deleteServer(server.id)"
+              >
+                🗑️
+              </button>
             </div>
           </div>
         </div>
@@ -46,8 +70,13 @@
           @connect="connectServer"
           @disconnect="disconnectServer"
         />
-        <div v-else class="empty-state">
-          <div class="empty-icon">📁</div>
+        <div
+          v-else
+          class="empty-state"
+        >
+          <div class="empty-icon">
+            📁
+          </div>
           <p>请选择一个服务器开始管理文件</p>
         </div>
       </main>
@@ -66,36 +95,80 @@
     />
 
     <!-- 添加服务器弹窗 -->
-    <div class="modal-overlay" v-if="showAddServerModal" @click.self="showAddServerModal = false">
+    <div
+      v-if="showAddServerModal"
+      class="modal-overlay"
+      @click.self="showAddServerModal = false"
+    >
       <div class="modal-content">
         <div class="modal-header">
           <h3>{{ editingServer ? '编辑服务器' : '添加服务器' }}</h3>
-          <button class="btn-close" @click="closeServerModal">✕</button>
+          <button
+            class="btn-close"
+            @click="closeServerModal"
+          >
+            ✕
+          </button>
         </div>
         <form @submit.prevent="saveServer">
           <div class="form-group">
             <label>服务器名称</label>
-            <input v-model="serverForm.name" type="text" placeholder="可选，如：生产服务器" />
+            <input
+              v-model="serverForm.name"
+              type="text"
+              placeholder="可选，如：生产服务器"
+            >
           </div>
           <div class="form-group">
             <label>主机地址 *</label>
-            <input v-model="serverForm.host" type="text" placeholder="如：192.168.1.100" required />
+            <input
+              v-model="serverForm.host"
+              type="text"
+              placeholder="如：192.168.1.100"
+              required
+            >
           </div>
           <div class="form-group">
             <label>端口 *</label>
-            <input v-model.number="serverForm.port" type="number" placeholder="22" required />
+            <input
+              v-model.number="serverForm.port"
+              type="number"
+              placeholder="22"
+              required
+            >
           </div>
           <div class="form-group">
             <label>用户名 *</label>
-            <input v-model="serverForm.username" type="text" placeholder="如：root" required />
+            <input
+              v-model="serverForm.username"
+              type="text"
+              placeholder="如：root"
+              required
+            >
           </div>
           <div class="form-group">
             <label>密码 *</label>
-            <input v-model="serverForm.password" type="password" placeholder="服务器密码" required />
+            <input
+              v-model="serverForm.password"
+              type="password"
+              placeholder="服务器密码"
+              required
+            >
           </div>
           <div class="modal-actions">
-            <button type="button" class="btn btn-secondary" @click="closeServerModal">取消</button>
-            <button type="submit" class="btn btn-primary">保存</button>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              @click="closeServerModal"
+            >
+              取消
+            </button>
+            <button
+              type="submit"
+              class="btn btn-primary"
+            >
+              保存
+            </button>
           </div>
         </form>
       </div>
@@ -120,7 +193,7 @@ const authStore = useAuthStore()
 const isDarkMode = computed(() => themeStore.isDarkMode)
 
 const servers = ref([])
-const selectedServerId = ref(null)
+const selectedServerId = ref(sftpStore.currentServerId || null)
 const connectedServers = ref([])
 const showAddServerModal = ref(false)
 const editingServer = ref(null)
@@ -159,6 +232,15 @@ async function fetchServers() {
   try {
     const response = await request.get('/api/server-terminal/servers')
     servers.value = response.data || []
+    if (selectedServerId.value) {
+      const exists = servers.value.some(server => server.id === selectedServerId.value)
+      if (!exists) {
+        selectedServerId.value = null
+        sftpStore.setCurrentServer(null)
+        return
+      }
+      sftpStore.setCurrentServer(selectedServerId.value)
+    }
   } catch (error) {
     console.error('获取服务器列表失败:', error)
   }

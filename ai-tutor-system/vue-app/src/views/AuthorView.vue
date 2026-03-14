@@ -3,8 +3,12 @@
     <div class="container">
       <!-- 页面标题 -->
       <div class="mb-3 text-center">
-        <h1 class="mb-2 text-4xl font-bold">关于作者</h1>
-        <p class="text-lg text-secondary">了解 AI 智能学习助手背后的开发者</p>
+        <h1 class="mb-2 text-4xl font-bold">
+          关于作者
+        </h1>
+        <p class="text-lg text-secondary">
+          了解 AI 智能学习助手背后的开发者
+        </p>
       </div>
 
       <!-- 作者信息卡片 -->
@@ -15,14 +19,20 @@
               src="/preview.jpg"
               alt="XiHuiChen"
               class="avatar-img"
-            />
+            >
           </div>
 
           <!-- 基本信息 -->
           <div class="author-info">
-            <h2 class="text-3xl font-bold">XiHuiChen</h2>
-            <p class="mt-1 text-xl text-secondary">Java 后端开发工程师</p>
-            <p class="mt-1 text-secondary">本科在读 | 软件工程 | 专注后端开发与 AI 应用</p>
+            <h2 class="text-3xl font-bold">
+              XiHuiChen
+            </h2>
+            <p class="mt-1 text-xl text-secondary">
+              Java 后端开发工程师
+            </p>
+            <p class="mt-1 text-secondary">
+              本科在读 | 软件工程 | 专注后端开发与 AI 应用
+            </p>
 
             <!-- 联系方式 -->
             <div class="author-contacts">
@@ -55,12 +65,18 @@
 
         <!-- 教育经历 -->
         <div class="section">
-          <h3 class="section-title">教育经历</h3>
+          <h3 class="section-title">
+            教育经历
+          </h3>
           <div class="education-card">
             <div class="flex justify-between">
               <div>
-                <h4 class="text-xl font-semibold">桂林理工大学</h4>
-                <p class="text-secondary">软件工程 · 本科 · 计算机科学与工程学院</p>
+                <h4 class="text-xl font-semibold">
+                  桂林理工大学
+                </h4>
+                <p class="text-secondary">
+                  软件工程 · 本科 · 计算机科学与工程学院
+                </p>
               </div>
               <span class="text-secondary"> 2023.09 - 2027.06 </span>
             </div>
@@ -69,10 +85,14 @@
 
         <!-- 专业技能 -->
         <div class="section">
-          <h3 class="section-title">专业技能</h3>
+          <h3 class="section-title">
+            专业技能
+          </h3>
           <div class="skills-grid">
             <div class="skill-card">
-              <h4 class="skill-title">后端技术</h4>
+              <h4 class="skill-title">
+                后端技术
+              </h4>
               <div class="skill-tags">
                 <span class="skill-tag backend">Java</span>
                 <span class="skill-tag backend">Spring Boot</span>
@@ -81,7 +101,9 @@
               </div>
             </div>
             <div class="skill-card">
-              <h4 class="skill-title">前端技术</h4>
+              <h4 class="skill-title">
+                前端技术
+              </h4>
               <div class="skill-tags">
                 <span class="skill-tag frontend">Vue.js</span>
                 <span class="skill-tag frontend">React</span>
@@ -94,26 +116,36 @@
 
         <!-- 荣誉奖项 -->
         <div class="section">
-          <h3 class="section-title">荣誉奖项</h3>
+          <h3 class="section-title">
+            荣誉奖项
+          </h3>
           <div class="awards-list">
             <div class="award-item">
               <span class="award-icon">🏆</span>
-              <p class="award-text">第16届蓝桥杯全国软件类国赛三等奖</p>
+              <p class="award-text">
+                第16届蓝桥杯全国软件类国赛三等奖
+              </p>
             </div>
             <div class="award-item">
               <span class="award-icon">⭐</span>
-              <p class="award-text">第六届全国大学生算法设计与编程挑战赛优秀奖</p>
+              <p class="award-text">
+                第六届全国大学生算法设计与编程挑战赛优秀奖
+              </p>
             </div>
             <div class="award-item">
               <span class="award-icon">🎓</span>
-              <p class="award-text">连续两年获得校级三等奖学金（2024、2025学年）</p>
+              <p class="award-text">
+                连续两年获得校级三等奖学金（2024、2025学年）
+              </p>
             </div>
           </div>
         </div>
 
         <!-- 个人简介 -->
         <div class="section">
-          <h3 class="section-title">个人简介</h3>
+          <h3 class="section-title">
+            个人简介
+          </h3>
           <div class="bio-content">
             <p>
               热爱编程，专注于后端开发和AI应用。作为AI智能学习助手项目的主要开发者，致力于打造高效、易用的学习平台。
@@ -129,7 +161,9 @@
 
         <!-- 社交链接 -->
         <div class="section text-center">
-          <h3 class="section-title">联系方式</h3>
+          <h3 class="section-title">
+            联系方式
+          </h3>
           <div class="social-links">
             <a
               href="mailto:3301767269@qq.com"

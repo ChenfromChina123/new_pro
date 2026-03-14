@@ -21,7 +21,10 @@ const currentEditor = computed(() => editorMap[editorStore.editorType])
 </script>
 
 <template>
-  <div class="h-full flex flex-col bg-[var(--bg-secondary)]" @contextmenu="$event => $event.preventDefault()">
+  <div
+    class="h-full flex flex-col bg-[var(--bg-secondary)]"
+    @contextmenu="$event => $event.preventDefault()"
+  >
     <Toolbar />
     <header class="flex bg-[var(--bg-tertiary)] h-9 overflow-x-auto border-b border-[var(--border-color)]">
       <div
@@ -31,7 +34,10 @@ const currentEditor = computed(() => editorMap[editorStore.editorType])
         @click="editorStore.activeFilePath = file.path"
       >
         {{ file.name }}
-        <i @click.stop="editorStore.closeFile(file.path)" class="ml-2 hover:bg-[var(--icon-btn-bg)] rounded p-0.5">×</i>
+        <i
+          class="ml-2 hover:bg-[var(--icon-btn-bg)] rounded p-0.5"
+          @click.stop="editorStore.closeFile(file.path)"
+        >×</i>
       </div>
     </header>
 
@@ -45,9 +51,14 @@ const currentEditor = computed(() => editorMap[editorStore.editorType])
         />
       </keep-alive>
 
-      <div v-if="!editorStore.activeFile" class="flex items-center justify-center h-full text-[var(--text-tertiary)] text-lg">
+      <div
+        v-if="!editorStore.activeFile"
+        class="flex items-center justify-center h-full text-[var(--text-tertiary)] text-lg"
+      >
         <div class="text-center">
-          <div class="text-6xl mb-4">📝</div>
+          <div class="text-6xl mb-4">
+            📝
+          </div>
           <div>从 SFTP 管理器中选择文件进行编辑</div>
         </div>
       </div>

@@ -12,7 +12,7 @@
             </div>
           </div>
         </div>
-        
+
         <div
           ref="messagesContainer"
           class="messages-container"
@@ -29,7 +29,7 @@
               向AI助手提问任何问题，获取专业的解答和帮助
             </p>
           </div>
-          
+
           <div
             v-for="(message, index) in chatStore.messages"
             :key="index"
@@ -48,12 +48,12 @@
             <div class="message-content">
               <div class="message-bubble">
                 <!-- 深度思考内容 -->
-                <div 
-                  v-if="message.reasoning_content" 
+                <div
+                  v-if="message.reasoning_content"
                   class="reasoning-block"
-                  :class="{ 
+                  :class="{
                     'streaming': message.isStreaming && !message.content,
-                    'collapsed': message.isReasoningCollapsed 
+                    'collapsed': message.isReasoningCollapsed
                   }"
                 >
                   <div
@@ -67,12 +67,12 @@
                       </div> -->
                       <div class="header-text">
                         <span class="reasoning-title">深度思考</span>
-                        <span 
-                          v-if="!message.isReasoningCollapsed" 
+                        <span
+                          v-if="!message.isReasoningCollapsed"
                           class="reasoning-subtitle"
                         >AI 推理过程</span>
-                        <span 
-                          v-else-if="message.reasoning_content" 
+                        <span
+                          v-else-if="message.reasoning_content"
                           class="reasoning-count"
                         >
                           {{ getReasoningLength(message.reasoning_content) }} 字
@@ -80,22 +80,22 @@
                       </div>
                     </div>
                     <div class="header-right">
-                      <i 
+                      <i
                         class="fas toggle-icon"
-                        :class="message.isReasoningCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'" 
-                      ></i>
+                        :class="message.isReasoningCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'"
+                      />
                     </div>
                   </div>
-                
+
                   <transition name="reasoning-slide">
-                    <div 
-                      v-show="!message.isReasoningCollapsed" 
+                    <div
+                      v-show="!message.isReasoningCollapsed"
                       class="reasoning-content"
                     >
-                      <div 
+                      <div
                         class="markdown-body"
-                        v-html="formatReasoningCached(message)" 
-                      ></div>
+                        v-html="formatReasoningCached(message)"
+                      />
                     </div>
                   </transition>
                 </div>
@@ -106,7 +106,7 @@
                   class="message-text error-state"
                 >
                   <div class="error-content">
-                    <i class="fas fa-exclamation-triangle error-icon"></i>
+                    <i class="fas fa-exclamation-triangle error-icon" />
                     <span>{{ message.content || '响应异常，请稍后重试' }}</span>
                   </div>
                 </div>
@@ -115,20 +115,20 @@
                   v-else-if="message.content && !message.isStreaming"
                   class="message-text"
                   v-html="formatMessageCached(message, 'content')"
-                ></div>
+                />
                 <div
                   v-else-if="message.content && message.isStreaming"
                   class="message-text"
                 >
-                  <span v-html="formatMessage(sanitizeNullRuns(message.content))"></span>
-                  <span class="typing-cursor"></span>
+                  <span v-html="formatMessage(sanitizeNullRuns(message.content))" />
+                  <span class="typing-cursor" />
                 </div>
                 <!-- 如果流式进行中且没有内容，显示输入状态 -->
                 <div
                   v-else-if="message.isStreaming"
                   class="message-text"
                 >
-                  <span class="typing-cursor"></span>
+                  <span class="typing-cursor" />
                 </div>
                 <!-- 如果流式结束但内容为空，显示空状态提示 -->
                 <div
@@ -136,7 +136,7 @@
                   class="message-text empty-response"
                 >
                   <div class="empty-content">
-                    <i class="fas fa-info-circle info-icon"></i>
+                    <i class="fas fa-info-circle info-icon" />
                     <span>AI 未返回内容，请重试或检查配置。</span>
                   </div>
                 </div>
@@ -146,29 +146,29 @@
               </div>
 
               <!-- 复制按钮 - 移动到建议问题上方 -->
-              <button 
-                class="message-copy-button" 
+              <button
+                class="message-copy-button"
                 title="复制这条消息"
                 @click="copyMessage(message.content)"
               >
-                <i class="fas fa-copy"></i>
+                <i class="fas fa-copy" />
                 <span class="copy-text">复制</span>
               </button>
 
               <!-- 建议问题区域 - 仅在最新一条 AI 消息下方显示 -->
-              <div 
-                v-if="message.role === 'assistant' && index === chatStore.messages.length - 1 && chatStore.suggestions && chatStore.suggestions.length > 0 && !chatStore.isLoading" 
+              <div
+                v-if="message.role === 'assistant' && index === chatStore.messages.length - 1 && chatStore.suggestions && chatStore.suggestions.length > 0 && !chatStore.isLoading"
                 class="suggestions-area"
               >
                 <div class="suggestions-list">
-                  <button 
-                    v-for="(suggestion, sIndex) in chatStore.suggestions" 
+                  <button
+                    v-for="(suggestion, sIndex) in chatStore.suggestions"
                     :key="sIndex"
                     class="suggestion-item"
                     @click="sendSuggestion(suggestion)"
                   >
                     <span class="suggestion-text">{{ suggestion }}</span>
-                    <i class="fas fa-arrow-right suggestion-arrow"></i>
+                    <i class="fas fa-arrow-right suggestion-arrow" />
                   </button>
                 </div>
               </div>
@@ -178,24 +178,24 @@
             <!-- 如果需要保留头像但放在右侧，可以在这里添加 v-if="message.role === 'user'" -->
           </div>
         </div>
-        
+
         <div class="chat-input-area">
           <!-- 返回底部悬浮按钮（移动到输入框上方） -->
           <transition name="fade">
-            <div 
-              v-if="showScrollToBottomBtn" 
+            <div
+              v-if="showScrollToBottomBtn"
               class="scroll-to-bottom-floating"
               @mouseenter="handleMouseEnterScrollBottom"
               @mouseleave="handleMouseLeaveScrollBottom"
               @touchstart="handleMouseEnterScrollBottom"
               @touchend="handleMouseLeaveScrollBottom"
             >
-              <button 
+              <button
                 class="scroll-to-bottom-btn"
                 title="返回底部"
                 @click="scrollToBottom('smooth')"
               >
-                <i class="fas fa-arrow-down"></i>
+                <i class="fas fa-arrow-down" />
                 <span>最新消息</span>
               </button>
             </div>
@@ -210,42 +210,42 @@
               rows="1"
               @input="adjustTextareaHeight"
               @keydown.enter.exact.prevent="sendMessage"
-            ></textarea>
-            
+            />
+
             <div class="input-toolbar">
               <div class="toolbar-left">
                 <!-- 已移除上传附件按钮 -->
-                <button 
-                  class="tool-btn-special" 
+                <button
+                  class="tool-btn-special"
                   :class="{ active: chatStore.selectedModel.includes('reasoner') }"
                   @click="toggleDeepThinking"
                 >
-                  <i class="fas fa-atom"></i>
+                  <i class="fas fa-atom" />
                   <span>深度思考</span>
                 </button>
-                <div 
+                <div
                   ref="modelMenuRef"
-                  class="tool-btn-pill model-pill" 
+                  class="tool-btn-pill model-pill"
                 >
-                  <div 
-                    class="model-selector-trigger" 
+                  <div
+                    class="model-selector-trigger"
                     :class="{ active: isModelMenuOpen }"
                     @click="isModelMenuOpen = !isModelMenuOpen"
                   >
                     <span class="brand-name">{{ currentBrand.name }}</span>
-                    <i 
-                      class="fas fa-chevron-up toggle-arrow" 
-                      :class="{ rotate: isModelMenuOpen }" 
+                    <i
+                      class="fas fa-chevron-up toggle-arrow"
+                      :class="{ rotate: isModelMenuOpen }"
                     />
                   </div>
-                  
+
                   <transition name="menu-fade">
-                    <div 
-                      v-if="isModelMenuOpen" 
+                    <div
+                      v-if="isModelMenuOpen"
                       class="model-dropdown-menu"
                     >
-                      <div 
-                        v-for="brand in brands" 
+                      <div
+                        v-for="brand in brands"
                         :key="brand.id"
                         class="model-menu-item"
                         :class="{ active: currentBrand.id === brand.id }"
@@ -255,19 +255,19 @@
                           <span class="item-name">{{ brand.name }}</span>
                           <span class="item-desc">{{ brand.id === 'deepseek' ? 'DeepSeek-V3.2' : 'DeepSeek-V3.2' }}</span>
                         </div>
-                        <i 
-                          v-if="currentBrand.id === brand.id" 
-                          class="fas fa-check check-icon" 
-                        ></i>
+                        <i
+                          v-if="currentBrand.id === brand.id"
+                          class="fas fa-check check-icon"
+                        />
                       </div>
                     </div>
                   </transition>
                 </div>
               </div>
-              
+
               <div class="toolbar-right">
                 <!-- 已移除无用组件 -->
-                
+
                 <button
                   v-if="chatStore.isLoading"
                   class="stop-btn"
@@ -275,7 +275,7 @@
                   @click="chatStore.stopGeneration"
                 >
                   <div class="stop-icon-wrapper">
-                    <i class="fas fa-stop"></i>
+                    <i class="fas fa-stop" />
                   </div>
                 </button>
                 <button
@@ -286,7 +286,7 @@
                   @click="sendMessage"
                 >
                   <div class="send-icon-wrapper">
-                    <i class="fas fa-arrow-up"></i>
+                    <i class="fas fa-arrow-up" />
                   </div>
                 </button>
               </div>
@@ -304,34 +304,34 @@
         @touchstart="handleMouseEnterNavArrows"
         @touchend="handleMouseLeaveNavArrows"
       >
-        <button 
+        <button
           v-show="canScrollUp"
           class="nav-arrow-btn up"
           title="上一条对话"
           @click="scrollToPrevMessage"
         >
-          <i class="fas fa-chevron-up"></i>
+          <i class="fas fa-chevron-up" />
         </button>
-        <button 
+        <button
           v-show="canScrollDown"
           class="nav-arrow-btn down"
           title="下一条对话"
           @click="scrollToNextMessage"
         >
-          <i class="fas fa-chevron-down"></i>
+          <i class="fas fa-chevron-down" />
         </button>
       </div>
 
       <!-- 历史提问导航面板（右上角悬浮） -->
       <div class="history-nav-container">
-        <button 
+        <button
           class="history-nav-toggle"
           title="提问历史"
           @click="showHistoryPanel = !showHistoryPanel"
         >
-          <i class="fas fa-list-ul"></i>
+          <i class="fas fa-list-ul" />
         </button>
-        
+
         <transition name="slide-fade">
           <div
             v-if="showHistoryPanel"
@@ -343,12 +343,12 @@
                 class="close-btn"
                 @click="showHistoryPanel = false"
               >
-                <i class="fas fa-times"></i>
+                <i class="fas fa-times" />
               </button>
             </div>
             <div class="panel-content">
-              <div 
-                v-for="(msg, index) in userMessages" 
+              <div
+                v-for="(msg, index) in userMessages"
                 :key="index"
                 class="history-item"
                 @click="scrollToMessage(msg.elementIndex)"
@@ -461,7 +461,7 @@ const scrollToPrevMessage = () => {
   if (!messagesContainer.value) return
   const scrollTop = messagesContainer.value.scrollTop
   const elements = Array.from(messagesContainer.value.querySelectorAll('.message'))
-  
+
   // 找到当前视口上方第一条用户消息（有 'user' 类名）
   for (let i = elements.length - 1; i >= 0; i--) {
     if (elements[i].classList.contains('user') && elements[i].offsetTop < scrollTop) {
@@ -481,7 +481,7 @@ const scrollToPrevMessage = () => {
       return
     }
   }
-  
+
   // 如果没有找到上一条用户消息，滚动到顶部
   if (scrollTop > 0) {
     messagesContainer.value.scrollTo({ top: 0, behavior: 'smooth' })
@@ -499,7 +499,7 @@ const scrollToNextMessage = () => {
   const scrollTop = messagesContainer.value.scrollTop
   const viewportBottom = scrollTop + messagesContainer.value.clientHeight
   const elements = Array.from(messagesContainer.value.querySelectorAll('.message'))
-  
+
   // 找到当前视口下方第一条用户消息（有 'user' 类名）
   for (let i = 0; i < elements.length; i++) {
     if (elements[i].classList.contains('user') && elements[i].offsetTop > viewportBottom) {
@@ -519,7 +519,7 @@ const scrollToNextMessage = () => {
       return
     }
   }
-  
+
   // 如果没有找到下一条用户消息，滚动到底部
   const { scrollHeight, clientHeight } = messagesContainer.value
   const distanceToBottom = scrollHeight - scrollTop - clientHeight
@@ -539,10 +539,10 @@ const handleWheel = (e) => {
   // 更新滚动状态，确保按钮显示状态准确
   updatePinnedState()
   handleMessagesScroll()
-  
+
   showNavArrows.value = true
   if (navArrowsTimer) clearTimeout(navArrowsTimer)
-  
+
   // 仅在鼠标未悬停时开启自动隐藏计时器
   if (!isHoveringNavArrows.value) {
     navArrowsTimer = setTimeout(() => {
@@ -553,7 +553,7 @@ const handleWheel = (e) => {
   // 2. 返回底部按钮触发逻辑
   // 优化：更新滚动状态，确保状态是最新的
   updatePinnedState()
-  
+
   // 如果已经在底部，不显示按钮并清除相关状态
   if (isPinnedToBottom.value) {
     showScrollToBottomBtn.value = false
@@ -564,7 +564,7 @@ const handleWheel = (e) => {
     }
     return // 已在底部，无需处理后续逻辑
   }
-  
+
   // 不在底部时的处理逻辑
   if (e.deltaY > 0) {
     // 向下滚动且不在底部时，累加计数
@@ -572,7 +572,7 @@ const handleWheel = (e) => {
     if (scrollDownCount >= 3) {
       showScrollToBottomBtn.value = true
       if (scrollBottomTimer) clearTimeout(scrollBottomTimer)
-      
+
       // 仅在鼠标未悬停时开启自动隐藏计时器
       if (!isHoveringScrollBottom.value) {
         scrollBottomTimer = setTimeout(() => {
@@ -639,19 +639,19 @@ window.copyCodeBlock = (element) => {
   const button = element
   const icon = button.querySelector('i')
   const text = button.querySelector('span')
-  
+
   navigator.clipboard.writeText(code)
     .then(() => {
       // 显示复制成功的反馈
       const originalIconClass = icon ? icon.className : ''
       const originalText = text ? text.textContent : button.textContent
-      
+
       if (icon) icon.className = 'fas fa-check'
       if (text) text.textContent = '已复制!'
       else if (!icon) button.textContent = '已复制!'
-      
+
       button.classList.add('copied')
-      
+
       setTimeout(() => {
         if (icon) icon.className = originalIconClass
         if (text) text.textContent = originalText
@@ -775,12 +775,12 @@ const scheduleAutoScrollToBottom = () => {
  */
 const handleMessagesScroll = () => {
   updatePinnedState()
-  
+
   const el = messagesContainer.value
   if (!el) return
-  
+
   const distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight
-  
+
   // 优化：当已经在底部时，立即隐藏"最新消息"按钮
   if (isPinnedToBottom.value && showScrollToBottomBtn.value) {
     showScrollToBottomBtn.value = false
@@ -805,20 +805,20 @@ const handleMessagesScroll = () => {
       }
     }
   }
-  
+
   // 更新导航箭头状态
   if (messagesContainer.value) {
     const { scrollTop, scrollHeight, clientHeight } = messagesContainer.value
     const distanceToBottom = scrollHeight - scrollTop - clientHeight
-    
+
     // 优化：更精确的判断逻辑
     // 上箭头：如果不在顶部（有内容可以向上滚动）
     canScrollUp.value = scrollTop > 5
-    
+
     // 下箭头：如果不在底部（有内容可以向下滚动）
     // 考虑到底部的阈值，避免在底部时还显示下箭头
     canScrollDown.value = distanceToBottom > SCROLL_BOTTOM_THRESHOLD_PX
-    
+
     // 如果已经在最底部，确保下箭头隐藏
     if (isPinnedToBottom.value) {
       canScrollDown.value = false
@@ -876,10 +876,10 @@ onMounted(async () => {
   if (querySessionId) {
     chatStore.currentSessionId = querySessionId
     await chatStore.fetchSessionMessages(querySessionId)
-    
+
     // 加载草稿
     inputMessage.value = chatStore.getDraft(querySessionId)
-    
+
     // 恢复滚动位置
     nextTick(() => {
       const scrollTop = chatStore.getScrollPosition(querySessionId)
@@ -897,10 +897,10 @@ onMounted(async () => {
     const firstSessionId = chatStore.sessions[0].id
     chatStore.currentSessionId = firstSessionId
     await chatStore.fetchSessionMessages(firstSessionId)
-    
+
     // 加载草稿
     inputMessage.value = chatStore.getDraft(firstSessionId)
-    
+
     // 恢复滚动位置
     nextTick(() => {
       const scrollTop = chatStore.getScrollPosition(firstSessionId)
@@ -912,7 +912,7 @@ onMounted(async () => {
     })
     // 更新 URL
     router.replace(`/chat?session=${firstSessionId}`)
-  } 
+  }
   // 3. 如果没有任何会话，创建一个新的
   else if (!chatStore.currentSessionId && chatStore.sessions.length === 0) {
     const result = await chatStore.createSession()
@@ -938,14 +938,14 @@ watch(
       if (messagesContainer.value) {
         chatStore.saveScrollPosition(oldSessionId, messagesContainer.value.scrollTop)
       }
-      
+
       // 检查旧会话是否需要自动清理 (无消息且无草稿)
       const oldSession = chatStore.sessions.find(s => s.id === oldSessionId)
       // 注意：这里需要检查该会话是否有实际消息。messages.value 已经被 fetchSessionMessages 覆盖，
       // 所以我们需要一个更可靠的方法来检查旧会话是否为空。
       // 为了简单起见，我们假设如果 messages 为空且没有草稿，就应该清理。
       // 但 fetchSessionMessages 是异步的，这里逻辑需要小心。
-      
+
       const oldDraft = chatStore.getDraft(oldSessionId)
       // 如果旧会话没有草稿，且当前消息列表为空（因为即将加载新会话），
       // 我们可能需要从后端或 store 的 sessions 列表中判断消息数。
@@ -955,14 +955,14 @@ watch(
         chatStore.deleteSession(oldSessionId)
       }
     }
-    
+
     // 2. 加载新会话
     if (newSessionId) {
       await chatStore.fetchSessionMessages(newSessionId)
-      
+
       // 加载草稿
       inputMessage.value = chatStore.getDraft(newSessionId)
-      
+
       // 恢复新会话的滚动位置
       nextTick(() => {
         const scrollTop = chatStore.getScrollPosition(newSessionId)
@@ -1053,14 +1053,14 @@ onUnmounted(() => {
     URL.revokeObjectURL(userAvatarUrl.value)
     userAvatarUrl.value = null
   }
-  
+
   // 保存当前滚动位置和草稿
   if (chatStore.currentSessionId) {
     if (messagesContainer.value) {
       chatStore.saveScrollPosition(chatStore.currentSessionId, messagesContainer.value.scrollTop)
     }
     chatStore.saveDraft(chatStore.currentSessionId, inputMessage.value)
-    
+
     // 检查当前会话是否需要自动清理 (无消息且无草稿)
     const currentSession = chatStore.sessions.find(s => s.id === chatStore.currentSessionId)
     if (currentSession && currentSession.title === '新对话' && !inputMessage.value.trim() && chatStore.messages.length === 0) {
@@ -1093,25 +1093,25 @@ const createNewSession = async () => {
 
 const sendMessage = async () => {
   if (!inputMessage.value.trim() || chatStore.isLoading) return
-  
+
   // 如果没有当前会话，先创建一个（仅针对已登录用户）
   // 游客模式下不需要预先创建会话，由后端在发送第一条消息时自动生成
   if (!chatStore.currentSessionId && authStore.isAuthenticated) {
     await createNewSession()
   }
-  
+
   const message = inputMessage.value.trim()
   inputMessage.value = ''
-  
+
   // 清除草稿
   chatStore.saveDraft(chatStore.currentSessionId, '')
-  
+
   // 重置输入框高度
   const textarea = document.querySelector('.chat-input')
   if (textarea) {
     textarea.style.height = 'auto'
   }
-  
+
   isPinnedToBottom.value = true
   await chatStore.sendMessage(message, () => {
     scheduleAutoScrollToBottom()
@@ -1123,7 +1123,7 @@ const sendMessage = async () => {
 const renderMathFormula = (content, placeholders = []) => {
   // 1. 先处理特定格式的公式，比如用户提供的截图中的格式
   let processedContent = content;
-  
+
   // 0. 预处理：标准化 LaTeX 定界符和转义符
   // 处理双反斜杠转义问题 (例如 \\int -> \int, \\( -> \()
   // 仅处理常见的数学命令和定界符，避免破坏换行符 \\
@@ -1152,7 +1152,7 @@ const renderMathFormula = (content, placeholders = []) => {
       return formula;
     }
   };
-  
+
   // 0.5 优先处理标准 LaTeX 块级和行内公式定界符
   // 处理 $$ ... $$
   processedContent = processedContent.replace(/\$\$([\s\S]+?)\$\$/g, (match, formula) => {
@@ -1178,14 +1178,14 @@ const renderMathFormula = (content, placeholders = []) => {
     const formula = `\\int_{${lower}}^{${upper}} ${coeff}x dx = F(${fUpper}) - F(${fLower}) = (${squareUpper}^2) - (${squareLower}^2) = ${val1} - ${val2} = ${result}`;
     return createPlaceholder(formula, true);
   });
-  
+
   // 2. 处理基本定积分公式
   const basicIntegralRegex = /\\int\s*_{(\w+)}^\{(\w+)}\s*f\(x\)\s*,\s*dx\s*=\s*F\((\w+)\)\s*-\s*F\((\w+)\)/g;
   processedContent = processedContent.replace(basicIntegralRegex, (match, lower, upper, fUpper, fLower) => {
     const formula = `\\int_{${lower}}^{${upper}} f(x) dx = F(${fUpper}) - F(${fLower})`;
     return createPlaceholder(formula, true);
   });
-  
+
   // 2.5 处理带 \left. ... \right| 的完整积分公式（优先匹配，因为更具体）
   // 匹配如：\int_{a}^{b} ... dx = \left. ... \right|_{a}^{b} = ...
   // 支持负号下标，如 \int_{-\pi}^{\pi}
@@ -1203,7 +1203,7 @@ const renderMathFormula = (content, placeholders = []) => {
     }
     return match;
   });
-  
+
   // 3. 处理导数基本公式
   const derivativeRegex = /\\left\(([^)]+)\\right\)'\s*=\s*([^\n]+?)(?=\s|$|[\u4e00-\u9fa5]|\[|\(|\)|,)/g;
   processedContent = processedContent.replace(derivativeRegex, (match, func, result) => {
@@ -1218,7 +1218,7 @@ const renderMathFormula = (content, placeholders = []) => {
     }
     return match;
   });
-  
+
   // 4. 处理积分基本公式（带逗号的格式）
   const integralRegex = /\\int\s*([^,\n]+?)\s*,\s*dx\s*=\s*([^\n]+?)(?=\s|$|[\u4e00-\u9fa5]|\[|\(|\)|,)/g;
   processedContent = processedContent.replace(integralRegex, (match, integrand, result) => {
@@ -1233,7 +1233,7 @@ const renderMathFormula = (content, placeholders = []) => {
     }
     return match;
   });
-  
+
   // 4.5 处理不带逗号的积分公式（\int_{a}^{b} ... dx = ...）
   // 支持负号下标和等号后面的多个积分
   const integralNoCommaRegex = /\\int\s*(?:(?:_\{[^}]+\})|(?:_[-a-zA-Z0-9]+))?(?:\^\{[^}]+\}|\^[-a-zA-Z0-9]+)?\s*[^\n]*?\s+dx\s*=\s*[^\n]*?(?:\\int[^\n]*?dx[^\n]*?)?[^\n]+?(?=\s|$|[\u4e00-\u9fa5]|\[|\(|\)|,|\.)/g;
@@ -1248,7 +1248,7 @@ const renderMathFormula = (content, placeholders = []) => {
     }
     return match;
   });
-  
+
   // 4.6 处理简单积分（无上下限的），如 \int x e^x dx
   const simpleIntegralRegex = /\\int\s+[^\n]+?\s+d(?:[a-z]+|\\[a-zA-Z]+)(?=\s|$|[\u4e00-\u9fa5]|\[|\(|\)|,|\.)/g;
   processedContent = processedContent.replace(simpleIntegralRegex, (match) => {
@@ -1264,7 +1264,7 @@ const renderMathFormula = (content, placeholders = []) => {
     }
     return match;
   });
-  
+
   // 5. 处理分式 (已废弃，避免破坏复杂公式结构)
   // const fracRegex = /\\frac{([^}]+)}{([^}]+)}/g;
   // processedContent = processedContent.replace(fracRegex, (match, numerator, denominator) => {
@@ -1283,23 +1283,23 @@ const renderMathFormula = (content, placeholders = []) => {
   processedContent = processedContent.replace(generalIntegralRegex, (match) => {
      // 清理匹配内容：移除HTML标签
      let cleanedMatch = cleanTags(match);
-     
+
      // 找到公式的起始位置（\int的位置）
      const intIndex = cleanedMatch.indexOf('\\int');
      if (intIndex < 0) {
        return match; // 如果没有找到\int，返回原匹配
      }
-     
+
      // 从\int开始提取公式
      let formula = cleanedMatch.substring(intIndex);
-     
+
      // 移除公式末尾的中文和多余标点，但保留公式结构
      // 找到公式的实际结束位置（最后一个数学符号或括号）
      formula = formula.replace(/[\s\u4e00-\u9fa5：:，,。.；;！!？?]+(?=\s*$)/g, '');
      // 移除末尾多余的括号和方括号，但保留公式中的括号
      formula = formula.replace(/\s*\)\s*\]\s*$/, ''); // 只移除末尾的 )]
      formula = formula.replace(/\s*\]\s*$/, ''); // 移除末尾的 ]
-     
+
      // 确保公式完整（至少包含\int和dx或dt等）
      if (formula.trim() && formula.includes('\\int') && /\bd[a-z]+\b/.test(formula)) {
        return createPlaceholder(formula.trim(), true);
@@ -1334,10 +1334,10 @@ const renderMathFormula = (content, placeholders = []) => {
       }
       return match;
   });
-  
+
   // 9. 清理HTML标签 (移除：不要在公式处理阶段盲目替换 br)
   // processedContent = processedContent.replace(/<br\s*\/?>/g, ' ');
-  
+
   return processedContent;
 };
 
@@ -1347,7 +1347,7 @@ const restoreMathFormula = (content, placeholders) => {
   // 更强的正则：匹配带有属性的code标签，以及多行情况
   let html = content.replace(/<pre[^>]*>\s*<code[^>]*>\s*(MATH-PLACEHOLDER-(\d+)-END)\s*<\/code>\s*<\/pre>/gi, '$1');
   html = html.replace(/<code[^>]*>\s*(MATH-PLACEHOLDER-(\d+)-END)\s*<\/code>/gi, '$1');
-  
+
   // 2. 还原占位符
   return html.replace(/MATH-PLACEHOLDER-(\d+)-END/g, (match, index) => {
     return placeholders[parseInt(index)] || match;
@@ -1415,12 +1415,12 @@ const getReasoningLength = (content) => {
 const formatMessage = (content) => {
   try {
     if (!content) return '';
-    
+
     // 0. 预处理：修复可能导致解析问题的特殊标记
     let processedContent = content;
     // 匹配四个或更多反引号，替换为三个（标准代码块标记）
     processedContent = processedContent.replace(/`{4,}/g, '```');
-    
+
     // 1. 保护代码块，避免被后续的数学公式识别或文本清理正则破坏
     const codeBlocks = [];
     // 匹配多行代码块 ```...``` (包括未闭合的) 和 行内代码 `...`
@@ -1443,18 +1443,18 @@ const formatMessage = (content) => {
     cleanContent = cleanContent.replace(/`(\\\[[\s\S]+?\\\])`/g, '$1');
     cleanContent = cleanContent.replace(/`(\\\\([\s\S]+?\\\\))`/g, '$1');
     cleanContent = cleanContent.replace(/`(\\\\int(?:\\[\s\S]|[^`])+?)`/g, '$1');
-    
+
     // 清理公式行中的编号
     cleanContent = cleanContent.replace(/^(\s*)(\d+\.\s*)([\u4e00-\u9fa5：:，,。.；;！!？?\s]*?)(\\\\int|\\\\left|\\\\right|\\\\frac|\\\\sqrt|\\\\sum|\\\\lim|\\\\sin|\\\\cos|\\\\tan|\\\\sec|\\\\ln|\\\\log|\\\\exp)/gm, '$1$4');
-    
+
     // 处理HTML标签问题 - 只处理非代码块区域
     cleanContent = cleanContent.replace(/&lt;\s*\/?\s*(li|ul|ol|p|br|div|span|strong|em)\s*&gt;/gi, '');
     cleanContent = cleanContent.replace(/<\s*\/?\s*(li|ul|ol|p|div|span)\s*>/gi, '');
     cleanContent = cleanContent.replace(/<\s*\/?\s*(strong|em)\s*>/gi, '');
-    
+
     // 处理导数公式
     cleanContent = cleanContent.replace(/\(\(([\s\S]*?)\)\)'\s*=/g, "($1)' =");
-    
+
     // 处理其他文本中的多余括号
     cleanContent = cleanContent.replace(/\(la,\s*b\]\)/g, '[a, b]');
     cleanContent = cleanContent.replace(/\(a,\s*b\)\)/g, '[a, b]');
@@ -1467,7 +1467,7 @@ const formatMessage = (content) => {
     cleanContent = cleanContent.replace(/\)\)/g, ")");
     cleanContent = cleanContent.replace(/\[\s*\\\\int/g, '\\\\int');
     cleanContent = cleanContent.replace(/dx\s*\]/g, 'dx');
-    
+
     // 3. 识别并保护数学公式 (生成占位符)
     const mathPlaceholders = [];
     let contentWithMathPlaceholders = renderMathFormula(cleanContent, mathPlaceholders);
@@ -1481,17 +1481,17 @@ const formatMessage = (content) => {
 
     // 5. 使用marked解析Markdown
     let html = marked.parse(contentToParse.trim());
-    
+
     // 6. 还原数学公式 (将占位符替换回KaTeX生成的HTML)
     html = restoreMathFormula(html, mathPlaceholders);
-    
+
     // 7. 后置清理：处理 marked 解析后可能出现的格式问题
     html = html.replace(/\[\s*<p>\s*/g, '<p>');
     html = html.replace(/\s*<\/p>\s*\]/g, '</p>');
     html = html.replace(/<br\s*\/?>\]\s*<\/p>/g, '</p>');
     html = html.replace(/^\s*\[/g, '');
     html = html.replace(/\]\s*$/g, '');
-    
+
     // 8. 安全过滤，防止 XSS
     return DOMPurify.sanitize(html, {
       ADD_ATTR: ['onclick', 'style', 'class'],
@@ -1509,7 +1509,7 @@ const copyMessage = (content) => {
   const tempDiv = document.createElement('div')
   tempDiv.innerHTML = content
   const plainText = tempDiv.textContent || tempDiv.innerText || ''
-  
+
   // 复制到剪贴板
   navigator.clipboard.writeText(plainText)
     .then(() => {
@@ -1572,7 +1572,7 @@ const selectBrand = (brand) => {
 const toggleDeepThinking = () => {
   const brand = currentBrand.value
   const isReasoning = chatStore.selectedModel.includes('reasoner')
-  
+
   const newModel = isReasoning ? brand.standard : brand.reasoner
   chatStore.setModel(newModel)
 }
@@ -2645,83 +2645,83 @@ body.dark-mode .message-copy-button:hover {
     border-radius: 0;
     box-shadow: none;
   }
-  
+
   .chat-sidebar {
     display: none;
   }
-  
+
   .messages-container {
     padding: 20px 16px;
   }
-  
+
   .chat-input-area {
     padding: 12px 16px 20px;
   }
-  
+
   .message-content {
     max-width: 100%;
   }
-  
+
   .chat-header {
     padding: 12px 16px;
   }
-  
+
   .sidebar-title {
     font-size: 14px;
   }
-  
+
   .empty-icon {
     font-size: 56px;
     margin-bottom: 16px;
   }
-  
+
   .empty-title {
     font-size: 20px;
   }
-  
+
   .empty-description {
     font-size: 14px;
     max-width: 100%;
   }
-  
+
   .nav-arrows {
     display: none;
   }
-  
+
   .input-toolbar {
     flex-wrap: wrap;
     gap: 8px;
   }
-  
+
   .toolbar-left, .toolbar-right {
     gap: 4px;
   }
-  
+
   .model-selector-trigger {
     padding: 6px 10px;
     font-size: 13px;
   }
-  
+
   .send-btn {
     padding: 8px 16px;
     font-size: 13px;
   }
-  
+
   .message-avatar {
     width: 36px;
     height: 36px;
     font-size: 16px;
   }
-  
+
   .message {
     gap: 10px;
     margin-bottom: 20px;
   }
-  
+
   .reasoning-header {
     padding: 6px 10px;
   }
-  
+
   .reasoning-text {
     padding: 12px;
     font-size: 14px;
@@ -2732,23 +2732,23 @@ body.dark-mode .message-copy-button:hover {
   .messages-container {
     padding: 16px 8px;
   }
-  
+
   .message {
     gap: 8px;
     margin-bottom: 16px;
   }
-  
+
   .message-avatar {
     width: 36px;
     height: 36px;
     font-size: 16px;
   }
-  
+
   .message-text {
     padding: 12px 16px;
     font-size: 13px;
   }
-  
+
   .message-content {
     max-width: 100%;
   }
@@ -3103,7 +3103,7 @@ body.dark-mode .nav-arrows {
 }
 
 @keyframes highlight-pulse {
-  0% { 
+  0% {
     background-color: rgba(59, 130, 246, 0.15);
     box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
   }
@@ -3111,7 +3111,7 @@ body.dark-mode .nav-arrows {
     background-color: rgba(59, 130, 246, 0.25);
     box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.15);
   }
-  100% { 
+  100% {
     background-color: transparent;
     box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
   }
@@ -3496,7 +3496,7 @@ body.dark-mode .reasoning-block .reasoning-content :deep(li) {
   .chat-header {
     padding: 12px 16px;
   }
-  
+
   .chat-header-inner {
     margin-left: 0;
     width: 100%;
@@ -3506,7 +3506,7 @@ body.dark-mode .reasoning-block .reasoning-content :deep(li) {
   .messages-container {
     padding: 16px;
   }
-  
+
   .message {
     max-width: 100%;
     padding: 0;
@@ -3526,29 +3526,29 @@ body.dark-mode .reasoning-block .reasoning-content :deep(li) {
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
   }
-  
+
   body.dark-mode .nav-arrows {
     background-color: rgba(30, 41, 59, 0.9);
   }
-  
+
   .nav-arrow-btn {
     width: 36px;
     height: 36px;
   }
-  
+
   /* 移动端历史记录面板适配 */
   .history-nav-container {
     top: 16px; /* Move to header area */
     right: 16px;
     z-index: 100;
   }
-  
+
   .history-nav-toggle {
     width: 32px;
     height: 32px;
     background-color: var(--bg-secondary);
   }
-  
+
   .history-nav-panel {
     position: fixed;
     top: 0;

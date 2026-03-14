@@ -188,8 +188,12 @@
     <!-- Hero 区域 -->
     <section class="hero-section">
       <div class="animate-fade-in-up hero-content">
-        <h1 class="hero-title">开启您的 <span class="gradient-text">智能学习</span> 之旅</h1>
-        <p class="hero-subtitle">集成 AI 问答、个人云盘、单词记忆于一体的智能化全方位学习平台。</p>
+        <h1 class="hero-title">
+          开启您的 <span class="gradient-text">智能学习</span> 之旅
+        </h1>
+        <p class="hero-subtitle">
+          集成 AI 问答、个人云盘、单词记忆于一体的智能化全方位学习平台。
+        </p>
         <div class="hero-actions">
           <router-link
             to="/chat"
@@ -207,8 +211,7 @@
             <span
               v-if="hasLinuxVersion"
               class="platform-badge"
-              >Win/Linux</span
-            >
+            >Win/Linux</span>
           </router-link>
 
           <!-- CodeNova 下载/跳转按钮 -->
@@ -249,8 +252,12 @@
             <div class="dot" />
           </div>
           <div class="card-body">
-            <div class="message ai">您好！我是您的 AI 学习助手。有什么我可以帮您的吗？</div>
-            <div class="message user">我想制定一个学习计划。</div>
+            <div class="message ai">
+              您好！我是您的 AI 学习助手。有什么我可以帮您的吗？
+            </div>
+            <div class="message user">
+              我想制定一个学习计划。
+            </div>
             <div class="message ai typing">
               {{ typingText }}
             </div>
@@ -266,8 +273,12 @@
       class="features-section"
     >
       <div class="section-header reveal">
-        <h2 class="section-title">核心功能</h2>
-        <p class="section-subtitle">为您提供全方位的学习生产力工具</p>
+        <h2 class="section-title">
+          核心功能
+        </h2>
+        <p class="section-subtitle">
+          为您提供全方位的学习生产力工具
+        </p>
       </div>
 
       <div class="features-grid">
@@ -356,14 +367,24 @@
         </div>
         <div class="link-group">
           <h4>产品</h4>
-          <router-link to="/chat"> AI 问答 </router-link>
-          <router-link to="/cloud-disk"> 云盘管理 </router-link>
-          <router-link to="/word-game"> 单词记忆 </router-link>
+          <router-link to="/chat">
+            AI 问答
+          </router-link>
+          <router-link to="/cloud-disk">
+            云盘管理
+          </router-link>
+          <router-link to="/word-game">
+            单词记忆
+          </router-link>
         </div>
         <div class="link-group">
           <h4>支持</h4>
-          <router-link to="/public-files"> 公共资源 </router-link>
-          <router-link to="/agent"> Agent 终端助手 </router-link>
+          <router-link to="/public-files">
+            公共资源
+          </router-link>
+          <router-link to="/agent">
+            Agent 终端助手
+          </router-link>
           <a href="#">使用文档</a>
           <a href="#">常见问题</a>
         </div>

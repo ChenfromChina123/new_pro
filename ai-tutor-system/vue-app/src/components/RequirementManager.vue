@@ -9,7 +9,7 @@
             title="智能生成"
             @click="openSmartGenerate"
           >
-            <i class="fas fa-magic"></i>
+            <i class="fas fa-magic" />
           </button>
           <button
             class="action-btn add-btn"
@@ -49,10 +49,17 @@
             class="title-input"
             :disabled="isGenerating"
           >
-          <div v-if="isGenerating" class="generating-badge">
-            <i class="fas fa-spinner fa-spin"></i> AI 正在撰写中...
-            <button class="stop-btn" @click="stopGeneration" title="停止生成">
-              <i class="fas fa-stop-circle"></i>
+          <div
+            v-if="isGenerating"
+            class="generating-badge"
+          >
+            <i class="fas fa-spinner fa-spin" /> AI 正在撰写中...
+            <button
+              class="stop-btn"
+              title="停止生成"
+              @click="stopGeneration"
+            >
+              <i class="fas fa-stop-circle" />
             </button>
           </div>
         </div>
@@ -60,31 +67,31 @@
           <button
             class="btn"
             :class="{ active: !isPreview }"
-            @click="isPreview = false"
             title="编辑源码"
+            @click="isPreview = false"
           >
-            <i class="fas fa-code"></i>
+            <i class="fas fa-code" />
           </button>
           <button
             class="btn"
             :class="{ active: isPreview }"
-            @click="isPreview = true"
             title="预览文档"
+            @click="isPreview = true"
           >
-            <i class="fas fa-eye"></i>
+            <i class="fas fa-eye" />
           </button>
-          <span class="divider"></span>
+          <span class="divider" />
           <button
             class="btn primary"
-            @click="saveDoc"
             :disabled="isGenerating"
+            @click="saveDoc"
           >
             保存
           </button>
           <button
             class="btn"
-            @click="showHistory"
             :disabled="isGenerating"
+            @click="showHistory"
           >
             历史版本
           </button>
@@ -94,24 +101,33 @@
       <div class="editor-body">
         <textarea
           v-if="!isPreview"
+          ref="editorTextareaRef"
           v-model="currentDoc.content"
           class="content-editor"
           placeholder="在此输入需求文档内容..."
-          ref="editorTextareaRef"
         />
         <div 
           v-else 
-          class="preview-container markdown-body" 
+          ref="previewContainerRef" 
+          class="preview-container markdown-body"
           :class="{ 'is-streaming': isGenerating }"
-          ref="previewContainerRef"
         >
-          <div v-if="currentDoc.content" class="content-wrapper">
-            <div v-html="renderMarkdown(currentDoc.content)"></div>
-            <span v-if="isGenerating" class="streaming-cursor">
-              <i class="fas fa-pencil-alt"></i>
+          <div
+            v-if="currentDoc.content"
+            class="content-wrapper"
+          >
+            <div v-html="renderMarkdown(currentDoc.content)" />
+            <span
+              v-if="isGenerating"
+              class="streaming-cursor"
+            >
+              <i class="fas fa-pencil-alt" />
             </span>
           </div>
-          <div v-else class="empty-preview">
+          <div
+            v-else
+            class="empty-preview"
+          >
             {{ isGenerating ? '正在初始化文档结构...' : '暂无内容' }}
           </div>
         </div>
@@ -122,21 +138,31 @@
       class="empty-state"
     >
       <div class="empty-content">
-        <i class="fas fa-file-alt empty-icon"></i>
+        <i class="fas fa-file-alt empty-icon" />
         <h3>开始您的需求分析</h3>
-        <p class="empty-desc">您可以选择下方演示项目快速了解，或使用 AI 智能生成新文档。</p>
+        <p class="empty-desc">
+          您可以选择下方演示项目快速了解，或使用 AI 智能生成新文档。
+        </p>
         
         <div class="guide-actions">
-          <button class="guide-btn primary" @click="openSmartGenerate">
-            <i class="fas fa-magic"></i> AI 智能生成需求
+          <button
+            class="guide-btn primary"
+            @click="openSmartGenerate"
+          >
+            <i class="fas fa-magic" /> AI 智能生成需求
           </button>
-          <button class="guide-btn" @click="createNew">
-            <i class="fas fa-plus"></i> 手动新建文档
+          <button
+            class="guide-btn"
+            @click="createNew"
+          >
+            <i class="fas fa-plus" /> 手动新建文档
           </button>
         </div>
 
         <div class="demo-section">
-          <p class="demo-title">演示项目推荐：</p>
+          <p class="demo-title">
+            演示项目推荐：
+          </p>
           <div class="demo-grid">
             <div 
               v-for="demo in DEMO_PROJECTS" 
@@ -144,8 +170,12 @@
               class="demo-card"
               @click="loadDemo(demo)"
             >
-              <div class="demo-card-title">{{ demo.title }}</div>
-              <div class="demo-card-desc">{{ demo.content.substring(0, 60) }}...</div>
+              <div class="demo-card-title">
+                {{ demo.title }}
+              </div>
+              <div class="demo-card-desc">
+                {{ demo.content.substring(0, 60) }}...
+              </div>
             </div>
           </div>
         </div>
@@ -194,12 +224,22 @@
       >
         <div class="modal-header">
           <h3>智能需求生成</h3>
-          <button class="close-btn" @click="closeSmartModal">&times;</button>
+          <button
+            class="close-btn"
+            @click="closeSmartModal"
+          >
+            &times;
+          </button>
         </div>
 
         <!-- Step 1: User Idea Input -->
-        <div v-if="smartStep === 1" class="smart-step">
-          <p class="step-desc">请简要描述您的需求想法，AI将为您识别领域并生成细化问题。</p>
+        <div
+          v-if="smartStep === 1"
+          class="smart-step"
+        >
+          <p class="step-desc">
+            请简要描述您的需求想法，AI将为您识别领域并生成细化问题。
+          </p>
           <textarea
             v-model="userIdea"
             class="idea-input"
@@ -207,55 +247,101 @@
             rows="5"
           />
           <div class="modal-footer">
-            <button class="btn primary" :disabled="!userIdea.trim() || isGenerating" @click="generateQuestions">
+            <button
+              class="btn primary"
+              :disabled="!userIdea.trim() || isGenerating"
+              @click="generateQuestions"
+            >
               {{ isGenerating ? '识别中...' : '下一步：识别领域与生成问题' }}
             </button>
           </div>
         </div>
 
         <!-- Step 2: Answering Questions -->
-        <div v-else-if="smartStep === 2" class="smart-step">
+        <div
+          v-else-if="smartStep === 2"
+          class="smart-step"
+        >
           <p class="step-desc">
             识别到领域：<span class="domain-tag">{{ smartDomain }}</span>
           </p>
           <div class="questions-container">
-            <div v-for="(q, index) in smartQuestions" :key="index" class="question-item">
-              <p class="question-title">{{ index + 1 }}. {{ q.title }}</p>
+            <div
+              v-for="(q, index) in smartQuestions"
+              :key="index"
+              class="question-item"
+            >
+              <p class="question-title">
+                {{ index + 1 }}. {{ q.title }}
+              </p>
               
-              <div v-if="q.type === 'radio'" class="options">
-                <label v-for="opt in q.options" :key="opt.value" class="option-label">
-                  <input type="radio" :name="'q'+index" :value="opt.value" v-model="userAnswers[index]">
+              <div
+                v-if="q.type === 'radio'"
+                class="options"
+              >
+                <label
+                  v-for="opt in q.options"
+                  :key="opt.value"
+                  class="option-label"
+                >
+                  <input
+                    v-model="userAnswers[index]"
+                    type="radio"
+                    :name="'q'+index"
+                    :value="opt.value"
+                  >
                   {{ opt.label }}
                 </label>
               </div>
 
-              <div v-else-if="q.type === 'checkbox'" class="options">
-                <label v-for="opt in q.options" :key="opt.value" class="option-label">
-                  <input type="checkbox" :value="opt.value" v-model="userAnswers[index]">
+              <div
+                v-else-if="q.type === 'checkbox'"
+                class="options"
+              >
+                <label
+                  v-for="opt in q.options"
+                  :key="opt.value"
+                  class="option-label"
+                >
+                  <input
+                    v-model="userAnswers[index]"
+                    type="checkbox"
+                    :value="opt.value"
+                  >
                   {{ opt.label }}
                 </label>
               </div>
 
               <!-- 其他补充内容输入框 -->
               <div class="other-supplement">
-                <p class="supplement-label">其他想法/补充 (可选)：</p>
+                <p class="supplement-label">
+                  其他想法/补充 (可选)：
+                </p>
                 <textarea
                   v-model="userOtherThoughts[index]"
                   class="supplement-input"
                   placeholder="如果您对该问题有其他想法或需要补充说明，请在此输入..."
                   rows="2"
-                ></textarea>
+                />
               </div>
             </div>
           </div>
           <div class="modal-footer">
-            <button class="btn" @click="smartStep = 1">上一步</button>
-            <button class="btn primary" :disabled="!isAllAnswered || isGenerating" @click="generateAgentDoc">
+            <button
+              class="btn"
+              @click="smartStep = 1"
+            >
+              上一步
+            </button>
+            <button
+              class="btn primary"
+              :disabled="!isAllAnswered || isGenerating"
+              @click="generateAgentDoc"
+            >
               {{ isGenerating ? '生成中...' : '生成需求文档' }}
             </button>
           </div>
         </div>
-
       </div>
     </div>
   </div>
