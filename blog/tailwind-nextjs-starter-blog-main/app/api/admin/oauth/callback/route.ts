@@ -22,18 +22,34 @@ function buildHtml(origin: string, messageType: 'success' | 'error', payload: st
   const detail = shouldClose
     ? '正在返回后台页面，请稍候...'
     : `请关闭此窗口后重试，错误信息：${payload}`
+  const structuredMessage = shouldClose
+    ? `authorization:github:success:${JSON.stringify({ token: payload, provider: 'github' })}`
+    : ''
+  const plainMessage = shouldClose ? `authorization:github:success:${payload}` : ''
+  const messageBundle = shouldClose ? [structuredMessage, plainMessage, message] : [message]
   return `<!doctype html><html><body><script>
   (function() {
+    var messages = ${JSON.stringify(messageBundle)};
+    var send = function() {
+      if (!window.opener || window.opener === window) {
+        return;
+      }
+      for (var i = 0; i < messages.length; i += 1) {
+        window.opener.postMessage(messages[i], ${JSON.stringify(origin)});
+        window.opener.postMessage(messages[i], '*');
+      }
+    };
     if (window.opener && window.opener !== window) {
-      window.opener.postMessage(${JSON.stringify(message)}, ${JSON.stringify(origin)});
-      window.opener.postMessage(${JSON.stringify(message)}, '*');
+      send();
+      setTimeout(send, 300);
+      setTimeout(send, 900);
     }
     var messageNode = document.createElement('div');
     messageNode.style.cssText = 'font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;padding:24px;line-height:1.6;color:#111827;';
     messageNode.innerHTML = '<h2 style="margin:0 0 8px;">${title}</h2><p style="margin:0;">${detail}</p>';
     document.body.appendChild(messageNode);
     if (${shouldClose}) {
-      setTimeout(function() { window.close(); }, 500);
+      setTimeout(function() { window.close(); }, 1800);
     }
   })();
   </script></body></html>`
@@ -104,8 +120,7 @@ export async function GET(request: Request) {
     })
   }
 
-  const payload = JSON.stringify({ token: accessToken, provider: 'github' })
-  const response = new NextResponse(buildHtml(origin, 'success', payload), {
+  const response = new NextResponse(buildHtml(origin, 'success', accessToken), {
     status: 200,
     headers: { 'content-type': 'text/html; charset=utf-8' },
   })
