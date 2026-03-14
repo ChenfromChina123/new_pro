@@ -19,6 +19,29 @@ Facing issues? Check the [FAQ page](https://github.com/timlrx/tailwind-nextjs-st
 
 Feature request? Check the past discussions to see if it has been brought up previously. Otherwise, feel free to start a new discussion thread. All ideas are welcomed!
 
+## Decap CMS 网页编辑（中文说明）
+
+本项目已接入 Decap CMS，可在网页端直接维护博客内容。
+
+- 后台入口：`/admin`（本地地址：`http://localhost:3200/admin/`）
+- 入口文件：`public/admin/index.html`
+- 配置文件：`public/admin/config.yml`
+- 文章目录：`data/blog`（同时支持 `*.md` 与 `*.mdx`）
+- 界面语言：已设置为中文（`locale: zh_Hans`）
+- 字段说明：标题、日期、标签、草稿、摘要、作者、布局、正文均提供中文解释
+- 发布拦截：发布前会调用 `/api/admin/validate-mdx` 做 MDX 解析校验，失败将拒绝发布并返回中文错误原因
+- 集合说明：`博客文章（MD，推荐）` 用于纯 Markdown；`博客文章（MDX）` 用于包含 JSX 能力的内容
+- 图片插入：在后台编辑器中可直接点击图片按钮上传，图片将保存到 `public/static/images` 并写入正文路径
+- 格式兼容：对正文中误写为 `\*\*加粗\*\*` 的内容已做前端兼容渲染，并修复异常代码围栏导致的整段代码块吞并问题
+
+本地编辑模式启动命令：
+
+```bash
+npx --yes decap-server
+```
+
+启动后在浏览器打开 `/admin` 即可进行可视化编辑。
+
 ## Variations
 
 **Note**: These are community contributed forks using different frameworks or with significant changes to the codebase - not officially supported.
