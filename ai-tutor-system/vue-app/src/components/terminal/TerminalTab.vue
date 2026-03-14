@@ -191,6 +191,19 @@ const pushAutoNavOutput = (text) => {
   appendOutput(`[AutoNav] ${text}\r\n`)
 }
 
+const getTerminalWsUrl = (serverId) => {
+  const wsBaseFromEnv = import.meta.env.VITE_WS_BASE_URL
+  if (wsBaseFromEnv) {
+    const normalizedBase = wsBaseFromEnv
+      .replace(/^http:\/\//, 'ws://')
+      .replace(/^https:\/\//, 'wss://')
+      .replace(/\/$/, '')
+    return `${normalizedBase}/ws/terminal/${serverId}`
+  }
+  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  return `${wsProtocol}//${window.location.host}/ws/terminal/${serverId}`
+}
+
 const sendAutoNavCommand = (reason) => {
   if (!ws || ws.readyState !== WebSocket.OPEN || !autoNavExpectedPath.value) return
   const escapedPath = escapePathForShell(autoNavExpectedPath.value)
@@ -350,13 +363,13 @@ const disconnect = async () => {
 }
 
 const connectWebSocket = () => {
-  const wsUrl = `ws://localhost:5000/ws/terminal/${props.serverId}`
+  const wsUrl = getTerminalWsUrl(props.serverId)
   ws = new WebSocket(wsUrl)
 
   ws.onopen = () => {
     wsConnected.value = true
     appendOutput('正在连接服务器...\r\n')
-    const userId = authStore.user?.id || '1'
+    const userId = authStore.userId || authStore.userInfo?.id || 'unknown'
     ws.send(`connect:${userId}`)
   }
 

@@ -185,6 +185,19 @@ let ctrlKeyPressed = false
 
 const API_BASE = '/api/server-terminal'
 
+const getTerminalWsUrl = (id) => {
+  const wsBaseFromEnv = import.meta.env.VITE_WS_BASE_URL
+  if (wsBaseFromEnv) {
+    const normalizedBase = wsBaseFromEnv
+      .replace(/^http:\/\//, 'ws://')
+      .replace(/^https:\/\//, 'wss://')
+      .replace(/\/$/, '')
+    return `${normalizedBase}/ws/terminal/${id}`
+  }
+  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  return `${wsProtocol}//${window.location.host}/ws/terminal/${id}`
+}
+
 const fetchServerInfo = async () => {
   try {
     const response = await request.get(`${API_BASE}/servers`)
@@ -213,7 +226,7 @@ const connectServer = async () => {
 }
 
 const connectWebSocket = () => {
-  const wsUrl = `ws://localhost:5000/ws/terminal/${serverId.value}`
+  const wsUrl = getTerminalWsUrl(serverId.value)
 
   ws = new WebSocket(wsUrl)
 
@@ -223,7 +236,7 @@ const connectWebSocket = () => {
     connecting.value = false
     appendOutput('正在连接服务器...\r\n')
 
-    const userId = authStore.user?.id || '1'
+    const userId = authStore.userId || authStore.userInfo?.id || 'unknown'
     ws.send(`connect:${userId}`)
   }
 
