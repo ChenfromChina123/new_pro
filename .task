@@ -1,0 +1,3 @@
+1、在博客项目中接入 Decap CMS 网页编辑模块，保持现有 Contentlayer + MDX 渲染链路不变。
+2、新增 `/admin` 管理入口，配置 `data/blog/*.mdx` 的文章创建、编辑、发布字段映射。
+3、补充 README 的使用说明，并完成 lint/build 验证与本地访问确认。

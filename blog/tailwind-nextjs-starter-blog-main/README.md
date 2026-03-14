@@ -33,6 +33,9 @@ Feature request? Check the past discussions to see if it has been brought up pre
 - 集合说明：`博客文章（MD，推荐）` 用于纯 Markdown；`博客文章（MDX）` 用于包含 JSX 能力的内容
 - 图片插入：在后台编辑器中可直接点击图片按钮上传，图片将保存到 `public/static/images` 并写入正文路径
 - 格式兼容：对正文中误写为 `\*\*加粗\*\*` 的内容已做前端兼容渲染，并修复异常代码围栏导致的整段代码块吞并问题
+- 线上登录：已改为自托管 GitHub OAuth（`/api/admin/oauth/auth` 与 `/api/admin/oauth/callback`），不再依赖 Netlify Identity
+- 环境变量：需在服务器配置 `DECAP_GITHUB_CLIENT_ID` 与 `DECAP_GITHUB_CLIENT_SECRET`
+- OAuth 回调：GitHub OAuth App 的 Authorization callback URL 需设置为 `https://blog.aistudy.icu/api/admin/oauth/callback`
 
 本地编辑模式启动命令：
 
@@ -240,6 +243,7 @@ Edit the layout in `app` or content in `data`. With live reloading, the pages au
 
 - 建议使用仓库中的 `blog/start-blog.sh` 启动博客服务（默认端口 `3200`）
 - 脚本已增强端口检测：会识别监听 PID、清理占用并在启动后校验端口归属进程是否来自博客目录，避免误判“启动成功”
+- 脚本启动流程已包含 `npm run build`，每次启动都会先构建再拉起 `next start`
 
 ## Extend / Customize
 

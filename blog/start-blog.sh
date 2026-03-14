@@ -164,13 +164,9 @@ else
   npm install
 fi
 
-# 检查构建
-if [ -d ".next" ]; then
-  echo "✅ 博客系统已构建"
-else
-  echo "⚠️  未找到 .next 构建目录，正在构建..."
-  npm run build
-fi
+echo "🏗️  正在执行构建..."
+npm run build
+echo "✅ 构建完成"
 
 # 检查并释放端口
 echo "🔍 检测端口 $BLOG_PORT..."

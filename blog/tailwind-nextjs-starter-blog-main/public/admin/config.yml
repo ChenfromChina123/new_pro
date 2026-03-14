@@ -2,6 +2,8 @@ backend:
   name: github
   repo: ChenfromChina123/AiSpring
   branch: earthworm-deploy
+  base_url: https://blog.aistudy.icu
+  auth_endpoint: /api/admin/oauth/auth
 
 locale: zh_Hans
 

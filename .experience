@@ -20,3 +20,8 @@
     - 验证：可通过 `curl.exe -I http://localhost:5000` (后端) 和 `http://localhost:3000` (前端) 确认服务是否存活。
     - 注意：若端口被占用，请使用 `netstat -ano | findstr :<port>` 查找 PID 并结束进程，或修改相应配置文件（`application.yml` 或 `vite.config.js`）。
 14. 生产环境 Server Terminal 500 修复经验：`application-prod.yml` 使用 `ddl-auto: none` 时，若仅依赖历史自动建表会导致 `server_connections`/`server_command_executions` 缺失，从而使 `/api/server-terminal/servers` 的 GET/POST 直接报 500；应通过 Flyway 新增显式建表迁移，并将添加接口中的 `serverName` 设为可选且默认回退 `host`，同时禁止打印明文密码到日志。
+15. AI 对话建议与标题稳定性经验：会话建议按钮依赖后端 `session_update` 事件中的 `suggestions`，首轮标题依赖 `title`；若标题/建议生成链路使用了与主对话不同的模型配置（如 `deepseek-chat` 与主链路 `deepseek-v3.2` 不一致），会出现“按钮消失、标题不更新”，应统一模型并让前端会话列表优先使用后端 `session.title`。
+16. 博客系统启动与地址经验：当前实际项目目录为 `blog/tailwind-nextjs-starter-blog-main`（非 `blog/个人博客/...`）；在 Windows 下可进入该目录执行 `chcp 65001` 后 `npm run start` 启动，默认访问地址为 `http://localhost:3200`，局域网访问地址可参考 Next.js 启动日志中的 `Network` 地址（如 `http://198.18.0.1:3200`）。
+17. Decap CMS 中文适配经验：为保证博客后台可直接面向中文使用，应在 `public/admin/config.yml` 中设置 `locale: zh_Hans`，并为集合字段添加 `hint` 中文说明；本地模式下同时启动 `next dev` 与 `npx --yes decap-server`，且将 `local_backend.url` 显式指向 `http://localhost:8081/api/v1`，可避免后台列表出现空内容。
+18. Decap 发布前 MDX 校验经验：可通过 `prePublish` 事件在 `public/admin/cms-guards.js` 中调用服务端校验接口（如 `/api/admin/validate-mdx`），使用 `@mdx-js/mdx` 解析正文；若解析失败应抛出错误中断发布，并向编辑者返回中文原因，避免“后台已发布但前台未更新”的假成功状态。
+19. 博客内容格式兼容经验：若要在网页后台同时支持 Markdown 与 MDX，应将 Contentlayer 的 `filePathPattern` 扩展为 `blog/**/*.{md,mdx}`；Decap 可拆分为“MD 推荐集合”和“MDX 集合”，并复用同一发布前校验逻辑。图片可通过后台编辑器直接上传到 `public/static/images`，正文自动引用路径。

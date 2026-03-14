@@ -45,8 +45,8 @@ export const useChatStore = defineStore('chat', () => {
           createdAt = new Date(session.last_message_time.replace(' ', 'T')).toISOString()
         }
         
-        // 限制标题长度为50个字符
-        const originalTitle = session.last_message || '新对话'
+        // 优先使用后端会话标题（含 AI 生成标题），兜底使用最后一条消息
+        const originalTitle = session.title || session.last_message || '新对话'
         const truncatedTitle = originalTitle.length > 50 
           ? originalTitle.substring(0, 50) + '...' 
           : originalTitle

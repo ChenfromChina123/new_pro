@@ -337,7 +337,7 @@ public class AiChatServiceImpl implements AiChatService {
              return;
         }
 
-        generateTitleAndSuggestionsAsync(prompt, sessionId, userId, emitter);
+        generateTitleAndSuggestionsAsync(prompt, sessionId, userId, emitter, actualModel);
 
         long startMs = System.currentTimeMillis();
         clientToUse.stream(promptObj)
@@ -362,13 +362,13 @@ public class AiChatServiceImpl implements AiChatService {
      */
     private void performBlockingOkHttpChatWithThinking(String prompt, String sessionId, String model, Long userId, String systemPrompt, SseEmitter emitter, StringBuilder fullContent, String ipAddress, StringBuilder fullReasoning, boolean enableThinking) throws IOException {
          long startMs = System.currentTimeMillis();
+         String requestModel = "deepseek-v3.2";
          if (userId != null) {
-             generateTitleAndSuggestionsAsync(prompt, sessionId, userId, emitter);
+             generateTitleAndSuggestionsAsync(prompt, sessionId, userId, emitter, requestModel);
          }
 
          String apiKey = deepseekApiKey;
          String apiUrl = "";
-         String requestModel = "deepseek-v3.2";
 
          // 阿里百炼 API URL - 需要包含 /v1/chat/completions
          if (deepseekApiUrl.contains("dashscope.aliyuncs.com")) {
@@ -510,7 +510,7 @@ public class AiChatServiceImpl implements AiChatService {
     /**
      * 异步生成会话标题和建议问题
      */
-    private void generateTitleAndSuggestionsAsync(String userPrompt, String sessionId, Long userId, SseEmitter emitter) {
+    private void generateTitleAndSuggestionsAsync(String userPrompt, String sessionId, Long userId, SseEmitter emitter, String model) {
         backgroundExecutor.execute(() -> {
             try {
                 if (deepseekChatClient == null) return;
@@ -547,7 +547,7 @@ public class AiChatServiceImpl implements AiChatService {
                         "}";
 
                 OpenAiChatOptions options = OpenAiChatOptions.builder()
-                        .withModel("deepseek-chat")
+                        .withModel((model == null || model.isBlank()) ? "deepseek-v3.2" : model)
                         .withTemperature(0.3f)
                         .build();
 
@@ -614,7 +614,7 @@ public class AiChatServiceImpl implements AiChatService {
                     }
                 }
             } catch (Exception e) {
-                System.err.println("Error generating title and suggestions: " + e.getMessage());
+                log.error("Error generating title and suggestions: {}", e.getMessage(), e);
             }
         });
     }
@@ -792,7 +792,7 @@ public class AiChatServiceImpl implements AiChatService {
             String maskedPrompt = SensitiveDataMasker.mask(prompt);
 
             // 异步生成标题（仅限第一条消息）和建议问题（每条消息）
-            generateTitleAndSuggestionsAsync(prompt, sessionId, userId, null);
+            generateTitleAndSuggestionsAsync(prompt, sessionId, userId, null, model);
 
             ChatClient clientToUse = null;
             String actualModel = model;
