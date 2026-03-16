@@ -107,41 +107,17 @@
           <i class="fas fa-project-diagram" />
           <span>需求分析</span>
         </router-link>
-        <router-link
-          to="/public-files"
+        
+        <!-- 运维工具入口 -->
+        <div
           class="nav-item"
-          active-class="active"
+          :class="{ active: isOpsRoute }"
+          style="cursor: pointer;"
+          @click="router.push('/public-files')"
         >
-          <i class="fas fa-folder-open" />
-          <span>公共资源</span>
-        </router-link>
-        <router-link
-          v-if="authStore.isAdmin"
-          to="/admin"
-          class="nav-item"
-          active-class="active"
-        >
-          <i class="fas fa-cog" />
-          <span>管理</span>
-        </router-link>
-        <router-link
-          v-if="authStore.isAuthenticated"
-          to="/server-terminal"
-          class="nav-item"
-          active-class="active"
-        >
-          <i class="fas fa-server" />
-          <span>服务器终端</span>
-        </router-link>
-        <router-link
-          v-if="authStore.isAuthenticated"
-          to="/sftp"
-          class="nav-item"
-          active-class="active"
-        >
-          <i class="fas fa-folder-open" />
-          <span>SFTP 文件管理</span>
-        </router-link>
+          <i class="fas fa-tools" />
+          <span>运维工具</span>
+        </div>
       </div>
 
       <!-- 存储配额显示 -->
@@ -359,6 +335,50 @@
           </div>
         </template>
 
+        <!-- 运维工具相关的侧边栏内容 -->
+        <template v-else-if="isOpsRoute">
+          <div class="sidebar-header">
+            <h3>🛠️ 运维工具</h3>
+          </div>
+          <div class="sub-nav-list">
+             <router-link
+              to="/public-files"
+              class="sub-nav-item"
+              active-class="active"
+            >
+              <span class="item-icon">📚</span>
+              <span class="item-text">公共资源</span>
+            </router-link>
+            <router-link
+              v-if="authStore.isAdmin"
+              to="/admin"
+              class="sub-nav-item"
+              active-class="active"
+            >
+              <span class="item-icon">⚙️</span>
+              <span class="item-text">管理</span>
+            </router-link>
+            <router-link
+              v-if="authStore.isAuthenticated"
+              to="/server-terminal"
+              class="sub-nav-item"
+              active-class="active"
+            >
+              <span class="item-icon">💻</span>
+              <span class="item-text">服务器终端</span>
+            </router-link>
+            <router-link
+              v-if="authStore.isAuthenticated"
+              to="/sftp"
+              class="sub-nav-item"
+              active-class="active"
+            >
+              <span class="item-icon">📂</span>
+              <span class="item-text">SFTP 文件管理</span>
+            </router-link>
+          </div>
+        </template>
+
         <!-- 其他路由可以根据需要添加内容 -->
         <template v-else>
           <div class="sidebar-empty-tip">
@@ -512,9 +532,10 @@ const toggleSidebarCollapse = () => {
 // 路由判断
 const isChatRoute = computed(() => route.path.startsWith("/chat"));
 const isCloudDiskRoute = computed(() => route.path.startsWith("/cloud-disk"));
-const isPublicFilesRoute = computed(() => route.path.startsWith("/public-files"));
+
 const isLanguageLearningRoute = computed(() => route.path.startsWith("/language-learning"));
 const isRequirementRoute = computed(() => route.path.startsWith("/requirement"));
+const isOpsRoute = computed(() => ["/public-files", "/admin", "/server-terminal", "/sftp"].some(path => route.path.startsWith(path)));
 
 // 头像逻辑
 const avatarUrl = ref(null);

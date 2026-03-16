@@ -201,40 +201,6 @@
         </div>
       </div>
 
-      <!-- 通知设置 -->
-      <div class="settings-section">
-        <h3 class="section-title">
-          通知设置
-        </h3>
-
-        <div class="setting-item">
-          <label class="setting-label">启用系统通知</label>
-          <div class="setting-control">
-            <label class="switch">
-              <input
-                v-model="localSettings.notificationsEnabled"
-                type="checkbox"
-                @change="handleUpdate('notificationsEnabled')"
-              >
-              <span class="slider round" />
-            </label>
-          </div>
-        </div>
-
-        <div class="setting-item">
-          <label class="setting-label">启用邮件通知</label>
-          <div class="setting-control">
-            <label class="switch">
-              <input
-                v-model="localSettings.emailNotifications"
-                type="checkbox"
-                @change="handleUpdate('emailNotifications')"
-              >
-              <span class="slider round" />
-            </label>
-          </div>
-        </div>
-      </div>
 
       <!-- 危险区域 -->
       <div class="settings-section danger-zone">

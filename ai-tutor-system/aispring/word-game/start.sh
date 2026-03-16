@@ -24,16 +24,46 @@ then
     pm2 stop word-game-frontend 2>/dev/null || true
     pm2 delete word-game-frontend 2>/dev/null || true
 
+    echo ">>> [3.5/4] 强制清理端口占用 (防止 PM2 假死)..."
+    # 检查并清理端口 5201 (后端) 和 5200 (前端)
+    for port in 5201 5200; do
+        # 获取占用端口的 PID (Windows netstat)
+        pid=$(netstat -ano | grep ":$port" | awk '{print $5}' | head -n 1)
+        if [ -n "$pid" ] && [ "$pid" != "0" ]; then
+             echo ">>> 端口 $port 被 PID $pid 占用，正在强制终止..."
+             taskkill //F //PID $pid >/dev/null 2>&1 || true
+        fi
+    done
+
     echo ">>> [4/4] 正在通过 PM2 同时启动前后端服务..."
 
     # 1. 启动后端 API (5201 端口)
-    pm2 start server/index.js --name word-game-backend
+    pm2 start server/index.js --name word-game-backend --max-memory-restart 512M
 
     # 2. 启动前端开发服务器 (5200 端口，配置 --host 允许外部访问)
     # 我们已经在 vite.config.ts 中加了 host: true，这里确保启动
     pm2 start npm --name word-game-frontend -- run dev
 
     pm2 save
+
+    echo ">>> [5/5] 执行健康检查..."
+    sleep 5
+
+    # 检查后端端口 5201
+    if netstat -ano | grep ":5201" | grep LISTEN > /dev/null; then
+        echo ">>> ✅ 后端服务 (5201) 启动成功！"
+    else
+        echo ">>> ⚠️  [警告] 后端服务似乎启动失败，端口 5201 未被监听。"
+        echo ">>> 请检查 pm2 logs word-game-backend"
+    fi
+
+    # 检查前端端口 5200
+    if netstat -ano | grep ":5200" | grep LISTEN > /dev/null; then
+        echo ">>> ✅ 前端服务 (5200) 启动成功！"
+    else
+        echo ">>> ⚠️  [警告] 前端服务似乎启动失败，端口 5200 未被监听。"
+        echo ">>> 请检查 pm2 logs word-game-frontend"
+    fi
 
     echo "============================================================"
     echo ">>> 修复启动完成！"

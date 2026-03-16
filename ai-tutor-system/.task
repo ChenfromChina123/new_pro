@@ -1,0 +1,9 @@
+# 任务规划
+
+## 修复 PM2 启动逻辑 (2025-01-16)
+- [x] 分析 PM2 报错 `pidusage invalid` 原因（Windows 下僵尸进程残留）
+- [x] 修改 `aispring/word-game/start.sh`
+    - [x] 增加强制端口清理逻辑 (taskkill / netstat)
+    - [x] 修复前端启动命令缺失的问题
+    - [x] 增加启动后端口健康检查
+- [x] 验证修复逻辑

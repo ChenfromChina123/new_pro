@@ -429,7 +429,10 @@ const connectWebSocket = () => {
 
 const disconnectWebSocket = () => {
   if (ws) {
-    ws.send('disconnect')
+    // 仅在连接开启状态下发送断开消息
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send('disconnect')
+    }
     ws.close()
     ws = null
     wsConnected.value = false

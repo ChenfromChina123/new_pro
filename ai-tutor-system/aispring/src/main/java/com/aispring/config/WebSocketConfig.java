@@ -22,13 +22,19 @@ public class WebSocketConfig implements WebSocketConfigurer, WebSocketMessageBro
 
     private static final Logger log = LoggerFactory.getLogger(WebSocketConfig.class);
 
+    private final SSHWebSocketHandler sshWebSocketHandler;
+
+    public WebSocketConfig(SSHWebSocketHandler sshWebSocketHandler) {
+        this.sshWebSocketHandler = sshWebSocketHandler;
+    }
+
     /**
      * 注册原生 WebSocket 处理器（用于终端）
      */
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         log.info("正在注册 WebSocket 处理器到路径：/ws/terminal/{serverId}");
-        registry.addHandler(new SSHWebSocketHandler(), "/ws/terminal/{serverId}")
+        registry.addHandler(sshWebSocketHandler, "/ws/terminal/{serverId}")
                 .setAllowedOrigins("*");
         log.info("WebSocket 处理器注册成功");
     }
