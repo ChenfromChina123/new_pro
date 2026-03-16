@@ -19,10 +19,12 @@ npm rebuild better-sqlite3 || { echo "警告: npm rebuild 失败，尝试强制�
 echo ">>> [3/4] 准备清理旧的 PM2 进程..."
 if command -v pm2 &> /dev/null
 then
-    pm2 stop word-game-backend 2>/dev/null || true
-    pm2 delete word-game-backend 2>/dev/null || true
-    pm2 stop word-game-frontend 2>/dev/null || true
-    pm2 delete word-game-frontend 2>/dev/null || true
+    echo ">>> [PM2] 执行 pm2 kill 以彻底清除后台残留进程 (解决 pidusage 报错)..."
+    pm2 kill 2>/dev/null || true
+    sleep 2  # 等待 PM2 守护进程退出
+
+    # 删除旧的日志文件以避免混淆
+    rm -f ~/.pm2/logs/word-game-*.log
 
     echo ">>> [3.5/4] 强制清理端口占用 (防止 PM2 假死)..."
     # 检查并清理端口 5201 (后端) 和 5200 (前端)
