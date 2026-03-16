@@ -33,8 +33,8 @@ public class WebSocketConfig implements WebSocketConfigurer, WebSocketMessageBro
      */
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        log.info("正在注册 WebSocket 处理器到路径：/ws/terminal/{serverId}");
-        registry.addHandler(sshWebSocketHandler, "/ws/terminal/{serverId}")
+        log.info("正在注册 WebSocket 处理器到路径：/ws/terminal/{serverId} 和 /api/ws/terminal/{serverId}");
+        registry.addHandler(sshWebSocketHandler, "/ws/terminal/{serverId}", "/api/ws/terminal/{serverId}")
                 .setAllowedOrigins("*");
         log.info("WebSocket 处理器注册成功");
     }

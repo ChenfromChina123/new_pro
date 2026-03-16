@@ -195,7 +195,10 @@ const getTerminalWsUrl = (id) => {
     return `${normalizedBase}/ws/terminal/${id}`
   }
   const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  return `${wsProtocol}//${window.location.host}/ws/terminal/${id}`
+  // 通过 /api 路径转发，依赖 Nginx 将 /api 转发至后端 (含 websocket 升级)
+  // 因为后端的 API 根路径一般会匹配 /api/ws/terminal（如果 Nginx 不重写路径）
+  // 或者是 Nginx 直接监听 /api 然后 proxy_pass http://backend; 此时后端应该接收到 /api/ws/terminal 请求
+  return `${wsProtocol}//${window.location.host}/api/ws/terminal/${id}`
 }
 
 const fetchServerInfo = async () => {

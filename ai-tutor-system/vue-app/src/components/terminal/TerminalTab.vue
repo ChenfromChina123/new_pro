@@ -201,7 +201,13 @@ const getTerminalWsUrl = (serverId) => {
     return `${normalizedBase}/ws/terminal/${serverId}`
   }
   const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  return `${wsProtocol}//${window.location.host}/ws/terminal/${serverId}`
+  // 根据部署环境适配：如果带有特定路径或通过 Nginx 代理，直接使用相对路径或补充完整后端代理路径
+  // 考虑到生产环境通常 Nginx 会把 /api 反代到后端，我们将 WebSocket 请求指向 /api/ws/terminal
+  // 或者是保持原有的 /ws/terminal 但依赖 Nginx location /ws { ... } 配置
+  // 修改为默认带 /api 前缀，这样 Nginx 只需要反向代理 /api 即可，后端代码不需要修改（因为由 Nginx 剥离或后端本就处理）
+  // 注意：后端 SSHWebSocketHandler 注册的路径是 /ws/terminal/{serverId}
+  // 推荐方案：前端直连同源服务器的 /ws/terminal，Nginx 必须配置 location /ws/terminal 的 proxy_pass
+  return `${wsProtocol}//${window.location.host}/api/ws/terminal/${serverId}`
 }
 
 const sendAutoNavCommand = (reason) => {
