@@ -16,6 +16,12 @@
   </div>
 </template>
 
+<script>
+export default {
+  name: 'SftpBreadcrumb'
+}
+</script>
+
 <script setup>
 import { computed } from 'vue'
 

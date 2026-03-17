@@ -1,5 +1,11 @@
+<script>
+export default {
+  name: 'EditorSidebar'
+}
+</script>
+
 <script setup>
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { useEditorStore } from '@/stores/editor'
 
 const editorStore = useEditorStore()

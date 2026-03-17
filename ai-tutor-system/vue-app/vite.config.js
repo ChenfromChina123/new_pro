@@ -1,6 +1,5 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import monacoEditorPlugin from 'vite-plugin-monaco-editor'
 import { fileURLToPath, URL } from 'node:url'
 
 // https://vitejs.dev/config/

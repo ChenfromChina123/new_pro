@@ -87,7 +87,7 @@
           active-class="active"
         >
           <i class="fas fa-book" />
-          <span>语言学习</span>
+          <span>AI 语言学习</span>
         </router-link>
         <router-link
           to="/word-game"
@@ -341,7 +341,7 @@
             <h3>🛠️ 运维工具</h3>
           </div>
           <div class="sub-nav-list">
-             <router-link
+            <router-link
               to="/public-files"
               class="sub-nav-item"
               active-class="active"
@@ -499,7 +499,7 @@ const settingsStore = useSettingsStore();
  * 功能开关：用于临时隐藏模块入口（便于后续恢复）
  */
 const featureFlags = {
-  languageLearning: false,
+  languageLearning: true,
   requirement: false,
 };
 

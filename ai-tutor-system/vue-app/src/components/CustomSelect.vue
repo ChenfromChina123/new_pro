@@ -47,7 +47,10 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 
 const props = defineProps({
-  modelValue: String,
+  modelValue: {
+    type: String,
+    default: ''
+  },
   options: {
     type: Array,
     default: () => []

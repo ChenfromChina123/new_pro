@@ -347,7 +347,7 @@ export const useChatStore = defineStore('chat', () => {
                   onChunk(contentChunk)
                 }
               }
-            } catch (error) {
+            } catch {
               console.warn('Failed to parse SSE data:', data)
             }
           }
@@ -402,7 +402,7 @@ export const useChatStore = defineStore('chat', () => {
                 onChunk(contentChunk)
               }
             }
-          } catch (error) {
+          } catch {
             console.warn('Failed to parse final SSE data:', data)
           }
         }

@@ -32,7 +32,7 @@ export const usePublicFilesStore = defineStore('publicFiles', () => {
     formData.append('file', file)
     
     try {
-      const response = await request.post(API_ENDPOINTS.publicFiles.upload, formData, {
+      await request.post(API_ENDPOINTS.publicFiles.upload, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }

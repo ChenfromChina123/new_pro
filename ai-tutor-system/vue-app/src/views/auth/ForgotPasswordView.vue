@@ -153,7 +153,7 @@ const handleSendCode = async () => {
     } else {
       errorMessage.value = result.message
     }
-  } catch (error) {
+  } catch {
     errorMessage.value = '发送验证码失败，请稍后重试'
   } finally {
     isSendingCode.value = false
@@ -223,7 +223,7 @@ const handleResetPassword = async () => {
     } else {
       errorMessage.value = result.message
     }
-  } catch (error) {
+  } catch {
     errorMessage.value = '重置密码失败，请检查验证码是否正确'
   } finally {
     isLoading.value = false

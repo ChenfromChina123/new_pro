@@ -375,7 +375,6 @@ import DOMPurify from 'dompurify'
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useChatStore } from '@/stores/chat'
 import { useAuthStore } from '@/stores/auth'
-import { useUIStore } from '@/stores/ui'
 import { useRoute, useRouter } from 'vue-router'
 import { marked } from 'marked'
 import katex from 'katex'
@@ -386,7 +385,6 @@ import { API_CONFIG } from '@/config/api'
 
 const chatStore = useChatStore()
 const authStore = useAuthStore()
-const uiStore = useUIStore()
 const router = useRouter()
 const route = useRoute()
 const inputMessage = ref('')

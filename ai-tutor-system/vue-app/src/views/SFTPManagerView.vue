@@ -180,7 +180,6 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useSFTPStore } from '@/stores/sftp'
 import { useThemeStore } from '@/stores/theme'
-import { useAuthStore } from '@/stores/auth'
 import request from '@/utils/request'
 import FilePanel from '@/components/sftp/FilePanel.vue'
 import TransferQueue from '@/components/sftp/TransferQueue.vue'
@@ -188,7 +187,6 @@ import StatusBar from '@/components/sftp/StatusBar.vue'
 
 const sftpStore = useSFTPStore()
 const themeStore = useThemeStore()
-const authStore = useAuthStore()
 
 const isDarkMode = computed(() => themeStore.isDarkMode)
 
@@ -210,20 +208,12 @@ const selectedCount = computed(() => sftpStore.selectedCount)
 const selectedSize = computed(() => sftpStore.selectedSize)
 const transferCount = computed(() => sftpStore.transferCount)
 const transferTasks = computed(() => sftpStore.transferTasks)
-const loading = computed(() => sftpStore.loading)
 
 const currentServerInfo = computed(() => {
   if (!selectedServerId.value) return null
   const server = servers.value.find(s => s.id === selectedServerId.value)
   return server ? { host: server.host, port: server.port } : null
 })
-
-/**
- * 切换主题
- */
-function toggleTheme() {
-  themeStore.toggleTheme()
-}
 
 /**
  * 获取服务器列表
@@ -253,15 +243,6 @@ async function fetchServers() {
 function selectServer(serverId) {
   selectedServerId.value = serverId
   sftpStore.setCurrentServer(serverId)
-}
-
-/**
- * 处理服务器选择变化
- */
-function handleServerChange() {
-  if (selectedServerId.value) {
-    selectServer(selectedServerId.value)
-  }
 }
 
 /**
@@ -295,13 +276,6 @@ async function disconnectServer(serverId) {
   } catch (error) {
     console.error('断开连接失败:', error)
   }
-}
-
-/**
- * 刷新文件列表
- */
-async function refreshFiles() {
-  await sftpStore.fetchFiles()
 }
 
 /**

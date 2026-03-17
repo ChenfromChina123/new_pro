@@ -496,9 +496,6 @@ const handleLinkClick = (url) => {
   }
 };
 
-const navigateToCodeNova = () => {
-  router.push("/codenova");
-};
 const authStore = useAuthStore();
 const themeStore = useThemeStore();
 

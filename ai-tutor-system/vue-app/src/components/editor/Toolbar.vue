@@ -1,23 +1,14 @@
-<script setup>
-import { ref, computed } from 'vue'
-import { useEditorStore } from '@/stores/editor'
+<script>
+export default {
+  name: 'EditorToolbar'
+}
+</script>
 
-const editorStore = useEditorStore()
+<script setup>
+import { ref } from 'vue'
+
 const showToolbar = ref(false)
 const toolbarPosition = ref({ x: 0, y: 0 })
-
-// 计算当前编辑器类型
-const currentEditorType = computed(() => editorStore.editorType)
-
-// 显示工具栏
-function showContextMenu(event) {
-  event.preventDefault()
-  toolbarPosition.value = {
-    x: event.clientX,
-    y: event.clientY
-  }
-  showToolbar.value = true
-}
 
 // 隐藏工具栏
 function hideContextMenu() {

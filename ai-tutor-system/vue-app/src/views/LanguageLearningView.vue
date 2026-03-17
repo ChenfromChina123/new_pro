@@ -269,11 +269,11 @@
                 type="text"
                 class="search-input"
                 placeholder="搜索单词、释义..."
-                @keyup.enter="searchPublic"
+                @keyup.enter="() => { currentPage = 1; searchPublic(); }"
               >
               <button
                 class="btn btn-primary search-btn"
-                @click="searchPublic"
+                @click="() => { currentPage = 1; searchPublic(); }"
               >
                 搜索
               </button>
@@ -293,6 +293,11 @@
                   请选择单词表
                 </option>
                 <option
+                  value="public"
+                  disabled
+                  style="display:none;"
+                />
+                <option
                   v-for="list in vocabularyLists"
                   :key="list.id"
                   :value="list.id"
@@ -301,6 +306,10 @@
                 </option>
               </select>
             </div>
+          </div>
+
+          <div style="margin-bottom: 16px; color: var(--text-secondary); font-size: 14px;">
+            共找到 {{ vocabularyStore.publicSearchTotal }} 个单词
           </div>
 
           <div class="public-results-grid">
@@ -326,7 +335,7 @@
                   class="review-grid"
                 >
                   <div
-                    v-for="w in paginatedResults"
+                    v-for="w in publicResults"
                     :key="w.id"
                     class="review-card-item"
                   >
@@ -356,8 +365,7 @@
                   </div>
                 </div>
               </div>
-                  
-              <!-- 分页组件 -->
+
               <div
                 v-if="totalPages > 1"
                 class="pagination-container"
@@ -368,17 +376,15 @@
                 <div class="pagination-buttons">
                   <button
                     class="btn btn-sm btn-outline"
-                    :disabled="currentPage === 1"
+                    :disabled="currentPage <= 1"
                     @click="goToPage(currentPage - 1)"
                   >
                     上一页
                   </button>
-                  <span class="pagination-page">
-                    第 {{ currentPage }} 页 / 共 {{ totalPages }} 页
-                  </span>
+                  <span class="pagination-current">第 {{ currentPage }} / {{ totalPages }} 页</span>
                   <button
                     class="btn btn-sm btn-outline"
-                    :disabled="currentPage === totalPages"
+                    :disabled="currentPage >= totalPages"
                     @click="goToPage(currentPage + 1)"
                   >
                     下一页
@@ -446,6 +452,9 @@
                             disabled
                           >
                             请选择单词表
+                          </option>
+                          <option value="public">
+                            公共词库 ({{ vocabularyStore.publicSearchTotal || 0 }}词)
                           </option>
                           <option
                             v-for="list in vocabularyLists"
@@ -560,7 +569,8 @@
                       选词与生成
                     </div>
                     <div class="ai-card-subtitle">
-                      <span v-if="currentListId">已加载 {{ currentWords.length }} 个单词</span>
+                      <span v-if="currentListId === 'public'">已加载公共词库，共 {{ vocabularyStore.publicSearchTotal || 0 }} 个单词，当前显示第 {{ currentPage }} 页</span>
+                      <span v-else-if="currentListId">已加载 {{ currentWords.length }} 个单词</span>
                       <span v-else>选择词表后可勾选单词生成文章</span>
                     </div>
                   </div>
@@ -576,10 +586,31 @@
                             :checked="isAllSelected"
                             @change="toggleSelectAll"
                           >
-                          全选/取消全选
-                          <span class="ai-toolbar-meta">已选 {{ selectedWordIds.size }} / {{ currentWords.length }}</span>
+                          全选当前页/取消全选
+                          <span class="ai-toolbar-meta">已选 {{ selectedWordIds.size }} / 20</span>
                         </label>
                         <div class="ai-toolbar-actions">
+                          <div
+                            v-if="currentListId === 'public'"
+                            class="pagination-mini"
+                            style="display: inline-flex; align-items: center; gap: 8px; margin-right: 16px;"
+                          >
+                            <button
+                              class="btn btn-outline btn-sm"
+                              :disabled="currentPage <= 1"
+                              @click="changePublicPage(currentPage - 1)"
+                            >
+                              上一页
+                            </button>
+                            <span style="font-size: 12px; color: var(--text-secondary);">第 {{ currentPage }} 页</span>
+                            <button
+                              class="btn btn-outline btn-sm"
+                              :disabled="publicResults.length < 50"
+                              @click="changePublicPage(currentPage + 1)"
+                            >
+                              下一页
+                            </button>
+                          </div>
                           <button
                             class="btn btn-outline btn-sm"
                             :disabled="selectedWordIds.size === 0"
@@ -613,7 +644,7 @@
                           </thead>
                           <tbody>
                             <tr
-                              v-for="word in currentWords"
+                              v-for="word in (currentListId === 'public' ? publicResults : currentWords)"
                               :key="word.id"
                               :class="{ 'selected': selectedWordIds.has(word.id) }"
                               @click="toggleWordSelection(word.id)"
@@ -751,7 +782,7 @@
         </div>
       </div>
     </div>
-      
+
     <!-- Dialogs -->
     <div
       v-if="showSelectedWords"
@@ -1033,7 +1064,7 @@
         </div>
       </div>
     </div>
-      
+
     <div
       v-if="showAddWord"
       class="modal-overlay"
@@ -1129,10 +1160,6 @@ const articleGenerationComplete = ref(false)
 const currentPage = ref(1)
 const pageSize = ref(50)
 
-const paginatedResults = computed(() => {
-  return vocabularyStore.publicSearchResults
-})
-
 const totalPages = computed(() => {
   return Math.ceil(vocabularyStore.publicSearchTotal / pageSize.value)
 })
@@ -1173,11 +1200,13 @@ const publicResults = computed(() => vocabularyStore.publicSearchResults)
 const isLoading = computed(() => vocabularyStore.isLoading)
 
 const isAllSelected = computed(() => {
-  return currentWords.value.length > 0 && selectedWordIds.size === currentWords.value.length
+  const list = currentListId.value === 'public' ? publicResults.value : currentWords.value
+  return list.length > 0 && selectedWordIds.size === list.length
 })
 
 const selectedWordsDetails = computed(() => {
-  return currentWords.value.filter(w => selectedWordIds.has(w.id))
+  const sourceList = currentListId.value === 'public' ? publicResults.value : currentWords.value
+  return sourceList.filter(w => selectedWordIds.has(w.id))
 })
 
 const canGenerateArticle = computed(() => {
@@ -1334,7 +1363,7 @@ const setupEventListeners = () => {
   window.addEventListener('focus', markActive)
   window.addEventListener('blur', flushDuration)
   document.addEventListener('visibilitychange', onVisibilityChange)
-  
+
   if (!durationTimer) {
     lastTickAt.value = Date.now()
     durationTimer = window.setInterval(tickDuration, 1000)
@@ -1477,7 +1506,7 @@ const buildSelectedWordMetaMap = () => {
  */
 const renderHighlightedParagraph = (paragraph, metaMap) => {
   if (!paragraph) return ''
-  
+
   // 处理代码块
   if (paragraph.startsWith('```') && paragraph.endsWith('```')) {
     const codeContent = paragraph.slice(3, -3).trim()
@@ -1490,7 +1519,7 @@ const renderHighlightedParagraph = (paragraph, metaMap) => {
       </pre>
     `
   }
-  
+
   // 处理普通段落
   const escaped = escapeHtml(paragraph)
   const html = escaped.replace(/\*\*(.+?)\*\*/g, (_, rawWord) => {
@@ -1518,29 +1547,29 @@ window.copyCodeBlock = (element) => {
     console.error('找不到代码块容器');
     return;
   }
-  
+
   const codeElement = preElement.querySelector('code');
   if (!codeElement) {
     console.error('找不到代码元素');
     return;
   }
-  
+
   const code = codeElement.textContent;
   const button = element;
   const icon = button.querySelector('i');
   const text = button.querySelector('span');
-  
+
   navigator.clipboard.writeText(code)
     .then(() => {
       const originalIconClass = icon ? icon.className : '';
       const originalText = text ? text.textContent : button.textContent;
-      
+
       if (icon) icon.className = 'fas fa-check';
       if (text) text.textContent = '已复制';
       else if (!icon) button.textContent = '已复制';
-      
+
       button.classList.add('copied');
-      
+
       setTimeout(() => {
         if (icon) icon.className = originalIconClass;
         if (text) text.textContent = originalText;
@@ -1717,7 +1746,11 @@ const buildHtmlForStudyDownload = (article) => {
 const onListChange = async () => {
   markActive()
   if (currentListId.value) {
-    await vocabularyStore.fetchWords(currentListId.value)
+    if (currentListId.value === 'public') {
+      await searchPublic()
+    } else {
+      await vocabularyStore.fetchWords(currentListId.value)
+    }
     selectedWordIds.clear()
     generatedTopics.value = []
     articleOptions.topic = ''
@@ -1726,10 +1759,11 @@ const onListChange = async () => {
 
 const toggleSelectAll = (e) => {
   markActive()
+  const list = currentListId.value === 'public' ? publicResults.value : currentWords.value
   if (e.target.checked) {
-    currentWords.value.forEach(w => selectedWordIds.add(w.id))
+    list.forEach(w => selectedWordIds.add(w.id))
   } else {
-    selectedWordIds.clear()
+    list.forEach(w => selectedWordIds.delete(w.id))
   }
 }
 
@@ -1757,12 +1791,14 @@ const generateTopics = async () => {
   markActive()
   if (selectedWordIds.size === 0) return
   isGeneratingTopics.value = true
-  
-  const words = currentWords.value
+
+  const sourceList = currentListId.value === 'public' ? publicResults.value : currentWords.value
+  const words = sourceList
     .filter(w => selectedWordIds.has(w.id))
     .map(w => w.word)
-    
-  const result = await vocabularyStore.generateTopics(words, currentList.value?.language || 'en')
+
+  const lang = currentListId.value === 'public' ? 'en' : (currentList.value?.language || 'en')
+  const result = await vocabularyStore.generateTopics(words, lang)
   if (result.success) {
     generatedTopics.value = result.data
   } else {
@@ -1777,28 +1813,36 @@ const generateTopics = async () => {
 const generateArticleNow = async () => {
   markActive()
   if (!currentListId.value || selectedWordIds.size === 0) return
-  
+
   // 显示生成状态指示器
   articleGenerationInProgress.value = true
   articleGenerationComplete.value = false
-  
+
   // 异步执行文章生成，不阻塞主线程
   const generateArticleAsync = async () => {
     try {
+      const sourceList = currentListId.value === 'public' ? publicResults.value : currentWords.value
+      const selectedWordsList = sourceList
+        .filter(w => selectedWordIds.has(w.id))
+        .map(w => w.word)
+      const listIdToPass = currentListId.value === 'public' ? null : currentListId.value
+
       const result = await vocabularyStore.generateArticle({
-        listId: currentListId.value,
+        listId: listIdToPass,
         wordIds: Array.from(selectedWordIds),
+        wordList: selectedWordsList,
         topic: articleOptions.topic,
         difficulty: articleOptions.difficulty,
-        length: articleOptions.length
+        length: articleOptions.length,
+        targetLanguage: currentListId.value === 'public' ? 'en' : (currentList.value?.language || 'en')
       })
-      
+
       if (result.success) {
         // 更新文章列表，用户可以在“我的文章”中查看新生成的文章
         await loadMyArticles(true)
         articleGenerationComplete.value = true
         uiStore.showToast('文章生成成功')
-        
+
         // 3秒后自动隐藏完成提示
         setTimeout(() => {
           articleGenerationComplete.value = false
@@ -1813,7 +1857,7 @@ const generateArticleNow = async () => {
       articleGenerationInProgress.value = false
     }
   }
-  
+
   // 启动异步生成任务
   generateArticleAsync()
 }
@@ -1937,7 +1981,7 @@ const createList = async () => {
     uiStore.showToast('请输入单词表名称')
     return
   }
-  
+
   const result = await vocabularyStore.createList({
     name: newList.value.name.trim(),
     description: newList.value.description?.trim() || '',
@@ -2091,15 +2135,20 @@ const quickReview = async (wordId, masteryLevel) => {
   await Promise.all([vocabularyStore.fetchStats(), vocabularyStore.fetchReviewWords()])
 }
 
+const changePublicPage = async (page) => {
+  if (page < 1) return
+  currentPage.value = page
+  await searchPublic()
+}
+
 const searchPublic = async () => {
   markActive()
   const kw = publicKeyword.value.trim()
   const language = currentList.value?.language || 'en'
-  const result = await vocabularyStore.searchPublic(kw, language)
+  const result = await vocabularyStore.searchPublic(kw, language, currentPage.value, 50)
   if (!result.success) {
     uiStore.showToast('搜索失败: ' + (result.message || '未知错误'))
   }
-  currentPage.value = 1 // 搜索后回到第一页
 }
 
 const addPublicWord = async (w) => {
@@ -2543,11 +2592,11 @@ body.dark-mode .copy-button.copied {
     align-items: flex-start;
     gap: 12px;
   }
-  
+
   .wordlist-selection label {
     min-width: auto;
   }
-  
+
   .wordlist-selection select {
     width: 100%;
   }
@@ -3752,8 +3801,8 @@ select {
 .btn-primary:hover { background: var(--primary-dark); }
 .btn-primary:disabled { background: var(--gray-400); cursor: not-allowed; }
 
-.btn-secondary { 
-  background: var(--bg-tertiary); 
+.btn-secondary {
+  background: var(--bg-tertiary);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
 }
@@ -3784,7 +3833,7 @@ select {
 }
 .btn-icon:hover { background: var(--bg-tertiary); color: var(--danger-color); }
 
-.empty-state { 
+.empty-state {
   text-align: center;
   padding: 40px;
   color: var(--text-tertiary);
@@ -4003,7 +4052,7 @@ select {
   }
 }
 
-  
+
 
 
 @media (max-width: 1024px) and (min-width: 769px) {

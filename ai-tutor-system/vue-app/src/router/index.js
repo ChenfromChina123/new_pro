@@ -39,6 +39,18 @@ const router = createRouter({
           meta: { requiresAuth: true }
         },
         {
+          path: 'word-game/package/:packageId',
+          name: 'WordGamePackage',
+          component: () => import('@/views/WordGameView.vue'),
+          meta: { requiresAuth: true }
+        },
+        {
+          path: 'word-game/game/:packageId/:courseIndex',
+          name: 'WordGameGame',
+          component: () => import('@/views/WordGameView.vue'),
+          meta: { requiresAuth: true }
+        },
+        {
           path: 'public-files',
           name: 'PublicFiles',
           component: () => import('@/views/PublicFilesView.vue'),
@@ -184,4 +196,3 @@ router.beforeEach((to, from, next) => {
 })
 
 export default router
-

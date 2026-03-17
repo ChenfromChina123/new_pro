@@ -237,7 +237,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['connect', 'disconnect'])
+defineEmits(['connect', 'disconnect'])
 
 const sftpStore = useSFTPStore()
 const fileTableRef = ref(null)

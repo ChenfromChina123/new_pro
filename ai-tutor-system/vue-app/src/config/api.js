@@ -19,7 +19,7 @@ const getBaseURL = () => {
 
 export const API_CONFIG = {
   baseURL: getBaseURL(),
-  timeout: 30000,
+  timeout: 120000, // 增加超时时间到120秒，防止翻译等大模型调用超时
   headers: {
     'Content-Type': 'application/json'
   }
@@ -149,6 +149,17 @@ export const API_ENDPOINTS = {
     getArticles: '/api/vocabulary/articles',
     getArticle: (articleId) => `/api/vocabulary/articles/${articleId}`,
     downloadArticlePdf: (articleId) => `/api/vocabulary/articles/${articleId}/download-pdf`
+  },
+
+  aiArticle: {
+    wordLibrary: '/api/ai/article/word-library',
+    recommendTheme: '/api/ai/article/recommend-theme',
+    generate: '/api/ai/article/generate',
+    historyList: '/api/ai/article/history-list',
+    historyDetail: '/api/ai/article/history-detail',
+    exportPdf: '/api/ai/article/export-pdf',
+    deleteHistory: '/api/ai/article/delete-history',
+    clearHistory: '/api/ai/article/clear-history'
   },
 
   // 公共文件

@@ -130,8 +130,8 @@ const handleTranslate = async () => {
   try {
     const response = await request.post(API_ENDPOINTS.translation.translate, {
       text: sourceText.value,
-      targetLanguage: targetLanguage.value || 'English',
-      sourceLanguage: sourceLanguage.value
+      target_language: targetLanguage.value || 'English',
+      source_language: sourceLanguage.value
     })
     
     if (response.code === 200) {

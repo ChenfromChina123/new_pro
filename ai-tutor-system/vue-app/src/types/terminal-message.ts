@@ -66,7 +66,7 @@ export interface MessageAction {
   /** 操作方法签名 */
   method: string
   /** 操作参数 */
-  params?: Record<string, any>
+  params?: Record<string, unknown>
   /** 所需权限等级 */
   requiredPermission: PermissionLevel
 }

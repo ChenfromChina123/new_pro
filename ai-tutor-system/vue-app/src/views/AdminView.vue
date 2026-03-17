@@ -926,7 +926,6 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import request from '@/utils/request'
 import { API_ENDPOINTS } from '@/config/api'
-import AppLayout from '@/components/AppLayout.vue'
 
 const statistics = ref({})
 const tokenStats = ref({
@@ -1341,7 +1340,7 @@ const loadBinaryPreview = async (fileId) => {
         const errorData = JSON.parse(text)
         editContent.value = `获取内容失败: ${errorData.message || errorData.detail || '未知错误'}`
         return
-      } catch (e) {
+      } catch {
         // 不是 JSON，继续按文件处理
       }
     }
@@ -1370,7 +1369,7 @@ const loadBinaryPreview = async (fileId) => {
         const text = await error.response.data.text()
         const errorData = JSON.parse(text)
         errorMessage = `获取内容失败: ${errorData.message || errorData.detail || '服务器内部错误'}`
-      } catch (e) {}
+      } catch {}
     } else if (error.response?.data?.message) {
       errorMessage = `获取内容失败: ${error.response.data.message}`
     }
@@ -1398,7 +1397,7 @@ const downloadFile = async () => {
         const errorData = JSON.parse(text)
         alert('下载失败: ' + (errorData.message || errorData.detail || '未知错误'))
         return
-      } catch (e) {}
+      } catch {}
     }
 
     const downloadUrl = URL.createObjectURL(new Blob([blobData]))
@@ -1418,7 +1417,7 @@ const downloadFile = async () => {
         const text = await error.response.data.text()
         const errorData = JSON.parse(text)
         errorMessage = '下载失败: ' + (errorData.message || errorData.detail || '服务器错误')
-      } catch (e) {}
+      } catch {}
     } else if (error.response?.data?.message) {
       errorMessage = '下载失败: ' + error.response.data.message
     }

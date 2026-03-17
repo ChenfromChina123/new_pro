@@ -11,10 +11,6 @@ export const useCloudDiskStore = defineStore('cloudDisk', () => {
   const activeFolderPath = ref('')
   const selectedFiles = ref([])
   const isLoading = ref(false)
-  const showCreateFolderDialog = ref(false)
-  const showRenameFolderDialog = ref(false)
-  const renamingFolder = ref(null)
-  const renameFolderName = ref('')
   const quota = ref({
     usedSize: 0,
     limitSize: -1,
@@ -471,7 +467,7 @@ export const useCloudDiskStore = defineStore('cloudDisk', () => {
   // 创建文件夹
   async function createFolder(folderName, folderPath = '', parentId = null) {
     try {
-      const response = await request.post(API_ENDPOINTS.cloudDisk.createFolder, {
+      await request.post(API_ENDPOINTS.cloudDisk.createFolder, {
         folderName,
         folderPath,
         parentId
@@ -583,21 +579,21 @@ export const useCloudDiskStore = defineStore('cloudDisk', () => {
   }
 
   // 解决重命名文件夹冲突
-  async function resolveRenameFolder(folderId, action, finalName) {
-    try {
-        const response = await request.put('/api/cloud_disk/resolve-rename-folder', {
-            action,
-            finalName
-        }, {
-            params: { folderId }
-        })
-        await fetchFolders()
-        return { success: true, folder: response.data || response }
-    } catch (error) {
-        console.error('Resolve rename folder error:', error)
-        return { success: false, message: error.response?.data?.message || '重命名文件夹失败' }
-    }
-  }
+  // async function resolveRenameFolder(folderId, action, finalName) {
+  //   try {
+  //       const response = await request.put('/api/cloud_disk/resolve-rename-folder', {
+  //           action,
+  //           finalName
+  //       }, {
+  //           params: { folderId }
+  //       })
+  //       await fetchFolders()
+  //       return { success: true, folder: response.data || response }
+  //   } catch (error) {
+  //       console.error('Resolve rename folder error:', error)
+  //       return { success: false, message: error.response?.data?.message || '重命名文件夹失败' }
+  //   }
+  // }
   
   // 下载文件 (Blob方式)
   async function downloadFileBlob(file) {

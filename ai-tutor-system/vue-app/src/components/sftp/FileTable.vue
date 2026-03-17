@@ -470,15 +470,13 @@ const handleMouseMove = (e) => {
   }
 }
 
-const handleMouseUp = (e) => {
+const handleMouseUp = () => {
   if (isSelecting.value) {
     isSelecting.value = false
     // 计算选中的行
     const rect = containerRef.value?.getBoundingClientRect()
     if (rect) {
-      const selectLeft = Math.min(marqueeStart.value.x, marqueeEnd.value.x) - rect.left
       const selectTop = Math.min(marqueeStart.value.y, marqueeEnd.value.y) - rect.top
-      const selectWidth = Math.abs(marqueeEnd.value.x - marqueeStart.value.x)
       const selectHeight = Math.abs(marqueeEnd.value.y - marqueeStart.value.y)
 
       // 这里需要根据实际行高计算选中的行

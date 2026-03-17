@@ -84,7 +84,7 @@
 <script setup>
 import { ref } from 'vue'
 
-const props = defineProps({
+defineProps({
   visible: Boolean,
   files: {
     type: Array,

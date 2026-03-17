@@ -617,7 +617,7 @@ const generateAgentDoc = async () => {
             scrollTimeout = null
           })
         }
-      } catch (e) {
+      } catch {
         if (!data.startsWith('{')) {
           newDoc.content += data
           scrollToBottom()

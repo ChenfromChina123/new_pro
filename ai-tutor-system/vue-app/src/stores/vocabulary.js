@@ -11,6 +11,8 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
   const stats = ref(null)
   const publicSearchResults = ref([])
   const publicSearchTotal = ref(0)
+  const aiArticleLibrary = ref([])
+  const aiArticleLibraryTotal = ref(0)
   const isLoading = ref(false)
 
   function normalizeList(raw) {
@@ -255,21 +257,27 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
 
   async function generateTopics(words, language) {
     try {
-      const response = await request.post(API_ENDPOINTS.vocabulary.generateTopics, { words, language }, { timeout: 60000 })
+      const response = await request.post(API_ENDPOINTS.aiArticle.recommendTheme, {
+        word_list: words,
+        language
+      }, { timeout: 60000 })
       return { success: true, data: response }
     } catch (error) {
       return { success: false, message: error.response?.data?.detail || error.response?.data?.message || '生成主题失败' }
     }
   }
 
+  // Generate article
   async function generateArticle(payload) {
     try {
-      const response = await request.post(API_ENDPOINTS.vocabulary.generateArticle, {
+      const response = await request.post(API_ENDPOINTS.aiArticle.generate, {
         list_id: payload.listId,
         word_ids: payload.wordIds,
+        word_list: payload.wordList,
         topic: payload.topic,
+        target_language: payload.targetLanguage || 'en',
         difficulty: payload.difficulty,
-        length: payload.length
+        length_type: payload.length
       }, { timeout: 180000 })
       return { success: true, data: response }
     } catch (error) {
@@ -277,13 +285,42 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
     }
   }
 
+  async function fetchArticleWordLibrary(params = {}) {
+    try {
+      const response = await request.get(API_ENDPOINTS.aiArticle.wordLibrary, {
+        params: {
+          library_type: params.libraryType || 'mine',
+          keyword: params.keyword || '',
+          category: params.category || '',
+          language: params.language || '',
+          page_num: params.pageNum || 1,
+          page_size: params.pageSize || 20
+        }
+      })
+      aiArticleLibrary.value = response.list || []
+      aiArticleLibraryTotal.value = response.total || 0
+      return { success: true, data: response }
+    } catch (error) {
+      return { success: false, message: error.response?.data?.detail || error.response?.data?.message || '获取单词库失败' }
+    }
+  }
+
   /**
    * 获取当前用户生成的文章列表
    */
-  async function fetchArticles() {
+  async function fetchArticles(filters = {}) {
     try {
-      const response = await request.get(API_ENDPOINTS.vocabulary.getArticles)
-      return { success: true, data: response || [] }
+      const response = await request.get(API_ENDPOINTS.aiArticle.historyList, {
+        params: {
+          keyword: filters.keyword || '',
+          target_language: filters.targetLanguage || '',
+          start_time: filters.startTime || '',
+          end_time: filters.endTime || '',
+          page_num: filters.pageNum || 1,
+          page_size: filters.pageSize || 10
+        }
+      })
+      return { success: true, data: response.list || [], total: response.total || 0 }
     } catch (error) {
       return { success: false, message: error.response?.data?.detail || error.response?.data?.message || '获取文章列表失败' }
     }
@@ -294,10 +331,45 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
    */
   async function fetchArticle(articleId) {
     try {
-      const response = await request.get(API_ENDPOINTS.vocabulary.getArticle(articleId))
+      const response = await request.get(API_ENDPOINTS.aiArticle.historyDetail, {
+        params: { record_id: articleId }
+      })
       return { success: true, data: response }
     } catch (error) {
       return { success: false, message: error.response?.data?.detail || error.response?.data?.message || '获取文章详情失败' }
+    }
+  }
+
+  async function deleteArticleHistory(recordIdList) {
+    try {
+      const response = await request.post(API_ENDPOINTS.aiArticle.deleteHistory, {
+        record_id_list: recordIdList
+      })
+      return { success: true, data: response }
+    } catch (error) {
+      return { success: false, message: error.response?.data?.detail || error.response?.data?.message || '删除历史失败' }
+    }
+  }
+
+  async function clearArticleHistory() {
+    try {
+      const response = await request.post(API_ENDPOINTS.aiArticle.clearHistory)
+      return { success: true, data: response }
+    } catch (error) {
+      return { success: false, message: error.response?.data?.detail || error.response?.data?.message || '清空历史失败' }
+    }
+  }
+
+  async function exportArticlePdf(payload) {
+    try {
+      const response = await request.post(API_ENDPOINTS.aiArticle.exportPdf, {
+        record_id: payload.recordId,
+        content: payload.content,
+        theme: payload.theme
+      }, { responseType: 'blob', timeout: 60000 })
+      return { success: true, data: response }
+    } catch (error) {
+      return { success: false, message: error.response?.data?.detail || error.response?.data?.message || '导出PDF失败', error }
     }
   }
 
@@ -309,6 +381,8 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
     stats,
     publicSearchResults,
     publicSearchTotal,
+    aiArticleLibrary,
+    aiArticleLibraryTotal,
     isLoading,
     fetchLists,
     createList,
@@ -324,7 +398,11 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
     searchPublic,
     generateTopics,
     generateArticle,
+    fetchArticleWordLibrary,
     fetchArticles,
-    fetchArticle
+    fetchArticle,
+    deleteArticleHistory,
+    clearArticleHistory,
+    exportArticlePdf
   }
 })

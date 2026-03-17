@@ -35,7 +35,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { formatFileSize } from '@/utils/fileIcons'
 
-const props = defineProps({
+defineProps({
   connected: {
     type: Boolean,
     default: false
