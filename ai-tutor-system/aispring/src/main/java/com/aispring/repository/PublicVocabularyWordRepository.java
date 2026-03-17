@@ -47,6 +47,18 @@ public interface PublicVocabularyWordRepository extends JpaRepository<PublicVoca
     Page<PublicVocabularyWord> searchByKeywordPaged(@Param("language") String language, @Param("keyword") String keyword, Pageable pageable);
 
     Page<PublicVocabularyWord> findByLanguageOrderByUsageCountDesc(String language, Pageable pageable);
+
+    @Query("""
+        select p from PublicVocabularyWord p
+        where (:language is null or :language = '' or p.language = :language)
+          and (:keyword is null or :keyword = '' or lower(p.word) like lower(concat('%', :keyword, '%')) or lower(p.definition) like lower(concat('%', :keyword, '%')))
+          and (:category is null or :category = '' or lower(coalesce(p.tag, '')) like lower(concat('%', :category, '%')))
+        order by p.usageCount desc, p.id asc
+        """)
+    Page<PublicVocabularyWord> searchForArticleWordLibrary(@Param("language") String language,
+                                                           @Param("keyword") String keyword,
+                                                           @Param("category") String category,
+                                                           Pageable pageable);
     
     /**
      * 获取最常用的单词

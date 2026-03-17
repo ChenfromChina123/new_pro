@@ -110,7 +110,8 @@ public class AiChatController {
                 request.getPrompt(),
                 request.getSession_id(),
                 request.getModel(),
-                userId);
+                userId,
+                null);
         
         Map<String, Object> responseData = new HashMap<>();
         responseData.put("answer", answer);

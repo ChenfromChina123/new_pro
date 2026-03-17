@@ -82,6 +82,7 @@ public class VocabularyController {
         private String topic;
         private String difficulty;
         private String length;
+        private String targetLanguage;
     }
 
     @Data
@@ -314,7 +315,7 @@ public class VocabularyController {
         Long userId = customUserDetails.getUser().getId();
         GeneratedArticle article = vocabularyService.generateAndSaveArticle(
             userId, request.getListId(), request.getWordIds(), 
-            request.getTopic(), request.getDifficulty(), request.getLength());
+            request.getTopic(), request.getDifficulty(), request.getLength(), request.getTargetLanguage());
         return ResponseEntity.ok(article);
     }
 
@@ -328,8 +329,10 @@ public class VocabularyController {
 
     @GetMapping("/articles/{articleId}")
     public ResponseEntity<GeneratedArticle> getArticle(
-            @PathVariable Integer articleId) {
-        GeneratedArticle article = vocabularyService.getGeneratedArticle(articleId);
+            @PathVariable Integer articleId,
+            @AuthenticationPrincipal CustomUserDetails customUserDetails) {
+        Long userId = customUserDetails.getUser().getId();
+        GeneratedArticle article = vocabularyService.getGeneratedArticle(articleId, userId);
         return ResponseEntity.ok(article);
     }
 
@@ -340,9 +343,7 @@ public class VocabularyController {
             @AuthenticationPrincipal CustomUserDetails customUserDetails) {
         Long userId = customUserDetails.getUser().getId();
         GeneratedArticle article = vocabularyService.getGeneratedArticle(articleId);
-        if (article.getUserId() == null || !article.getUserId().equals(userId)) {
-            throw new CustomException("无权限访问该文章");
-        }
+        article = vocabularyService.getGeneratedArticle(articleId, userId);
 
         byte[] pdfBytes = vocabularyService.renderPdfFromHtml(request.getHtml());
         String baseName = request.getFilename();

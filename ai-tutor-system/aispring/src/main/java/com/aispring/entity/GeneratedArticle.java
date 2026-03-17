@@ -46,6 +46,10 @@ public class GeneratedArticle {
     
     @Column(name = "article_length", length = 50)
     private String articleLength;  // 文章长度
+
+    @Builder.Default
+    @Column(name = "target_language", length = 20, nullable = false)
+    private String targetLanguage = "en";
     
     @Column(name = "original_text", columnDefinition = "TEXT", nullable = false)
     private String originalText;  // 文章原文
@@ -55,9 +59,20 @@ public class GeneratedArticle {
     
     @Column(name = "used_word_ids", columnDefinition = "TEXT")
     private String usedWordIds;  // JSON格式存储使用的单词ID列表
+
+    @Builder.Default
+    @Column(name = "word_count", nullable = false)
+    private Integer wordCount = 0;
     
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
+    @Builder.Default
+    @Column(name = "is_deleted", nullable = false)
+    private Boolean isDeleted = false;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "vocabulary_list_id", insertable = false, updatable = false)
@@ -69,9 +84,27 @@ public class GeneratedArticle {
     
     @PrePersist
     protected void onCreate() {
+        LocalDateTime now = LocalDateTime.now();
         if (createdAt == null) {
-            createdAt = LocalDateTime.now();
+            createdAt = now;
         }
+        if (updatedAt == null) {
+            updatedAt = now;
+        }
+        if (isDeleted == null) {
+            isDeleted = false;
+        }
+        if (targetLanguage == null || targetLanguage.isBlank()) {
+            targetLanguage = "en";
+        }
+        if (wordCount == null) {
+            wordCount = 0;
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 }
 

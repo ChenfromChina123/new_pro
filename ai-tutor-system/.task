@@ -7,3 +7,28 @@
     - [x] 修复前端启动命令缺失的问题
     - [x] 增加启动后端口健康检查
 - [x] 验证修复逻辑
+
+## 单词记忆模块并入主系统计划 (2026-03-17)
+- [x] 盘点现状与迁移边界
+  - 明确 `aispring/word-game` 中前端页面、接口、SQLite 表结构
+  - 明确主系统 `vue-app` 与 `aispring` 的现有路由、鉴权、词汇能力可复用点
+  - 确认目标：不再单独启动 `aispring/word-game`，统一由主前后端承载
+- [x] 后端落地方案（aispring）
+  - 新增 word-game 领域模型（课程包、课程、题目、进度、点击统计）及 Repository
+  - 新增 Flyway 迁移脚本创建对应表，避免依赖自动建表
+  - 新增 `WordGameController/Service`，优先兼容原 `word-game` API 形状
+  - 复用现有 JWT 鉴权，所有数据按 `userId` 强归属隔离
+- [x] 前端并入方案（vue-app）
+  - 新增 word-game 业务模块页面与路由，替换现有 iframe 宿主页
+  - 迁移 `TypingInput/useQuestion/useEnglishSound` 与课程、进度状态管理
+  - 将 API 调用统一接入 `vue-app` 现有请求封装与 token 体系
+  - 保持“单词记忆”入口与主系统视觉/交互一致
+- [x] 数据迁移与兼容
+  - 提供 SQLite 到主库的一次性导入脚本（可按用户/包维度导入）
+  - 为旧数据/游客数据提供迁移接口或登录后合并策略
+  - 保留必要兼容接口，确保前端切换期间可灰度运行
+- [x] 验证与收尾
+  - 联调核心流程：包列表、选课、打字作答、进度保存、完成弹窗
+  - 回归鉴权与越权场景，验证 `userId` 隔离
+  - 更新 `README.md`：启动方式改为仅主系统，不再要求单独启动 word-game
+  - 归档旧 `aispring/word-game` 启动脚本（保留代码用于历史追溯）

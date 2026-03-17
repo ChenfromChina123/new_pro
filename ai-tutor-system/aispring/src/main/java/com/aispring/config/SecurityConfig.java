@@ -43,6 +43,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/resources/public").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/public-files", "/api/public-files/**").permitAll()
                 .requestMatchers("/api/ask", "/api/ask-stream").permitAll()
+                .requestMatchers("/api/translation/translate").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/chat-records/save").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/chat-records/new-session").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/chat-records/sessions").permitAll()

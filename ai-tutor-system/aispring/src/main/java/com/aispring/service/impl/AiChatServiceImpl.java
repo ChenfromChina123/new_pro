@@ -786,7 +786,7 @@ public class AiChatServiceImpl implements AiChatService {
     }
 
     @Override
-    public String ask(String prompt, String sessionId, String model, Long userId, String systemPrompt) {
+    public String ask(String prompt, String sessionId, String model, Long userId, String systemPrompt, String ipAddress) {
         try {
             // 敏感信息脱敏
             String maskedPrompt = SensitiveDataMasker.mask(prompt);
@@ -794,55 +794,85 @@ public class AiChatServiceImpl implements AiChatService {
             // 异步生成标题（仅限第一条消息）和建议问题（每条消息）
             generateTitleAndSuggestionsAsync(prompt, sessionId, userId, null, model);
 
-            ChatClient clientToUse = null;
             String actualModel = model;
-
-            // Only DeepSeek is supported now
-            if ("deepseek".equals(model) || "deepseek-chat".equals(model)) {
-                if (deepseekChatClient != null) {
-                    clientToUse = deepseekChatClient;
-                } else {
-                    clientToUse = chatClientProvider.getIfAvailable();
-                }
-                actualModel = "deepseek-chat";
-            } else {
-                clientToUse = chatClientProvider.getIfAvailable();
-                if (model == null || model.isEmpty()) {
-                    actualModel = "deepseek-chat";
-                }
-            }
-
-            if (clientToUse == null) {
-                return fallbackAnswer(prompt);
-            }
-
             if (actualModel == null || actualModel.isEmpty()) {
-                actualModel = "deepseek-chat";
+                actualModel = "deepseek-v3.2";
+            } else if ("deepseek-chat".equals(actualModel) || "deepseek".equals(actualModel)) {
+                actualModel = "deepseek-v3.2";
             }
 
-            String provider = "deepseek".equals(model) || "deepseek-chat".equals(actualModel) ? "deepseek" : "default";
+            // 使用 REST API 调用阿里百炼
+            long startMs = System.currentTimeMillis();
+            StringBuilder fullContent = new StringBuilder();
+            
+            // 构造消息列表
+            List<Map<String, String>> messages = new ArrayList<>();
+            if (systemPrompt != null && !systemPrompt.isEmpty()) {
+                Map<String, String> sysMsg = new HashMap<>();
+                System.out.println("systemPrompt: " + systemPrompt);
+                sysMsg.put("role", "system");
+                sysMsg.put("content", systemPrompt);
+                messages.add(sysMsg);
+            }
+            
+            Map<String, String> userMsg = new HashMap<>();
+            userMsg.put("role", "user");
+            userMsg.put("content", maskedPrompt);
+            messages.add(userMsg);
 
-            OpenAiChatOptions options = OpenAiChatOptions.builder()
-                    .withModel(actualModel)
-                    .withTemperature(0.7f)
-                    .withMaxTokens(maxTokens)
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("model", actualModel);
+            payload.put("messages", messages);
+            payload.put("stream", false);
+            payload.put("temperature", 0.7);
+            payload.put("max_tokens", maxTokens);
+
+            String jsonPayload = objectMapper.writeValueAsString(payload);
+            RequestBody body = RequestBody.create(jsonPayload, MediaType.get("application/json; charset=utf-8"));
+            
+            String finalUrl = deepseekApiUrl;
+            if (finalUrl != null && !finalUrl.endsWith("/chat/completions")) {
+                if (finalUrl.endsWith("/")) {
+                    finalUrl += "v1/chat/completions";
+                } else {
+                    finalUrl += "/v1/chat/completions";
+                }
+            }
+
+            Request request = new Request.Builder()
+                    .url(finalUrl)
+                    .addHeader("Authorization", "Bearer " + deepseekApiKey)
+                    .post(body)
                     .build();
 
-            Prompt promptObj = buildPrompt(maskedPrompt, sessionId, userId, null, options, systemPrompt);
+            try (Response response = okHttpClient.newCall(request).execute()) {
+                if (!response.isSuccessful()) {
+                    String errorBody = response.body() != null ? response.body().string() : "null";
+                    log.error("AI API Error: Code={}, Body={}", response.code(), errorBody);
+                    throw new IOException("Unexpected code " + response);
+                }
 
-            final ChatClient finalClient = clientToUse;
-            log.info("Sending request to AI. Model: {}, Prompt length: {}", actualModel, prompt.length());
+                if (response.body() == null) throw new IOException("Response body is null");
+                
+                String responseBody = response.body().string();
+                JsonNode rootNode = objectMapper.readTree(responseBody);
+                if (rootNode.has("choices") && rootNode.get("choices").isArray() && rootNode.get("choices").size() > 0) {
+                    JsonNode choice = rootNode.get("choices").get(0);
+                    if (choice.has("message") && choice.get("message").has("content")) {
+                        fullContent.append(choice.get("message").get("content").asText());
+                    }
+                }
+            }
 
-            long startMs = System.currentTimeMillis();
-            ChatResponse response = finalClient.call(promptObj);
             long responseTimeMs = System.currentTimeMillis() - startMs;
-
-            String content = response.getResult().getOutput().getContent();
-            log.info("AI Response received. Length: {}", content != null ? content.length() : 0);
+            String content = fullContent.toString();
+            
+            log.info("AI Response received. Length: {}", content.length());
 
             // 记录 Token 消耗审计
+            String provider = "deepseek";
             tokenUsageAuditService.recordEstimated(provider, actualModel, userId, sessionId,
-                    prompt.length(), content != null ? content.length() : 0, responseTimeMs, false);
+                    prompt.length(), content.length(), responseTimeMs, false);
 
             return content;
         } catch (Exception e) {

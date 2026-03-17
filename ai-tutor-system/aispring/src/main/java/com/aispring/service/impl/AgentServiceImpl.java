@@ -39,7 +39,7 @@ public class AgentServiceImpl implements AgentService {
         String prompt = String.format(template, userIdea);
         
         // 调用AI生成题目
-        String response = aiChatService.ask(prompt, null, DEFAULT_MODEL, userId);
+        String response = aiChatService.ask(prompt, null, DEFAULT_MODEL, userId, null);
         
         // 简单清洗响应，确保是纯JSON（有时AI会带Markdown标记）
         if (response != null) {

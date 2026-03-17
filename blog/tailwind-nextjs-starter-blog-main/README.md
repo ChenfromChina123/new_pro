@@ -19,24 +19,32 @@ Facing issues? Check the [FAQ page](https://github.com/timlrx/tailwind-nextjs-st
 
 Feature request? Check the past discussions to see if it has been brought up previously. Otherwise, feel free to start a new discussion thread. All ideas are welcomed!
 
-## 博客后台编辑（中文说明）
+## Decap CMS 网页编辑（中文说明）
 
-本项目已提供独立后台编辑页面，不依赖 GitHub OAuth 登录。
+本项目已接入 Decap CMS，可在网页端直接维护博客内容。
 
 - 后台入口：`/admin`（本地地址：`http://localhost:3200/admin/`）
+- 入口文件：`public/admin/index.html`
+- 配置文件：`public/admin/config.yml`
 - 文章目录：`data/blog`（同时支持 `*.md` 与 `*.mdx`）
-- 登录接口：`/api/admin/auth/login`（会话 Cookie 模式）
-- 列表/编辑接口：`/api/admin/posts` 与 `/api/admin/posts/[slug]`
-- 内容校验：保存时会调用 MDX 编译做语法校验，避免写入不可解析内容
-- 兼容跳转：`/admin/index.html` 会自动跳转到 `/admin/`
+- 界面语言：已设置为中文（`locale: zh_Hans`）
+- 字段说明：标题、日期、标签、草稿、摘要、作者、布局、正文均提供中文解释
+- 发布拦截：发布前会调用 `/api/admin/validate-mdx` 做 MDX 解析校验，失败将拒绝发布并返回中文错误原因
+- 集合说明：`博客文章（MD，推荐）` 用于纯 Markdown；`博客文章（MDX）` 用于包含 JSX 能力的内容
+- 图片插入：在后台编辑器中可直接点击图片按钮上传，图片将保存到 `public/static/images` 并写入正文路径
+- 格式兼容：对正文中误写为 `\*\*加粗\*\*` 的内容已做前端兼容渲染，并修复异常代码围栏导致的整段代码块吞并问题
+- 线上登录：已改为自托管 GitHub OAuth（`/api/admin/oauth/auth` 与 `/api/admin/oauth/callback`），不再依赖 Netlify Identity
+- 环境变量：需在服务器配置 `DECAP_GITHUB_CLIENT_ID`、`DECAP_GITHUB_CLIENT_SECRET`，建议同时配置 `DECAP_PUBLIC_ORIGIN=https://blog.aistudy.icu`
+- OAuth 回调：GitHub OAuth App 的 Authorization callback URL 需设置为 `https://blog.aistudy.icu/api/admin/oauth/callback`
+- 若登录弹窗出现 `about:blank` 后无反应，通常是回传消息被跨域源校验拦截，优先检查 `DECAP_PUBLIC_ORIGIN` 是否与实际访问域名一致
 
-部署时请配置以下环境变量：
+本地编辑模式启动命令：
 
 ```bash
-BLOG_ADMIN_USERNAME=admin
-BLOG_ADMIN_PASSWORD=请设置高强度密码
-BLOG_ADMIN_SESSION_SECRET=请设置随机长字符串作为会话签名密钥
+npx --yes decap-server
 ```
+
+启动后在浏览器打开 `/admin` 即可进行可视化编辑。
 
 ## Variations
 

@@ -2,6 +2,7 @@ package com.aispring.repository;
 
 import com.aispring.entity.ArticleUsedWord;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -19,6 +20,9 @@ public interface ArticleUsedWordRepository extends JpaRepository<ArticleUsedWord
      */
     List<ArticleUsedWord> findByArticleId(Integer articleId);
 
-    @Query("select auw from ArticleUsedWord auw join fetch auw.word where auw.articleId = :articleId")
+    @Query("select auw from ArticleUsedWord auw left join fetch auw.word where auw.articleId = :articleId")
     List<ArticleUsedWord> findByArticleIdWithWord(@Param("articleId") Integer articleId);
+
+    @Modifying
+    void deleteByArticleIdIn(List<Integer> articleIds);
 }

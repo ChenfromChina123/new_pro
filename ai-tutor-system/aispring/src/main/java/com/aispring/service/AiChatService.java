@@ -33,14 +33,22 @@ public interface AiChatService {
      * @param model 模型名称
      * @param userId 用户ID
      * @param systemPrompt 系统提示词
+     * @param ipAddress 客户端IP
      * @return 非流式响应
      */
-    String ask(String prompt, String sessionId, String model, Long userId, String systemPrompt);
+    String ask(String prompt, String sessionId, String model, Long userId, String systemPrompt, String ipAddress);
     
+    /**
+     * AI非流式问答（兼容旧接口）
+     */
+    default String ask(String prompt, String sessionId, String model, Long userId, String systemPrompt) {
+        return ask(prompt, sessionId, model, userId, systemPrompt, null);
+    }
+
     /**
      * AI非流式问答（默认系统提示词）
      */
     default String ask(String prompt, String sessionId, String model, Long userId) {
-        return ask(prompt, sessionId, model, userId, null);
+        return ask(prompt, sessionId, model, userId, null, null);
     }
 }

@@ -33,7 +33,7 @@ public class ArticleUsedWord {
     @Column(name = "article_id", nullable = false)
     private Integer articleId;
     
-    @Column(name = "word_id", nullable = false)
+    @Column(name = "word_id")
     private Integer wordId;
     
     @Column(name = "word_text", length = 100, nullable = false)

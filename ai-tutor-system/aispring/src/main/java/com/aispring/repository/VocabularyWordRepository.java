@@ -1,7 +1,11 @@
 package com.aispring.repository;
 
 import com.aispring.entity.VocabularyWord;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -42,5 +46,18 @@ public interface VocabularyWordRepository extends JpaRepository<VocabularyWord, 
      * 根据ID列表查找单词
      */
     List<VocabularyWord> findByIdIn(List<Integer> ids);
+
+    @Query("""
+        select vw from VocabularyWord vw
+        join VocabularyList vl on vl.id = vw.vocabularyListId
+        where vl.createdBy = :userId
+          and (:keyword is null or :keyword = '' or lower(vw.word) like lower(concat('%', :keyword, '%')) or lower(vw.definition) like lower(concat('%', :keyword, '%')))
+          and (:category is null or :category = '' or lower(coalesce(vw.partOfSpeech, '')) like lower(concat('%', :category, '%')))
+        order by vw.createdAt desc
+        """)
+    Page<VocabularyWord> searchMineWords(@Param("userId") Long userId,
+                                         @Param("keyword") String keyword,
+                                         @Param("category") String category,
+                                         Pageable pageable);
 }
 

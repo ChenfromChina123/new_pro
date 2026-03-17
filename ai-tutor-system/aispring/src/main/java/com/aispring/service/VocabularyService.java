@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,10 +18,12 @@ import java.io.File;
 import java.io.OutputStream;
 import java.lang.reflect.Method;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.Locale;
 import java.util.stream.Collectors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -33,6 +36,7 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 @Slf4j
 public class VocabularyService {
+    private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     
     private final VocabularyListRepository vocabularyListRepository;
     private final VocabularyWordRepository vocabularyWordRepository;
@@ -243,20 +247,79 @@ public class VocabularyService {
     }
 
     public record PublicSearchResult(List<PublicVocabularyWord> words, long total, int page, int size) {}
+
+    public record ArticleWordLibraryItem(Integer wordId,
+                                         String word,
+                                         String category,
+                                         String explain,
+                                         String createTime,
+                                         String libraryType) {}
+
+    public record ArticleWordLibraryResult(long total, List<ArticleWordLibraryItem> list, int pageNum, int pageSize) {}
+
+    public record ArticleHistoryResult(long total, List<GeneratedArticle> list, int pageNum, int pageSize) {}
+
+    @Transactional(readOnly = true)
+    public ArticleWordLibraryResult getArticleWordLibrary(Long userId, String libraryType, String keyword, String category,
+                                                          Integer pageNum, Integer pageSize, String language) {
+        int safePage = pageNum == null ? 1 : Math.max(1, pageNum);
+        int safeSize = pageSize == null ? 20 : Math.min(Math.max(1, pageSize), 100);
+        String type = libraryType == null ? "mine" : libraryType.trim().toLowerCase(Locale.ROOT);
+        String safeKeyword = keyword == null ? "" : keyword.trim();
+        String safeCategory = category == null ? "" : category.trim();
+        String safeLanguage = language == null ? "" : language.trim();
+        Pageable pageable = PageRequest.of(safePage - 1, safeSize);
+
+        if ("public".equals(type)) {
+            Page<PublicVocabularyWord> page = publicVocabularyWordRepository.searchForArticleWordLibrary(
+                safeLanguage, safeKeyword, safeCategory, pageable
+            );
+            List<ArticleWordLibraryItem> list = page.getContent().stream()
+                .map(word -> new ArticleWordLibraryItem(
+                    word.getId(),
+                    word.getWord(),
+                    word.getTag(),
+                    word.getDefinition(),
+                    word.getCreatedAt() == null ? null : word.getCreatedAt().format(DATETIME_FORMATTER),
+                    "public"
+                ))
+                .toList();
+            return new ArticleWordLibraryResult(page.getTotalElements(), list, safePage, safeSize);
+        }
+
+        Page<VocabularyWord> page = vocabularyWordRepository.searchMineWords(userId, safeKeyword, safeCategory, pageable);
+        List<ArticleWordLibraryItem> list = page.getContent().stream()
+            .map(word -> new ArticleWordLibraryItem(
+                word.getId(),
+                word.getWord(),
+                word.getPartOfSpeech(),
+                word.getDefinition(),
+                word.getCreatedAt() == null ? null : word.getCreatedAt().format(DATETIME_FORMATTER),
+                "mine"
+            ))
+            .toList();
+        return new ArticleWordLibraryResult(page.getTotalElements(), list, safePage, safeSize);
+    }
     
     /**
      * 生成文章主题建议
      */
     public List<String> generateArticleTopics(List<String> words, String language) {
+        if (words == null || words.isEmpty()) {
+            throw new CustomException("请先选择至少1个单词");
+        }
+        if (words.size() > 20) {
+            throw new CustomException("单次最多选择20个单词");
+        }
         String wordsStr = String.join(", ", words);
         String prompt = String.format(
-            "我有以下 %s 单词列表：[%s]。请建议 6 个简短的中文文章标题，要求这些标题能涵盖这些单词。 " +
-            "每个标题不得超过 8 个汉字。 " +
+            "我有以下单词列表：[%s]。目标语言是%s。请建议 5 个简短的文章主题。 " +
             "仅返回一个 JSON 字符串数组，例如：[\"主题1\", \"主题2\"]。不要包含任何 Markdown 格式或代码块标记。",
-            language, wordsStr
+            wordsStr, language == null ? "英语" : language
         );
         
-        String response = aiChatService.ask(prompt, null, "deepseek-chat", null);
+        // 使用新的 ask 方法签名，不传入 model 参数，默认使用 deepseek-chat
+        String response = aiChatService.ask(prompt, null, "deepseek-chat", null, null);
         if (response == null) return new ArrayList<>();
         
         // Clean response (remove markdown code blocks if any)
@@ -281,76 +344,118 @@ public class VocabularyService {
      * 生成并保存文章
      */
     @Transactional
-    public GeneratedArticle generateAndSaveArticle(Long userId, Integer listId, List<Integer> wordIds, 
-                                                  String topic, String difficulty, String length) {
-        // 1. 获取单词信息
+    public GeneratedArticle generateAndSaveArticle(Long userId, Integer listId, List<Integer> wordIds,
+                                                   String topic, String difficulty, String length) {
+        return generateAndSaveArticle(userId, listId, wordIds, topic, difficulty, length, "en");
+    }
+
+    @Transactional
+    public GeneratedArticle generateAndSaveArticle(Long userId, Integer listId, List<Integer> wordIds,
+                                                   String topic, String difficulty, String length, String targetLanguage) {
+        if (wordIds == null || wordIds.isEmpty()) {
+            throw new CustomException("请先选择至少1个单词");
+        }
+        if (wordIds.size() > 20) {
+            throw new CustomException("单次最多选择20个单词");
+        }
+        String normalizedLanguage = normalizeTargetLanguage(targetLanguage);
         List<VocabularyWord> words = vocabularyWordRepository.findByIdIn(wordIds);
-        String vocabularyList = words.stream()
+        if (words.isEmpty()) {
+            throw new CustomException("未找到可用单词");
+        }
+        List<String> selectedWords = words.stream()
             .map(VocabularyWord::getWord)
-            .collect(Collectors.joining(", "));
-        
+            .toList();
+        return generateAndSaveArticleByWordTexts(userId, listId, wordIds, selectedWords, topic, difficulty, length, normalizedLanguage);
+    }
+
+    @Transactional
+    public GeneratedArticle generateAndSaveArticleByWordTexts(Long userId, Integer listId, List<Integer> wordIds,
+                                                              List<String> selectedWords, String topic,
+                                                              String difficulty, String length, String targetLanguage) {
+        if (selectedWords == null || selectedWords.isEmpty()) {
+            throw new CustomException("请先选择至少1个单词");
+        }
+        if (selectedWords.size() > 20) {
+            throw new CustomException("单次最多选择20个单词");
+        }
+        String normalizedLanguage = normalizeTargetLanguage(targetLanguage);
         String finalTopic = normalizeTopic(topic);
         if (finalTopic == null) {
-            finalTopic = generateAutoTopic(words, userId);
+            finalTopic = generateAutoTopicByWords(selectedWords, userId);
         }
-            
-        // 2. 调用AI生成文章
+        if (finalTopic.length() > 200) {
+            throw new CustomException("文章主题最多200个字符");
+        }
+        String normalizedLength = normalizeLengthType(length);
+        String normalizedDifficulty = normalizeDifficulty(difficulty);
+        String vocabularyList = String.join(", ", selectedWords);
         int targetWords = lengthToTargetWords(length);
+        String languageName = mapLanguageName(normalizedLanguage);
         String prompt = String.format(
-            "请写一篇关于“%s”的英文文章（约 %d 词，难度： %s）。 " +
-            "文章中必须包含以下单词：[%s]。 " +
-            "请用双星号（如 **word**）包裹这些使用的单词，以便突出显示。 " +
-            "仅输出文章正文内容，分 2-4 个段落。不要包含“Title:”字样，也不要包含 Markdown 代码块标记。",
-            finalTopic, targetWords, difficulty, vocabularyList
+            "请写一篇关于“%s”的%s文章（约 %d 词，难度：%s）。 " +
+            "必须包含以下单词：%s。 " +
+            "文章内容必须围绕主题展开。 " +
+            "直接返回文章内容，不要包含任何前言或后语（如“好的，这是文章...”）。 " +
+            "如果文章包含标题，请以 'Title: ' 开头放在第一行。",
+            finalTopic, languageName, targetWords, normalizedDifficulty, vocabularyList
         );
-        
-        String content = aiChatService.ask(prompt, null, "deepseek-chat", userId);
-        
-        // Clean content
+        String content = aiChatService.ask(prompt, null, "deepseek-chat", userId, null);
         if (content != null) {
             content = content.replaceAll("```markdown", "").replaceAll("```", "").trim();
             if (content.startsWith("Title:")) {
                 content = content.substring(content.indexOf("\n") + 1).trim();
             }
         }
-
+        if (content == null || content.isBlank()) {
+            throw new CustomException("文章生成失败，请稍后重试");
+        }
         String translated = translateArticleToChinese(content, userId);
-        
-        // 3. 保存文章
+        LocalDateTime now = LocalDateTime.now();
         GeneratedArticle article = GeneratedArticle.builder()
             .userId(userId)
             .vocabularyListId(listId)
             .topic(finalTopic)
-            .difficultyLevel(difficulty)
-            .articleLength(length)
+            .difficultyLevel(normalizedDifficulty)
+            .articleLength(normalizedLength)
+            .targetLanguage(normalizedLanguage)
             .originalText(content)
             .translatedText(translated)
-            .createdAt(LocalDateTime.now())
+            .wordCount(countWords(content))
+            .createdAt(now)
+            .updatedAt(now)
+            .isDeleted(false)
             .build();
-            
         try {
-            article.setUsedWordIds(objectMapper.writeValueAsString(wordIds));
+            if (wordIds != null && !wordIds.isEmpty()) {
+                article.setUsedWordIds(objectMapper.writeValueAsString(wordIds));
+            } else {
+                article.setUsedWordIds(objectMapper.writeValueAsString(selectedWords));
+            }
         } catch (Exception e) {
             article.setUsedWordIds("[]");
         }
-        
         article = generatedArticleRepository.save(article);
-        
-        // 4. 保存使用的单词记录
         List<ArticleUsedWord> usedWords = new ArrayList<>();
-        for (VocabularyWord word : words) {
-            int occurrences = countOccurrencesIgnoreCase(content, word.getWord());
+        List<VocabularyWord> matchedWords = wordIds == null || wordIds.isEmpty()
+            ? List.of()
+            : vocabularyWordRepository.findByIdIn(wordIds);
+        for (String selectedWord : selectedWords) {
+            VocabularyWord matched = matchedWords.stream()
+                .filter(item -> item.getWord() != null && item.getWord().equalsIgnoreCase(selectedWord))
+                .findFirst()
+                .orElse(null);
+            int occurrences = countOccurrencesIgnoreCase(content, selectedWord);
             ArticleUsedWord usedWord = ArticleUsedWord.builder()
                 .articleId(article.getId())
-                .wordId(word.getId())
-                .wordText(word.getWord())
+                .wordId(matched == null ? null : matched.getId())
+                .wordText(selectedWord)
                 .occurrenceCount(occurrences)
-                .word(word)
+                .word(matched)
                 .build();
             usedWords.add(articleUsedWordRepository.save(usedWord));
         }
         article.setUsedWords(usedWords);
-        
         return article;
     }
 
@@ -370,10 +475,10 @@ public class VocabularyService {
      * 将文章长度枚举映射为目标词数
      */
     private int lengthToTargetWords(String length) {
-        if (length == null) return 400;
-        return switch (length.trim()) {
-            case "Short" -> 200;
-            case "Long" -> 700;
+        String normalized = normalizeLengthType(length);
+        return switch (normalized) {
+            case "short" -> 150;
+            case "long" -> 900;
             default -> 400;
         };
     }
@@ -400,7 +505,22 @@ public class VocabularyService {
             "仅返回标题文本。不要添加引号或任何 Markdown 格式。",
             wordsStr
         );
-        String response = aiChatService.ask(prompt, null, "deepseek-chat", userId);
+        String response = aiChatService.ask(prompt, null, "deepseek-chat", userId, null);
+        if (response == null) return "学习文章";
+        String cleaned = response.replaceAll("```", "").trim();
+        cleaned = cleaned.replaceAll("^\"|\"$", "");
+        return cleaned.isBlank() ? "学习文章" : cleaned;
+    }
+
+    private String generateAutoTopicByWords(List<String> words, Long userId) {
+        String wordsStr = words.stream()
+            .limit(20)
+            .collect(Collectors.joining(", "));
+        String prompt = String.format(
+            "根据这些单词：[%s]，提供一个简短的文章标题（不超过 20 个字符）。仅返回标题文本。",
+            wordsStr
+        );
+        String response = aiChatService.ask(prompt, null, "deepseek-chat", userId, null);
         if (response == null) return "学习文章";
         String cleaned = response.replaceAll("```", "").trim();
         cleaned = cleaned.replaceAll("^\"|\"$", "");
@@ -417,7 +537,7 @@ public class VocabularyService {
             "不要包含任何 Markdown 格式。不要包含 ** 标记，保持单词为普通文本。 " +
             "仅返回中文翻译文本。\n\n" +
             content;
-        String response = aiChatService.ask(prompt, null, "deepseek-chat", userId);
+        String response = aiChatService.ask(prompt, null, "deepseek-chat", userId, null);
         if (response == null) return null;
         String cleaned = response.replaceAll("```markdown", "").replaceAll("```", "").trim();
         cleaned = cleaned.replace("**", "");
@@ -430,6 +550,24 @@ public class VocabularyService {
     @Transactional(readOnly = true)
     public List<GeneratedArticle> getUserGeneratedArticles(Long userId) {
         return generatedArticleRepository.findByUserIdOrderByCreatedAtDesc(userId);
+    }
+
+    @Transactional(readOnly = true)
+    public ArticleHistoryResult getUserGeneratedArticles(Long userId, String keyword, String targetLanguage,
+                                                         LocalDateTime startTime, LocalDateTime endTime,
+                                                         Integer pageNum, Integer pageSize) {
+        int safePage = pageNum == null ? 1 : Math.max(1, pageNum);
+        int safeSize = pageSize == null ? 10 : Math.min(Math.max(1, pageSize), 100);
+        Page<GeneratedArticle> page = generatedArticleRepository.searchByUserWithFilters(
+            userId,
+            keyword == null ? "" : keyword.trim(),
+            targetLanguage == null ? "" : targetLanguage.trim(),
+            startTime,
+            endTime,
+            PageRequest.of(safePage - 1, safeSize)
+        );
+        page.getContent().forEach(article -> article.setUsedWords(List.of()));
+        return new ArticleHistoryResult(page.getTotalElements(), page.getContent(), safePage, safeSize);
     }
     
     /**
@@ -445,6 +583,84 @@ public class VocabularyService {
         article.setUsedWords(usedWords);
         
         return article;
+    }
+
+    @Transactional(readOnly = true)
+    public GeneratedArticle getGeneratedArticle(Integer articleId, Long userId) {
+        GeneratedArticle article = generatedArticleRepository.findByIdAndUserId(articleId, userId)
+            .orElseThrow(() -> new CustomException("文章不存在或无权限访问"));
+        List<ArticleUsedWord> usedWords = articleUsedWordRepository.findByArticleIdWithWord(articleId);
+        article.setUsedWords(usedWords);
+        return article;
+    }
+
+    @Transactional
+    public int deleteUserGeneratedArticles(Long userId, List<Integer> articleIds) {
+        if (articleIds == null || articleIds.isEmpty()) {
+            return 0;
+        }
+        return generatedArticleRepository.softDeleteByUserAndIds(userId, articleIds);
+    }
+
+    @Transactional
+    public int clearUserGeneratedArticles(Long userId) {
+        return generatedArticleRepository.softDeleteAllByUser(userId);
+    }
+
+    private String normalizeTargetLanguage(String targetLanguage) {
+        if (targetLanguage == null || targetLanguage.isBlank()) {
+            return "en";
+        }
+        String value = targetLanguage.trim().toLowerCase(Locale.ROOT);
+        return switch (value) {
+            case "zh", "en", "jp", "kr", "fr", "es" -> value;
+            default -> throw new CustomException("不支持的目标语言");
+        };
+    }
+
+    private String mapLanguageName(String targetLanguage) {
+        return switch (targetLanguage) {
+            case "zh" -> "中文";
+            case "jp" -> "日语";
+            case "kr" -> "韩语";
+            case "fr" -> "法语";
+            case "es" -> "西班牙语";
+            default -> "英语";
+        };
+    }
+
+    private String normalizeLengthType(String length) {
+        if (length == null || length.isBlank()) {
+            return "medium";
+        }
+        String value = length.trim().toLowerCase(Locale.ROOT);
+        return switch (value) {
+            case "short", "medium", "long" -> value;
+            default -> switch (length.trim()) {
+                case "Short" -> "short";
+                case "Medium" -> "medium";
+                case "Long" -> "long";
+                default -> throw new CustomException("文章长度参数不合法");
+            };
+        };
+    }
+
+    private String normalizeDifficulty(String difficulty) {
+        if (difficulty == null || difficulty.isBlank()) {
+            return "中等";
+        }
+        return difficulty.trim();
+    }
+
+    private int countWords(String content) {
+        if (content == null || content.isBlank()) {
+            return 0;
+        }
+        String cleaned = content.replaceAll("\\s+", " ").trim();
+        if (cleaned.isEmpty()) {
+            return 0;
+        }
+        return cleaned.split(" ").length;
     }
 
     public byte[] renderPdfFromHtml(String html) {

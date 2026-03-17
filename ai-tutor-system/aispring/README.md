@@ -108,6 +108,17 @@ java -jar target/ai-tutor-1.0.0.jar
 
 ## 🔄 最新修改
 
+### 单词记忆模块并入主系统 (2026-03-17)
+- 新增后端模块：`/api/word-game/*`，覆盖课程包列表、点击统计、课程与题目查询、上传分节、学习进度读写与迁移接口。
+- 新增数据表迁移：`V4_0__create_word_game_tables.sql`，创建 `word_game_packages/courses/statements/progress/package_clicks`。
+- 前端不再依赖独立 `aispring/word-game` 进程；单词记忆页面改为 `vue-app` 原生路由页面，统一复用主站 token 与请求链路。
+
+### AI文章模块接口升级 (2026-03-17)
+- 新增需求兼容路径：`/api/ai/article/*`，覆盖单词库查询、主题推荐、文章生成、历史分页、详情、删除、清空、PDF导出。
+- 保留原路径：`/api/vocabulary/articles/*`，实现双路径兼容，避免旧前端调用中断。
+- 历史记录安全增强：文章详情、删除与清空均按登录用户隔离校验，防止越权访问。
+- 数据结构增强：文章记录增加 `target_language`、`word_count`、`updated_at`、`is_deleted` 字段，并补充迁移脚本 `V3_8__enhance_ai_article_module.sql`。
+
 ### 文件上传与内存优化 (2026-01-07)
 - **智能上传限制**: 创建了基于文件大小而非时间的上传拦截器 `SizeBasedMultipartFilter`
   - 不限制上传时间，允许慢速网络环境下上传大文件

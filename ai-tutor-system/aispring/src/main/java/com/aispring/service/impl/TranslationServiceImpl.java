@@ -49,6 +49,7 @@ public class TranslationServiceImpl implements TranslationService {
         
         // 使用系统提示词进行翻译
         try {
+            // 使用 ask(prompt, sessionId, model, userId, systemPrompt) 方法
             String translatedText = aiChatService.ask(userPrompt, null, null, null, systemPrompt);
             return translatedText != null ? translatedText.trim() : "";
         } catch (Exception e) {
