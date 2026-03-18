@@ -375,9 +375,10 @@ async function handleNext() {
     showCompletion.value = true
     return
   }
+  // 先切换回问题模式，再增加索引，避免短暂显示答案
+  showQuestion()
   questionIndex.value += 1
   await persistProgress(false)
-  showQuestion()
   playEnglishSound(currentQuestion.value?.english)
 }
 

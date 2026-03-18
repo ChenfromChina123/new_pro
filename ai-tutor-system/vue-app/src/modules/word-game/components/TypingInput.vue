@@ -46,7 +46,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { isWord, useInput } from '@/modules/word-game/composables/useQuestion'
 import { playEnglishSound } from '@/modules/word-game/composables/useEnglishSound'
 
@@ -112,12 +112,28 @@ const {
 
 watch(
   () => props.english,
-  () => {
-    resetUserInputWords()
-    initialize()
+  (newVal, oldVal) => {
+    // 立即隐藏答案提示
     showAnswerTip.value = false
-    focusInput()
-    playEnglishSound(props.english)
+
+    // 如果是题目切换（值变化），立即清空并重置
+    if (newVal !== oldVal && newVal) {
+      // 同步清空输入值
+      inputValue.value = ''
+      // 立即清空 userInputWords
+      userInputWords.splice(0, userInputWords.length)
+      // 重新初始化
+      initialize()
+      // 使用 nextTick 确保 DOM 更新后再聚焦
+      nextTick(() => {
+        focusInput()
+        playEnglishSound(props.english)
+      })
+    } else if (!oldVal && newVal) {
+      // 初次加载
+      focusInput()
+      playEnglishSound(props.english)
+    }
   },
   { immediate: true }
 )

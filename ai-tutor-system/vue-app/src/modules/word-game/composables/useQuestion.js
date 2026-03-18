@@ -23,6 +23,8 @@ export function useInput({
     mode.value = 'input'
     inputValue.value = ''
     userInputWords.length = 0
+    // 清空所有响应式数据
+    userInputWords.splice(0, userInputWords.length)
     setupUserInputWords()
     updateActiveWord(getInputCursorPosition())
   }
@@ -50,9 +52,9 @@ export function useInput({
   function setupUserInputWords() {
     stopWatch = watch(
       source,
-      english => {
-        resetUserInputWords()
+      (english) => {
         if (!english) return
+        // 只在英语内容变化时重新初始化
         const words = english.split(separator)
         let inputWordIndex = 0
         words.forEach((text, index) => {
