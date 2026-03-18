@@ -15,7 +15,6 @@ cd "$PROJECT_ROOT"
 # ========== 端口配置 ==========
 BACKEND_PORT=5000
 FRONTEND_PORT=3000
-WORD_GAME_PORT=5200
 CV_PORT=3100
 BLOG_PORT=3200
 
@@ -113,17 +112,17 @@ if [ -d "ai-tutor-system/aispring" ]; then
 fi
 
 # 单词记忆（已合并到 aispring）
-if [ -d "ai-tutor-system/aispring/word-game" ]; then
-  cd ai-tutor-system/aispring/word-game
-  if [ -d "node_modules/vite" ]; then
-    echo "    ✅ 单词记忆依赖已存在"
-  else
-    echo "    正在安装单词记忆依赖..."
-    rm -rf node_modules package-lock.json
-    npm install
-  fi
-  cd "$PROJECT_ROOT"
-fi
+# if [ -d "ai-tutor-system/aispring/word-game" ]; then
+#   cd ai-tutor-system/aispring/word-game
+#   if [ -d "node_modules/vite" ]; then
+#     echo "    ✅ 单词记忆依赖已存在"
+#   else
+#     echo "    正在安装单词记忆依赖..."
+#     rm -rf node_modules package-lock.json
+#     npm install
+#   fi
+#   cd "$PROJECT_ROOT"
+# fi
 
 # 简历网站
 if [ -d "cv-site" ]; then
@@ -169,17 +168,17 @@ if [ -d "ai-tutor-system/vue-app" ]; then
 fi
 
 # 单词记忆（已合并到 aispring）
-if [ -d "ai-tutor-system/aispring/word-game" ]; then
-  cd ai-tutor-system/aispring/word-game
-  if [ -d "dist" ]; then
-    echo "    ✅ 单词记忆已构建"
-  else
-    echo "    正在构建单词记忆..."
-    rm -rf node_modules/.vite node_modules/.vite-temp .vite .vite-temp
-    npm run build
-  fi
-  cd "$PROJECT_ROOT"
-fi
+# if [ -d "ai-tutor-system/aispring/word-game" ]; then
+#   cd ai-tutor-system/aispring/word-game
+#   if [ -d "dist" ]; then
+#     echo "    ✅ 单词记忆已构建"
+#   else
+#     echo "    正在构建单词记忆..."
+#     rm -rf node_modules/.vite node_modules/.vite-temp .vite .vite-temp
+#     npm run build
+#   fi
+#   cd "$PROJECT_ROOT"
+# fi
 
 # 后端
 if [ -d "ai-tutor-system/aispring" ]; then
@@ -207,7 +206,6 @@ echo ""
 echo "【4/6】检测端口冲突..."
 kill_port_if_used "$BACKEND_PORT" "后端"
 kill_port_if_used "$FRONTEND_PORT" "主站前端"
-kill_port_if_used "$WORD_GAME_PORT" "单词记忆"
 kill_port_if_used "$CV_PORT" "简历网站"
 kill_port_if_used "$BLOG_PORT" "博客系统"
 
@@ -247,19 +245,19 @@ else
 fi
 
 # 5c. 启动单词记忆（已合并到 aispring）
-WORD_PID=$(get_port_pid "$WORD_GAME_PORT")
-if [ -n "$WORD_PID" ]; then
-  echo "✅ 单词记忆已在运行（端口 $WORD_GAME_PORT, PID: $WORD_PID）"
-else
-  ensure_dir "ai-tutor-system/aispring/word-game/dist"
-  ensure_dir "ai-tutor-system/aispring/word-game/server"
-  export PORT=$WORD_GAME_PORT
-  (cd ai-tutor-system/aispring/word-game && nohup node server/index.js > ../word-game.log 2>&1 &)
-  unset PORT
-  sleep 2
-  WORD_PID=$(get_port_pid "$WORD_GAME_PORT")
-  echo "✅ 单词记忆已启动（端口 $WORD_GAME_PORT, PID: $WORD_PID）"
-fi
+# WORD_PID=$(get_port_pid "$WORD_GAME_PORT")
+# if [ -n "$WORD_PID" ]; then
+#   echo "✅ 单词记忆已在运行（端口 $WORD_GAME_PORT, PID: $WORD_PID）"
+# else
+#   ensure_dir "ai-tutor-system/aispring/word-game/dist"
+#   ensure_dir "ai-tutor-system/aispring/word-game/server"
+#   export PORT=$WORD_GAME_PORT
+#   (cd ai-tutor-system/aispring/word-game && nohup node server/index.js > ../word-game.log 2>&1 &)
+#   unset PORT
+#   sleep 2
+#   WORD_PID=$(get_port_pid "$WORD_GAME_PORT")
+#   echo "✅ 单词记忆已启动（端口 $WORD_GAME_PORT, PID: $WORD_PID）"
+# fi
 
 # 5d. 启动简历网站
 CV_PID=$(get_port_pid "$CV_PORT")
@@ -305,25 +303,22 @@ echo ""
 echo "📍 访问地址："
 echo "  主站前端：   http://localhost:$FRONTEND_PORT"
 echo "  后端 API:    http://localhost:$BACKEND_PORT/swagger-ui.html"
-echo "  单词记忆：   http://localhost:$WORD_GAME_PORT"
 echo "  简历网站：   http://localhost:$CV_PORT"
 echo "  博客系统：   http://localhost:$BLOG_PORT"
 echo ""
 echo "📋 进程信息："
 echo "  后端：$BACKEND_PID"
 echo "  前端：$FRONTEND_PID"
-echo "  单词记忆：$WORD_PID"
 echo "  简历网站：$CV_PID"
 echo "  博客系统：$BLOG_PID"
 echo ""
 echo "📝 日志文件："
 echo "  后端：backend.log"
 echo "  前端：frontend.log"
-echo "  单词记忆：word-game.log"
 echo "  简历网站：cv-site.log"
 echo "  博客系统：blog.log"
 echo ""
 echo "🛑 停止所有服务："
-echo "  kill $BACKEND_PID $FRONTEND_PID $WORD_PID $CV_PID $BLOG_PID"
+echo "  kill $BACKEND_PID $FRONTEND_PID $CV_PID $BLOG_PID"
 echo ""
 echo "=========================================="

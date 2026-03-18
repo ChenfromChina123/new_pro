@@ -24,7 +24,6 @@ else
     echo "⚠️  未找到 stop_all_services.sh，手动停止..."
     kill -9 $(lsof -ti:5000) 2>/dev/null || true
     kill -9 $(lsof -ti:3000) 2>/dev/null || true
-    kill -9 $(lsof -ti:5200) 2>/dev/null || true
     kill -9 $(lsof -ti:3100) 2>/dev/null || true
     kill -9 $(lsof -ti:3200) 2>/dev/null || true
 fi
