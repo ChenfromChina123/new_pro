@@ -535,6 +535,7 @@ const isCloudDiskRoute = computed(() => route.path.startsWith("/cloud-disk"));
 
 const isLanguageLearningRoute = computed(() => route.path.startsWith("/language-learning"));
 const isRequirementRoute = computed(() => route.path.startsWith("/requirement"));
+const isPublicFilesRoute = computed(() => route.path.startsWith("/public-files"));
 const isOpsRoute = computed(() => ["/public-files", "/admin", "/server-terminal", "/sftp"].some(path => route.path.startsWith(path)));
 
 // 头像逻辑
