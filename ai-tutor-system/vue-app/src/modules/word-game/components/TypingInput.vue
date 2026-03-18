@@ -97,6 +97,7 @@ function setInputCursorPosition(pos) {
 
 const {
   inputValue,
+  userInputWords,
   findWordById,
   submitAnswer,
   handleKeyboardInput,
@@ -121,7 +122,9 @@ watch(
       // 同步清空输入值
       inputValue.value = ''
       // 立即清空 userInputWords
-      userInputWords.splice(0, userInputWords.length)
+      if (userInputWords) {
+        userInputWords.splice(0, userInputWords.length)
+      }
       // 重新初始化
       initialize()
       // 使用 nextTick 确保 DOM 更新后再聚焦
