@@ -302,11 +302,8 @@ function isIconImage(icon) {
 }
 
 function getCourseProgress(courseIndex) {
-  const direct = progressMap.value[String(courseIndex)]
-  if (direct) return direct
-  const legacy = progressMap.value[String(courseIndex - 1)]
-  if (legacy) return legacy
-  return null
+  // 直接读取对应课程的进度，不再兼容旧版本
+  return progressMap.value[String(courseIndex)] || null
 }
 
 function isCourseCompleted(courseIndex) {
