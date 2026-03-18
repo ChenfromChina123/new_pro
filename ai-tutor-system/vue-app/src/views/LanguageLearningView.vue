@@ -400,12 +400,11 @@
           v-if="currentView === 'ai-articles'"
           class="view-section ai-articles-view"
         >
-          <div class="view-header">
-            <h2>AI 生成学习文章</h2>
-            <p>基于你的词汇表生成个性化阅读材料</p>
-          </div>
-
-          <div class="article-generator card">
+          <div class="view-header ai-articles-header">
+            <div class="header-info">
+              <h2>AI 生成学习文章</h2>
+              <p>基于你的词汇表生成个性化阅读材料</p>
+            </div>
             <div class="ai-article-tabs">
               <button
                 class="ai-tab-btn"
@@ -422,7 +421,9 @@
                 我的文章
               </button>
             </div>
+          </div>
 
+          <div class="article-generator card">
             <div
               v-if="aiArticleTab === 'generate'"
               class="ai-generate-panel"
@@ -580,51 +581,65 @@
                       class="ai-word-selection-section"
                     >
                       <div class="ai-toolbar">
-                        <label class="checkbox-label">
-                          <input
-                            type="checkbox"
-                            :checked="isAllSelected"
-                            @change="toggleSelectAll"
-                          >
-                          全选当前页/取消全选
-                          <span class="ai-toolbar-meta">已选 {{ selectedWordIds.size }} / 20</span>
-                        </label>
-                        <div class="ai-toolbar-actions">
-                          <div
-                            v-if="currentListId === 'public'"
-                            class="pagination-mini"
-                            style="display: inline-flex; align-items: center; gap: 8px; margin-right: 16px;"
-                          >
+                        <div class="ai-toolbar-top">
+                          <div class="ai-search-wrapper">
+                            <span class="search-icon">🔍</span>
+                            <input
+                              v-model="searchQuery"
+                              type="text"
+                              class="ai-search-input"
+                              placeholder="在当前列表中搜索单词、释义或词性..."
+                            >
+                          </div>
+                        </div>
+                        <div class="ai-toolbar-bottom">
+                          <div class="ai-toolbar-left">
+                            <label class="checkbox-label">
+                              <input
+                                type="checkbox"
+                                :checked="isAllSelected"
+                                @change="toggleSelectAll"
+                              >
+                              全选
+                              <span class="ai-toolbar-meta">已选 {{ selectedWordIds.size }} / 20</span>
+                            </label>
+                          </div>
+                          <div class="ai-toolbar-actions">
+                            <div
+                              v-if="currentListId === 'public'"
+                              class="pagination-mini"
+                            >
+                              <button
+                                class="btn btn-outline btn-sm"
+                                :disabled="currentPage <= 1"
+                                @click="changePublicPage(currentPage - 1)"
+                              >
+                                上一页
+                              </button>
+                              <span class="page-info">第 {{ currentPage }} 页</span>
+                              <button
+                                class="btn btn-outline btn-sm"
+                                :disabled="publicResults.length < 50"
+                                @click="changePublicPage(currentPage + 1)"
+                              >
+                                下一页
+                              </button>
+                            </div>
                             <button
                               class="btn btn-outline btn-sm"
-                              :disabled="currentPage <= 1"
-                              @click="changePublicPage(currentPage - 1)"
+                              :disabled="selectedWordIds.size === 0"
+                              @click="showSelectedWords = true"
                             >
-                              上一页
+                              📘 查看已选
                             </button>
-                            <span style="font-size: 12px; color: var(--text-secondary);">第 {{ currentPage }} 页</span>
                             <button
-                              class="btn btn-outline btn-sm"
-                              :disabled="publicResults.length < 50"
-                              @click="changePublicPage(currentPage + 1)"
+                              class="btn btn-primary btn-sm"
+                              :disabled="!canGenerateArticle"
+                              @click="generateArticleNow"
                             >
-                              下一页
+                              ✨ 生成文章
                             </button>
                           </div>
-                          <button
-                            class="btn btn-outline btn-sm"
-                            :disabled="selectedWordIds.size === 0"
-                            @click="showSelectedWords = true"
-                          >
-                            📘 查看已选
-                          </button>
-                          <button
-                            class="btn btn-primary"
-                            :disabled="!canGenerateArticle"
-                            @click="generateArticleNow"
-                          >
-                            ✨ 生成文章
-                          </button>
                         </div>
                       </div>
 
@@ -644,7 +659,7 @@
                           </thead>
                           <tbody>
                             <tr
-                              v-for="word in (currentListId === 'public' ? publicResults : currentWords)"
+                              v-for="word in filteredWords"
                               :key="word.id"
                               :class="{ 'selected': selectedWordIds.has(word.id) }"
                               @click="toggleWordSelection(word.id)"
@@ -664,6 +679,14 @@
                               </td>
                               <td class="ai-word-pos">
                                 <span class="pos-tag">{{ word.partOfSpeech || '-' }}</span>
+                              </td>
+                            </tr>
+                            <tr v-if="filteredWords.length === 0">
+                              <td
+                                colspan="4"
+                                class="empty-cell"
+                              >
+                                未找到匹配的单词
                               </td>
                             </tr>
                           </tbody>
@@ -1153,6 +1176,7 @@ const newWord = ref({
   example: ''
 })
 const publicKeyword = ref('')
+const searchQuery = ref('')
 const isGeneratingTopics = ref(false)
 const isGeneratingArticle = ref(false)
 const articleGenerationInProgress = ref(false)
@@ -1162,6 +1186,17 @@ const pageSize = ref(50)
 
 const totalPages = computed(() => {
   return Math.ceil(vocabularyStore.publicSearchTotal / pageSize.value)
+})
+
+const filteredWords = computed(() => {
+  const sourceList = currentListId.value === 'public' ? publicResults.value : currentWords.value
+  if (!searchQuery.value.trim()) return sourceList
+  const query = searchQuery.value.toLowerCase().trim()
+  return sourceList.filter(w =>
+    (w.word || '').toLowerCase().includes(query) ||
+    (w.definition || '').toLowerCase().includes(query) ||
+    (w.partOfSpeech || '').toLowerCase().includes(query)
+  )
 })
 
 const goToPage = async (page) => {
@@ -1200,8 +1235,8 @@ const publicResults = computed(() => vocabularyStore.publicSearchResults)
 const isLoading = computed(() => vocabularyStore.isLoading)
 
 const isAllSelected = computed(() => {
-  const list = currentListId.value === 'public' ? publicResults.value : currentWords.value
-  return list.length > 0 && selectedWordIds.size === list.length
+  const list = filteredWords.value
+  return list.length > 0 && list.every(w => selectedWordIds.has(w.id))
 })
 
 const selectedWordsDetails = computed(() => {
@@ -1759,7 +1794,7 @@ const onListChange = async () => {
 
 const toggleSelectAll = (e) => {
   markActive()
-  const list = currentListId.value === 'public' ? publicResults.value : currentWords.value
+  const list = filteredWords.value
   if (e.target.checked) {
     list.forEach(w => selectedWordIds.add(w.id))
   } else {
@@ -2241,41 +2276,60 @@ const formatDuration = (seconds) => {
 .main-content {
   flex: 1;
   overflow-y: auto; /* Scroll internally */
-  padding: 32px;
+  padding: 10px 15px;
   position: relative;
   background-color: var(--bg-primary);
 }
 
 .view-header {
-  margin-bottom: 32px;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
 }
 
 .view-header h2 {
-  font-size: 24px;
+  font-size: 18px;
   color: var(--text-primary);
-  margin: 0 0 8px 0;
+  margin: 0 0 2px 0;
 }
 
 .view-header p {
   color: var(--text-secondary);
   margin: 0;
+  font-size: 12px;
+}
+
+/* AI Articles View Header Specific */
+.ai-articles-header {
+  align-items: center;
+}
+
+.ai-articles-view .ai-article-tabs {
+  display: inline-flex;
+  gap: 6px;
+  padding: 6px;
+  margin: 0;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
 }
 
 /* Dashboard Grid - Improved */
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 24px;
-  margin-bottom: 32px;
+  gap: 12px;
+  margin-bottom: 20px;
 }
 
 .stat-card {
   background: var(--bg-secondary);
-  border-radius: 12px;
-  padding: 24px;
+  border-radius: 10px;
+  padding: 12px 16px;
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 12px;
   box-shadow: var(--shadow-sm);
   transition: transform 0.2s;
   border: 1px solid var(--border-color);
@@ -2287,13 +2341,13 @@ const formatDuration = (seconds) => {
 }
 
 .stat-icon {
-  width: 50px;
-  height: 50px;
-  border-radius: 12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
+  font-size: 18px;
   background-color: var(--bg-tertiary);
 }
 
@@ -2307,51 +2361,57 @@ const formatDuration = (seconds) => {
 }
 
 .stat-value {
-  font-size: 28px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1.2;
 }
 
 .stat-label {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-secondary);
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 /* Review Section */
 .review-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 12px;
 }
 
 .review-card-item {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  padding: 16px;
+  padding: 12px;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
 .review-word {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
-  margin: 0 0 4px 0;
+  margin: 0 0 2px 0;
 }
 
 .review-def {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-secondary);
   margin: 0;
 }
 
 .review-actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
+}
+
+.review-actions .btn {
+  padding: 4px 10px;
+  min-height: 32px;
+  font-size: 12px;
 }
 
 /* Code Block Styles */
@@ -2940,26 +3000,16 @@ select {
   overflow: hidden;
 }
 
-.ai-articles-view .ai-article-tabs {
-  display: inline-flex;
-  gap: 8px;
-  padding: 10px;
-  margin: 18px 18px 0 18px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-}
-
 .ai-articles-view .ai-tab-btn {
-  padding: 10px 14px;
+  padding: 6px 12px;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: 8px;
   color: var(--text-secondary);
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1;
 }
 
@@ -2975,51 +3025,75 @@ select {
 }
 
 .ai-articles-view .ai-generate-panel {
-  padding: 18px;
+  padding: 12px;
 }
 
 .ai-articles-view .ai-generate-grid {
   display: grid;
-  grid-template-columns: 420px 1fr;
-  gap: 16px;
-  align-items: start;
+  grid-template-columns: 330px 1fr;
+  gap: 12px;
+  align-items: stretch; /* Stretch cards to match height */
+  height: 580px; /* Reduced to fit without scrolling */
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-primary);
+  user-select: none;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
 }
 
 .ai-articles-view .ai-card {
   border: 1px solid var(--border-color);
-  border-radius: 14px;
+  border-radius: 12px;
   background-color: var(--bg-secondary);
   box-shadow: var(--shadow-sm);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%; /* Fill grid height */
 }
 
 .ai-articles-view .ai-card-header {
-  padding: 16px 18px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--border-color);
   background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
 }
 
 .ai-articles-view .ai-card-title {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--text-primary);
-  letter-spacing: 0.2px;
+  letter-spacing: 0.1px;
 }
 
 .ai-articles-view .ai-card-subtitle {
-  margin-top: 6px;
-  font-size: 12px;
+  margin-top: 1px;
+  font-size: 10px;
   color: var(--text-secondary);
 }
 
 .ai-articles-view .ai-card-body {
-  padding: 18px;
+  padding: 10px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .ai-articles-view .ai-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px 14px;
+  gap: 8px 8px;
 }
 
 .ai-articles-view .ai-form-grid .full-width {
@@ -3031,56 +3105,59 @@ select {
 }
 
 .ai-articles-view .ai-form-grid .form-group label {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
 }
 
 .ai-articles-view .ai-topic-input-group {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
 }
 
 .ai-articles-view .ai-topic-input-group .input {
   flex: 1;
   margin-bottom: 0;
+  padding: 8px 12px;
+  font-size: 13px;
 }
 
 .ai-articles-view .btn-icon-text {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   white-space: nowrap;
-  padding: 0 14px;
+  padding: 0 12px;
+  font-size: 12px;
 }
 
 .ai-articles-view .ai-topic-suggestions {
-  margin-top: 12px;
-  padding: 12px 12px;
-  border-radius: 12px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
   background-color: var(--bg-tertiary);
   border: 1px dashed var(--border-color);
 }
 
 .ai-articles-view .ai-topic-suggestions-label {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--text-secondary);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .ai-articles-view .ai-topic-suggestions-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .ai-articles-view .ai-topic-chip {
   border: 1px solid var(--border-color);
   background-color: var(--bg-primary);
   border-radius: 999px;
-  padding: 6px 12px;
-  font-size: 13px;
+  padding: 4px 10px;
+  font-size: 12px;
   color: var(--text-primary);
   cursor: pointer;
   transition: all 0.2s;
@@ -3095,25 +3172,90 @@ select {
 .ai-articles-view .ai-word-selection-section {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+  height: 100%;
 }
 
 .ai-articles-view .ai-toolbar {
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background-color: var(--bg-secondary);
+  margin-bottom: 12px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
+  align-items: stretch; /* Ensure children fill width but don't stretch height unevenly */
+}
+
+.ai-toolbar-top {
+  width: 100%;
+  flex: 0 0 auto;
+}
+
+.ai-toolbar-bottom {
+  display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  padding: 12px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  background-color: var(--bg-primary);
+  width: 100%;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-color);
+  flex: 0 0 auto;
+}
+
+.ai-toolbar-left {
+  display: flex;
+  align-items: center;
+}
+
+.ai-search-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+
+.ai-search-input {
+  width: 100%;
+  padding: 6px 12px 6px 36px;
+  border: 1.5px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 13px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-sm);
+  min-height: 34px; /* Reduced from 40px */
+}
+
+.ai-search-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
+  background: var(--bg-primary);
+  transform: translateY(-1px);
+}
+
+.ai-search-input::placeholder {
+  color: var(--text-tertiary);
+  font-style: italic;
+  opacity: 0.7;
 }
 
 .ai-articles-view .ai-toolbar-meta {
   margin-left: 8px;
   font-size: 12px;
   color: var(--text-secondary);
-  font-weight: 500;
 }
 
 .ai-articles-view .ai-toolbar-actions {
@@ -3122,19 +3264,41 @@ select {
   gap: 10px;
 }
 
-.ai-words-table-wrapper,
-.ai-articles-table-wrapper,
-.ai-selected-words-table-wrapper {
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  overflow: hidden;
-  background-color: var(--bg-primary);
+.pagination-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-right: 12px;
+  padding-right: 16px;
+  border-right: 1.5px solid var(--border-color);
 }
 
-.ai-words-table-wrapper {
-  max-height: 560px;
-  overflow-y: auto;
+.page-info {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 60px;
+  text-align: center;
 }
+
+.ai-toolbar-actions .btn {
+  min-width: 90px;
+  justify-content: center;
+}
+
+.ai-words-table-wrapper,
+ .ai-articles-table-wrapper,
+ .ai-selected-words-table-wrapper {
+   border: 1px solid var(--border-color);
+   border-radius: 10px;
+   overflow: hidden;
+   background-color: var(--bg-primary);
+ }
+
+ .ai-words-table-wrapper {
+   flex: 1; /* Grow to fill card body */
+   overflow-y: auto;
+ }
 
 .ai-words-table,
 .ai-articles-table {
@@ -3146,7 +3310,7 @@ select {
 .ai-words-table th,
 .ai-articles-table th {
   background-color: var(--bg-tertiary);
-  padding: 12px 14px;
+  padding: 10px 12px;
   text-align: left;
   font-weight: 700;
   color: var(--text-secondary);
@@ -3154,16 +3318,16 @@ select {
   position: sticky;
   top: 0;
   z-index: 10;
-  font-size: 12px;
+  font-size: 11px;
   letter-spacing: 0.4px;
 }
 
 .ai-words-table td,
 .ai-articles-table td {
-  padding: 12px 14px;
+  padding: 8px 10px;
   border-bottom: 1px solid var(--border-color);
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: 12px;
   vertical-align: top;
   background-color: var(--bg-primary);
   transition: background-color 0.2s;
@@ -3191,6 +3355,8 @@ select {
 
 .ai-word-definition {
   color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.3;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
@@ -3200,20 +3366,20 @@ select {
 
 .pos-tag {
   display: inline-flex;
-  padding: 2px 8px;
+  padding: 1px 6px;
   background-color: var(--bg-tertiary);
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-secondary);
   font-weight: 600;
 }
 
 .ai-articles-view .ai-empty-hint {
   text-align: center;
-  padding: 56px 18px;
+  padding: 40px 15px;
   color: var(--text-secondary);
   background-color: var(--bg-primary);
-  border-radius: 12px;
+  border-radius: 10px;
   border: 1px dashed var(--border-color);
 }
 
@@ -3222,25 +3388,25 @@ select {
 }
 
 .ai-articles-view .empty-icon {
-  font-size: 46px;
-  margin-bottom: 14px;
+  font-size: 32px;
+  margin-bottom: 10px;
   opacity: 0.55;
 }
 
 .ai-articles-view .ai-myarticles-panel {
-  padding: 18px;
+  padding: 12px;
 }
 
 .ai-articles-view .ai-myarticles-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin: 0 0 12px 0;
+  margin: 0 0 10px 0;
   padding: 0 2px;
 }
 
 .ai-articles-view .ai-myarticles-meta {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-secondary);
   font-weight: 600;
 }
@@ -3248,6 +3414,14 @@ select {
 .ai-article-title {
   font-weight: 700;
   color: var(--text-primary);
+}
+
+.empty-cell {
+  text-align: center;
+  padding: 30px !important;
+  color: var(--text-tertiary);
+  font-style: italic;
+  font-size: 13px;
 }
 
 @media (max-width: 1200px) {
@@ -3790,8 +3964,17 @@ select {
   cursor: pointer;
   font-size: 14px;
   transition: all 0.2s;
-  min-height: 44px; /* Touch target size */
+  min-height: 36px; /* Reduced from 44px to be more compact */
   font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-sm {
+  padding: 4px 12px;
+  min-height: 30px;
+  font-size: 13px;
 }
 
 .btn-primary {

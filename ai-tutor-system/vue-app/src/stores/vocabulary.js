@@ -274,7 +274,7 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
         list_id: payload.listId,
         word_ids: payload.wordIds,
         word_list: payload.wordList,
-        topic: payload.topic,
+        theme: payload.topic || payload.theme, // Change topic to theme to match backend
         target_language: payload.targetLanguage || 'en',
         difficulty: payload.difficulty,
         length_type: payload.length

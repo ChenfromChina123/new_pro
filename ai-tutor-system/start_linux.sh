@@ -62,20 +62,29 @@ kill_port $BACKEND_PORT "后端服务"
 
 if [ -d "aispring" ]; then
     cd aispring
+    
+    # 查找 JAR 文件
+    JAR_FILE=$(ls -t target/*.jar 2>/dev/null | grep -v "original" | head -n 1)
+    
+    if [ -z "$JAR_FILE" ]; then
+        echo "   ⚠️  未找到 JAR 文件，正在构建..."
+        mvn package -DskipTests -q
+        JAR_FILE=$(ls -t target/*.jar 2>/dev/null | grep -v "original" | head -n 1)
+    fi
+    
+    if [ -z "$JAR_FILE" ]; then
+        echo "❌ 错误: 构建失败，找不到 JAR 文件"
+        exit 1
+    fi
+    
     echo "   正在启动 Spring Boot 后端..."
+    echo "   JAR 文件: $JAR_FILE"
     
     # 设置JVM内存限制参数（大幅降低内存占用）
-    # -Xms: 初始堆大小 128MB
-    # -Xmx: 最大堆大小 256MB
-    # -XX:MetaspaceSize: 元空间初始大小 64MB
-    # -XX:MaxMetaspaceSize: 元空间最大大小 128MB
-    # -XX:+UseG1GC: 使用G1垃圾收集器（更适合小内存）
-    # -XX:MaxGCPauseMillis: 最大GC暂停时间 200ms
-    # -XX:+UseStringDeduplication: 字符串去重，节省内存
-    export MAVEN_OPTS="-Xms128m -Xmx256m -XX:MetaspaceSize=64m -XX:MaxMetaspaceSize=128m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+UseStringDeduplication"
+    JVM_OPTS="-Xms128m -Xmx256m -XX:MetaspaceSize=64m -XX:MaxMetaspaceSize=128m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+UseStringDeduplication -Dspring.profiles.active=prod -Dfile.encoding=UTF-8"
     
     # 使用 nohup 后台运行，日志输出到 backend.log
-    nohup mvn spring-boot:run > ../backend.log 2>&1 &
+    nohup java $JVM_OPTS -jar "$JAR_FILE" > ../backend.log 2>&1 &
     BACKEND_PID=$!
     echo "✅ 后端服务已在后台启动（内存限制: 256MB）"
     echo "   PID: $BACKEND_PID"

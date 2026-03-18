@@ -2,7 +2,6 @@
 # ==========================================
 # AI 智能学习助手 - Linux 全量启动脚本
 # 功能：Git 拉取、构建、启动所有必要服务
-# 生产环境：word-game 接口使用域名 earthworm.aistudy.icu
 # ==========================================
 
 set -e
@@ -15,13 +14,12 @@ cd "$PROJECT_ROOT"
 
 # ---------- 端口（与 Nginx 反代一致）----------
 # aistudy.icu         -> 3000  主站前端
-# earthworm.aistudy.icu -> 5010  单词记忆（word-game 前端+API）
 # cv.aistudy.icu      -> 3100  个人简历网站
 # blog.aistudy.icu    -> 3200  博客系统
 # 主站后端 aispring   -> 5000
 BACKEND_PORT=5000
 FRONTEND_PORT=3000
-WORD_GAME_PORT=5010
+
 CV_PORT=3100
 BLOG_PORT=3200
 
@@ -91,15 +89,6 @@ else
 fi
 cd "$PROJECT_ROOT"
 
-ensure_dir "word-game"
-cd word-game
-if [ -d "node_modules" ]; then
-  echo "    word-game 依赖已存在，跳过 npm install"
-else
-  npm install
-fi
-cd "$PROJECT_ROOT"
-
 # 博客系统：检查依赖
 BLOG_DIR="$PROJECT_ROOT/个人博客/tailwind-nextjs-starter-blog-main"
 if [ -d "$BLOG_DIR" ]; then
@@ -119,7 +108,7 @@ cd "$PROJECT_ROOT"
 
 # ========== 3. 构建 ==========
 echo ""
-echo "【3/5】构建前端与 word-game"
+echo "【3/5】构建前端"
 
 # 主站前端
 cd vue-app
@@ -130,15 +119,7 @@ else
 fi
 cd "$PROJECT_ROOT"
 
-# 单词记忆：生产环境 API 使用 earthworm.aistudy.icu
-cd word-game
-export VITE_WORD_GAME_API_BASE="https://earthworm.aistudy.icu/api"
-if [ -d "dist" ]; then
-  echo "    word-game 已构建，跳过 build"
-else
-  npm run build
-fi
-cd "$PROJECT_ROOT"
+
 
 # 博客系统：如果有 .next 目录则跳过构建
 if [ -d "$BLOG_DIR/.next" ]; then
@@ -160,7 +141,6 @@ echo ""
 echo "【4/5】检测端口冲突"
 kill_port_if_used "$BACKEND_PORT" "主站后端"
 kill_port_if_used "$FRONTEND_PORT" "主站前端"
-kill_port_if_used "$WORD_GAME_PORT" "单词记忆"
 kill_port_if_used "$CV_PORT" "简历网站"
 kill_port_if_used "$BLOG_PORT" "博客系统"
 
@@ -235,37 +215,7 @@ else
   fi
 fi
 
-# ========== 5c. 启动 word-game (5010，earthworm.aistudy.icu 反代) ==========
-WORD_GAME_LOG="$PROJECT_ROOT/word-game.log"
-WORD_PID=$(get_port_pid "$WORD_GAME_PORT")
-if [ -n "$WORD_PID" ]; then
-  echo "✅ 单词记忆(word-game)已在运行（端口 $WORD_GAME_PORT, PID: $WORD_PID）"
-else
-  command -v node >/dev/null 2>&1 || { echo "❌ 未找到 node 命令，无法启动 word-game，请先安装 Node.js"; exit 1; }
-  ensure_dir "word-game/dist"
-  ensure_dir "word-game/server"
-  echo "    正在启动 word-game（端口 $WORD_GAME_PORT，日志: word-game.log）..."
-  echo "    node 路径: $(command -v node)"
-  # 使用绝对路径写日志；在主 shell 中 export PORT 再启动，确保 node 收到环境变量
-  export PORT=$WORD_GAME_PORT
-  (cd "$PROJECT_ROOT/word-game" && nohup node server/index.js >> "$WORD_GAME_LOG" 2>&1 &)
-  WORD_LAUNCH_PID=$!
-  unset PORT
-  echo "    word-game 进程已 fork (PID: $WORD_LAUNCH_PID)，等待端口 $WORD_GAME_PORT 就绪..."
-  if wait_for_port "$WORD_GAME_PORT" "word-game" 20; then
-    WORD_PID=$(get_port_pid "$WORD_GAME_PORT")
-    echo "✅ 单词记忆(word-game)已就绪（端口 $WORD_GAME_PORT, PID: $WORD_PID）"
-    echo "   生产接口域名: https://earthworm.aistudy.icu"
-    echo "   日志: $WORD_GAME_LOG"
-  else
-    echo "❌ word-game 在 20s 内未监听端口 $WORD_GAME_PORT，请查看日志:"
-    echo "--- word-game.log 最后 30 行 ---"
-    tail -30 "$WORD_GAME_LOG" 2>/dev/null || echo "(无日志或文件不存在)"
-    echo "---"
-    WORD_PID=$(get_port_pid "$WORD_GAME_PORT")
-    [ -z "$WORD_PID" ] && echo "   建议: 检查 node 版本、word-game/node_modules 是否已安装，或执行: node word-game/server/index.js 查看报错"
-  fi
-fi
+
 
 # ========== 5d. 启动博客系统 (3200，blog.aistudy.icu 反代) ==========
 BLOG_LOG="$PROJECT_ROOT/blog.log"
@@ -310,10 +260,9 @@ echo "=========================================="
 echo "主站前端：   http://localhost:$FRONTEND_PORT  (aistudy.icu)"
 echo "简历网站：   http://localhost:$CV_PORT        (cv.aistudy.icu)"
 echo "主站后端：   http://localhost:$BACKEND_PORT   (API)"
-echo "单词记忆：   http://localhost:$WORD_GAME_PORT (earthworm.aistudy.icu)"
 echo "博客系统：   http://localhost:$BLOG_PORT      (blog.aistudy.icu)"
 echo ""
-echo "📋 进程：后端 $BACKEND_PID | 前端 $FRONTEND_PID | 简历 $CV_PID | word-game $WORD_PID | 博客 $BLOG_PID"
-echo "📝 日志：backend.log | frontend.log | cv-site.log | word-game.log | blog.log"
-echo "🛑 停止：kill $BACKEND_PID $FRONTEND_PID $CV_PID $WORD_PID $BLOG_PID"
+echo "📋 进程：后端 $BACKEND_PID | 前端 $FRONTEND_PID | 简历 $CV_PID | 博客 $BLOG_PID"
+echo "📝 日志：backend.log | frontend.log | cv-site.log | blog.log"
+echo "🛑 停止：kill $BACKEND_PID $FRONTEND_PID $CV_PID $BLOG_PID"
 echo "=========================================="
