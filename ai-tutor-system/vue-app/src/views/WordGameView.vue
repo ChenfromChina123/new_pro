@@ -277,10 +277,20 @@ async function loadGameData() {
     questions.value = await fetchCourseQuestions(activeCourseIndex.value, activePackageId.value)
     progressMap.value = await fetchProgress(activePackageId.value)
     const saved = getCourseProgress(activeCourseIndex.value)
-    questionIndex.value = saved?.completed ? 0 : Math.max(0, saved?.currentQuestion || 0)
+    // 如果有进度记录且已完成，从第 0 题开始；否则从保存的题目索引开始
+    if (saved) {
+      questionIndex.value = saved.completed ? 0 : Math.max(0, saved.currentQuestion || 0)
+    } else {
+      questionIndex.value = 0
+    }
+    // 确保重置为问题模式
     resetMode()
+    showQuestion()
+    // 确保游戏未开始状态
+    gameStarted.value = false
   } catch (e) {
     errorMessage.value = e.message || '题目加载失败'
+    console.error('加载游戏数据失败:', e)
   } finally {
     viewLoading.value = false
   }
