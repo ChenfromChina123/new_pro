@@ -804,7 +804,7 @@ public class AiChatServiceImpl implements AiChatService {
             // 使用 REST API 调用阿里百炼
             long startMs = System.currentTimeMillis();
             StringBuilder fullContent = new StringBuilder();
-            
+
             // 构造消息列表
             List<Map<String, String>> messages = new ArrayList<>();
             if (systemPrompt != null && !systemPrompt.isEmpty()) {
@@ -814,7 +814,7 @@ public class AiChatServiceImpl implements AiChatService {
                 sysMsg.put("content", systemPrompt);
                 messages.add(sysMsg);
             }
-            
+
             Map<String, String> userMsg = new HashMap<>();
             userMsg.put("role", "user");
             userMsg.put("content", maskedPrompt);
@@ -829,7 +829,7 @@ public class AiChatServiceImpl implements AiChatService {
 
             String jsonPayload = objectMapper.writeValueAsString(payload);
             RequestBody body = RequestBody.create(jsonPayload, MediaType.get("application/json; charset=utf-8"));
-            
+
             String finalUrl = deepseekApiUrl;
             if (finalUrl != null && !finalUrl.endsWith("/chat/completions")) {
                 if (finalUrl.endsWith("/")) {
@@ -853,7 +853,7 @@ public class AiChatServiceImpl implements AiChatService {
                 }
 
                 if (response.body() == null) throw new IOException("Response body is null");
-                
+
                 String responseBody = response.body().string();
                 JsonNode rootNode = objectMapper.readTree(responseBody);
                 if (rootNode.has("choices") && rootNode.get("choices").isArray() && rootNode.get("choices").size() > 0) {
@@ -866,7 +866,7 @@ public class AiChatServiceImpl implements AiChatService {
 
             long responseTimeMs = System.currentTimeMillis() - startMs;
             String content = fullContent.toString();
-            
+
             log.info("AI Response received. Length: {}", content.length());
 
             // 记录 Token 消耗审计
