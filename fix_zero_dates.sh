@@ -44,13 +44,13 @@ echo ""
 echo "🔧 正在修复 public_vocabulary_words 表中的零值日期..."
 mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" -D"$DB_NAME" <<EOF
 -- 更新 created_at 为零值的记录
-UPDATE public_vocabulary_words 
-SET created_at = '2024-01-01 00:00:00' 
+UPDATE public_vocabulary_words
+SET created_at = '2024-01-01 00:00:00'
 WHERE created_at = '0000-00-00 00:00:00' OR created_at IS NULL;
 
 -- 更新 updated_at 为零值的记录
-UPDATE public_vocabulary_words 
-SET updated_at = '2024-01-01 00:00:00' 
+UPDATE public_vocabulary_words
+SET updated_at = '2024-01-01 00:00:00'
 WHERE updated_at = '0000-00-00 00:00:00' OR updated_at IS NULL;
 EOF
 
@@ -61,13 +61,13 @@ echo ""
 echo "🔧 正在修复 vocabulary_lists 表中的零值日期..."
 mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" -D"$DB_NAME" <<EOF
 -- 更新 created_at 为零值的记录
-UPDATE vocabulary_lists 
-SET created_at = '2024-01-01 00:00:00' 
+UPDATE vocabulary_lists
+SET created_at = '2024-01-01 00:00:00'
 WHERE created_at = '0000-00-00 00:00:00' OR created_at IS NULL;
 
 -- 更新 updated_at 为零值的记录
-UPDATE vocabulary_lists 
-SET updated_at = '2024-01-01 00:00:00' 
+UPDATE vocabulary_lists
+SET updated_at = '2024-01-01 00:00:00'
 WHERE updated_at = '0000-00-00 00:00:00' OR updated_at IS NULL;
 EOF
 
@@ -78,15 +78,23 @@ echo ""
 echo "🔧 正在修复 vocabulary_words 表中的零值日期..."
 mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" -D"$DB_NAME" <<EOF
 -- 更新 created_at 为零值的记录
-UPDATE vocabulary_words 
-SET created_at = '2024-01-01 00:00:00' 
+UPDATE vocabulary_words
+SET created_at = '2024-01-01 00:00:00'
 WHERE created_at = '0000-00-00 00:00:00' OR created_at IS NULL;
+EOF
 
+# 检查是否存在 updated_at 字段
+if mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" -D"$DB_NAME" -e "SELECT updated_at FROM vocabulary_words LIMIT 1;" 2>/dev/null; then
+    mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" -D"$DB_NAME" <<EOF
 -- 更新 updated_at 为零值的记录
-UPDATE vocabulary_words 
-SET updated_at = '2024-01-01 00:00:00' 
+UPDATE vocabulary_words
+SET updated_at = '2024-01-01 00:00:00'
 WHERE updated_at = '0000-00-00 00:00:00' OR updated_at IS NULL;
 EOF
+    echo "   已修复 updated_at 字段"
+else
+    echo "   vocabulary_words 表没有 updated_at 字段，跳过"
+fi
 
 echo -e "${GREEN}✅ vocabulary_words 表修复完成${NC}"
 echo ""
@@ -96,7 +104,7 @@ echo "📊 修复后的日期检查:"
 echo ""
 echo "【public_vocabulary_words 表日期范围】"
 mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" -D"$DB_NAME" -e "
-    SELECT 
+    SELECT
         MIN(created_at) as '最早创建时间',
         MAX(created_at) as '最晚创建时间',
         COUNT(*) as '总记录数'
@@ -106,7 +114,7 @@ mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" -D"$DB_NAME" -
 echo ""
 echo "【vocabulary_lists 表日期范围】"
 mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" -D"$DB_NAME" -e "
-    SELECT 
+    SELECT
         MIN(created_at) as '最早创建时间',
         MAX(created_at) as '最晚创建时间',
         COUNT(*) as '总记录数'
@@ -116,7 +124,7 @@ mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" -D"$DB_NAME" -
 echo ""
 echo "【vocabulary_words 表日期范围】"
 mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" -D"$DB_NAME" -e "
-    SELECT 
+    SELECT
         MIN(created_at) as '最早创建时间',
         MAX(created_at) as '最晚创建时间',
         COUNT(*) as '总记录数'
