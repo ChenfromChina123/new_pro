@@ -1,0 +1,14 @@
+{
+  "name": "ai-tutor-system-root",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI智能学习助手系统 - 根目录",
+  "scripts": {
+    "dev": "cd ai-tutor-system/vue-app && pnpm dev",
+    "build": "cd ai-tutor-system/vue-app && pnpm build",
+    "backend": "cd ai-tutor-system/aispring && pnpm spring-boot:run"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
