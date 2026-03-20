@@ -272,8 +272,7 @@ public class VocabularyController {
             @RequestParam(name = "q", required = false) String q,
             @RequestParam(defaultValue = "en") String language,
             @RequestParam(defaultValue = "1") Integer page,
-            @RequestParam(defaultValue = "50") Integer size,
-            @AuthenticationPrincipal CustomUserDetails customUserDetails) {
+            @RequestParam(defaultValue = "50") Integer size) {
         
         String kw = (keyword != null && !keyword.isEmpty()) ? keyword : (q != null ? q : "");
         VocabularyService.PublicSearchResult result = vocabularyService.searchPublicWordsPaged(kw, language, page, size);

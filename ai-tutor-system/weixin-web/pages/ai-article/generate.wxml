@@ -1,0 +1,36 @@
+<!--pages/ai-article/generate.wxml-->
+<view class="container generate-container">
+  <view class="form-group">
+    <view class="form-label">文章主题</view>
+    <input class="form-input" placeholder="输入你想生成的文章主题" value="{{theme}}" bindinput="onInput" data-field="theme" />
+    <view class="recommend-btn" bindtap="getRecommendTheme">获取推荐主题</view>
+  </view>
+
+  <view class="form-group">
+    <view class="form-label">目标语言</view>
+    <picker bindchange="onPickerChange" data-field="targetLanguage" value="{{langIndex}}" range="{{languages}}" range-key="label">
+      <view class="picker-value">{{languages[langIndex].label}} <text class="arrow">▼</text></view>
+    </picker>
+  </view>
+
+  <view class="form-group">
+    <view class="form-label">难度级别</view>
+    <picker bindchange="onPickerChange" data-field="difficulty" value="{{diffIndex}}" range="{{difficulties}}">
+      <view class="picker-value">{{difficulties[diffIndex]}} <text class="arrow">▼</text></view>
+    </picker>
+  </view>
+
+  <view class="form-group">
+    <view class="form-label">文章长度</view>
+    <picker bindchange="onPickerChange" data-field="lengthType" value="{{lenIndex}}" range="{{lengths}}">
+      <view class="picker-value">{{lengths[lenIndex]}} <text class="arrow">▼</text></view>
+    </picker>
+  </view>
+
+  <view class="form-group">
+    <view class="form-label">包含特定单词 (可选)</view>
+    <textarea class="form-textarea" placeholder="输入要包含的单词，用逗号分隔" value="{{wordListStr}}" bindinput="onInput" data-field="wordListStr" auto-height></textarea>
+  </view>
+
+  <button class="submit-btn" type="primary" bindtap="generateArticle" loading="{{loading}}">立即生成</button>
+</view>

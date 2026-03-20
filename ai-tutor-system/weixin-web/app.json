@@ -1,0 +1,43 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/auth/login",
+    "pages/auth/register",
+    "pages/chat/chat",
+    "pages/cloud-disk/index",
+    "pages/word-game/index",
+    "pages/word-game/courses/courses",
+    "pages/word-game/play/play",
+    "pages/ai-article/index",
+    "pages/ai-article/generate",
+    "pages/profile/index",
+    "pages/animation-demo/animation-demo"
+  ],
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTitleText": "AI Tutor",
+    "navigationBarTextStyle": "black"
+  },
+  "tabBar": {
+    "color": "#7A7E83",
+    "selectedColor": "#1296db",
+    "backgroundColor": "#ffffff",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/word-game/index",
+        "text": "单词挑战"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

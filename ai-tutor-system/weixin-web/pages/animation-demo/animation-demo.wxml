@@ -1,0 +1,130 @@
+<!--
+  动画效果演示页面
+  展示所有可用的动画效果
+-->
+<view class="page-bg min-h-screen">
+  <!-- 顶部导航 -->
+  <view class="nav-bar bg-primary text-white p-4 text-center font-bold">
+    动画效果演示
+  </view>
+
+  <scroll-view scroll-y class="container py-4">
+    <!-- 淡入淡出动画 -->
+    <view class="section">
+      <view class="section-title">淡入淡出动画</view>
+      <view class="animation-grid">
+        <view class="animation-item animate-fade-in">
+          <text class="animation-label">淡入</text>
+        </view>
+        <view class="animation-item animate-fade-in-slow">
+          <text class="animation-label">慢速淡入</text>
+        </view>
+        <view class="animation-item animate-fade-out">
+          <text class="animation-label">淡出</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 滑入动画 -->
+    <view class="section">
+      <view class="section-title">滑入动画</view>
+      <view class="animation-grid">
+        <view class="animation-item animate-slide-in-up">
+          <text class="animation-label">从下向上</text>
+        </view>
+        <view class="animation-item animate-slide-in-down">
+          <text class="animation-label">从上向下</text>
+        </view>
+        <view class="animation-item animate-slide-in-left">
+          <text class="animation-label">从左向右</text>
+        </view>
+        <view class="animation-item animate-slide-in-right">
+          <text class="animation-label">从右向左</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 缩放动画 -->
+    <view class="section">
+      <view class="section-title">缩放动画</view>
+      <view class="animation-grid">
+        <view class="animation-item animate-scale-in">
+          <text class="animation-label">缩放进入</text>
+        </view>
+        <view class="animation-item animate-scale-out">
+          <text class="animation-label">缩放退出</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 弹跳动画 -->
+    <view class="section">
+      <view class="section-title">弹跳动画</view>
+      <view class="animation-grid">
+        <view class="animation-item animate-bounce">
+          <text class="animation-label">持续弹跳</text>
+        </view>
+        <view class="animation-item animate-bounce-in">
+          <text class="animation-label">弹跳进入</text>
+        </view>
+        <view class="animation-item animate-bounce-out">
+          <text class="animation-label">弹跳退出</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 特殊效果 -->
+    <view class="section">
+      <view class="section-title">特殊效果</view>
+      <view class="animation-grid">
+        <view class="animation-item animate-pulse">
+          <text class="animation-label">脉冲</text>
+        </view>
+        <view class="animation-item animate-blink">
+          <text class="animation-label">闪烁</text>
+        </view>
+        <view class="animation-item animate-spin">
+          <text class="animation-label">旋转</text>
+        </view>
+        <view class="animation-item animate-float">
+          <text class="animation-label">浮动</text>
+        </view>
+        <view class="animation-item animate-heartbeat">
+          <text class="animation-label">心跳</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 骨架屏 -->
+    <view class="section">
+      <view class="section-title">骨架屏加载</view>
+      <view class="card">
+        <view class="skeleton" style="width: 200rpx; height: 40rpx; margin-bottom: 20rpx;"></view>
+        <view class="skeleton" style="width: 300rpx; height: 30rpx; margin-bottom: 20rpx;"></view>
+        <view class="skeleton" style="width: 250rpx; height: 30rpx;"></view>
+      </view>
+    </view>
+
+    <!-- 交互动画 -->
+    <view class="section">
+      <view class="section-title">交互动画</view>
+      <view class="button-group">
+        <button class="btn btn-primary hover-lift">悬浮抬起</button>
+        <button class="btn btn-secondary hover-scale">悬浮缩放</button>
+        <button class="btn btn-primary clickable">点击反馈</button>
+      </view>
+    </view>
+
+    <!-- 打字机效果 -->
+    <view class="section">
+      <view class="section-title">打字机效果</view>
+      <view class="typing-demo">
+        <text>AI 正在输入</text>
+        <text class="typing-cursor"></text>
+      </view>
+    </view>
+
+    <!-- 底部留白 -->
+    <view style="height: 100rpx;"></view>
+  </scroll-view>
+</view>

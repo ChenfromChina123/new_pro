@@ -1,0 +1,9 @@
+{
+  "name": "用户问答模式",
+  "description": "记录和分析用户在AI tutor系统开发过程中的提问内容和问答方式",
+  "author": "AI Assistant",
+  "version": "1.0.0",
+  "tags": ["问答模式", "技术栈分析", "Redis缓存", "性能优化"],
+  "created_at": "2024-01-01",
+  "updated_at": "2024-01-01"
+}

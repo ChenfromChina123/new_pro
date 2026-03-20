@@ -1,0 +1,130 @@
+/* pages/word-game/courses/courses.wxss */
+.courses-container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #f8f9fa;
+  box-sizing: border-box;
+  padding: 0;
+}
+
+.header-area {
+  display: flex;
+  align-items: flex-start;
+  padding: 40rpx;
+  background-color: #f8f9fa;
+}
+
+.back-btn {
+  background-color: #eaeaea;
+  padding: 10rpx 24rpx;
+  border-radius: 12rpx;
+  font-size: 26rpx;
+  color: #333;
+  margin-right: 30rpx;
+  margin-top: 6rpx;
+}
+
+.package-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.package-title {
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 8rpx;
+}
+
+.package-meta {
+  font-size: 26rpx;
+  color: #999;
+}
+
+.course-list {
+  flex: 1;
+  padding: 0 30rpx;
+  box-sizing: border-box;
+}
+
+.course-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30rpx;
+  padding-bottom: 40rpx;
+}
+
+.course-card {
+  background-color: #fff;
+  border-radius: 20rpx;
+  padding: 40rpx 30rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.03);
+}
+
+.course-icon {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 32rpx;
+  background-color: #e6f7ff;
+  color: #1296db;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 28rpx;
+  font-weight: bold;
+  position: absolute;
+  top: 30rpx;
+  left: 30rpx;
+}
+
+.course-icon.active {
+  background-color: #1296db;
+  color: #fff;
+}
+
+.course-name {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333;
+  margin-top: 50rpx;
+  margin-bottom: 12rpx;
+}
+
+.course-count {
+  font-size: 24rpx;
+  color: #999;
+  margin-bottom: 8rpx;
+}
+
+.course-progress-text {
+  font-size: 22rpx;
+  color: #bbb;
+  margin-bottom: 16rpx;
+}
+
+.progress-bar-container {
+  width: 80%;
+  height: 4rpx;
+  background-color: #f0f0f0;
+  border-radius: 2rpx;
+  margin-top: 10rpx;
+  margin-bottom: 20rpx;
+}
+
+.progress-bar {
+  height: 100%;
+  background-color: #1296db;
+  border-radius: 2rpx;
+}
+
+.arrow {
+  color: #ccc;
+  font-size: 28rpx;
+  margin-top: auto;
+  padding-top: 10rpx;
+}

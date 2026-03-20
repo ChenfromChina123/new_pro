@@ -1,0 +1,169 @@
+/* pages/word-game/index.wxss */
+.packages-container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #f8f9fa;
+  box-sizing: border-box;
+  padding: 0;
+}
+
+.header-section {
+  padding: 40rpx 40rpx 20rpx;
+  background-color: #f8f9fa;
+}
+
+.title-area {
+  margin-bottom: 30rpx;
+}
+
+.main-title {
+  font-size: 48rpx;
+  font-weight: 800;
+  color: #333;
+  display: block;
+  margin-bottom: 10rpx;
+}
+
+.sub-title {
+  font-size: 26rpx;
+  color: #999;
+}
+
+.action-area {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+}
+
+.search-box {
+  flex: 1;
+  background-color: #fff;
+  height: 70rpx;
+  border-radius: 12rpx;
+  padding: 0 20rpx;
+  display: flex;
+  align-items: center;
+  border: 1rpx solid #eaeaea;
+}
+
+.search-box input {
+  flex: 1;
+  font-size: 26rpx;
+}
+
+.search-placeholder {
+  color: #ccc;
+}
+
+.upload-btn {
+  background-color: #eaeaea;
+  color: #333;
+  font-size: 26rpx;
+  height: 70rpx;
+  line-height: 70rpx;
+  padding: 0 30rpx;
+  border-radius: 12rpx;
+  font-weight: 500;
+}
+
+.package-list {
+  flex: 1;
+  padding: 20rpx 40rpx;
+  box-sizing: border-box;
+}
+
+.package-card {
+  background-color: #fff;
+  border-radius: 20rpx;
+  padding: 40rpx 30rpx;
+  display: flex;
+  align-items: center;
+  margin-bottom: 30rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.04);
+}
+
+.package-index {
+  width: 60rpx;
+  height: 60rpx;
+  border-radius: 30rpx;
+  background-color: #f0f0f0;
+  color: #666;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 28rpx;
+  font-weight: bold;
+  margin-right: 20rpx;
+  flex-shrink: 0;
+}
+
+.package-index.active {
+  background-color: #1296db;
+  color: #fff;
+}
+
+.package-icon {
+  width: 80rpx;
+  height: 80rpx;
+  background-color: #fffbe6;
+  border-radius: 16rpx;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-right: 30rpx;
+  flex-shrink: 0;
+}
+
+.icon-img {
+  width: 50rpx;
+  height: 50rpx;
+}
+
+.package-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.package-title-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12rpx;
+}
+
+.package-name {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333;
+  margin-right: 16rpx;
+}
+
+.package-tag {
+  font-size: 20rpx;
+  color: #1296db;
+  background-color: #e6f7ff;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+}
+
+.package-desc {
+  font-size: 24rpx;
+  color: #666;
+  margin-bottom: 16rpx;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.package-stats {
+  font-size: 22rpx;
+  color: #999;
+}
+
+.arrow-right {
+  color: #ccc;
+  font-size: 32rpx;
+  margin-left: 20rpx;
+}

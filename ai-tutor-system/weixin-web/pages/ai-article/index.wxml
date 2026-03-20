@@ -1,0 +1,40 @@
+<!--pages/ai-article/index.wxml-->
+<view class="container">
+  <view class="header">
+    <text class="title">我的文章</text>
+    <button class="generate-btn" type="primary" size="mini" bindtap="goToGenerate">生成新文章</button>
+  </view>
+
+  <view class="filter-bar">
+    <view class="search-box">
+      <icon type="search" size="14" color="#999"/>
+      <input placeholder="搜索文章主题" value="{{keyword}}" bindinput="onSearchInput" bindconfirm="onSearch" />
+    </view>
+  </view>
+
+  <scroll-view class="article-list" scroll-y bindscrolltolower="loadMore">
+    <view wx:if="{{articles.length === 0 && !loading}}" class="empty-state">
+      <image src="/assets/document-icon.png" class="empty-icon"></image>
+      <text>暂无生成的文章</text>
+      <button class="action-btn" bindtap="goToGenerate">去生成</button>
+    </view>
+
+    <view class="article-item" wx:for="{{articles}}" wx:key="id" bindtap="viewDetail" data-id="{{item.id}}">
+      <view class="article-info">
+        <text class="article-title">{{item.topic || '无标题'}}</text>
+        <view class="article-tags">
+          <text class="tag">{{item.difficultyLevel || '普通'}}</text>
+          <text class="tag">{{item.articleLength || '中篇'}}</text>
+          <text class="tag lang-tag">{{item.targetLanguage === 'en' ? '英语' : item.targetLanguage}}</text>
+        </view>
+        <text class="article-date">{{item.createdAt}}</text>
+      </view>
+      <view class="article-action">
+        <text class="arrow">></text>
+      </view>
+    </view>
+    
+    <view wx:if="{{loading}}" class="loading-tips">加载中...</view>
+    <view wx:if="{{!hasMore && articles.length > 0}}" class="loading-tips">没有更多了</view>
+  </scroll-view>
+</view>

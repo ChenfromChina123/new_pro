@@ -1,0 +1,32 @@
+<!--pages/word-game/courses/courses.wxml-->
+<view class="container courses-container">
+  <view class="header-area">
+    <view class="back-btn" bindtap="goBack">
+      <text>← 课程包</text>
+    </view>
+    <view class="package-info">
+      <text class="package-title">{{packageInfo.title || '星荣零基础学英语'}}</text>
+      <text class="package-meta">共 {{packageInfo.courseCount || 55}} 课</text>
+    </view>
+  </view>
+
+  <scroll-view scroll-y class="course-list">
+    <view class="course-grid">
+      <view class="course-card" wx:for="{{courses}}" wx:key="id" bindtap="goToPlay" data-id="{{item.id}}" data-index="{{index}}">
+        <view class="course-icon {{item.progress > 0 ? 'active' : ''}}">
+          <text>{{item.courseNumStr}}</text>
+        </view>
+        <text class="course-name">{{item.name}}</text>
+        <text class="course-count">{{item.wordCount}} 题</text>
+        <text class="course-progress-text" wx:if="{{item.progress > 0}}">已做到第 {{item.progress}} 题</text>
+        
+        <view class="progress-bar-container" wx:if="{{item.progress > 0}}">
+          <view class="progress-bar" style="width: {{(item.progress / item.wordCount) * 100}}%"></view>
+        </view>
+        
+        <text class="arrow">→</text>
+      </view>
+    </view>
+    <view style="height: 60rpx;"></view>
+  </scroll-view>
+</view>

@@ -1,0 +1,61 @@
+<!--pages/word-game/play/play.wxml-->
+<view class="container">
+  <view class="game-screen">
+    <!-- 顶部状态栏：课程列表、进度、提示 -->
+    <view class="top-nav-bar">
+      <view class="nav-btn" bindtap="quitGame">课程列表</view>
+      <view class="progress-info">
+        <text class="course-name">第一课</text>
+        <view class="progress-badge">
+          <text>9</text>
+          <text class="total">/ 218</text>
+        </view>
+      </view>
+      <view class="nav-btn" bindtap="showHint">提示</view>
+    </view>
+
+    <!-- 中间单词区域 -->
+    <view class="word-card-area">
+      <!-- 播放发音按钮 (隐藏，可通过点击区域触发) -->
+      <view class="word-content" bindtap="playVoice">
+        <text class="word-mean">{{currentWord.mean}}</text>
+        <!-- 音标 -->
+        <text class="phonetic">{{currentWord.phonetic}}</text>
+      </view>
+      
+      <!-- 填空区域：每个字母一个下划线 -->
+      <view class="blanks-wrapper" bindtap="focusInput">
+        <block wx:for="{{blanks}}" wx:key="wordIndex">
+          <!-- 空格位置 -->
+          <view wx:if="{{item.isSpace}}" class="blank-space"></view>
+          <!-- 字母填空位置 -->
+          <view wx:else class="blank-item {{item.char ? 'filled' : ''}} {{wordIndex === cursorIndex ? 'active' : ''}}" 
+                style="animation-delay: {{wordIndex * 0.05}}s">
+            {{item.char}}
+          </view>
+        </block>
+        <!-- 透明的真实输入框覆盖在填空区域上方 -->
+        <input class="overlay-input" focus="{{inputFocus}}" value="{{answer}}" bindinput="handleInput" maxlength="100" />
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{gameOver}}" class="overlay">
+    <view class="modal">
+      <text class="modal-title">游戏结束</text>
+      <text class="final-score">最终得分：{{score}}</text>
+      <view class="modal-footer">
+        <button class="retry-btn" type="primary" bindtap="startGame">再来一次</button>
+        <button class="home-btn" bindtap="quitGame">返回课程列表</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 自定义提示框 (正确/错误) -->
+  <view class="toast-mask" wx:if="{{showCustomToast}}">
+    <view class="toast-box {{toastType}}">
+      <icon type="{{toastType === 'success' ? 'success_no_circle' : 'warn'}}" size="40" color="{{toastType === 'success' ? '#20c997' : '#ff4d4f'}}" />
+      <text class="toast-text">{{toastMsg}}</text>
+    </view>
+  </view>
+</view>

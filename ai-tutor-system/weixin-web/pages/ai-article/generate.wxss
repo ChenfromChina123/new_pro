@@ -1,0 +1,81 @@
+/* pages/ai-article/generate.wxss */
+.generate-container {
+  padding: 40rpx;
+  background-color: #f8f9fa;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.form-group {
+  background-color: #fff;
+  border-radius: 20rpx;
+  padding: 30rpx;
+  margin-bottom: 30rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.03);
+  position: relative;
+}
+
+.form-label {
+  font-size: 28rpx;
+  color: #666;
+  margin-bottom: 20rpx;
+  font-weight: bold;
+}
+
+.form-input {
+  font-size: 32rpx;
+  color: #333;
+  height: 60rpx;
+  border-bottom: 1rpx solid #eaeaea;
+  padding-bottom: 10rpx;
+}
+
+.recommend-btn {
+  position: absolute;
+  right: 30rpx;
+  top: 30rpx;
+  font-size: 24rpx;
+  color: #1296db;
+  background-color: #e6f7ff;
+  padding: 6rpx 20rpx;
+  border-radius: 20rpx;
+}
+
+.picker-value {
+  font-size: 32rpx;
+  color: #333;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 10rpx;
+  border-bottom: 1rpx solid #eaeaea;
+}
+
+.arrow {
+  font-size: 20rpx;
+  color: #ccc;
+}
+
+.form-textarea {
+  width: 100%;
+  min-height: 120rpx;
+  font-size: 32rpx;
+  color: #333;
+  line-height: 1.5;
+  background-color: #f5f6f8;
+  padding: 20rpx;
+  box-sizing: border-box;
+  border-radius: 12rpx;
+}
+
+.submit-btn {
+  width: 100% !important;
+  height: 90rpx;
+  line-height: 90rpx;
+  background-color: #1296db !important;
+  border-radius: 45rpx;
+  font-size: 32rpx;
+  font-weight: bold;
+  margin-top: 60rpx;
+  box-shadow: 0 8rpx 16rpx rgba(18, 150, 219, 0.3);
+}

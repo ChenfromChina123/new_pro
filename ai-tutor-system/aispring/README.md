@@ -113,6 +113,11 @@ java -jar target/ai-tutor-1.0.0.jar
 - 新增数据表迁移：`V4_0__create_word_game_tables.sql`，创建 `word_game_packages/courses/statements/progress/package_clicks`。
 - 前端不再依赖独立 `aispring/word-game` 进程；单词记忆页面改为 `vue-app` 原生路由页面，统一复用主站 token 与请求链路。
 
+### 微信小程序版本 (2026-03-20)
+- 新增微信小程序前端项目：`weixin-web`，基于原生微信小程序框架开发。
+- 功能覆盖：AI 智能辅导、单词挑战、用户登录/注册、个人中心。
+- 架构特点：统一复用 `aispring` 后端 API，采用 JWT 鉴权，支持移动端随时随地学习。
+
 ### AI文章模块接口升级 (2026-03-17)
 - 新增需求兼容路径：`/api/ai/article/*`，覆盖单词库查询、主题推荐、文章生成、历史分页、详情、删除、清空、PDF导出。
 - 保留原路径：`/api/vocabulary/articles/*`，实现双路径兼容，避免旧前端调用中断。

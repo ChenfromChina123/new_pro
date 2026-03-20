@@ -1,0 +1,8 @@
+{
+  "name": "用户问答模式",
+  "description": "记录和分析用户在AI tutor系统开发过程中的提问内容和问答方式",
+  "version": "1.0.0",
+  "identifier": "user-qa-patterns",
+  "author": "AI Assistant",
+  "category": "documentation"
+}

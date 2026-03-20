@@ -1,0 +1,36 @@
+/**app.wxss**/
+@import './styles/theme.wxss';
+@import './styles/utils.wxss';
+@import './styles/animation.wxss';
+
+page {
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica,
+    Segoe UI, Arial, Roboto, 'PingFang SC', 'miui', 'Hiragino Sans GB', 'Microsoft Yahei',
+    sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.container {
+  min-height: 100%;
+  box-sizing: border-box;
+  padding: 32rpx;
+}
+
+/* 安全区域适配 */
+.safe-area-top {
+  padding-top: constant(safe-area-inset-top);
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-bottom {
+  padding-bottom: constant(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* 页面过渡动画 */
+.page-transition {
+  animation: fadeIn 0.3s ease-out;
+}

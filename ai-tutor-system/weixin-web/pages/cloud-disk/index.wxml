@@ -1,0 +1,71 @@
+<!--pages/cloud-disk/index.wxml-->
+<view class="container disk-container">
+  <!-- 顶部操作栏 -->
+  <view class="header-actions">
+    <view class="search-bar">
+      <icon type="search" size="16" color="#999" />
+      <input class="search-input" placeholder="搜索文件" value="{{searchKeyword}}" bindinput="onSearchInput" />
+    </view>
+    <view class="action-btn" bindtap="uploadFile">
+      <text class="plus-icon">+</text>
+      <text>上传</text>
+    </view>
+  </view>
+
+  <!-- 路径面包屑 -->
+  <view class="breadcrumb">
+    <scroll-view scroll-x class="path-scroll" scroll-into-view="path-end">
+      <view class="path-item" bindtap="navigateToFolder" data-index="-1">
+        <text class="{{currentPath.length === 0 ? 'active' : ''}}">根目录</text>
+      </view>
+      <block wx:for="{{currentPath}}" wx:key="id">
+        <text class="separator">/</text>
+        <view class="path-item" bindtap="navigateToFolder" data-index="{{index}}">
+          <text class="{{index === currentPath.length - 1 ? 'active' : ''}}">{{item.name}}</text>
+        </view>
+      </block>
+      <view id="path-end"></view>
+    </scroll-view>
+  </view>
+
+  <!-- 文件列表 -->
+  <scroll-view class="file-list" scroll-y>
+    <view class="empty-state" wx:if="{{!loading && folders.length === 0 && files.length === 0}}">
+      <image class="empty-icon" src="/assets/disk-icon.png"></image>
+      <text class="empty-text">当前目录为空</text>
+      <button class="upload-btn-empty" bindtap="uploadFile">上传文件</button>
+    </view>
+
+    <!-- 文件夹列表 -->
+    <view class="list-group" wx:if="{{folders.length > 0}}">
+      <view class="group-title">文件夹</view>
+      <view class="file-item" wx:for="{{folders}}" wx:key="id" bindtap="enterFolder" data-folder="{{item}}">
+        <image class="file-icon" src="/assets/folder-icon.png"></image>
+        <view class="file-info">
+          <text class="file-name">{{item.name}}</text>
+          <text class="file-meta">{{item.updateTime || '刚刚'}}</text>
+        </view>
+        <view class="more-action" catchtap="showFolderActions" data-folder="{{item}}">
+          <text class="dot-icon">...</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 文件列表 -->
+    <view class="list-group" wx:if="{{files.length > 0}}">
+      <view class="group-title">文件</view>
+      <view class="file-item" wx:for="{{files}}" wx:key="id" bindtap="previewFile" data-file="{{item}}">
+        <image class="file-icon" src="/assets/file-icon.png"></image>
+        <view class="file-info">
+          <text class="file-name">{{item.name}}</text>
+          <text class="file-meta">{{item.sizeStr}} · {{item.updateTime || '刚刚'}}</text>
+        </view>
+        <view class="more-action" catchtap="showFileActions" data-file="{{item}}">
+          <text class="dot-icon">...</text>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <!-- 操作菜单底部弹窗 (可用 ActionSheet 代替，这里简写结构) -->
+</view>

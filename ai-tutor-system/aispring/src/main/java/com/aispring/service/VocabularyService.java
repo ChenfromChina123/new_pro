@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +18,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.OutputStream;
 import java.lang.reflect.Method;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -33,11 +35,33 @@ import java.util.regex.Pattern;
  * 对应Python: language_learning.py中的词汇相关功能
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class VocabularyService {
+
+    // 构造函数自动注入
+    public VocabularyService(VocabularyListRepository vocabularyListRepository,
+                           VocabularyWordRepository vocabularyWordRepository,
+                           UserWordProgressRepository userWordProgressRepository,
+                           PublicVocabularyWordRepository publicVocabularyWordRepository,
+                           UserLearningRecordRepository userLearningRecordRepository,
+                           AiChatService aiChatService,
+                           GeneratedArticleRepository generatedArticleRepository,
+                           ArticleUsedWordRepository articleUsedWordRepository,
+                           ObjectMapper objectMapper,
+                           RedisTemplate<String, Object> redisTemplate) {
+        this.vocabularyListRepository = vocabularyListRepository;
+        this.vocabularyWordRepository = vocabularyWordRepository;
+        this.userWordProgressRepository = userWordProgressRepository;
+        this.publicVocabularyWordRepository = publicVocabularyWordRepository;
+        this.userLearningRecordRepository = userLearningRecordRepository;
+        this.aiChatService = aiChatService;
+        this.generatedArticleRepository = generatedArticleRepository;
+        this.articleUsedWordRepository = articleUsedWordRepository;
+        this.objectMapper = objectMapper;
+        this.redisTemplate = redisTemplate;
+    }
     private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-    
+
     private final VocabularyListRepository vocabularyListRepository;
     private final VocabularyWordRepository vocabularyWordRepository;
     private final UserWordProgressRepository userWordProgressRepository;
@@ -47,7 +71,13 @@ public class VocabularyService {
     private final GeneratedArticleRepository generatedArticleRepository;
     private final ArticleUsedWordRepository articleUsedWordRepository;
     private final ObjectMapper objectMapper;
-    
+    private final RedisTemplate<String, Object> redisTemplate;
+
+    // Redis 缓存相关常量
+    private static final String PUBLIC_WORD_CACHE_PREFIX = "public_word:";
+    private static final String PUBLIC_WORDS_SEARCH_CACHE_PREFIX = "public_words_search:";
+    private static final Duration CACHE_DURATION = Duration.ofHours(24);
+
     /**
      * 创建单词表
      */
@@ -61,10 +91,10 @@ public class VocabularyService {
             .isPublic(false)
             .createdBy(userId)
             .build();
-        
+
         return vocabularyListRepository.save(list);
     }
-    
+
     /**
      * 获取用户的单词表列表
      */
@@ -77,12 +107,12 @@ public class VocabularyService {
         }
         return lists;
     }
-    
+
     /**
      * 添加单词到单词表
      */
     @Transactional
-    public VocabularyWord addWordToList(Integer vocabularyListId, String word, String definition, 
+    public VocabularyWord addWordToList(Integer vocabularyListId, String word, String definition,
                                         String partOfSpeech, String example, String language) {
         VocabularyWord vocabularyWord = VocabularyWord.builder()
             .vocabularyListId(vocabularyListId)
@@ -92,17 +122,17 @@ public class VocabularyService {
             .example(example)
             .language(language != null ? language : "en")
             .build();
-        
+
         return vocabularyWordRepository.save(vocabularyWord);
     }
-    
+
     /**
      * 获取单词表中的所有单词
      */
     public List<VocabularyWord> getWordsInList(Integer vocabularyListId) {
         return vocabularyWordRepository.findByVocabularyListIdOrderByCreatedAtDesc(vocabularyListId);
     }
-    
+
     /**
      * 删除单词表
      */
@@ -110,7 +140,7 @@ public class VocabularyService {
     public void deleteVocabularyList(Integer listId) {
         vocabularyListRepository.deleteById(listId);
     }
-    
+
     /**
      * 删除单词
      */
@@ -118,14 +148,14 @@ public class VocabularyService {
     public void deleteWord(Integer wordId) {
         vocabularyWordRepository.deleteById(wordId);
     }
-    
+
     /**
      * 更新用户单词进度
      */
     @Transactional
     public UserWordProgress updateUserWordProgress(Long userId, Integer wordId, Integer masteryLevel, Boolean isDifficult) {
         Optional<UserWordProgress> existingProgress = userWordProgressRepository.findByUserIdAndWordId(userId, wordId);
-        
+
         UserWordProgress progress;
         if (existingProgress.isPresent()) {
             progress = existingProgress.get();
@@ -137,7 +167,7 @@ public class VocabularyService {
             }
             progress.setLastReviewed(LocalDateTime.now());
             progress.setReviewCount(progress.getReviewCount() + 1);
-            
+
             // 计算下次复习时间（简单的间隔重复算法）
             int daysToAdd = calculateNextReviewDays(progress.getMasteryLevel());
             progress.setNextReviewDate(LocalDateTime.now().plusDays(daysToAdd));
@@ -152,10 +182,10 @@ public class VocabularyService {
                 .nextReviewDate(LocalDateTime.now().plusDays(1))
                 .build();
         }
-        
+
         return userWordProgressRepository.save(progress);
     }
-    
+
     /**
      * 计算下次复习天数（间隔重复算法）
      */
@@ -170,7 +200,7 @@ public class VocabularyService {
             default -> 1;
         };
     }
-    
+
     /**
      * 获取用户需要复习的单词
      */
@@ -181,7 +211,7 @@ public class VocabularyService {
     public List<UserWordProgress> getUserProgressForList(Long userId, Integer listId) {
         return userWordProgressRepository.findByUserIdAndVocabularyListId(userId, listId);
     }
-    
+
     /**
      * 获取用户的学习统计
      */
@@ -190,15 +220,15 @@ public class VocabularyService {
         long masteredWords = userWordProgressRepository.countMasteredWords(userId);
         long totalDuration = userLearningRecordRepository.getTotalDuration(userId);
         long todayDuration = userLearningRecordRepository.getTodayDuration(userId);
-        
+
         return new LearningStats(totalWords, masteredWords, totalDuration, todayDuration);
     }
-    
+
     /**
      * 学习统计数据类
      */
     public record LearningStats(long totalWords, long masteredWords, long totalDuration, long todayDuration) {}
-    
+
     /**
      * 记录学习活动
      */
@@ -210,22 +240,81 @@ public class VocabularyService {
             .activityDetails(activityDetails)
             .duration(duration)
             .build();
-        
+
         userLearningRecordRepository.save(record);
     }
-    
+
     /**
      * 从公共词库查找单词
      */
     public Optional<PublicVocabularyWord> findPublicWord(String word, String language) {
-        return publicVocabularyWordRepository.findByWordAndLanguage(word, language);
+        if (word == null || word.isBlank() || language == null || language.isBlank()) {
+            return Optional.empty();
+        }
+
+        // 生成缓存键
+        String cacheKey = PUBLIC_WORD_CACHE_PREFIX + language + ":" + word.toLowerCase();
+
+        try {
+            // 尝试从缓存获取
+            Object cachedWord = redisTemplate.opsForValue().get(cacheKey);
+            if (cachedWord instanceof PublicVocabularyWord) {
+                return Optional.of((PublicVocabularyWord) cachedWord);
+            }
+        } catch (Exception e) {
+            log.warn("Redis cache error when getting public word: {}", e.getMessage());
+            // 缓存错误时继续从数据库查询
+        }
+
+        // 从数据库查询
+        Optional<PublicVocabularyWord> wordOpt = publicVocabularyWordRepository.findByWordAndLanguage(word, language);
+
+        // 缓存结果
+        wordOpt.ifPresent(wordObj -> {
+            try {
+                redisTemplate.opsForValue().set(cacheKey, wordObj, CACHE_DURATION);
+            } catch (Exception e) {
+                log.warn("Redis cache error when setting public word: {}", e.getMessage());
+            }
+        });
+
+        return wordOpt;
     }
-    
+
     /**
      * 搜索公共词库
      */
     public List<PublicVocabularyWord> searchPublicWords(String keyword, String language) {
-        return publicVocabularyWordRepository.searchByKeyword(language, keyword);
+        String safeKeyword = keyword == null ? "" : keyword.trim();
+        String safeLanguage = language == null ? "en" : language.trim();
+
+        // 生成缓存键
+        String cacheKey = PUBLIC_WORDS_SEARCH_CACHE_PREFIX + safeLanguage + ":" + safeKeyword;
+
+        try {
+            // 尝试从缓存获取
+            Object cachedResult = redisTemplate.opsForValue().get(cacheKey);
+            if (cachedResult instanceof List) {
+                @SuppressWarnings("unchecked")
+                List<PublicVocabularyWord> cachedWords = (List<PublicVocabularyWord>) cachedResult;
+                return cachedWords;
+            }
+        } catch (Exception e) {
+            log.warn("Redis cache error when getting search results: {}", e.getMessage());
+            // 缓存错误时继续从数据库查询
+        }
+
+        // 从数据库查询
+        List<PublicVocabularyWord> words = publicVocabularyWordRepository.searchByKeyword(safeLanguage, safeKeyword);
+
+        // 缓存结果
+        try {
+            redisTemplate.opsForValue().set(cacheKey, words, CACHE_DURATION);
+        } catch (Exception e) {
+            log.warn("Redis cache error when setting search results: {}", e.getMessage());
+        }
+
+        return words;
     }
 
     public PublicSearchResult searchPublicWordsPaged(String keyword, String language, Integer page, Integer size) {
@@ -235,6 +324,20 @@ public class VocabularyService {
         String kw = keyword == null ? "" : keyword.trim();
         String lang = (language == null || language.isBlank()) ? "en" : language.trim();
 
+        // 生成缓存键
+        String cacheKey = PUBLIC_WORDS_SEARCH_CACHE_PREFIX + lang + ":" + kw + ":page:" + safePage + ":size:" + safeSize;
+
+        try {
+            // 尝试从缓存获取
+            Object cachedResult = redisTemplate.opsForValue().get(cacheKey);
+            if (cachedResult instanceof PublicSearchResult) {
+                return (PublicSearchResult) cachedResult;
+            }
+        } catch (Exception e) {
+            log.warn("Redis cache error when getting paged search results: {}", e.getMessage());
+            // 缓存错误时继续从数据库查询
+        }
+
         PageRequest pageable = PageRequest.of(safePage - 1, safeSize);
         Page<PublicVocabularyWord> result;
         if (kw.isEmpty()) {
@@ -243,7 +346,16 @@ public class VocabularyService {
             result = publicVocabularyWordRepository.searchByKeywordPaged(lang, kw, pageable);
         }
 
-        return new PublicSearchResult(result.getContent(), result.getTotalElements(), safePage, safeSize);
+        PublicSearchResult searchResult = new PublicSearchResult(result.getContent(), result.getTotalElements(), safePage, safeSize);
+
+        // 缓存结果
+        try {
+            redisTemplate.opsForValue().set(cacheKey, searchResult, CACHE_DURATION);
+        } catch (Exception e) {
+            log.warn("Redis cache error when setting paged search results: {}", e.getMessage());
+        }
+
+        return searchResult;
     }
 
     public record PublicSearchResult(List<PublicVocabularyWord> words, long total, int page, int size) {}
@@ -300,7 +412,7 @@ public class VocabularyService {
             .toList();
         return new ArticleWordLibraryResult(page.getTotalElements(), list, safePage, safeSize);
     }
-    
+
     /**
      * 生成文章主题建议
      */
@@ -317,14 +429,14 @@ public class VocabularyService {
             "仅返回一个 JSON 字符串数组，例如：[\"主题1\", \"主题2\"]。不要包含任何 Markdown 格式或代码块标记。",
             wordsStr, language == null ? "英语" : language
         );
-        
+
         // 使用新的 ask 方法签名，不传入 model 参数，默认使用 deepseek-chat
         String response = aiChatService.ask(prompt, null, "deepseek-chat", null, null);
         if (response == null) return new ArrayList<>();
-        
+
         // Clean response (remove markdown code blocks if any)
         String json = response.replaceAll("```json", "").replaceAll("```", "").trim();
-        
+
         try {
             return objectMapper.readValue(json, new TypeReference<List<String>>(){});
         } catch (Exception e) {
@@ -339,7 +451,7 @@ public class VocabularyService {
                 .collect(Collectors.toList());
         }
     }
-    
+
     /**
      * 生成并保存文章
      */
@@ -543,7 +655,7 @@ public class VocabularyService {
         cleaned = cleaned.replace("**", "");
         return cleaned.isBlank() ? null : cleaned;
     }
-    
+
     /**
      * 获取用户生成的文章列表
      */
@@ -569,7 +681,7 @@ public class VocabularyService {
         page.getContent().forEach(article -> article.setUsedWords(List.of()));
         return new ArticleHistoryResult(page.getTotalElements(), page.getContent(), safePage, safeSize);
     }
-    
+
     /**
      * 获取文章详情
      */
@@ -577,11 +689,11 @@ public class VocabularyService {
     public GeneratedArticle getGeneratedArticle(Integer articleId) {
         GeneratedArticle article = generatedArticleRepository.findById(articleId)
             .orElseThrow(() -> new CustomException("文章不存在"));
-            
+
         // 填充使用的单词信息（如果需要详细信息）
         List<ArticleUsedWord> usedWords = articleUsedWordRepository.findByArticleIdWithWord(articleId);
         article.setUsedWords(usedWords);
-        
+
         return article;
     }
 

@@ -1,0 +1,37 @@
+<!--pages/word-game/index.wxml-->
+<view class="container packages-container">
+  <view class="header-section">
+    <view class="title-area">
+      <text class="main-title">单词记忆</text>
+      <text class="sub-title">选择课程包，开始学习之旅</text>
+    </view>
+    <view class="action-area">
+      <view class="search-box">
+        <input placeholder="搜索课程包" placeholder-class="search-placeholder" />
+      </view>
+      <view class="upload-btn">上传课程包</view>
+    </view>
+  </view>
+
+  <scroll-view scroll-y class="package-list">
+    <view class="package-card" wx:for="{{packages}}" wx:key="id" bindtap="goToCourses" data-id="{{item.id}}">
+      <view class="package-index {{item.id === 1 ? 'active' : ''}}">{{index + 1}}</view>
+      <view class="package-icon">
+        <image src="/assets/star-icon.png" class="icon-img" mode="aspectFit"></image>
+      </view>
+      
+      <view class="package-content">
+        <view class="package-title-row">
+          <text class="package-name">{{item.name}}</text>
+          <text class="package-tag" wx:if="{{item.tag}}">{{item.tag}}</text>
+        </view>
+        <text class="package-desc">{{item.description}}</text>
+        <text class="package-stats">{{item.courseCount}} 课 · {{item.wordCount}} 题 · {{item.clicks}} 点击</text>
+      </view>
+      
+      <view class="arrow-right">→</view>
+    </view>
+    <!-- 占位防止底部遮挡 -->
+    <view style="height: 60rpx;"></view>
+  </scroll-view>
+</view>

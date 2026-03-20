@@ -1,0 +1,23 @@
+/* pages/auth/register.wxss */
+@import "./login.wxss";
+
+.code-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.code-btn {
+  font-size: 24rpx;
+  color: #1296db;
+  background: none;
+  padding: 0 20rpx;
+  border-left: 1rpx solid #eee;
+  border-radius: 0;
+  width: auto !important;
+  margin: 0 !important;
+}
+
+.code-btn::after {
+  border: none;
+}

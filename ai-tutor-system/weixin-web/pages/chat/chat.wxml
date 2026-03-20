@@ -1,0 +1,44 @@
+<!--pages/chat/chat.wxml-->
+<view class="container chat-container">
+  <scroll-view class="chat-list" scroll-y scroll-into-view="{{lastMessageId}}" scroll-with-animation>
+    <view wx:if="{{messages.length === 0}}" class="empty-state">
+      <image class="empty-icon" src="/assets/ai-icon.png"></image>
+      <text class="empty-text">你好！我是 AI 智能辅导助手。</text>
+      <text class="empty-subtext">你可以问我任何学习相关的问题。</text>
+    </view>
+    
+    <view wx:for="{{messages}}" wx:key="id" id="msg-{{item.id}}" class="message-item {{item.role === 'user' ? 'user' : 'assistant'}}">
+      <view class="avatar-wrapper">
+        <image class="avatar" src="{{item.role === 'user' ? (userInfo.avatarUrl ? userInfo.avatarUrl : '/assets/user-avatar.png') : '/assets/ai-avatar.png'}}"></image>
+      </view>
+      <view class="content-wrapper">
+        <view class="message-content">
+          <text selectable>{{item.content}}</text>
+        </view>
+      </view>
+    </view>
+    <view wx:if="{{loading}}" class="message-item assistant">
+      <view class="avatar-wrapper">
+        <image class="avatar" src="/assets/ai-avatar.png"></image>
+      </view>
+      <view class="content-wrapper">
+        <view class="message-content loading-content">
+          <view class="dot"></view>
+          <view class="dot"></view>
+          <view class="dot"></view>
+        </view>
+      </view>
+    </view>
+    <!-- 底部占位，防止输入框遮挡最后一条消息 -->
+    <view class="chat-bottom-padding"></view>
+  </scroll-view>
+
+  <view class="input-area">
+    <textarea class="input" placeholder="输入你想问的问题..." auto-height maxlength="500" value="{{inputValue}}" bindinput="handleInput" cursor-spacing="20" show-confirm-bar="{{false}}" />
+    <view class="send-btn-wrapper" bindtap="handleSend">
+      <view class="send-btn {{(!inputValue || loading) ? 'disabled' : ''}}">
+        <image class="send-icon" src="/assets/send-icon.png"></image>
+      </view>
+    </view>
+  </view>
+</view>

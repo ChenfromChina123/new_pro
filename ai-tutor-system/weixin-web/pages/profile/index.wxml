@@ -1,0 +1,27 @@
+<!--pages/profile/index.wxml-->
+<view class="container">
+  <view class="user-header">
+    <image class="avatar" src="{{userInfo.avatarUrl ? userInfo.avatarUrl : '/assets/user-avatar.png'}}"></image>
+    <view class="user-info">
+      <text class="username">{{userInfo.username ? userInfo.username : '未登录'}}</text>
+      <text class="user-id" wx:if="{{userInfo.id}}">ID: {{userInfo.id}}</text>
+    </view>
+  </view>
+
+  <view class="menu-list">
+    <view class="menu-item">
+      <text class="menu-label">学习记录</text>
+      <text class="menu-arrow">></text>
+    </view>
+    <view class="menu-item">
+      <text class="menu-label">我的收藏</text>
+      <text class="menu-arrow">></text>
+    </view>
+    <view class="menu-item">
+      <text class="menu-label">设置</text>
+      <text class="menu-arrow">></text>
+    </view>
+  </view>
+
+  <button class="login-btn" type="primary" bindtap="goToLogin">登录 / 注册</button>
+</view>

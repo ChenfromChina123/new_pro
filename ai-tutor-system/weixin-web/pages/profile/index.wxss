@@ -1,0 +1,75 @@
+/* pages/profile/index.wxss */
+.container {
+  height: 100vh;
+  background-color: #f8f8f8;
+  padding: 0;
+}
+
+.user-header {
+  background-color: #fff;
+  padding: 60rpx 40rpx;
+  display: flex;
+  align-items: center;
+  margin-bottom: 20rpx;
+}
+
+.avatar {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 60rpx;
+  background-color: #eee;
+  margin-right: 30rpx;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.username {
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 10rpx;
+}
+
+.user-id {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.menu-list {
+  background-color: #fff;
+  margin-bottom: 40rpx;
+}
+
+.menu-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 30rpx 40rpx;
+  border-bottom: 1rpx solid #f5f5f5;
+}
+
+.menu-label {
+  font-size: 30rpx;
+  color: #333;
+}
+
+.menu-arrow {
+  color: #ccc;
+  font-size: 30rpx;
+}
+
+.logout-btn {
+  width: 90% !important;
+  margin: 40rpx auto;
+  background-color: #fff !important;
+  color: #ff4d4f !important;
+  border: 1rpx solid #ff4d4f;
+}
+
+.login-btn {
+  width: 90% !important;
+  margin: 40rpx auto;
+}
