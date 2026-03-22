@@ -102,16 +102,62 @@ def create_table(conn):
         phonetic VARCHAR(100),
         definition TEXT,
         translation TEXT,
+        pos VARCHAR(50),
+        collins TINYINT,
+        oxford TINYINT,
         level_tags VARCHAR(200),
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_word (word),
-        INDEX idx_level (level_tags)
+        INDEX idx_level (level_tags),
+        INDEX idx_collins (collins),
+        INDEX idx_oxford (oxford)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     """
     cursor.execute(create_sql)
     conn.commit()
     cursor.close()
     print("✅ word_dict 表已创建")
+
+
+def alter_table_add_columns(conn):
+    """
+    为现有表添加新字段
+
+    Args:
+        conn: 数据库连接对象
+    """
+    cursor = conn.cursor()
+
+    # 检查并添加 pos 列
+    cursor.execute("SHOW COLUMNS FROM word_dict LIKE 'pos'")
+    if not cursor.fetchone():
+        cursor.execute("ALTER TABLE word_dict ADD COLUMN pos VARCHAR(50) AFTER translation")
+        print("  ✅ 添加 pos 列")
+
+    # 检查并添加 collins 列
+    cursor.execute("SHOW COLUMNS FROM word_dict LIKE 'collins'")
+    if not cursor.fetchone():
+        cursor.execute("ALTER TABLE word_dict ADD COLUMN collins TINYINT AFTER pos")
+        print("  ✅ 添加 collins 列")
+
+    # 检查并添加 oxford 列
+    cursor.execute("SHOW COLUMNS FROM word_dict LIKE 'oxford'")
+    if not cursor.fetchone():
+        cursor.execute("ALTER TABLE word_dict ADD COLUMN oxford TINYINT AFTER collins")
+        print("  ✅ 添加 oxford 列")
+
+    # 添加索引
+    try:
+        cursor.execute("ALTER TABLE word_dict ADD INDEX idx_collins (collins)")
+    except:
+        pass
+    try:
+        cursor.execute("ALTER TABLE word_dict ADD INDEX idx_oxford (oxford)")
+    except:
+        pass
+
+    conn.commit()
+    cursor.close()
 
 
 def get_current_count(conn):
@@ -177,11 +223,21 @@ def parse_csv_row(row):
     """
     解析 CSV 行数据
 
+    CSV 列结构:
+        0: word - 单词
+        1: phonetic - 音标
+        2: definition - 定义
+        3: translation - 翻译
+        4: pos - 词性
+        5: collins - 柯林斯星级 (1-5)
+        6: oxford - 牛津标记 (0/1)
+        7: tag - 分类标签 (zk/gk/cet4/cet6/ky/toefl/gre/ielts)
+
     Args:
         row: CSV 行数据列表
 
     Returns:
-        tuple: (word, phonetic, definition, translation, level_tags) 或 None
+        tuple: (word, phonetic, definition, translation, pos, collins, oxford, level_tags) 或 None
     """
     if not row or len(row) < 1:
         return None
@@ -193,9 +249,30 @@ def parse_csv_row(row):
     phonetic = row[1].strip() if len(row) > 1 and row[1] else None
     definition = row[2].strip() if len(row) > 2 and row[2] else None
     translation = row[3].strip() if len(row) > 3 and row[3] else None
-    level_tags = row[4].strip() if len(row) > 4 and row[4] else None
 
-    return (word, phonetic, definition, translation, level_tags)
+    # 新增字段
+    pos = row[4].strip() if len(row) > 4 and row[4] else None
+
+    # collins 星级 (转换为整数)
+    collins = None
+    if len(row) > 5 and row[5]:
+        try:
+            collins = int(row[5].strip())
+        except ValueError:
+            pass
+
+    # oxford 标记 (转换为整数)
+    oxford = None
+    if len(row) > 6 and row[6]:
+        try:
+            oxford = int(row[6].strip())
+        except ValueError:
+            pass
+
+    # tag 分类标签
+    level_tags = row[7].strip() if len(row) > 7 and row[7] else None
+
+    return (word, phonetic, definition, translation, pos, collins, oxford, level_tags)
 
 
 def import_from_csv(conn, csv_file, batch_size=DEFAULT_BATCH_SIZE, limit=None):
@@ -223,8 +300,8 @@ def import_from_csv(conn, csv_file, batch_size=DEFAULT_BATCH_SIZE, limit=None):
 
     # 准备插入语句（使用 INSERT IGNORE 避免数据库重复）
     insert_sql = """
-    INSERT IGNORE INTO word_dict (word, phonetic, definition, translation, level_tags, created_at)
-    VALUES (%s, %s, %s, %s, %s, %s)
+    INSERT IGNORE INTO word_dict (word, phonetic, definition, translation, pos, collins, oxford, level_tags, created_at)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
     """
 
     # 使用字典进行去重，key 为单词（小写），value 为数据元组
@@ -401,6 +478,10 @@ def main():
         if not check_table_exists(conn):
             print("⚠️  word_dict 表不存在，正在创建...")
             create_table(conn)
+        else:
+            # 表已存在，检查并添加新字段
+            print("🔧 检查并更新表结构...")
+            alter_table_add_columns(conn)
 
         # 显示当前数据量
         current_count = get_current_count(conn)
