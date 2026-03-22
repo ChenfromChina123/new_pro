@@ -45,11 +45,6 @@ public class SecurityConfig {
                 .requestMatchers("/api/ask", "/api/ask-stream").permitAll()
                 .requestMatchers("/api/search").permitAll()
                 .requestMatchers("/api/translation/translate").permitAll()
-                .requestMatchers("/api/chat/stream").permitAll()
-                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/chat-records/save").permitAll()
-                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/chat-records/new-session").permitAll()
-                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/chat-records/sessions").permitAll()
-                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/chat-records/session/**").permitAll()
                 // 外部链接公开访问（无需登录）
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/external-links").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/external-links/*/click").permitAll()
