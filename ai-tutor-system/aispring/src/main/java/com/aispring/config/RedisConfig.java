@@ -4,46 +4,38 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.redis.connection.RedisConnectionFactory;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
-import org.springframework.data.redis.serializer.StringRedisSerializer;
+import org.springframework.context.annotation.Profile;
 
 /**
- * Redis 配置类
- * 用于Session状态缓存、流式状态管理等
+ * 缓存配置类
+ * 开发环境使用内存缓存，生产环境使用 Redis
  * 
  * @author AISpring Team
  * @since 2025-12-23
  */
 @Configuration
 @EnableCaching
+@Profile("!prod") // 非生产环境使用内存缓存
 public class RedisConfig {
     
     /**
-     * 通用 RedisTemplate 配置
-     * 用于其他类型的缓存
+     * 内存缓存管理器
+     * 用于开发环境，无需 Redis
      */
     @Bean
-    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
-        RedisTemplate<String, Object> template = new RedisTemplate<>();
-        template.setConnectionFactory(connectionFactory);
-        
-        // 使用 String 序列化器作为 key 序列化器
-        StringRedisSerializer stringSerializer = new StringRedisSerializer();
-        template.setKeySerializer(stringSerializer);
-        template.setHashKeySerializer(stringSerializer);
-        
-        // 使用 JSON 序列化器作为 value 序列化器
-        GenericJackson2JsonRedisSerializer jsonSerializer = new GenericJackson2JsonRedisSerializer(objectMapper());
-        template.setValueSerializer(jsonSerializer);
-        template.setHashValueSerializer(jsonSerializer);
-        
-        template.afterPropertiesSet();
-        return template;
+    public CacheManager cacheManager() {
+        ConcurrentMapCacheManager cacheManager = new ConcurrentMapCacheManager();
+        cacheManager.setCacheNames(java.util.Arrays.asList(
+            "wordDict",
+            "vocabulary",
+            "sessionState"
+        ));
+        return cacheManager;
     }
     
     /**

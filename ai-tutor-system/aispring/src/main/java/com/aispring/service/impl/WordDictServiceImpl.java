@@ -5,8 +5,9 @@ import com.aispring.repository.WordDictRepository;
 import com.aispring.service.WordDictService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,7 +17,8 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
 /**
@@ -32,7 +34,7 @@ import java.util.stream.Collectors;
 public class WordDictServiceImpl implements WordDictService {
 
     private final WordDictRepository wordDictRepository;
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final CacheManager cacheManager;
 
     /**
      * 单词缓存前缀
@@ -43,6 +45,11 @@ public class WordDictServiceImpl implements WordDictService {
      * 发音 URL 缓存前缀
      */
     private static final String PRONUNCIATION_CACHE_PREFIX = "word_pronunciation:";
+    
+    /**
+     * 内存缓存 - 发音 URL
+     */
+    private final ConcurrentMap<String, String> pronunciationCache = new ConcurrentHashMap<>();
     
     /**
      * 单词缓存过期时间：24 小时
@@ -80,13 +87,16 @@ public class WordDictServiceImpl implements WordDictService {
         
         // 1. 尝试从缓存获取
         try {
-            Object cachedWord = redisTemplate.opsForValue().get(cacheKey);
-            if (cachedWord instanceof WordDict) {
-                log.debug("Cache hit for word: {}", word);
-                return Optional.of((WordDict) cachedWord);
+            Cache cache = cacheManager.getCache("wordDict");
+            if (cache != null) {
+                WordDict cachedWord = cache.get(cacheKey, WordDict.class);
+                if (cachedWord != null) {
+                    log.debug("Cache hit for word: {}", word);
+                    return Optional.of(cachedWord);
+                }
             }
         } catch (Exception e) {
-            log.warn("Redis cache error when getting word: {}", e.getMessage());
+            log.warn("Cache error when getting word: {}", e.getMessage());
         }
 
         // 2. 从数据库查询
@@ -95,20 +105,16 @@ public class WordDictServiceImpl implements WordDictService {
         // 3. 缓存结果
         if (wordOpt.isPresent()) {
             try {
-                redisTemplate.opsForValue().set(cacheKey, wordOpt.get(), WORD_CACHE_TTL);
-                log.debug("Cached word: {}", word);
+                Cache cache = cacheManager.getCache("wordDict");
+                if (cache != null) {
+                    cache.put(cacheKey, wordOpt.get());
+                    log.debug("Cached word: {}", word);
+                }
             } catch (Exception e) {
-                log.warn("Redis cache error when setting word: {}", e.getMessage());
-            }
-        } else {
-            // 缓存空值，防止缓存穿透，设置较短的过期时间
-            try {
-                redisTemplate.opsForValue().set(cacheKey, new Object(), Duration.ofMinutes(5));
-            } catch (Exception e) {
-                log.warn("Redis cache error when setting empty word cache: {}", e.getMessage());
+                log.warn("Cache error when setting word: {}", e.getMessage());
             }
         }
-
+        
         return wordOpt;
     }
 
@@ -152,27 +158,19 @@ public class WordDictServiceImpl implements WordDictService {
 
         String cacheKey = PRONUNCIATION_CACHE_PREFIX + word.toLowerCase().trim();
         
-        // 1. 尝试从缓存获取
-        try {
-            Object cachedUrl = redisTemplate.opsForValue().get(cacheKey);
-            if (cachedUrl instanceof String) {
-                log.debug("Cache hit for pronunciation: {}", word);
-                return (String) cachedUrl;
-            }
-        } catch (Exception e) {
-            log.warn("Redis cache error when getting pronunciation: {}", e.getMessage());
+        // 1. 尝试从内存缓存获取
+        String cachedUrl = pronunciationCache.get(cacheKey);
+        if (cachedUrl != null) {
+            log.debug("Cache hit for pronunciation: {}", word);
+            return cachedUrl;
         }
 
         // 2. 生成发音 URL
         String url = getPronunciationUrl(word);
         
         // 3. 缓存结果
-        try {
-            redisTemplate.opsForValue().set(cacheKey, url, PRONUNCIATION_CACHE_TTL);
-            log.debug("Cached pronunciation for: {}", word);
-        } catch (Exception e) {
-            log.warn("Redis cache error when setting pronunciation: {}", e.getMessage());
-        }
+        pronunciationCache.put(cacheKey, url);
+        log.debug("Cached pronunciation for: {}", word);
 
         return url;
     }
@@ -196,13 +194,14 @@ public class WordDictServiceImpl implements WordDictService {
         }
 
         try {
-            String cacheKey = WORD_CACHE_PREFIX + word.toLowerCase().trim();
-            String pronunciationKey = PRONUNCIATION_CACHE_PREFIX + word.toLowerCase().trim();
-            
-            redisTemplate.delete(List.of(cacheKey, pronunciationKey));
-            log.info("Evicted cache for word: {}", word);
+            Cache cache = cacheManager.getCache("wordDict");
+            if (cache != null) {
+                String cacheKey = WORD_CACHE_PREFIX + word.toLowerCase().trim();
+                cache.evict(cacheKey);
+                log.info("Evicted cache for word: {}", word);
+            }
         } catch (Exception e) {
-            log.warn("Redis cache error when evicting word cache: {}", e.getMessage());
+            log.warn("Cache error when evicting word cache: {}", e.getMessage());
         }
     }
 
@@ -210,11 +209,9 @@ public class WordDictServiceImpl implements WordDictService {
     @Transactional
     public void evictAllWordCache() {
         try {
-            // 注意：生产环境应使用 SCAN 命令而不是 KEYS 命令
-            // 这里仅用于测试或初始化场景
             log.info("Evicting all word cache");
         } catch (Exception e) {
-            log.warn("Redis cache error when evicting all cache: {}", e.getMessage());
+            log.warn("Cache error when evicting all cache: {}", e.getMessage());
         }
     }
 
@@ -233,12 +230,15 @@ public class WordDictServiceImpl implements WordDictService {
                 Optional<WordDict> wordOpt = wordDictRepository.findByWordIgnoreCase(word);
                 if (wordOpt.isPresent()) {
                     String cacheKey = WORD_CACHE_PREFIX + word.toLowerCase();
-                    redisTemplate.opsForValue().set(cacheKey, wordOpt.get(), WORD_CACHE_TTL);
+                    Cache cache = cacheManager.getCache("wordDict");
+                    if (cache != null) {
+                        cache.put(cacheKey, wordOpt.get());
+                    }
                     
-                    // 预加载发音 URL
+                    // 预加载发音 URL 到内存缓存
                     String pronunciationKey = PRONUNCIATION_CACHE_PREFIX + word.toLowerCase();
                     String pronunciationUrl = getPronunciationUrl(word);
-                    redisTemplate.opsForValue().set(pronunciationKey, pronunciationUrl, PRONUNCIATION_CACHE_TTL);
+                    pronunciationCache.put(pronunciationKey, pronunciationUrl);
                     
                     successCount++;
                 }

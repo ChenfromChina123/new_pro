@@ -29,15 +29,15 @@ def get_auth_token():
 def test_search():
     """测试搜索接口"""
     print("="*90)
-    print("测试联网搜索 API")
+    print("Testing Web Search API")
     print("="*90)
     
     token = get_auth_token()
     if not token:
-        print("❌ 获取 token 失败")
+        print("[FAIL] Get token failed")
         return
     
-    print(f"✅ 获取 Token 成功：{token[:50]}...")
+    print(f"[SUCCESS] Get token: {token[:50]}...")
     
     url = f"{BASE_URL}/api/search"
     headers = {
@@ -46,17 +46,17 @@ def test_search():
     }
     
     keyword = "科技英语单词"
-    print(f"\n搜索关键词：{keyword}")
-    print(f"请求 URL: {url}")
-    print(f"请求头：Authorization: Bearer {token[:30]}...")
+    print(f"\nSearch keyword: {keyword}")
+    print(f"Request URL: {url}")
+    print(f"Headers: Authorization: Bearer {token[:30]}...")
     
     try:
         response = requests.get(url, headers=headers, params={"q": keyword}, timeout=30)
-        print(f"\n响应状态码：{response.status_code}")
-        print(f"\n完整响应内容:")
+        print(f"\nResponse Status: {response.status_code}")
+        print(f"\nFull Response:")
         print(json.dumps(response.json(), ensure_ascii=False, indent=2))
     except Exception as e:
-        print(f"\n❌ 请求失败：{e}")
+        print(f"\n[FAIL] Request failed: {e}")
         import traceback
         traceback.print_exc()
 
