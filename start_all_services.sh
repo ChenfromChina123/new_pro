@@ -240,7 +240,7 @@ else
   BACKEND_PID=$!
   cd "$PROJECT_ROOT"
   echo "    后端进程已启动（PID: $BACKEND_PID）"
-  wait_for_port "$BACKEND_PORT" "后端" 90
+  wait_for_port "$BACKEND_PORT" "后端" 180
   echo "✅ 后端已就绪（端口 $BACKEND_PORT）"
 fi
 
