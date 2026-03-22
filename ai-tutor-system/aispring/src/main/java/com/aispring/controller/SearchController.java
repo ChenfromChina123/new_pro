@@ -33,13 +33,19 @@ public class SearchController {
             @RequestParam("q") String q,
             @RequestParam(value = "site", required = false) String site) {
         
-        String result = searchService.searchIndustryInfo(q, site);
-        
-        Map<String, Object> data = new HashMap<>();
-        data.put("query", q);
-        data.put("site", site);
-        data.put("result", result);
-        
-        return ResponseEntity.ok(ApiResponse.success(data));
+        try {
+            // 进行一次解码，防止前端传过来的是已经 urlencode 的字符
+            String decodedKeywords = java.net.URLDecoder.decode(q, "UTF-8");
+            String result = searchService.searchIndustryInfo(decodedKeywords, site);
+            
+            Map<String, Object> data = new HashMap<>();
+            data.put("query", decodedKeywords);
+            data.put("site", site);
+            data.put("result", result);
+            
+            return ResponseEntity.ok(ApiResponse.success(data));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(ApiResponse.error(500, "搜索执行失败: " + e.getMessage()));
+        }
     }
 }

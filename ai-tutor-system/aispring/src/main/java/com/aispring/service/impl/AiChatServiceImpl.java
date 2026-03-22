@@ -719,6 +719,8 @@ public class AiChatServiceImpl implements AiChatService {
                         sseData.put("suggestions", suggestionsList);
                         try {
                             emitter.send(SseEmitter.event().name("session_update").data(objectMapper.writeValueAsString(sseData)));
+                        } catch (IllegalStateException | java.io.IOException ex) {
+                            log.warn("Client disconnected during suggestion stream: {}", ex.getMessage());
                         } catch (Exception ex) {
                             // 忽略发送失败
                         }

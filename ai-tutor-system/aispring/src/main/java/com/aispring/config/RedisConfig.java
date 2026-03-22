@@ -39,6 +39,27 @@ public class RedisConfig {
     }
     
     /**
+     * 为开发环境提供一个 Mock 的 RedisTemplate，防止启动报错
+     */
+    @Bean
+    public org.springframework.data.redis.core.RedisTemplate<String, Object> redisTemplate() {
+        org.springframework.data.redis.core.RedisTemplate<String, Object> template = new org.springframework.data.redis.core.RedisTemplate<>();
+        // 这里只是为了满足依赖注入，在开发环境下不会真正连接 Redis
+        template.setConnectionFactory(new org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory());
+        return template;
+    }
+
+    /**
+     * 为开发环境提供一个 Mock 的 StringRedisTemplate，防止启动报错
+     */
+    @Bean
+    public org.springframework.data.redis.core.StringRedisTemplate stringRedisTemplate() {
+        org.springframework.data.redis.core.StringRedisTemplate template = new org.springframework.data.redis.core.StringRedisTemplate();
+        template.setConnectionFactory(new org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory());
+        return template;
+    }
+    
+    /**
      * 配置 ObjectMapper 用于 JSON 序列化
      * - 支持 Java 8 时间类型
      * - 忽略 null 字段
