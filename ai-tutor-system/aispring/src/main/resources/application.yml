@@ -78,15 +78,7 @@ spring:
           max-wait: 3000ms
         shutdown-timeout: 200ms
 
-# 单词词典缓存配置
-app:
-  word-dict:
-    # 启动时预加载高频单词到缓存
-    preload-cache-on-startup: true
-    # 高频单词列表（可在 WordDictServiceImpl 中自定义）
-    high-frequency-words-count: 100
-
-  # 文件上传配置（优化：不限制上传时间，基于大小限制，提高临时文件阈值以减少磁盘IO）
+# 文件上传配置（优化：不限制上传时间，基于大小限制，提高临时文件阈值以减少磁盘 IO）
   servlet:
     multipart:
       enabled: true
@@ -197,9 +189,9 @@ cors:
 
 # 应用信息
 app:
-  name: AI智能学习导师
+  name: AI 智能学习导师
   version: 1.0.0
-  description: 基于Spring Boot的AI智能学习助手
+  description: 基于 Spring Boot 的 AI 智能学习助手
   auth:
     verification-code-expire-minutes: 5
   # 用户数据存储：开发默认当前目录；生产环境由 application-prod 指定项目外专用目录
@@ -213,3 +205,9 @@ app:
     # 启动时自动清理孤立的文件记录（数据库中存在但物理文件不存在）
     # 设置为 false 可禁用自动清理
     auto-cleanup-on-startup: true
+  # 单词词典缓存配置
+  word-dict:
+    # 启动时预加载高频单词到缓存
+    preload-cache-on-startup: true
+    # 高频单词列表（可在 WordDictServiceImpl 中自定义）
+    high-frequency-words-count: 100
