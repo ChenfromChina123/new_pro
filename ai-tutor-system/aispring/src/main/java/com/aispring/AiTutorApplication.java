@@ -11,6 +11,7 @@ import org.springframework.boot.autoconfigure.flyway.FlywayMigrationStrategy;
 import org.springframework.scheduling.annotation.EnableAsync;
 import com.aispring.service.CloudDiskService;
 import com.aispring.service.UserService;
+import com.aispring.service.impl.WordDictServiceImpl;
 import com.aispring.entity.Admin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,6 +66,24 @@ public class AiTutorApplication {
         return flyway -> {
             flyway.repair();
             flyway.migrate();
+        };
+    }
+
+    /**
+     * 应用启动后预加载高频单词到 Redis 缓存
+     * 条件：仅当 Redis 可用时执行
+     */
+    @Bean
+    @ConditionalOnProperty(name = "app.word-dict.preload-cache-on-startup", havingValue = "true", matchIfMissing = true)
+    public CommandLineRunner preloadWordCacheRunner(WordDictServiceImpl wordDictService) {
+        return args -> {
+            log.info("开始预加载高频单词到 Redis 缓存...");
+            try {
+                wordDictService.preloadHighFrequencyWords();
+                log.info("高频单词预加载完成");
+            } catch (Exception e) {
+                log.warn("预加载高频单词失败（可能 Redis 不可用）: {}", e.getMessage());
+            }
         };
     }
 }

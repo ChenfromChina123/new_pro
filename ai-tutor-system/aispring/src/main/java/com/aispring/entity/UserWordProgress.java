@@ -72,6 +72,58 @@ public class UserWordProgress {
     @Column(name = "next_review_date")
     private LocalDateTime nextReviewDate;
     
+    /**
+     * 发音练习次数
+     */
+    @Builder.Default
+    @Column(name = "pronunciation_count")
+    private Integer pronunciationCount = 0;
+    
+    /**
+     * 发音平均得分
+     */
+    @Column(name = "pronunciation_avg_score")
+    private Double pronunciationAvgScore;
+    
+    /**
+     * 最佳发音得分
+     */
+    @Column(name = "pronunciation_best_score")
+    private Integer pronunciationBestScore;
+    
+    /**
+     * 拼写练习次数
+     */
+    @Builder.Default
+    @Column(name = "spelling_count")
+    private Integer spellingCount = 0;
+    
+    /**
+     * 拼写正确次数
+     */
+    @Builder.Default
+    @Column(name = "spelling_correct_count")
+    private Integer spellingCorrectCount = 0;
+    
+    /**
+     * 总练习次数（所有类型）
+     */
+    @Builder.Default
+    @Column(name = "total_practice_count")
+    private Integer totalPracticeCount = 0;
+    
+    /**
+     * 最后发音练习时间
+     */
+    @Column(name = "last_pronunciation_time")
+    private LocalDateTime lastPronunciationTime;
+    
+    /**
+     * 最后拼写练习时间
+     */
+    @Column(name = "last_spelling_time")
+    private LocalDateTime lastSpellingTime;
+    
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "word_id", insertable = false, updatable = false)
     private VocabularyWord word;

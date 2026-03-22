@@ -2,6 +2,7 @@ package com.aispring.service.impl;
 
 import com.aispring.service.AiChatService;
 import com.aispring.service.AiVocabService;
+import com.aispring.service.LearningRecordService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -30,6 +31,7 @@ public class AiVocabServiceImpl implements AiVocabService {
     private final AiChatService aiChatService;
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate = new RestTemplate();
+    private final LearningRecordService learningRecordService;
 
     @Value("${whisper.server.url:http://127.0.0.1:8090/inference}")
     private String whisperServerUrl;
@@ -57,8 +59,8 @@ public class AiVocabServiceImpl implements AiVocabService {
         // 3. 构造 LLM 评测 Prompt 进行深度纠错
         String systemPrompt = "你是一位专业的英语发音教练。请根据用户的【实际发音识别结果】和【目标文本】进行对比分析。\n" +
                 "请严格输出 JSON 格式，不要输出其他 Markdown 标记，包含以下字段：\n" +
-                "score: 发音得分(0-100，可参考基础分，酌情上下浮动)\n" +
-                "aiFeedback: 对发音的简短评价（用1到2句话指出主要问题或给予鼓励，必须简明扼要）\n" +
+                "score: 发音得分 (0-100，可参考基础分，酌情上下浮动)\n" +
+                "aiFeedback: 对发音的简短评价（用 1 到 2 句话指出主要问题或给予鼓励，必须简明扼要）\n" +
                 "weakWords: 读得不准的单词数组";
 
         String prompt = String.format("目标文本：%s\n实际发音识别结果：%s\n基础相似度得分：%d", targetText, recognizedText, baseScore);
@@ -66,7 +68,31 @@ public class AiVocabServiceImpl implements AiVocabService {
         // 4. 调用大模型
         String aiResponse = aiChatService.ask(prompt, null, "deepseek-v3.2", userId, systemPrompt, null);
         
-        return parseJsonToMap(aiResponse, recognizedText, targetText, "speech");
+        Map<String, Object> result = parseJsonToMap(aiResponse, recognizedText, targetText, "speech");
+        
+        // 5. 保存发音记录到数据库
+        if (userId != null) {
+            try {
+                Integer score = (Integer) result.get("score");
+                String aiFeedback = (String) result.get("aiFeedback");
+                List<String> weakWords = (List<String>) result.get("weakWords");
+                
+                learningRecordService.recordPronunciation(
+                    userId, 
+                    null, 
+                    targetText, 
+                    recognizedText, 
+                    score, 
+                    aiFeedback, 
+                    weakWords
+                );
+                log.info("已保存发音记录到数据库 - 用户：{}", userId);
+            } catch (Exception e) {
+                log.error("保存发音记录失败", e);
+            }
+        }
+        
+        return result;
     }
 
     @Override

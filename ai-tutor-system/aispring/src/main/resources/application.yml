@@ -62,7 +62,7 @@ spring:
         "[cache.use_query_cache]": false
     open-in-view: false
 
-  # Redis配置 - 用于Session状态存储（极致优化：最小化连接池）
+  # Redis 配置 - 用于 Session 状态存储（极致优化：最小化连接池）
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -77,6 +77,14 @@ spring:
           min-idle: 1
           max-wait: 3000ms
         shutdown-timeout: 200ms
+
+# 单词词典缓存配置
+app:
+  word-dict:
+    # 启动时预加载高频单词到缓存
+    preload-cache-on-startup: true
+    # 高频单词列表（可在 WordDictServiceImpl 中自定义）
+    high-frequency-words-count: 100
 
   # 文件上传配置（优化：不限制上传时间，基于大小限制，提高临时文件阈值以减少磁盘IO）
   servlet:
