@@ -42,9 +42,6 @@ public class SecurityConfig {
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/users/avatar/**").permitAll()
                 .requestMatchers("/api/resources/public").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/public-files", "/api/public-files/**").permitAll()
-                .requestMatchers("/api/ask", "/api/ask-stream").permitAll()
-                .requestMatchers("/api/search").permitAll()
-                .requestMatchers("/api/translation/translate").permitAll()
                 // 外部链接公开访问（无需登录）
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/external-links").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/external-links/*/click").permitAll()
