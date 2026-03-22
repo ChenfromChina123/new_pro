@@ -47,3 +47,9 @@ aispring/public_files/*.rar
 
 # Ignored directories
 v2/
+
+# Whisper binaries and models (too large for git)
+whisper-bin/
+whisper.cpp/
+whisper-bin.zip
+*.bin
