@@ -8,12 +8,11 @@
       <div v-else-if="block.type === 'vocab-collection' && block.words.length > 0" class="vocab-collection-panel">
         <div class="panel-header">
           <i class="fas fa-bullseye text-blue-500"></i>
-          <span>你的专属词汇练习生成完毕</span>
+          <span>你的专属词汇练习生成完毕（共 {{ block.words.length }} 词）</span>
         </div>
         <div class="panel-body">
           <div class="word-tags">
-            <span v-for="(w, idx) in block.words.slice(0, 5)" :key="idx" class="word-tag">{{ w.word }}</span>
-            <span v-if="block.words.length > 5" class="word-tag more">等 {{ block.words.length }} 词</span>
+            <span v-for="(w, idx) in block.words" :key="idx" class="word-tag">{{ w.word }}</span>
           </div>
           <button class="start-practice-btn" @click="openVocabModal(block.words)">
             <i class="fas fa-play-circle"></i> 进入专注模式开始练习
