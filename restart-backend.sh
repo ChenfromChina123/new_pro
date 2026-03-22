@@ -8,6 +8,10 @@ echo "🔄 重新启动后端服务"
 echo "=========================================="
 echo ""
 
+# 获取项目根目录（脚本所在目录）
+PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
+cd "$PROJECT_ROOT"
+
 # 1. 停止现有进程
 echo "【1/4】停止现有后端进程..."
 BACKEND_PID=$(lsof -ti:5000 | head -n 1)
@@ -42,6 +46,10 @@ cd ai-tutor-system/aispring
 JAR_FILE=$(ls -t target/*.jar 2>/dev/null | grep -v "original" | head -n 1)
 if [ -z "$JAR_FILE" ]; then
     echo "❌ 未找到 JAR 文件，请先构建"
+    echo ""
+    echo "    请先执行："
+    echo "    cd ai-tutor-system/aispring"
+    echo "    mvn package -DskipTests"
     exit 1
 fi
 
