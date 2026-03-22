@@ -488,6 +488,10 @@ onUnmounted(() => {
   margin-top: 2px;
 }
 
+body.dark-mode .sub-text {
+  color: var(--text-secondary);
+}
+
 .actions {
   display: flex;
   gap: 8px;
@@ -547,6 +551,16 @@ onUnmounted(() => {
   flex-wrap: wrap; /* Allow title and badge to wrap if space is limited */
 }
 
+.title-row strong {
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+body.dark-mode .title-row strong {
+  color: var(--text-primary);
+}
+
 .pkg-rank {
   width: 40px; /* Increased size */
   height: 40px; /* Increased size */
@@ -578,6 +592,10 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
+body.dark-mode .pkg-icon-wrap {
+  background: rgba(255, 251, 230, 0.1);
+}
+
 .pkg-icon {
   font-size: 1.7rem;
 }
@@ -603,6 +621,11 @@ onUnmounted(() => {
   text-align: left;
   white-space: normal; /* Ensure text wraps */
   word-break: break-word; /* Break long words */
+}
+
+body.dark-mode .pkg-body p,
+body.dark-mode .pkg-body small {
+  color: var(--text-primary);
 }
 
 .pkg-level-badge {
@@ -648,6 +671,11 @@ onUnmounted(() => {
 .course-main strong {
   font-size: 1rem;
   font-weight: 600;
+  color: var(--text-primary);
+}
+
+body.dark-mode .course-main strong {
+  color: var(--text-primary);
 }
 
 .course-main span {
