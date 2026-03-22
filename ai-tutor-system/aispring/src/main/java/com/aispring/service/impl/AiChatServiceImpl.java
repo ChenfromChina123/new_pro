@@ -292,15 +292,37 @@ public class AiChatServiceImpl implements AiChatService {
                     searchMsg.put("content", "\n\n*正在从本地词库为您检索 " + topic + " 相关的单词*...\n\n");
                     emitter.send(SseEmitter.event().data(objectMapper.writeValueAsString(searchMsg)));
 
-                    // 这里应该是真正的 RAG 检索逻辑，从数据库捞取
-                    // 目前为了演示跑通，我们返回一段模拟的 RAG 结果（实际应替换为 wordDictRepository.findAll() 等操作）
-                    String ragResult = "[\n" +
-                            "  {\"id\": 101, \"word\": \"espresso\", \"definition\": \"n. 浓缩咖啡\", \"user_status\": \"易错，需复习\"},\n" +
-                            "  {\"id\": 102, \"word\": \"latte\", \"definition\": \"n. 拿铁\", \"user_status\": \"未学\"},\n" +
-                            "  {\"id\": 103, \"word\": \"cappuccino\", \"definition\": \"n. 卡布奇诺\", \"user_status\": \"未学\"}\n" +
-                            "]";
+                    // 真正的 RAG 检索逻辑，从数据库查询相关单词
+                    Page<WordDict> wordsPage = wordDictRepository.searchByKeyword(topic, PageRequest.of(0, limit));
+                    List<WordDict> words = wordsPage.getContent();
 
-                    String newPrompt = initialPrompt + "\n\n【系统反馈的候选单词数据（请使用这些数据生成卡片）】\n" + ragResult + "\n\n请严格使用上述数据生成 <vocab-practice> 练习卡片，并补全例句。";
+                    // 如果没有精确匹配，使用模糊查询获取随机单词
+                    if (words.isEmpty()) {
+                        words = wordDictRepository.findRandomWords(limit);
+                    }
+
+                    // 构建 RAG 结果 JSON
+                    StringBuilder ragResult = new StringBuilder("[\n");
+                    for (int i = 0; i < words.size(); i++) {
+                        WordDict w = words.get(i);
+                        ragResult.append("  {\"id\": ").append(w.getId())
+                                .append(", \"word\": \"").append(w.getWord().replace("\"", "\\\"")).append("\"")
+                                .append(", \"phonetic\": \"").append(w.getPhonetic() != null ? w.getPhonetic().replace("\"", "\\\"") : "").append("\"")
+                                .append(", \"definition\": \"").append(w.getDefinition() != null ? w.getDefinition().replace("\"", "\\\"").replace("\n", " ") : "").append("\"")
+                                .append(", \"translation\": \"").append(w.getTranslation() != null ? w.getTranslation().replace("\"", "\\\"").replace("\n", " ") : "").append("\"")
+                                .append(", \"level_tags\": \"").append(w.getLevelTags() != null ? w.getLevelTags() : "").append("\"")
+                                .append(", \"user_status\": \"未学\"}");
+                        if (i < words.size() - 1) {
+                            ragResult.append(",");
+                        }
+                        ragResult.append("\n");
+                    }
+                    ragResult.append("]");
+                    String ragResultStr = ragResult.toString();
+
+                    log.info("RAG 检索到 {} 个相关单词", words.size());
+
+                    String newPrompt = initialPrompt + "\n\n【系统反馈的候选单词数据（请使用这些数据生成卡片）】\n" + ragResultStr + "\n\n请严格使用上述数据生成 <vocab-practice> 练习卡片，并补全例句。";
 
                     String secondContent = performBlockingChat(newPrompt, finalSessionId, model, userId, "【系统提示】你已经获取了本地词库数据，请直接生成练习卡片，不要再输出<query-vocab>标签。", emitter, ipAddress, fullReasoning);
                     fullContent = fullContent + "\n\n" + secondContent;
