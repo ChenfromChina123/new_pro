@@ -37,3 +37,7 @@ public_files/*.7z
 public_files/*.zip
 public_files/*.tar.gz
 public_files/*.rar
+
+### ECDICT Word Database ###
+ecdict.csv
+*.csv
