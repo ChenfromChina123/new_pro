@@ -29,6 +29,28 @@ public interface WordDictRepository extends JpaRepository<WordDict, Long> {
     @Query("SELECT w FROM WordDict w WHERE w.word LIKE %:keyword% OR w.translation LIKE %:keyword%")
     Page<WordDict> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
 
+    /**
+     * 根据英文单词列表批量查询（用于语义搜索）
+     * 返回匹配任意单词的记录，按匹配优先级排序
+     */
+    @Query("SELECT w FROM WordDict w WHERE w.word IN :words")
+    List<WordDict> findByWordIn(@Param("words") List<String> words);
+
+    /**
+     * 根据英文单词前缀匹配查询（用于语义搜索扩展）
+     */
+    @Query("SELECT w FROM WordDict w WHERE LOWER(w.word) LIKE LOWER(CONCAT(:prefix, '%'))")
+    List<WordDict> findByWordPrefix(@Param("prefix") String prefix, Pageable pageable);
+
+    /**
+     * 智能搜索：支持英文单词精确匹配和前缀匹配
+     */
+    @Query("SELECT w FROM WordDict w WHERE " +
+           "LOWER(w.word) = LOWER(:keyword) OR " +
+           "LOWER(w.word) LIKE LOWER(CONCAT(:keyword, '%')) OR " +
+           "w.translation LIKE %:keyword%")
+    List<WordDict> smartSearch(@Param("keyword") String keyword, Pageable pageable);
+
     @Query("SELECT w FROM WordDict w WHERE w.levelTags LIKE %:level% ORDER BY RAND() LIMIT :limit")
     List<WordDict> findRandomWordsByLevel(@Param("level") String level, @Param("limit") int limit);
 

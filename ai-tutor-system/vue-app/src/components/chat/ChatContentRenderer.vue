@@ -1,35 +1,33 @@
 <template>
   <div class="chat-content-renderer">
-    <TransitionGroup name="content-fade">
-      <template v-for="(block, index) in parsedBlocks" :key="getBlockKey(block, index)">
-        <!-- eslint-disable-next-line vue/no-v-html -->
-        <div v-if="block.type === 'markdown'" class="markdown-block" v-html="block.htmlContent"></div>
-        
-        <!-- 如果解析到了 vocab 标签，我们不再直接平铺所有卡片，而是显示一个概览入口面板 -->
-        <div v-else-if="block.type === 'vocab-collection' && block.words.length > 0" class="vocab-collection-panel">
-          <div class="panel-header">
-            <i class="fas fa-bullseye text-blue-500"></i>
-            <span>你的专属词汇练习生成完毕</span>
-          </div>
-          <div class="panel-body">
-            <div class="word-tags">
-              <span v-for="(w, idx) in block.words.slice(0, 5)" :key="idx" class="word-tag">{{ w.word }}</span>
-              <span v-if="block.words.length > 5" class="word-tag more">等 {{ block.words.length }} 词</span>
-            </div>
-            <button class="start-practice-btn" @click="openVocabModal(block.words)">
-              <i class="fas fa-play-circle"></i> 进入专注模式开始练习
-            </button>
-          </div>
+    <template v-for="(block, index) in parsedBlocks" :key="getBlockKey(block, index)">
+      <!-- eslint-disable-next-line vue/no-v-html -->
+      <div v-if="block.type === 'markdown'" class="markdown-block" v-html="block.htmlContent"></div>
+
+      <!-- 如果解析到了 vocab 标签，我们不再直接平铺所有卡片，而是显示一个概览入口面板 -->
+      <div v-else-if="block.type === 'vocab-collection' && block.words.length > 0" class="vocab-collection-panel">
+        <div class="panel-header">
+          <i class="fas fa-bullseye text-blue-500"></i>
+          <span>你的专属词汇练习生成完毕</span>
         </div>
-        
-        <VocabSkeleton v-else-if="block.type === 'vocab-skeleton'" :key="'skeleton'" />
-      </template>
-    </TransitionGroup>
+        <div class="panel-body">
+          <div class="word-tags">
+            <span v-for="(w, idx) in block.words.slice(0, 5)" :key="idx" class="word-tag">{{ w.word }}</span>
+            <span v-if="block.words.length > 5" class="word-tag more">等 {{ block.words.length }} 词</span>
+          </div>
+          <button class="start-practice-btn" @click="openVocabModal(block.words)">
+            <i class="fas fa-play-circle"></i> 进入专注模式开始练习
+          </button>
+        </div>
+      </div>
+
+      <VocabSkeleton v-else-if="block.type === 'vocab-skeleton'" :key="'skeleton'" />
+    </template>
     <span v-if="isStreaming" class="typing-cursor"></span>
 
     <!-- 专注模式弹窗 -->
     <Teleport to="body">
-      <VocabPracticeModal 
+      <VocabPracticeModal
         v-if="isModalOpen"
         :words="currentPracticeWords"
         @close="isModalOpen = false"
@@ -89,6 +87,7 @@ const getBlockKey = (block, index) => {
  * 缓存上一次解析的词汇集合，避免流式传输时频繁切换
  */
 const lastVocabCollection = shallowRef([])
+const lastBlockCount = ref(0)
 
 /**
  * 解析内容块，优化流式传输时的渲染
@@ -96,13 +95,13 @@ const lastVocabCollection = shallowRef([])
 const parsedBlocks = computed(() => {
   const blocks = []
   const text = props.content || ''
-  
+
   const vocabRegex = /<vocab\s+([^>]*)\/?>/g
   let lastIndex = 0
   let match
-  
+
   const currentVocabCollection = []
-  
+
   while ((match = vocabRegex.exec(text)) !== null) {
     if (match.index > lastIndex) {
       let mdContent = text.substring(lastIndex, match.index)
@@ -115,7 +114,7 @@ const parsedBlocks = computed(() => {
         blocks.push({ type: 'markdown', content: mdContent, htmlContent: props.formatMarkdown(mdContent) })
       }
     }
-    
+
     const attrStr = match[1]
     const wordMatch = attrStr.match(/word="([^"]*)"/)
     const phoneticMatch = attrStr.match(/phonetic="([^"]*)"/)
@@ -123,23 +122,25 @@ const parsedBlocks = computed(() => {
     const transMatch = attrStr.match(/translation="([^"]*)"/)
     const defMatch = attrStr.match(/definition="([^"]*)"/)
     const modeMatch = attrStr.match(/mode="([^"]*)"/)
-    
-    currentVocabCollection.push({
-      word: wordMatch ? wordMatch[1] : '',
-      phonetic: phoneticMatch ? phoneticMatch[1] : '',
-      sentence: sentenceMatch ? sentenceMatch[1] : '',
-      translation: transMatch ? transMatch[1] : '',
-      definition: defMatch ? defMatch[1] : '',
-      mode: modeMatch ? modeMatch[1] : 'pronunciation'
-    })
-    
+
+    if (wordMatch) {
+      currentVocabCollection.push({
+        word: wordMatch[1],
+        phonetic: phoneticMatch ? phoneticMatch[1] : '',
+        sentence: sentenceMatch ? sentenceMatch[1] : '',
+        translation: transMatch ? transMatch[1] : '',
+        definition: defMatch ? defMatch[1] : '',
+        mode: modeMatch ? modeMatch[1] : 'pronunciation'
+      })
+    }
+
     lastIndex = vocabRegex.lastIndex
   }
-  
+
   let remaining = text.substring(lastIndex)
-  
+
   const hasOpenTag = remaining.includes('<vocab-practice>') || remaining.includes('<vocab ')
-  
+
   if (props.isStreaming && hasOpenTag) {
     const openIndex = remaining.indexOf('<vocab')
     if (openIndex > 0) {
@@ -152,7 +153,7 @@ const parsedBlocks = computed(() => {
         blocks.push({ type: 'markdown', content: mdContent, htmlContent: props.formatMarkdown(mdContent) })
       }
     }
-    
+
     // 只有在没有已完成的词汇集合时才显示骨架屏
     // 如果已经有词汇数据，先显示已有的，避免闪烁
     if (currentVocabCollection.length === 0 && lastVocabCollection.value.length === 0) {
@@ -175,7 +176,10 @@ const parsedBlocks = computed(() => {
       blocks.push({ type: 'markdown', content: remaining, htmlContent: props.formatMarkdown(remaining) })
     }
   }
-  
+
+  // 记录块数量，用于调试
+  lastBlockCount.value = blocks.length
+
   return blocks
 })
 
@@ -199,25 +203,6 @@ watch(() => props.isStreaming, (newVal, oldVal) => {
   width: 100%;
 }
 
-/* 内容淡入动画 */
-.content-fade-enter-active {
-  transition: opacity 0.2s ease-out;
-}
-
-.content-fade-leave-active {
-  transition: opacity 0.15s ease-in;
-}
-
-.content-fade-enter-from,
-.content-fade-leave-to {
-  opacity: 0;
-}
-
-/* 避免在过渡期间发生布局跳动 */
-.content-fade-move {
-  transition: transform 0.2s ease;
-}
-
 .vocab-collection-panel {
   border: 1px solid var(--border-color);
   border-radius: 12px;
@@ -225,17 +210,15 @@ watch(() => props.isStreaming, (newVal, oldVal) => {
   overflow: hidden;
   margin: 12px 0;
   max-width: 480px;
-  animation: panel-appear 0.3s ease-out;
+  animation: panel-fade-in 0.25s ease-out;
 }
 
-@keyframes panel-appear {
+@keyframes panel-fade-in {
   from {
     opacity: 0;
-    transform: translateY(8px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 

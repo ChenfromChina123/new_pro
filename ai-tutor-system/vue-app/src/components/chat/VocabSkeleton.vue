@@ -5,11 +5,13 @@
       <div class="skeleton-title pulse"></div>
     </div>
     <div class="skeleton-content">
-      <div class="skeleton-line pulse" style="width: 70%"></div>
-      <div class="skeleton-line pulse" style="width: 40%"></div>
-    </div>
-    <div class="skeleton-footer">
-      <div class="skeleton-btn pulse"></div>
+      <div class="skeleton-tags">
+        <div class="skeleton-tag pulse"></div>
+        <div class="skeleton-tag pulse"></div>
+        <div class="skeleton-tag pulse"></div>
+        <div class="skeleton-tag pulse"></div>
+        <div class="skeleton-tag pulse"></div>
+      </div>
       <div class="skeleton-btn pulse"></div>
     </div>
     <div class="loading-text">
@@ -26,18 +28,16 @@
   padding: 16px;
   background-color: var(--bg-secondary);
   margin: 12px 0;
-  max-width: 400px;
-  animation: skeleton-appear 0.3s ease-out;
+  max-width: 480px;
+  animation: skeleton-fade-in 0.25s ease-out;
 }
 
-@keyframes skeleton-appear {
+@keyframes skeleton-fade-in {
   from {
     opacity: 0;
-    transform: translateY(8px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
@@ -48,12 +48,12 @@
 }
 
 @keyframes pulse {
-  0%, 100% { 
-    opacity: 0.6; 
+  0%, 100% {
+    opacity: 0.6;
     transform: scale(1);
   }
-  50% { 
-    opacity: 0.3; 
+  50% {
+    opacity: 0.3;
     transform: scale(0.98);
   }
 }
@@ -79,23 +79,26 @@
 .skeleton-content {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 20px;
+  gap: 16px;
+  margin-bottom: 0;
 }
 
-.skeleton-line {
-  height: 16px;
-}
-
-.skeleton-footer {
+.skeleton-tags {
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.skeleton-tag {
+  height: 28px;
+  width: 80px;
+  border-radius: 6px;
 }
 
 .skeleton-btn {
-  height: 36px;
-  width: 80px;
-  border-radius: 18px;
+  height: 44px;
+  width: 100%;
+  border-radius: 8px;
 }
 
 .loading-text {

@@ -31,6 +31,7 @@ import com.aispring.entity.WordDict;
 import com.aispring.repository.WordDictRepository;
 import com.aispring.entity.UserWordProgress;
 import com.aispring.repository.UserWordProgressRepository;
+import com.aispring.service.SemanticSearchService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 
@@ -74,6 +75,7 @@ public class AiChatServiceImpl implements AiChatService {
     private final OkHttpClient okHttpClient;
     private final WordDictRepository wordDictRepository;
     private final UserWordProgressRepository userWordProgressRepository;
+    private final SemanticSearchService semanticSearchService;
 
     @Value("${ai.max-tokens:4096}")
     private Integer maxTokens;
@@ -156,6 +158,7 @@ public class AiChatServiceImpl implements AiChatService {
                              com.aispring.service.SearchService searchService,
                              WordDictRepository wordDictRepository,
                              UserWordProgressRepository userWordProgressRepository,
+                             SemanticSearchService semanticSearchService,
                              @Value("${ai.deepseek.api-key:}") String deepseekApiKey,
                              @Value("${ai.deepseek.api-url:}") String deepseekApiUrl) {
         this.chatClientProvider = chatClientProvider;
@@ -167,6 +170,7 @@ public class AiChatServiceImpl implements AiChatService {
         this.searchService = searchService;
         this.wordDictRepository = wordDictRepository;
         this.userWordProgressRepository = userWordProgressRepository;
+        this.semanticSearchService = semanticSearchService;
         this.deepseekApiKey = deepseekApiKey;
         this.deepseekApiUrl = deepseekApiUrl;
 
@@ -289,17 +293,24 @@ public class AiChatServiceImpl implements AiChatService {
                     log.info("检测到AI单词检索请求: topic={}, limit={}", topic, limit);
 
                     Map<String, String> searchMsg = new HashMap<>();
-                    searchMsg.put("content", "\n\n*正在从本地词库为您检索 " + topic + " 相关的单词*...\n\n");
+                    searchMsg.put("content", "\n\n*正在从本地词库为您智能检索 " + topic + " 相关的单词*...\n\n");
                     emitter.send(SseEmitter.event().data(objectMapper.writeValueAsString(searchMsg)));
 
-                    // 真正的 RAG 检索逻辑，从数据库查询相关单词
-                    Page<WordDict> wordsPage = wordDictRepository.searchByKeyword(topic, PageRequest.of(0, limit));
-                    List<WordDict> words = wordsPage.getContent();
+                    // 使用语义搜索（AI 扩展关键词）
+                    List<WordDict> words = semanticSearchService.semanticSearch(topic, limit);
 
-                    // 如果没有精确匹配，使用模糊查询获取随机单词
+                    // 如果语义搜索没有结果，降级为普通搜索
                     if (words.isEmpty()) {
-                        words = wordDictRepository.findRandomWords(limit);
+                        log.info("语义搜索无结果，降级为普通搜索");
+                        Page<WordDict> wordsPage = wordDictRepository.searchByKeyword(topic, PageRequest.of(0, limit));
+                        words = wordsPage.getContent();
+
+                        if (words.isEmpty()) {
+                            words = wordDictRepository.findRandomWords(limit);
+                        }
                     }
+
+                    log.info("RAG 语义搜索到 {} 个相关单词", words.size());
 
                     // 构建 RAG 结果 JSON
                     StringBuilder ragResult = new StringBuilder("[\n");
@@ -319,8 +330,6 @@ public class AiChatServiceImpl implements AiChatService {
                     }
                     ragResult.append("]");
                     String ragResultStr = ragResult.toString();
-
-                    log.info("RAG 检索到 {} 个相关单词", words.size());
 
                     String newPrompt = initialPrompt + "\n\n【系统反馈的候选单词数据（请使用这些数据生成卡片）】\n" + ragResultStr + "\n\n请严格使用上述数据生成 <vocab-practice> 练习卡片，并补全例句。";
 
