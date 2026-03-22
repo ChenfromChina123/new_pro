@@ -32,6 +32,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             "/api/users/avatar/**",
             "/api/public-files",
             "/api/public-files/**",
+            "/api/search",
             "/error"
     };
     private final AntPathMatcher pathMatcher = new AntPathMatcher();

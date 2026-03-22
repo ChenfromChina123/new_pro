@@ -36,29 +36,41 @@ public class UserWordProgress {
     @Column(name = "word_id", nullable = false)
     private Integer wordId;
     
+    /**
+     * 状态: 0=未学, 1=学习中, 2=已掌握, 3=易错
+     */
     @Builder.Default
-    @Column(name = "mastery_level", nullable = false)
-    private Integer masteryLevel = 0;  // 0-5 表示掌握程度
-    
-    @Column(name = "last_reviewed")
-    private LocalDateTime lastReviewed;
-    
-    @Column(name = "next_review_date")
-    private LocalDateTime nextReviewDate;
-    
+    @Column(name = "status", nullable = false)
+    private Integer status = 0;
+
     @Builder.Default
-    @Column(name = "review_count", nullable = false)
-    private Integer reviewCount = 0;
-    
-    @Builder.Default
-    @Column(name = "is_difficult", nullable = false)
-    private Boolean isDifficult = false;
-    
-    @Column(name = "created_at", nullable = false)
+    @Column(name = "error_count", nullable = false)
+    private Integer errorCount = 0;
+
+    @Column(name = "next_review_time")
+    private LocalDateTime nextReviewTime;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
-    
+
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    // 兼容原有的旧字段
+    @Column(name = "mastery_level")
+    private Integer masteryLevel;
+
+    @Column(name = "is_difficult")
+    private Boolean isDifficult;
+
+    @Column(name = "last_reviewed")
+    private LocalDateTime lastReviewed;
+
+    @Column(name = "review_count")
+    private Integer reviewCount;
+
+    @Column(name = "next_review_date")
+    private LocalDateTime nextReviewDate;
     
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "word_id", insertable = false, updatable = false)

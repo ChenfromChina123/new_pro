@@ -231,6 +231,13 @@
             <version>0.1.55</version>
         </dependency>
 
+        <!-- Jsoup for HTML Parsing -->
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>1.17.2</version>
+        </dependency>
+
         <!-- SSHJ - Modern SFTP Client -->
         <dependency>
             <groupId>com.hierynomus</groupId>

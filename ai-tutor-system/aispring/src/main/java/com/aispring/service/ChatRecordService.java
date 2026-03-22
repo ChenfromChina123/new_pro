@@ -53,7 +53,7 @@ public class ChatRecordService {
     @Transactional
     public ChatRecord createChatRecord(String content, Integer senderType, Long userId, 
                                       String sessionId, String aiModel, String status, String sessionType, String reasoningContent) {
-        return createChatRecord(content, senderType, userId, sessionId, aiModel, status, sessionType, reasoningContent, null, null, null);
+        return createChatRecord(content, senderType, userId, sessionId, aiModel, status, sessionType, reasoningContent, null, null, null, null, null, null);
     }
 
     /**
@@ -62,7 +62,8 @@ public class ChatRecordService {
     @Transactional
     public ChatRecord createChatRecord(String content, Integer senderType, Long userId, 
                                       String sessionId, String aiModel, String status, String sessionType, 
-                                      String reasoningContent, Integer exitCode, String stdout, String stderr, String ipAddress) {
+                                      String reasoningContent, Integer exitCode, String stdout, String stderr, String ipAddress,
+                                      String searchQuery, String searchResults) {
         
         // 匿名用户处理 (Isolation)
         if (userId == null) {
@@ -75,6 +76,8 @@ public class ChatRecordService {
                 .role(role)
                 .content(content)
                 .reasoningContent(reasoningContent)
+                .searchQuery(searchQuery)
+                .searchResults(searchResults)
                 .model(aiModel)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -121,6 +124,8 @@ public class ChatRecordService {
             .senderType(senderType)
             .content(content != null ? content : "")
             .reasoningContent(reasoningContent)  // 保存深度思考内容
+            .searchQuery(searchQuery)
+            .searchResults(searchResults)
             .aiModel(aiModel)
             .status(status != null ? status : "completed")
             .sendTime(LocalDateTime.now())
@@ -139,7 +144,7 @@ public class ChatRecordService {
     public ChatRecord createChatRecord(String content, Integer senderType, Long userId, 
                                       String sessionId, String aiModel, String status, String sessionType, 
                                       String reasoningContent, Integer exitCode, String stdout, String stderr) {
-        return createChatRecord(content, senderType, userId, sessionId, aiModel, status, sessionType, reasoningContent, exitCode, stdout, stderr, null);
+        return createChatRecord(content, senderType, userId, sessionId, aiModel, status, sessionType, reasoningContent, exitCode, stdout, stderr, null, null, null);
     }
     
     /**
@@ -222,6 +227,8 @@ public class ChatRecordService {
             .senderType("user".equalsIgnoreCase(ar.getRole()) ? 1 : 2)
             .content(ar.getContent())
             .reasoningContent(ar.getReasoningContent())
+            .searchQuery(ar.getSearchQuery())
+            .searchResults(ar.getSearchResults())
             .sendTime(ar.getCreatedAt())
             .aiModel(ar.getModel())
             .status("completed")

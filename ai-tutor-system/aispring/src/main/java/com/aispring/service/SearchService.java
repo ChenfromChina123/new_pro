@@ -11,4 +11,12 @@ public interface SearchService {
      * @return 搜索结果摘要
      */
     String searchIndustryInfo(String keywords);
+    
+    /**
+     * 在指定网站搜索关键词
+     * @param keywords 搜索关键词
+     * @param site 指定网站域名
+     * @return 搜索结果摘要
+     */
+    String searchIndustryInfo(String keywords, String site);
 }

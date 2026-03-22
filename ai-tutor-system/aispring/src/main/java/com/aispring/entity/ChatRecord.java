@@ -52,6 +52,12 @@ public class ChatRecord {
     
     @Column(name = "reasoning_content", columnDefinition = "TEXT")
     private String reasoningContent;  // AI 深度思考内容
+
+    @Column(name = "search_query", columnDefinition = "TEXT")
+    private String searchQuery;  // 联网搜索词
+
+    @Column(name = "search_results", columnDefinition = "TEXT")
+    private String searchResults;  // 联网搜索结果
     
     @Column(name = "ai_model", length = 50)
     private String aiModel;  // deepseek, doubao, etc.
@@ -84,6 +90,8 @@ public class ChatRecord {
         map.put("sender_type", senderType);
         map.put("content", content);
         map.put("reasoning_content", reasoningContent);
+        map.put("search_query", searchQuery);
+        map.put("search_results", searchResults);
         map.put("ai_model", aiModel);
         map.put("status", status);
         map.put("send_time", sendTime != null ? sendTime.format(FORMATTER) : null);

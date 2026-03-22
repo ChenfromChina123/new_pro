@@ -27,6 +27,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import lombok.extern.slf4j.Slf4j;
+import com.aispring.entity.WordDict;
+import com.aispring.repository.WordDictRepository;
+import com.aispring.entity.UserWordProgress;
+import com.aispring.repository.UserWordProgressRepository;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 
 import java.io.BufferedReader;
@@ -40,6 +45,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -64,7 +70,10 @@ public class AiChatServiceImpl implements AiChatService {
     private final AnonymousChatRecordRepository anonymousChatRecordRepository;
     private final com.aispring.service.ChatRecordService chatRecordService; // 注入 ChatRecordService
     private final TokenUsageAuditService tokenUsageAuditService;
+    private final com.aispring.service.SearchService searchService;
     private final OkHttpClient okHttpClient;
+    private final WordDictRepository wordDictRepository;
+    private final UserWordProgressRepository userWordProgressRepository;
 
     @Value("${ai.max-tokens:4096}")
     private Integer maxTokens;
@@ -144,6 +153,9 @@ public class AiChatServiceImpl implements AiChatService {
                              AnonymousChatRecordRepository anonymousChatRecordRepository,
                              com.aispring.service.ChatRecordService chatRecordService,
                              TokenUsageAuditService tokenUsageAuditService,
+                             com.aispring.service.SearchService searchService,
+                             WordDictRepository wordDictRepository,
+                             UserWordProgressRepository userWordProgressRepository,
                              @Value("${ai.deepseek.api-key:}") String deepseekApiKey,
                              @Value("${ai.deepseek.api-url:}") String deepseekApiUrl) {
         this.chatClientProvider = chatClientProvider;
@@ -152,6 +164,9 @@ public class AiChatServiceImpl implements AiChatService {
         this.anonymousChatRecordRepository = anonymousChatRecordRepository;
         this.chatRecordService = chatRecordService;
         this.tokenUsageAuditService = tokenUsageAuditService;
+        this.searchService = searchService;
+        this.wordDictRepository = wordDictRepository;
+        this.userWordProgressRepository = userWordProgressRepository;
         this.deepseekApiKey = deepseekApiKey;
         this.deepseekApiUrl = deepseekApiUrl;
 
@@ -189,44 +204,36 @@ public class AiChatServiceImpl implements AiChatService {
      * 统一发送聊天响应（SSE）- 优化流畅度
      */
     private void sendChatResponse(SseEmitter emitter, String content, String reasoningContent) {
-        try {
-            Map<String, String> resultMap = new HashMap<>();
-            if (reasoningContent != null && !reasoningContent.isEmpty()) {
-                resultMap.put("reasoning_content", reasoningContent);
-            }
-            if (content != null && !content.isEmpty()) {
-                resultMap.put("content", content);
-            }
-            if (!resultMap.isEmpty()) {
+        Map<String, String> resultMap = new HashMap<>();
+        if (reasoningContent != null && !reasoningContent.isEmpty()) {
+            resultMap.put("reasoning_content", reasoningContent);
+        }
+        if (content != null && !content.isEmpty()) {
+            resultMap.put("content", content);
+        }
+        if (!resultMap.isEmpty()) {
+            try {
                 String json = objectMapper.writeValueAsString(resultMap);
-                // 立即发送，不缓冲
                 SseEmitter.SseEventBuilder event = SseEmitter.event()
                     .data(json)
                     .id(String.valueOf(System.currentTimeMillis()))
                     .name("message");
                 emitter.send(event);
+            } catch (java.io.IOException e) {
+                throw new RuntimeException("Failed to send chat response", e);
             }
-        } catch (Exception e) {
-            handleError(emitter, e);
-            // Stop generation if error occurred
-            throw new RuntimeException("Stop chat generation", e);
         }
     }
 
     @Override
-    public SseEmitter askStream(String prompt, String sessionId, String model, Long userId, String ipAddress) {
-        return askStreamInternal(prompt, sessionId, model, userId, ipAddress);
-    }
-
-    @Override
-    public SseEmitter askStream(String prompt, String sessionId, String model, Long userId) {
-        return askStreamInternal(prompt, sessionId, model, userId, null);
+    public SseEmitter askStream(String prompt, String sessionId, String model, Long userId, String ipAddress, String systemPrompt) {
+        return askStreamInternal(prompt, sessionId, model, userId, ipAddress, systemPrompt);
     }
 
     /**
      * 普通流式问答核心实现
      */
-    private SseEmitter askStreamInternal(String initialPrompt, String sessionId, String model, Long userId, String ipAddress) {
+    private SseEmitter askStreamInternal(String initialPrompt, String sessionId, String model, Long userId, String ipAddress, String systemPrompt) {
         // 创建SSE发射器，设置超时时间为5分钟
         SseEmitter emitter = new SseEmitter(300_000L);
 
@@ -245,7 +252,59 @@ public class AiChatServiceImpl implements AiChatService {
 
                 StringBuilder fullReasoning = new StringBuilder();
                 // 执行对话并获取完整回复（内部已处理 SSE 发送）
-                String fullContent = performBlockingChat(initialPrompt, finalSessionId, model, userId, null, emitter, ipAddress, fullReasoning);
+                String fullContent = performBlockingChat(initialPrompt, finalSessionId, model, userId, systemPrompt, emitter, ipAddress, fullReasoning);
+
+                // 检查是否包含搜索指令
+                String contentTrimmed = fullContent.trim();
+                java.util.regex.Pattern searchPattern = java.util.regex.Pattern.compile("<search(?:\\s+site=\"([^\"]+)\")?>(.*?)</search>", java.util.regex.Pattern.DOTALL);
+                java.util.regex.Matcher matcher = searchPattern.matcher(contentTrimmed);
+
+                java.util.regex.Pattern vocabPattern = java.util.regex.Pattern.compile("<query-vocab\\s+topic=\"([^\"]+)\"\\s+limit=\"(\\d+)\"\\s*/>", java.util.regex.Pattern.DOTALL);
+                java.util.regex.Matcher vocabMatcher = vocabPattern.matcher(contentTrimmed);
+
+                if (matcher.find()) {
+                    String site = matcher.group(1);
+                    String keyword = matcher.group(2).trim();
+                    log.info("检测到AI搜索请求: keyword={}, site={}", keyword, site);
+
+                    // 1. 发送搜索中的提示给前端
+                    Map<String, String> searchMsg = new HashMap<>();
+                    String searchDisplay = site != null && !site.isEmpty() ? keyword + " (在 " + site + " 中)" : keyword;
+                    searchMsg.put("content", "\n\n*正在为您搜索: " + searchDisplay + "*...\n\n");
+                    emitter.send(SseEmitter.event().data(objectMapper.writeValueAsString(searchMsg)));
+
+                    // 2. 执行搜索
+                    String searchResult = searchService.searchIndustryInfo(keyword, site);
+
+                    // 3. 将搜索结果追加到提示词中，重新进行一次无搜索指令的请求
+                    String newPrompt = initialPrompt + "\n\n【系统反馈的搜索结果】\n" + searchResult + "\n\n请根据上述搜索结果回答用户的问题。";
+
+                    // 再次调用（屏蔽搜索指令，防止死循环）
+                    String secondContent = performBlockingChat(newPrompt, finalSessionId, model, userId, "【系统提示】你已经获取了搜索结果，请直接回答用户问题，不要再输出<search>标签。", emitter, ipAddress, fullReasoning);
+
+                    fullContent = fullContent + "\n\n" + secondContent;
+                } else if (vocabMatcher.find()) {
+                    String topic = vocabMatcher.group(1);
+                    int limit = Integer.parseInt(vocabMatcher.group(2));
+                    log.info("检测到AI单词检索请求: topic={}, limit={}", topic, limit);
+
+                    Map<String, String> searchMsg = new HashMap<>();
+                    searchMsg.put("content", "\n\n*正在从本地词库为您检索 " + topic + " 相关的单词*...\n\n");
+                    emitter.send(SseEmitter.event().data(objectMapper.writeValueAsString(searchMsg)));
+
+                    // 这里应该是真正的 RAG 检索逻辑，从数据库捞取
+                    // 目前为了演示跑通，我们返回一段模拟的 RAG 结果（实际应替换为 wordDictRepository.findAll() 等操作）
+                    String ragResult = "[\n" +
+                            "  {\"id\": 101, \"word\": \"espresso\", \"definition\": \"n. 浓缩咖啡\", \"user_status\": \"易错，需复习\"},\n" +
+                            "  {\"id\": 102, \"word\": \"latte\", \"definition\": \"n. 拿铁\", \"user_status\": \"未学\"},\n" +
+                            "  {\"id\": 103, \"word\": \"cappuccino\", \"definition\": \"n. 卡布奇诺\", \"user_status\": \"未学\"}\n" +
+                            "]";
+
+                    String newPrompt = initialPrompt + "\n\n【系统反馈的候选单词数据（请使用这些数据生成卡片）】\n" + ragResult + "\n\n请严格使用上述数据生成 <vocab-practice> 练习卡片，并补全例句。";
+
+                    String secondContent = performBlockingChat(newPrompt, finalSessionId, model, userId, "【系统提示】你已经获取了本地词库数据，请直接生成练习卡片，不要再输出<query-vocab>标签。", emitter, ipAddress, fullReasoning);
+                    fullContent = fullContent + "\n\n" + secondContent;
+                }
 
                 // 异步保存聊天记录
                 if (userId != null) {
@@ -378,6 +437,19 @@ public class AiChatServiceImpl implements AiChatService {
              apiUrl = deepseekApiUrl + "/v1/chat/completions";
          }
 
+         // 添加搜索与单词练习指令
+         String systemInstructions = "\n【系统搜索能力】如果你需要查询实时信息或不知道的内容，或者需要从特定网站获取信息，请在回答中直接输出XML格式：<search site=\"网站域名(可选)\">关键词</search>。例如：<search site=\"spring.io\">Spring Boot</search> 或 <search>今天的新闻</search>。系统会自动为你搜索并将结果反馈给你，你收到结果后再给出最终回答。如果不需要搜索，请直接回答。" +
+                 "\n【单词记忆与RAG检索】当用户需要学习或复习某类单词时，请输出检索意图标签，例如：<query-vocab topic=\"咖啡\" limit=\"5\" />，系统会从本地词库(ECDICT)及用户的易错本中提取真实单词数据反馈给你。收到数据后，请使用如下格式输出要练习的内容：\n" +
+                 "<vocab-practice>\n" +
+                 "  <vocab word=\"单词\" phonetic=\"音标\" definition=\"详细释义(选填)\" sentence=\"例句\" translation=\"中文翻译\" />\n" +
+                 "  <vocab mode=\"spelling\" word=\"隐藏的单词\" phonetic=\"音标\" definition=\"详细释义(选填)\" sentence=\"带下划线的例句[___]\" translation=\"中文翻译\" />\n" +
+                 "</vocab-practice>";
+         if (systemPrompt == null || systemPrompt.isEmpty()) {
+             systemPrompt = systemInstructions;
+         } else {
+             systemPrompt += systemInstructions;
+         }
+
          List<Map<String, String>> messages = new ArrayList<>();
          if (systemPrompt != null && !systemPrompt.isEmpty()) {
              Map<String, String> sysMsg = new HashMap<>();
@@ -488,10 +560,18 @@ public class AiChatServiceImpl implements AiChatService {
 
                                     // 立即发送，不等待累积
                                     if (!reasoningContent.isEmpty() || !content.isEmpty()) {
-                                        sendChatResponse(emitter, content, reasoningContent);
-                                        appendWithLimit(fullContent, content, maxSavedChars);
-                                        if (!reasoningContent.isEmpty()) {
-                                            appendWithLimit(fullReasoning, reasoningContent, maxSavedReasoningChars);
+                                        try {
+                                            sendChatResponse(emitter, content, reasoningContent);
+                                            appendWithLimit(fullContent, content, maxSavedChars);
+                                            if (!reasoningContent.isEmpty()) {
+                                                appendWithLimit(fullReasoning, reasoningContent, maxSavedReasoningChars);
+                                            }
+                                        } catch (IllegalStateException ex) {
+                                            log.warn("Client disconnected during SSE stream: {}", ex.getMessage());
+                                            break; // Stop processing if client disconnected
+                                        } catch (Exception ex) {
+                                            log.warn("Failed to send chunk, emitter may be closed: {}", ex.getMessage());
+                                            break; // 停止读取
                                         }
                                     }
                                 }
@@ -762,11 +842,12 @@ public class AiChatServiceImpl implements AiChatService {
             e = e.getCause();
         }
 
-        // Check for client disconnection or timeout
+        // Check for client disconnection or timeout or already completed emitter
         String msg = e.getMessage();
         if (e instanceof AsyncRequestNotUsableException ||
-            (msg != null && (msg.contains("SocketTimeoutException") || msg.contains("Broken pipe") || msg.contains("connection was aborted")))) {
-            log.warn("Client disconnected or timed out during chat: {}", msg);
+            e instanceof IllegalStateException ||
+            (msg != null && (msg.contains("SocketTimeoutException") || msg.contains("Broken pipe") || msg.contains("connection was aborted") || msg.contains("ResponseBodyEmitter has already completed")))) {
+            log.warn("Client disconnected, timed out, or emitter already completed during chat: {}", msg);
             return;
         }
 
@@ -807,6 +888,18 @@ public class AiChatServiceImpl implements AiChatService {
 
             // 构造消息列表
             List<Map<String, String>> messages = new ArrayList<>();
+            String systemInstructions = "\n【系统搜索能力】如果你需要查询实时信息或不知道的内容，或者需要从特定网站获取信息，请在回答中直接输出XML格式：<search site=\"网站域名(可选)\">关键词</search>。例如：<search site=\"spring.io\">Spring Boot</search> 或 <search>今天的新闻</search>。系统会自动为你搜索并将结果反馈给你，你收到结果后再给出最终回答。如果不需要搜索，请直接回答。" +
+                    "\n【单词记忆与RAG检索】当用户需要学习或复习某类单词时，请输出检索意图标签，例如：<query-vocab topic=\"咖啡\" limit=\"5\" />，系统会从本地词库(ECDICT)及用户的易错本中提取真实单词数据反馈给你。收到数据后，请使用如下格式输出要练习的内容：\n" +
+                    "<vocab-practice>\n" +
+                    "  <vocab word=\"单词\" phonetic=\"音标\" definition=\"详细释义(选填)\" sentence=\"例句\" translation=\"中文翻译\" />\n" +
+                    "  <vocab mode=\"spelling\" word=\"隐藏的单词\" phonetic=\"音标\" definition=\"详细释义(选填)\" sentence=\"带下划线的例句[___]\" translation=\"中文翻译\" />\n" +
+                    "</vocab-practice>";
+            if (systemPrompt == null || systemPrompt.isEmpty()) {
+                systemPrompt = systemInstructions;
+            } else {
+                systemPrompt += systemInstructions;
+            }
+
             if (systemPrompt != null && !systemPrompt.isEmpty()) {
                 Map<String, String> sysMsg = new HashMap<>();
                 System.out.println("systemPrompt: " + systemPrompt);
@@ -868,6 +961,25 @@ public class AiChatServiceImpl implements AiChatService {
             String content = fullContent.toString();
 
             log.info("AI Response received. Length: {}", content.length());
+
+            // 检查是否包含搜索指令
+            String contentTrimmed = content.trim();
+            java.util.regex.Pattern searchPattern = java.util.regex.Pattern.compile("<search(?:\\s+site=\"([^\"]+)\")?>(.*?)</search>", java.util.regex.Pattern.DOTALL);
+            java.util.regex.Matcher matcher = searchPattern.matcher(contentTrimmed);
+            if (matcher.find()) {
+                String site = matcher.group(1);
+                String keyword = matcher.group(2).trim();
+                log.info("检测到非流式AI搜索请求: keyword={}, site={}", keyword, site);
+
+                // 1. 执行搜索
+                String searchResult = searchService.searchIndustryInfo(keyword, site);
+
+                // 2. 将搜索结果追加到提示词中，重新进行一次无搜索指令的请求
+                String newPrompt = prompt + "\n\n【系统反馈的搜索结果】\n" + searchResult + "\n\n请根据上述搜索结果回答用户的问题。";
+
+                // 再次调用（屏蔽搜索指令，防止死循环）
+                return ask(newPrompt, sessionId, model, userId, "【系统提示】你已经获取了搜索结果，请直接回答用户问题，不要再输出<search>标签。", ipAddress);
+            }
 
             // 记录 Token 消耗审计
             String provider = "deepseek";

@@ -39,6 +39,8 @@ public class AiChatController {
         private String session_id;
         
         private String model;
+        
+        private String system_prompt;
     }
     
     /**
@@ -81,7 +83,8 @@ public class AiChatController {
                 request.getSession_id(),
                 request.getModel(),
                 userId,
-                ip);
+                ip,
+                request.getSystem_prompt());
     }
     
     /**
@@ -111,6 +114,7 @@ public class AiChatController {
                 request.getSession_id(),
                 request.getModel(),
                 userId,
+                request.getSystem_prompt(),
                 null);
         
         Map<String, Object> responseData = new HashMap<>();

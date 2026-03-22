@@ -61,6 +61,12 @@ public class ChatRecordController {
         @JsonProperty("ai_reasoning")
         private String aiReasoning;  // AI 深度思考内容
         
+        @JsonProperty("search_query")
+        private String searchQuery;  // 联网搜索词
+        
+        @JsonProperty("search_results")
+        private String searchResults;  // 联网搜索结果
+        
         private String model;
         private String role; // "user" or "assistant"
         private String content;
@@ -102,9 +108,10 @@ public class ChatRecordController {
                 "chat",
                 null,
                 null, null, null,
-                ip
+                ip,
+                null, null
             );
-            // 保存 AI 消息，包含 reasoning_content
+            // 保存 AI 消息，包含 reasoning_content 和 search_results
             chatRecordService.createChatRecord(
                 request.getAiResponse(),
                 2,
@@ -115,12 +122,16 @@ public class ChatRecordController {
                 "chat",
                 request.getAiReasoning(),  // 传递深度思考内容
                 null, null, null,
-                ip
+                ip,
+                request.getSearchQuery(),
+                request.getSearchResults()
             );
         } else {
             Integer senderType = (request.getRole() != null && request.getRole().equalsIgnoreCase("user")) ? 1 : 2;
             String content = request.getContent();
             String reasoningContent = senderType == 2 ? request.getAiReasoning() : null;
+            String searchQuery = senderType == 2 ? request.getSearchQuery() : null;
+            String searchResults = senderType == 2 ? request.getSearchResults() : null;
             chatRecordService.createChatRecord(
                 content,
                 senderType,
@@ -131,7 +142,9 @@ public class ChatRecordController {
                 "chat",
                 reasoningContent,
                 null, null, null,
-                ip
+                ip,
+                searchQuery,
+                searchResults
             );
         }
         

@@ -39,6 +39,12 @@ public class AnonymousChatRecord {
     @Column(name = "reasoning_content", columnDefinition = "TEXT")
     private String reasoningContent;
     
+    @Column(name = "search_query", columnDefinition = "TEXT")
+    private String searchQuery;
+    
+    @Column(name = "search_results", columnDefinition = "TEXT")
+    private String searchResults;
+    
     @Column(name = "model")
     private String model;
     
