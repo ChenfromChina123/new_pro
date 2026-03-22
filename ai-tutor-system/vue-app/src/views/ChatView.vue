@@ -2254,6 +2254,10 @@ body.dark-mode .message-copy-button:hover {
     z-index: 20;
 }
 
+body.dark-mode .loading-indicator {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
 .suggestions-area {
   margin-top: 24px;
   margin-bottom: 8px;
@@ -2287,7 +2291,11 @@ body.dark-mode .message-copy-button:hover {
   width: fit-content;
   text-align: left;
   line-height: 1.4;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+  box-shadow: var(--shadow-sm);
+}
+
+body.dark-mode .suggestion-item {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .suggestion-arrow {
@@ -2336,7 +2344,11 @@ body.dark-mode .message-copy-button:hover {
 .input-container:focus-within {
   border-color: var(--border-color);
   background-color: var(--bg-primary);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-sm);
+}
+
+body.dark-mode .input-container:focus-within {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
 .chat-input {
@@ -2406,6 +2418,12 @@ body.dark-mode .message-copy-button:hover {
   background-color: rgba(37, 99, 235, 0.08);
   border-color: #2563eb;
   color: #2563eb;
+}
+
+body.dark-mode .tool-btn-special.active {
+  background-color: rgba(59, 130, 246, 0.15);
+  border-color: #60a5fa;
+  color: #60a5fa;
 }
 
 .tool-btn-pill {
@@ -2484,11 +2502,15 @@ body.dark-mode .message-copy-button:hover {
   border: 1px solid var(--border-color);
   border-radius: 18px;
   padding: 8px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-lg);
   z-index: 100;
   transform-origin: bottom left;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+}
+
+body.dark-mode .model-dropdown-menu {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
 }
 
 .model-menu-item {
@@ -2527,13 +2549,21 @@ body.dark-mode .message-copy-button:hover {
   color: var(--primary-color);
   font-size: 16px;
   transition: all 0.3s ease;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-sm);
+}
+
+body.dark-mode .item-icon-wrapper {
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .model-menu-item.active .item-icon-wrapper {
   background-color: var(--primary-color);
   color: white;
   box-shadow: 0 4px 8px rgba(37, 99, 235, 0.3);
+}
+
+body.dark-mode .model-menu-item.active .item-icon-wrapper {
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
 }
 
 .item-info {
@@ -2875,17 +2905,13 @@ body.dark-mode .message-copy-button:hover {
   gap: 16px;
   z-index: 100;
   padding: 8px;
-  background-color: rgba(255, 255, 255, 0.8);
+  background-color: var(--bg-secondary);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-radius: 30px;
   border: 1px solid var(--border-color);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-md);
   transition: all 0.3s ease;
-}
-
-body.dark-mode .nav-arrows {
-  background-color: rgba(30, 41, 59, 0.8);
 }
 
 .nav-arrow-btn {
@@ -2947,7 +2973,7 @@ body.dark-mode .nav-arrows {
 }
 
 .scroll-to-bottom-btn {
-  background-color: rgba(255, 255, 255, 0.95);
+  background-color: var(--bg-secondary);
   color: var(--primary-color);
   border: 1px solid var(--primary-color);
   border-radius: 24px;
@@ -2957,13 +2983,18 @@ body.dark-mode .nav-arrows {
   gap: 8px;
   font-size: 14px;
   font-weight: 500;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-md);
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   pointer-events: auto;
   white-space: nowrap;
+}
+
+body.dark-mode .scroll-to-bottom-btn {
+  background-color: var(--bg-secondary);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .scroll-to-bottom-btn:hover {

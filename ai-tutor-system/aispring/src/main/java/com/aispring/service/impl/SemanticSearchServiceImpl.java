@@ -5,6 +5,7 @@ import com.aispring.repository.WordDictRepository;
 import com.aispring.service.SemanticSearchService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.ChatClient;
+import org.springframework.ai.chat.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
@@ -115,7 +116,8 @@ public class SemanticSearchServiceImpl implements SemanticSearchService {
                 maxWords
             );
 
-            String response = chatClient.call(new Prompt(prompt));
+            ChatResponse chatResponse = chatClient.call(new Prompt(prompt));
+            String response = chatResponse.getResult().getOutput().getContent();
             
             // 解析响应，提取英文单词
             List<String> words = parseAIResponse(response);
