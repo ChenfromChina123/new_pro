@@ -8,6 +8,14 @@ set -e
 export LANG=C.UTF-8
 export LC_ALL=C.UTF-8
 
+# 加载 Java 环境变量
+if [ -f /etc/profile.d/java_env.sh ]; then
+    source /etc/profile.d/java_env.sh
+fi
+if [ -f ~/.bashrc ]; then
+    source ~/.bashrc
+fi
+
 PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$PROJECT_ROOT"
 
