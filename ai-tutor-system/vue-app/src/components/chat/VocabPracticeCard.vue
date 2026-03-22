@@ -62,11 +62,60 @@
       </div>
       <p class="feedback-text">{{ feedback.aiFeedback }}</p>
     </div>
+
+    <!-- 发音历史区 -->
+    <div class="history-section" v-if="pronunciationHistory.length > 0">
+      <div class="history-header" @click="showPronunciationHistory = !showPronunciationHistory">
+        <h4>🎤 发音历史 ({{ pronunciationHistory.length }}次)</h4>
+        <span class="expand-icon" :class="{ expanded: showPronunciationHistory }">▼</span>
+      </div>
+      <div v-if="showPronunciationHistory" class="history-list">
+        <div v-for="(record, index) in pronunciationHistory.slice(0, 5)" :key="index" class="history-item">
+          <div class="history-score" :class="getScoreClass(record.score)">{{ record.score }}分</div>
+          <div class="history-details">
+            <div class="history-text">
+              <span class="recognized" :class="{ correct: isCorrect(record) }">{{ record.recognizedText }}</span>
+              <span v-if="!isCorrect(record)" class="target">→ {{ record.targetText }}</span>
+            </div>
+            <div class="history-meta">
+              <span class="history-date">{{ formatDate(record.createdAt) }}</span>
+              <span v-if="record.aiFeedback" class="history-feedback">{{ record.aiFeedback }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 练习历史区 -->
+    <div class="history-section" v-if="practiceHistory.length > 0">
+      <div class="history-header" @click="showPracticeHistory = !showPracticeHistory">
+        <h4>✏️ 练习历史 ({{ practiceHistory.length }}次)</h4>
+        <span class="expand-icon" :class="{ expanded: showPracticeHistory }">▼</span>
+      </div>
+      <div v-if="showPracticeHistory" class="history-list">
+        <div v-for="(record, index) in practiceHistory.slice(0, 5)" :key="index" class="history-item" :class="record.isCorrect ? 'correct' : 'incorrect'">
+          <div class="history-score" :class="record.isCorrect ? 'correct' : 'incorrect'">
+            {{ record.isCorrect ? '✓' : '✗' }}
+          </div>
+          <div class="history-details">
+            <div class="history-text">
+              <span class="user-input" :class="{ correct: record.isCorrect }">{{ record.userInput || 'N/A' }}</span>
+              <span v-if="!record.isCorrect" class="target">→ {{ record.correctAnswer }}</span>
+            </div>
+            <div class="history-meta">
+              <span class="history-type">{{ getPracticeTypeName(record.practiceType) }}</span>
+              <span class="history-date">{{ formatDate(record.createdAt) }}</span>
+              <span v-if="record.aiFeedback" class="history-feedback">{{ record.aiFeedback }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { API_CONFIG } from '@/config/api'
 import request from '@/utils/request'
 
@@ -75,7 +124,8 @@ const props = defineProps({
   phonetic: { type: String, default: '' },
   translation: { type: String, default: '' },
   sentence: { type: String, default: '' },
-  initialMode: { type: String, default: 'pronunciation' } // pronunciation | spelling
+  wordId: { type: Number, default: null },
+  initialMode: { type: String, default: 'pronunciation' }
 })
 
 const mode = ref(props.initialMode || 'pronunciation')
@@ -84,6 +134,10 @@ const isRecording = ref(false)
 const userInput = ref('')
 const isChecking = ref(false)
 const feedback = ref(null)
+const pronunciationHistory = ref([])
+const practiceHistory = ref([])
+const showPronunciationHistory = ref(false)
+const showPracticeHistory = ref(false)
 
 let mediaRecorder = null
 let audioChunks = []
@@ -102,6 +156,98 @@ const scoreClass = computed(() => {
   if (feedback.value.score >= 90) return 'excellent'
   if (feedback.value.score >= 70) return 'good'
   return 'needs-work'
+})
+
+// 加载发音历史
+const loadPronunciationHistory = async () => {
+  if (!props.wordId) return
+  
+  try {
+    const response = await request.get(`/api/learning/pronunciation?wordId=${props.wordId}`)
+    if (response && response.data && response.data.records) {
+      pronunciationHistory.value = response.data.records
+      // 如果有历史记录，默认展开
+      if (pronunciationHistory.value.length > 0) {
+        showPronunciationHistory.value = true
+      }
+    }
+  } catch (error) {
+    console.error('加载发音历史失败:', error)
+  }
+}
+
+// 加载练习历史
+const loadPracticeHistory = async () => {
+  if (!props.wordId) return
+  
+  try {
+    const response = await request.get(`/api/learning/practice?wordId=${props.wordId}`)
+    if (response && response.data && response.data.records) {
+      practiceHistory.value = response.data.records
+      // 如果有历史记录，默认展开
+      if (practiceHistory.value.length > 0) {
+        showPracticeHistory.value = true
+      }
+    }
+  } catch (error) {
+    console.error('加载练习历史失败:', error)
+  }
+}
+
+// 获取练习类型名称
+const getPracticeTypeName = (type) => {
+  const typeMap = {
+    'spelling': '拼写',
+    'review': '复习',
+    'listening': '听写'
+  }
+  return typeMap[type] || type
+}
+
+// 获取分数样式
+const getScoreClass = (score) => {
+  if (score >= 90) return 'excellent'
+  if (score >= 70) return 'good'
+  return 'needs-work'
+}
+
+// 判断是否正确
+const isCorrect = (record) => {
+  return record.recognizedText.toLowerCase().includes(record.targetText.toLowerCase()) ||
+         record.score >= 80
+}
+
+// 格式化日期
+const formatDate = (dateString) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  const now = new Date()
+  const diff = now - date
+  
+  // 1 分钟内
+  if (diff < 60000) return '刚刚'
+  // 1 小时内
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`
+  // 24 小时内
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`
+  // 其他
+  return date.toLocaleString('zh-CN', { 
+    month: 'short', 
+    day: 'numeric', 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  })
+}
+
+// 监听 wordId 变化，加载历史
+watch(() => props.wordId, () => {
+  loadPronunciationHistory()
+  loadPracticeHistory()
+})
+
+onMounted(() => {
+  loadPronunciationHistory()
+  loadPracticeHistory()
 })
 
 // 播放发音 (优先有道 API)
@@ -539,5 +685,177 @@ const checkSpelling = async () => {
   font-size: 0.9rem;
   color: var(--text-primary);
   line-height: 1.4;
+}
+
+/* 发音历史样式 */
+.history-section {
+  margin-top: 16px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 12px;
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  padding: 8px 0;
+  transition: all 0.2s;
+}
+
+.history-header:hover {
+  opacity: 0.8;
+}
+
+.history-header h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.expand-icon {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  transition: transform 0.3s;
+}
+
+.expand-icon.expanded {
+  transform: rotate(180deg);
+}
+
+.history-list {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.history-item {
+  display: flex;
+  gap: 12px;
+  padding: 10px;
+  background: var(--bg-primary);
+  border-radius: 8px;
+  border-left: 3px solid var(--primary-color);
+  transition: all 0.2s;
+}
+
+.history-item:hover {
+  transform: translateX(4px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.history-score {
+  min-width: 50px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 0.9rem;
+  text-align: center;
+  height: fit-content;
+}
+
+.history-score.excellent {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.history-score.good {
+  background: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+}
+
+.history-score.needs-work {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
+.history-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.history-text {
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.history-text .recognized {
+  font-weight: 500;
+}
+
+.history-text .recognized.correct {
+  color: #10b981;
+  text-decoration: underline;
+  text-decoration-style: wavy;
+}
+
+.history-text .target {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.history-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.history-date {
+  font-weight: 500;
+}
+
+.history-feedback {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 练习历史样式 */
+.history-item.correct {
+  border-left-color: #10b981;
+}
+
+.history-item.incorrect {
+  border-left-color: #ef4444;
+}
+
+.history-score.correct {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  font-size: 1.2rem;
+}
+
+.history-score.incorrect {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  font-size: 1.2rem;
+}
+
+.history-text .user-input {
+  font-weight: 500;
+}
+
+.history-text .user-input.correct {
+  color: #10b981;
+  text-decoration: underline;
+  text-decoration-style: wavy;
+}
+
+.history-type {
+  background: var(--primary-color);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 </style>
