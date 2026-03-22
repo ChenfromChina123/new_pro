@@ -1162,6 +1162,11 @@ onMounted(() => {
   font-weight: 600;
 }
 
+body.dark-mode .nav-item.active {
+  background-color: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+}
+
 .sidebar-divider {
   height: 1px;
   background-color: var(--border-color);
@@ -1198,6 +1203,11 @@ onMounted(() => {
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
   transition: all 0.2s ease;
   cursor: pointer;
+}
+
+body.dark-mode .new-chat-btn {
+  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
 }
 
 /* 语言学习子导航样式 */

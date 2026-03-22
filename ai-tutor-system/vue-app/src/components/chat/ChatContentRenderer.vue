@@ -233,6 +233,11 @@ watch(() => props.isStreaming, (newVal, oldVal) => {
   color: var(--text-primary);
 }
 
+body.dark-mode .panel-header {
+  background-color: rgba(59, 130, 246, 0.15);
+  color: #e5e7eb;
+}
+
 .panel-body {
   padding: 16px;
   display: flex;
@@ -253,6 +258,13 @@ watch(() => props.isStreaming, (newVal, oldVal) => {
   border-radius: 6px;
   font-size: 0.85rem;
   color: var(--text-secondary);
+  transition: all 0.2s;
+}
+
+body.dark-mode .word-tag {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+  color: var(--text-primary);
 }
 
 .word-tag.more {
@@ -275,6 +287,12 @@ watch(() => props.isStreaming, (newVal, oldVal) => {
   justify-content: center;
   gap: 8px;
   transition: opacity 0.2s;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+body.dark-mode .start-practice-btn {
+  background: #2563eb;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
 }
 
 .start-practice-btn:hover {
