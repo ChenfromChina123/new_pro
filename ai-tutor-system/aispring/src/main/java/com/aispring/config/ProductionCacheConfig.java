@@ -21,6 +21,7 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.HashSet;
 
 /**
  * 生产环境缓存配置类
@@ -49,13 +50,12 @@ public class ProductionCacheConfig {
         RedisCacheManager cacheManager = RedisCacheManager.builder(redisConnectionFactory)
                 .cacheDefaults(config)
                 .transactionAware()
+                .initialCacheNames(new HashSet<>(Arrays.asList(
+                    "wordDict",
+                    "vocabulary",
+                    "sessionState"
+                )))
                 .build();
-        
-        cacheManager.setCacheNames(Arrays.asList(
-            "wordDict",
-            "vocabulary",
-            "sessionState"
-        ));
         
         return cacheManager;
     }
