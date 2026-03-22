@@ -1,28 +1,30 @@
 <template>
   <div class="chat-content-renderer">
-    <template v-for="(block, index) in parsedBlocks" :key="index">
-      <!-- eslint-disable-next-line vue/no-v-html -->
-      <div v-if="block.type === 'markdown'" class="markdown-block" v-html="block.htmlContent"></div>
-      
-      <!-- 如果解析到了 vocab 标签，我们不再直接平铺所有卡片，而是显示一个概览入口面板 -->
-      <div v-else-if="block.type === 'vocab-collection' && block.words.length > 0" class="vocab-collection-panel">
-        <div class="panel-header">
-          <i class="fas fa-bullseye text-blue-500"></i>
-          <span>你的专属词汇练习生成完毕</span>
-        </div>
-        <div class="panel-body">
-          <div class="word-tags">
-            <span v-for="(w, idx) in block.words.slice(0, 5)" :key="idx" class="word-tag">{{ w.word }}</span>
-            <span v-if="block.words.length > 5" class="word-tag more">等 {{ block.words.length }} 词</span>
+    <TransitionGroup name="content-fade">
+      <template v-for="(block, index) in parsedBlocks" :key="getBlockKey(block, index)">
+        <!-- eslint-disable-next-line vue/no-v-html -->
+        <div v-if="block.type === 'markdown'" class="markdown-block" v-html="block.htmlContent"></div>
+        
+        <!-- 如果解析到了 vocab 标签，我们不再直接平铺所有卡片，而是显示一个概览入口面板 -->
+        <div v-else-if="block.type === 'vocab-collection' && block.words.length > 0" class="vocab-collection-panel">
+          <div class="panel-header">
+            <i class="fas fa-bullseye text-blue-500"></i>
+            <span>你的专属词汇练习生成完毕</span>
           </div>
-          <button class="start-practice-btn" @click="openVocabModal(block.words)">
-            <i class="fas fa-play-circle"></i> 进入专注模式开始练习
-          </button>
+          <div class="panel-body">
+            <div class="word-tags">
+              <span v-for="(w, idx) in block.words.slice(0, 5)" :key="idx" class="word-tag">{{ w.word }}</span>
+              <span v-if="block.words.length > 5" class="word-tag more">等 {{ block.words.length }} 词</span>
+            </div>
+            <button class="start-practice-btn" @click="openVocabModal(block.words)">
+              <i class="fas fa-play-circle"></i> 进入专注模式开始练习
+            </button>
+          </div>
         </div>
-      </div>
-      
-      <VocabSkeleton v-else-if="block.type === 'vocab-skeleton'" />
-    </template>
+        
+        <VocabSkeleton v-else-if="block.type === 'vocab-skeleton'" :key="'skeleton'" />
+      </template>
+    </TransitionGroup>
     <span v-if="isStreaming" class="typing-cursor"></span>
 
     <!-- 专注模式弹窗 -->
@@ -37,7 +39,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, shallowRef, watch } from 'vue'
 import VocabPracticeModal from './VocabPracticeModal.vue'
 import VocabSkeleton from './VocabSkeleton.vue'
 
@@ -64,6 +66,33 @@ const openVocabModal = (words) => {
   isModalOpen.value = true
 }
 
+/**
+ * 生成稳定的块 key，避免不必要的重新渲染
+ * @param {Object} block - 解析后的块对象
+ * @param {number} index - 块索引
+ * @returns {string} 稳定的 key
+ */
+const getBlockKey = (block, index) => {
+  if (block.type === 'markdown') {
+    return `md-${index}-${block.content.length}`
+  }
+  if (block.type === 'vocab-collection') {
+    return `vocab-${index}-${block.words.length}`
+  }
+  if (block.type === 'vocab-skeleton') {
+    return 'skeleton'
+  }
+  return `block-${index}`
+}
+
+/**
+ * 缓存上一次解析的词汇集合，避免流式传输时频繁切换
+ */
+const lastVocabCollection = shallowRef([])
+
+/**
+ * 解析内容块，优化流式传输时的渲染
+ */
 const parsedBlocks = computed(() => {
   const blocks = []
   const text = props.content || ''
@@ -123,10 +152,23 @@ const parsedBlocks = computed(() => {
         blocks.push({ type: 'markdown', content: mdContent, htmlContent: props.formatMarkdown(mdContent) })
       }
     }
-    blocks.push({ type: 'vocab-skeleton' })
+    
+    // 只有在没有已完成的词汇集合时才显示骨架屏
+    // 如果已经有词汇数据，先显示已有的，避免闪烁
+    if (currentVocabCollection.length === 0 && lastVocabCollection.value.length === 0) {
+      blocks.push({ type: 'vocab-skeleton' })
+    } else if (currentVocabCollection.length > 0) {
+      // 更新缓存的词汇集合
+      lastVocabCollection.value = [...currentVocabCollection]
+      blocks.push({ type: 'vocab-collection', words: [...currentVocabCollection] })
+    } else if (lastVocabCollection.value.length > 0) {
+      // 使用缓存的词汇集合，避免闪烁
+      blocks.push({ type: 'vocab-collection', words: lastVocabCollection.value })
+    }
   } else {
     remaining = remaining.replace(/<\/vocab-practice>/g, '').replace(/<vocab-practice>/g, '')
     if (currentVocabCollection.length > 0) {
+      lastVocabCollection.value = [...currentVocabCollection]
       blocks.push({ type: 'vocab-collection', words: [...currentVocabCollection] })
     }
     if (remaining.trim()) {
@@ -135,6 +177,14 @@ const parsedBlocks = computed(() => {
   }
   
   return blocks
+})
+
+// 当内容完全更新后，清除缓存
+watch(() => props.isStreaming, (newVal, oldVal) => {
+  if (oldVal && !newVal) {
+    // 流式传输结束，清除缓存
+    lastVocabCollection.value = []
+  }
 })
 </script>
 
@@ -149,6 +199,25 @@ const parsedBlocks = computed(() => {
   width: 100%;
 }
 
+/* 内容淡入动画 */
+.content-fade-enter-active {
+  transition: opacity 0.2s ease-out;
+}
+
+.content-fade-leave-active {
+  transition: opacity 0.15s ease-in;
+}
+
+.content-fade-enter-from,
+.content-fade-leave-to {
+  opacity: 0;
+}
+
+/* 避免在过渡期间发生布局跳动 */
+.content-fade-move {
+  transition: transform 0.2s ease;
+}
+
 .vocab-collection-panel {
   border: 1px solid var(--border-color);
   border-radius: 12px;
@@ -156,6 +225,18 @@ const parsedBlocks = computed(() => {
   overflow: hidden;
   margin: 12px 0;
   max-width: 480px;
+  animation: panel-appear 0.3s ease-out;
+}
+
+@keyframes panel-appear {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .panel-header {

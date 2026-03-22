@@ -12,6 +12,10 @@
       <div class="skeleton-btn pulse"></div>
       <div class="skeleton-btn pulse"></div>
     </div>
+    <div class="loading-text">
+      <i class="fas fa-spinner fa-spin"></i>
+      <span>正在生成词汇卡片...</span>
+    </div>
   </div>
 </template>
 
@@ -23,6 +27,18 @@
   background-color: var(--bg-secondary);
   margin: 12px 0;
   max-width: 400px;
+  animation: skeleton-appear 0.3s ease-out;
+}
+
+@keyframes skeleton-appear {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .pulse {
@@ -32,9 +48,14 @@
 }
 
 @keyframes pulse {
-  0% { opacity: 0.6; }
-  50% { opacity: 0.3; }
-  100% { opacity: 0.6; }
+  0%, 100% { 
+    opacity: 0.6; 
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 0.3; 
+    transform: scale(0.98);
+  }
 }
 
 .skeleton-header {
@@ -75,5 +96,20 @@
   height: 36px;
   width: 80px;
   border-radius: 18px;
+}
+
+.loading-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border-color);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.loading-text i {
+  color: var(--primary-color);
 }
 </style>
