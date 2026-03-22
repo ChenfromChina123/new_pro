@@ -1,3 +1,10 @@
 1、在博客项目中接入 Decap CMS 网页编辑模块，保持现有 Contentlayer + MDX 渲染链路不变。
 2、新增 `/admin` 管理入口，配置 `data/blog/*.mdx` 的文章创建、编辑、发布字段映射。
 3、补充 README 的使用说明，并完成 lint/build 验证与本地访问确认。
+4、为 AI 助手扩展基于 `<search>关键词</search>` XML 标签的联网搜索能力（遵循开闭原则）。
+5、在后端集成 Jsoup 与 DuckDuckGo 进行无 API Key 的开源方案联网搜索。
+6、探寻单词记忆模块与AI结合点，设计前后端闭环架构（聊天流生成单词、发音练习、拼写测验、AI评测反馈）。明确了发音练习中 ASR（如 Whisper/云服务）+ LLM 的技术选型，以及 TTS 优先使用有道 API（降级 Web Speech API）的策略。
+7、将单词记忆与AI结合的架构设计同步到README.md或相关架构文档中。
+8、规划单词记忆 RAG 进阶架构：引入 ECDICT 开源大词典、设计用户记忆表 (`user_word_progress`)，解决 AI 词汇捏造问题。
+9、设计沉浸式卡片轮播 UI 与单词详尽释义展示，解决纵向滚动体验问题。
+10、废弃模拟 ASR，接入真实的本地化开源语音识别引擎（推荐 `whisper.cpp` 或 `Vosk`），并设计前端静音检测与基于编辑距离的 LLM 真实打分防作弊机制。

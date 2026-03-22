@@ -15,6 +15,13 @@ export const useChatStore = defineStore('chat', () => {
   const selectedModel = ref(localStorage.getItem('selectedModel') || 'deepseek-chat')
   const scrollPositions = ref({}) // 保存每个会话的滚动位置
   const drafts = ref({}) // 保存每个会话的草稿内容
+  const isWebSearchEnabled = ref(localStorage.getItem('isWebSearchEnabled') === 'true') // 是否开启联网搜索
+
+  // 切换联网搜索状态
+  function toggleWebSearch() {
+    isWebSearchEnabled.value = !isWebSearchEnabled.value
+    localStorage.setItem('isWebSearchEnabled', isWebSearchEnabled.value)
+  }
 
   const normalizeStreamChunk = (chunk) => {
     if (chunk === null || chunk === undefined) return ''
@@ -101,11 +108,23 @@ export const useChatStore = defineStore('chat', () => {
     messages.value.push(userMessage)
     
     try {
-      const response = await request.post(API_ENDPOINTS.chat.ask, {
+      const payload = {
         prompt: content,
         session_id: currentSessionId.value,
         model: selectedModel.value
-      })
+      }
+
+      if (isWebSearchEnabled.value) {
+        try {
+          const searchRes = await request.get(API_ENDPOINTS.chat.search, { params: { q: content } })
+          const searchResultStr = searchRes?.data?.result || searchRes?.result || ''
+          payload.system_prompt = "【系统提供的实时搜索结果】\n" + searchResultStr + "\n\n请根据上述搜索结果回答用户的问题。"
+        } catch (err) {
+          console.warn('Non-stream search failed', err)
+        }
+      }
+
+      const response = await request.post(API_ENDPOINTS.chat.ask, payload)
       
       // 添加AI消息
       const aiMessage = {
@@ -148,6 +167,10 @@ export const useChatStore = defineStore('chat', () => {
           model: msg?.model ?? msg?.ai_model ?? msg?.model_name ?? msg?.modelName ?? null,
           timestamp: msg?.timestamp ?? msg?.send_time ?? msg?.sendTime ?? null,
           reasoning_content: normalizeStreamChunk(reasoningContent),
+          search_query: msg?.search_query || null,
+          search_results: msg?.search_results || null,
+          search_status: msg?.search_results ? 'done' : null,
+          isSearchCollapsed: msg?.search_results ? true : undefined,
           isReasoningCollapsed: role === 'assistant'
             ? (msg?.isReasoningCollapsed ?? true)
             : undefined
@@ -223,12 +246,16 @@ export const useChatStore = defineStore('chat', () => {
       model: selectedModel.value
     }
     messages.value.push(userMessage)
-    
+
     // 添加AI消息占位符
     const aiMessage = {
       role: 'assistant',
       content: '',
-      reasoning_content: '', // 新增推理内容字段
+      reasoning_content: '', // 推理内容字段
+      search_status: '', // 'searching', 'done', 'error'
+      search_query: '',
+      search_results: '',
+      isSearchCollapsed: false,
       isStreaming: true,
       error: false, // 初始化错误状态
       isReasoningCollapsed: false, // 默认展开，直到生成内容开始
@@ -238,7 +265,26 @@ export const useChatStore = defineStore('chat', () => {
     messages.value.push(aiMessage)
     // 获取响应式对象
     const activeAiMessage = messages.value[messages.value.length - 1]
-    
+
+    let systemPrompt = undefined
+
+    // 如果开启了联网搜索，先进行搜索
+    if (isWebSearchEnabled.value) {
+      activeAiMessage.search_status = 'searching'
+      activeAiMessage.search_query = content
+      try {
+        const searchRes = await request.get(API_ENDPOINTS.chat.search, { params: { q: content } })
+        activeAiMessage.search_status = 'done'
+        const searchResultStr = searchRes?.data?.result || searchRes?.result || ''
+        activeAiMessage.search_results = searchResultStr
+        activeAiMessage.isSearchCollapsed = true // 搜索完成后自动折叠
+        systemPrompt = "【系统提供的实时搜索结果】\n" + searchResultStr + "\n\n请根据上述搜索结果回答用户的问题。"
+      } catch (err) {
+        activeAiMessage.search_status = 'error'
+        activeAiMessage.search_results = '搜索失败：' + (err.response?.data?.message || err.message)
+      }
+    }
+
     // 准备请求头
     const headers = {
       'Content-Type': 'application/json',
@@ -251,15 +297,20 @@ export const useChatStore = defineStore('chat', () => {
     }
     
     try {
+      const payload = {
+        prompt: content,
+        session_id: currentSessionId.value,
+        model: selectedModel.value
+      }
+      if (systemPrompt) {
+        payload.system_prompt = systemPrompt
+      }
+
       const response = await fetch(`${request.defaults.baseURL}${API_ENDPOINTS.chat.askStream}`, {
         method: 'POST',
         signal: abortController.value.signal,
         headers,
-        body: JSON.stringify({
-          prompt: content,
-          session_id: currentSessionId.value,
-          model: selectedModel.value
-        })
+        body: JSON.stringify(payload)
       })
       
       // 若鉴权失败或服务拒绝，降级为非流式接口
@@ -466,6 +517,8 @@ export const useChatStore = defineStore('chat', () => {
         user_message: userMessage.content,
         ai_response: aiMessage.content,
         ai_reasoning: aiMessage.reasoning_content || null,  // 保存深度思考内容
+        search_query: aiMessage.search_query || null,
+        search_results: aiMessage.search_results || null,
         model: selectedModel.value
       })
     } catch (error) {
@@ -529,6 +582,8 @@ export const useChatStore = defineStore('chat', () => {
     selectedModel,
     scrollPositions,
     drafts,
+    isWebSearchEnabled,
+    toggleWebSearch,
     fetchSessions,
     createSession,
     sendMessageNonStream,

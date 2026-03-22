@@ -25,3 +25,5 @@
 17. Decap CMS 中文适配经验：为保证博客后台可直接面向中文使用，应在 `public/admin/config.yml` 中设置 `locale: zh_Hans`，并为集合字段添加 `hint` 中文说明；本地模式下同时启动 `next dev` 与 `npx --yes decap-server`，且将 `local_backend.url` 显式指向 `http://localhost:8081/api/v1`，可避免后台列表出现空内容。
 18. Decap 发布前 MDX 校验经验：可通过 `prePublish` 事件在 `public/admin/cms-guards.js` 中调用服务端校验接口（如 `/api/admin/validate-mdx`），使用 `@mdx-js/mdx` 解析正文；若解析失败应抛出错误中断发布，并向编辑者返回中文原因，避免“后台已发布但前台未更新”的假成功状态。
 19. 博客内容格式兼容经验：若要在网页后台同时支持 Markdown 与 MDX，应将 Contentlayer 的 `filePathPattern` 扩展为 `blog/**/*.{md,mdx}`；Decap 可拆分为“MD 推荐集合”和“MDX 集合”，并复用同一发布前校验逻辑。图片可通过后台编辑器直接上传到 `public/static/images`，正文自动引用路径。
+20. AI 联网搜索功能扩展经验：利用大模型的指令跟随能力，在 System Prompt 中统一注入“输出 `<search>关键词</search>`”指令；在后端流式或非流式处理完毕后，通过正则表达式拦截该 XML 标签，使用开源的 DuckDuckGo HTML 版爬取搜索结果（Jsoup 解析），然后将结果拼接到 Prompt 中进行二次静默调用，最后合并返回，这种方式完全符合开闭原则，不修改核心的 AI 交互流逻辑即可完成能力的无缝扩展。
+21. 单词记忆模块与AI结合设计经验：设计通过大模型在对话中生成带音标的单词/句子（通过特定XML或Markdown结构）。前端在解析 SSE 流时引入**骨架屏与增量渲染机制**，让用户直观感知卡片生成过程。前端提供练习与发音（**优先接入有道词典 API** 提供真人发音，异常时降级为浏览器 Web Speech API），同时复用 word-game 的打字逻辑实现拼写测验。用户发音录音通过前端 `MediaRecorder` 采集，后端接入 ASR (如 Whisper 或云服务) 将语音转文本，再交由 AI 进行对比纠错；拼写错误同样交由 AI 总结规律。整体形成体验闭环。

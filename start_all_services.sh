@@ -17,6 +17,12 @@ BACKEND_PORT=5000
 FRONTEND_PORT=3000
 CV_PORT=3100
 BLOG_PORT=3200
+WHISPER_PORT=8090
+
+# ---------- Whisper Server 配置 ----------
+WHISPER_DIR="/opt/whisper-server"
+WHISPER_MODEL="${WHISPER_DIR}/models/ggml-base.en.bin"
+WHISPER_THREADS=4
 
 # ---------- 数据库配置 ----------
 export DB_HOST="${DB_HOST:-127.0.0.1}"
@@ -208,6 +214,7 @@ kill_port_if_used "$BACKEND_PORT" "后端"
 kill_port_if_used "$FRONTEND_PORT" "主站前端"
 kill_port_if_used "$CV_PORT" "简历网站"
 kill_port_if_used "$BLOG_PORT" "博客系统"
+kill_port_if_used "$WHISPER_PORT" "Whisper语音识别"
 
 # ========== 5. 启动服务 ==========
 echo ""
@@ -294,6 +301,30 @@ else
   fi
 fi
 
+# 5f. 启动 Whisper Server (语音识别服务)
+WHISPER_PID=$(get_port_pid "$WHISPER_PORT")
+if [ -n "$WHISPER_PID" ]; then
+  echo "✅ Whisper Server 已在运行（端口 $WHISPER_PORT, PID: $WHISPER_PID）"
+else
+  if [ ! -f "$WHISPER_DIR/whisper-server" ]; then
+    echo "⚠️  Whisper Server 未安装，跳过启动"
+    echo "    请运行 deploy/whisper-server/deploy-whisper-linux.sh 进行安装"
+  elif [ ! -f "$WHISPER_MODEL" ]; then
+    echo "⚠️  Whisper 模型文件不存在: $WHISPER_MODEL"
+    echo "    请先下载模型或修改 WHISPER_MODEL 配置"
+  else
+    echo "    正在启动 Whisper Server（端口 $WHISPER_PORT）..."
+    (cd "$WHISPER_DIR" && nohup ./whisper-server -m "$WHISPER_MODEL" --port $WHISPER_PORT --host 0.0.0.0 -t $WHISPER_THREADS > whisper-server.log 2>&1 &)
+    sleep 3
+    WHISPER_PID=$(get_port_pid "$WHISPER_PORT")
+    if [ -n "$WHISPER_PID" ]; then
+      echo "✅ Whisper Server 已启动（端口 $WHISPER_PORT, PID: $WHISPER_PID）"
+    else
+      echo "⚠️  Whisper Server 启动失败，请检查日志: $WHISPER_DIR/whisper-server.log"
+    fi
+  fi
+fi
+
 # ========== 6. 汇总 ==========
 echo ""
 echo "=========================================="
@@ -305,20 +336,23 @@ echo "  主站前端：   http://localhost:$FRONTEND_PORT"
 echo "  后端 API:    http://localhost:$BACKEND_PORT/swagger-ui.html"
 echo "  简历网站：   http://localhost:$CV_PORT"
 echo "  博客系统：   http://localhost:$BLOG_PORT"
+echo "  Whisper API: http://localhost:$WHISPER_PORT/inference"
 echo ""
 echo "📋 进程信息："
 echo "  后端：$BACKEND_PID"
 echo "  前端：$FRONTEND_PID"
 echo "  简历网站：$CV_PID"
 echo "  博客系统：$BLOG_PID"
+echo "  Whisper: $WHISPER_PID"
 echo ""
 echo "📝 日志文件："
 echo "  后端：backend.log"
 echo "  前端：frontend.log"
 echo "  简历网站：cv-site.log"
 echo "  博客系统：blog.log"
+echo "  Whisper:  $WHISPER_DIR/whisper-server.log"
 echo ""
 echo "🛑 停止所有服务："
-echo "  kill $BACKEND_PID $FRONTEND_PID $CV_PID $BLOG_PID"
+echo "  kill $BACKEND_PID $FRONTEND_PID $CV_PID $BLOG_PID $WHISPER_PID"
 echo ""
 echo "=========================================="

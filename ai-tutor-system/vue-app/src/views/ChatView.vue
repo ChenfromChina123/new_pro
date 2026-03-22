@@ -23,10 +23,10 @@
             class="empty-state"
           >
             <h3 class="empty-title">
-              开始新的对话
+              AI 智能辅导
             </h3>
             <p class="empty-description">
-              向AI助手提问任何问题，获取专业的解答和帮助
+              我能帮你写代码、做策划、回答问题、写文章等，开启你的智能之旅吧。
             </p>
           </div>
 
@@ -47,6 +47,51 @@
 
             <div class="message-content">
               <div class="message-bubble">
+                <!-- 联网搜索内容 -->
+                <div
+                  v-if="message.search_status"
+                  class="reasoning-block search-block"
+                  :class="{
+                    'streaming': message.search_status === 'searching',
+                    'collapsed': message.isSearchCollapsed
+                  }"
+                >
+                  <div
+                    class="reasoning-header"
+                    @click="message.isSearchCollapsed = !message.isSearchCollapsed"
+                  >
+                    <div class="header-left">
+                      <div class="header-text">
+                        <i v-if="message.search_status === 'searching'" class="fas fa-circle-notch fa-spin" style="margin-right: 6px; color: #3b82f6;"></i>
+                        <i v-else-if="message.search_status === 'done'" class="fas fa-globe" style="margin-right: 6px; color: #10b981;"></i>
+                        <i v-else class="fas fa-exclamation-circle" style="margin-right: 6px; color: #ef4444;"></i>
+                        <span class="reasoning-title">联网搜索</span>
+                        <span class="reasoning-subtitle" v-if="!message.isSearchCollapsed">
+                          {{ message.search_status === 'searching' ? '正在搜索: ' + message.search_query : (message.search_status === 'done' ? '已完成搜索' : '搜索失败') }}
+                        </span>
+                      </div>
+                    </div>
+                    <div class="header-right">
+                      <i
+                        class="fas toggle-icon"
+                        :class="message.isSearchCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'"
+                      />
+                    </div>
+                  </div>
+
+                  <transition name="reasoning-slide">
+                    <div
+                      v-show="!message.isSearchCollapsed"
+                      class="reasoning-content"
+                    >
+                      <div v-if="message.search_results" class="markdown-body">
+                        <p><strong>搜索内容：</strong> {{ message.search_query }}</p>
+                        <div v-html="formatMessageCached(message, 'search_results')"></div>
+                      </div>
+                    </div>
+                  </transition>
+                </div>
+
                 <!-- 深度思考内容 -->
                 <div
                   v-if="message.reasoning_content"
@@ -110,18 +155,15 @@
                     <span>{{ message.content || '响应异常，请稍后重试' }}</span>
                   </div>
                 </div>
-                <!-- eslint-disable-next-line vue/no-v-html -->
                 <div
-                  v-else-if="message.content && !message.isStreaming"
-                  class="message-text"
-                  v-html="formatMessageCached(message, 'content')"
-                />
-                <div
-                  v-else-if="message.content && message.isStreaming"
+                  v-else-if="message.content"
                   class="message-text"
                 >
-                  <span v-html="formatMessage(sanitizeNullRuns(message.content))" />
-                  <span class="typing-cursor" />
+                  <ChatContentRenderer
+                    :content="sanitizeNullRuns(message.content)"
+                    :formatMarkdown="(txt) => formatMessage(txt)"
+                    :isStreaming="message.isStreaming"
+                  />
                 </div>
                 <!-- 如果流式进行中且没有内容，显示输入状态 -->
                 <div
@@ -222,6 +264,14 @@
                 >
                   <i class="fas fa-atom" />
                   <span>深度思考</span>
+                </button>
+                <button
+                  class="tool-btn-special"
+                  :class="{ active: chatStore.isWebSearchEnabled }"
+                  @click="chatStore.toggleWebSearch"
+                >
+                  <i class="fas fa-globe" />
+                  <span>联网搜索</span>
                 </button>
                 <div
                   ref="modelMenuRef"
@@ -382,6 +432,7 @@ import 'katex/dist/katex.min.css'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
 import { API_CONFIG } from '@/config/api'
+import ChatContentRenderer from '@/components/chat/ChatContentRenderer.vue'
 
 const chatStore = useChatStore()
 const authStore = useAuthStore()
@@ -1703,25 +1754,34 @@ const adjustTextareaHeight = (event) => {
   color: var(--text-secondary);
   padding: 40px 20px;
   width: 100%;
-  max-width: 980px; /* 与 input-container 一致 */
+  max-width: 800px;
 }
 
 .empty-icon {
-  font-size: 80px;
+  font-size: 48px;
   margin-bottom: 24px;
-  opacity: 0.8;
+  opacity: 0.9;
+  color: #fff;
+  background: var(--gradient-primary, linear-gradient(135deg, #3b82f6 0%, #6366f1 100%));
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 24px;
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.25);
 }
 
 .empty-title {
   font-size: 28px;
-  font-weight: 600;
+  font-weight: 700;
   margin-bottom: 12px;
   color: var(--text-primary);
   letter-spacing: 0.5px;
 }
 
 .empty-description {
-  font-size: 16px;
+  font-size: 15px;
   color: var(--text-secondary);
   text-align: center;
   max-width: 400px;
@@ -1731,11 +1791,11 @@ const adjustTextareaHeight = (event) => {
 .message {
   display: flex;
   gap: 16px;
-  margin-bottom: 28px;
+  margin-bottom: 32px;
   animation: slideUp 0.3s ease-out;
-  padding: 0 8px;
+  padding: 0;
   width: 100%;
-  max-width: 980px; /* 限制宽度与 input-container 一致 */
+  max-width: 800px; /* 限制宽度更窄一些，更像阅读视角 */
 }
 
 @keyframes slideUp {
@@ -1757,49 +1817,13 @@ const adjustTextareaHeight = (event) => {
   justify-content: flex-start;
 }
 
-.message-avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: var(--gradient-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  flex-shrink: 0;
-  overflow: hidden;
-  box-shadow: var(--shadow-md);
-  transition: all 0.2s ease;
-}
-
-.message-avatar.has-image {
-  background: transparent;
-}
-
-.message-avatar-img {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  object-fit: cover;
-  display: block;
-}
-
-.message-avatar:hover {
-  transform: scale(1.05);
-  box-shadow: var(--shadow-lg);
-}
-
-.message.assistant .message-avatar {
-  background: linear-gradient(135deg, #06b6d4 0%, #10b981 100%);
-}
-
 .message-content {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  width: 100%; /* 确保占据可用宽度 */
+  width: 100%;
 }
 
 .message.user .message-content {
@@ -1810,37 +1834,37 @@ const adjustTextareaHeight = (event) => {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  width: 100%; /* 默认占满，方便内部长内容触发溢出 */
+  width: 100%;
   max-width: 100%;
 }
 
 .message.user .message-bubble {
   align-items: flex-end;
-  width: fit-content; /* 用户消息保持紧凑 */
+  width: fit-content;
 }
 
 .message-text {
-  padding: 16px 20px;
-  border-radius: var(--border-radius-lg);
-  line-height: 1.65;
+  padding: 12px 0;
+  line-height: 1.7;
   word-wrap: break-word;
   word-break: break-word;
-  box-shadow: var(--shadow-sm);
   transition: all 0.2s ease;
-  font-size: 16px;
-  letter-spacing: 0.2px;
+  font-size: 15px;
   width: 100%;
   box-sizing: border-box;
-  min-width: 0; /* 允许内部元素收缩 */
+  min-width: 0;
+  color: var(--text-primary);
 }
 
-.message-text-raw {
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.message-text:hover {
-  box-shadow: var(--shadow-md);
+.message.user .message-text {
+  background-color: var(--bg-secondary);
+  padding: 12px 24px;
+  border-radius: 20px 20px 4px 20px;
+  font-weight: 500;
+  font-size: 16px;
+  color: var(--text-primary);
+  border: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
 }
 
 .message.assistant .message-text {
@@ -1849,10 +1873,9 @@ const adjustTextareaHeight = (event) => {
   border: none;
   box-shadow: none;
   padding: 8px 0;
-  font-size: 17px;
+  font-size: 15px;
   line-height: 1.8;
   width: 100%;
-  word-break: break-word;
 }
 
 .message-text.error-state {
@@ -2079,58 +2102,51 @@ body.dark-mode .copy-button.copied {
 
 /* 表格样式 */
 .message-text :deep(table) {
-  display: block;
+  display: table;
   width: 100%;
   max-width: 100%;
-  overflow-x: auto;
-  white-space: nowrap; /* 强制不换行以触发滚动，如果列内容很多 */
-  border-collapse: separate;
-  border-spacing: 0;
+  border-collapse: collapse;
   margin: 16px 0;
-  border: 1px solid var(--border-color);
+  background-color: var(--bg-primary);
   border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-.message-text :deep(table) td,
-.message-text :deep(table) th {
-  white-space: normal; /* 单元格内允许换行，除非列太多导致整体溢出 */
-  min-width: 120px; /* 给列一个最小宽度，增加触发滚动的机会 */
+.message-text :deep(table-wrapper) {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  margin: 16px 0;
+}
+
+.message-text :deep(th),
+.message-text :deep(td) {
+  padding: 12px 16px;
+  text-align: left;
+  border: 1px solid var(--border-color);
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 .message-text :deep(th) {
   background-color: var(--bg-tertiary);
   color: var(--text-primary);
-  border-bottom: 1px solid var(--border-color);
-  border-right: 1px solid var(--border-color);
-  padding: 12px 16px;
-  text-align: left;
   font-weight: 600;
-  font-size: 14px;
+  white-space: nowrap;
 }
 
 .message-text :deep(td) {
-  border-bottom: 1px solid var(--border-color);
-  border-right: 1px solid var(--border-color);
-  padding: 12px 16px;
-  vertical-align: top;
-  font-size: 14px;
-}
-
-.message-text :deep(tr:last-child td) {
-  border-bottom: none;
-}
-
-.message-text :deep(th:last-child),
-.message-text :deep(td:last-child) {
-  border-right: none;
+  color: var(--text-primary);
 }
 
 .message-text :deep(tr:nth-child(even)) {
-  background-color: rgba(0, 0, 0, 0.02);
+  background-color: var(--bg-secondary);
 }
 
 .message-text :deep(tr:hover) {
-  background-color: var(--toolbar-btn-bg);
+  background-color: rgba(59, 130, 246, 0.05);
 }
 
 /* 消息复制按钮样式 */
@@ -2256,16 +2272,14 @@ body.dark-mode .message-copy-button:hover {
 }
 
 .suggestion-item {
-  background-color: var(--bg-secondary);
+  background-color: var(--bg-primary);
   border: 1px solid var(--border-color);
-  border-radius: 18px;
-  padding: 10px 20px;
+  border-radius: 20px;
+  padding: 12px 24px;
   font-size: 15px;
   color: var(--text-primary);
   cursor: pointer;
   transition: all 0.2s ease;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2273,18 +2287,18 @@ body.dark-mode .message-copy-button:hover {
   width: fit-content;
   text-align: left;
   line-height: 1.4;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 
 .suggestion-arrow {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-tertiary);
   transition: transform 0.2s ease;
 }
 
 .suggestion-item:hover {
-  background-color: var(--bg-primary);
-  border-color: var(--primary-color);
-  transform: translateX(4px);
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
   box-shadow: var(--shadow-sm);
 }
 
@@ -2300,7 +2314,7 @@ body.dark-mode .message-copy-button:hover {
 
 .chat-input-area {
   position: relative;
-  padding: 20px 32px 32px;
+  padding: 16px 32px 32px;
   background-color: transparent;
   display: flex;
   justify-content: center;
@@ -2309,20 +2323,20 @@ body.dark-mode .message-copy-button:hover {
 .input-container {
   width: 100%;
   max-width: 980px;
-  background-color: var(--bg-primary);
+  background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: 24px;
-  padding: 12px 16px;
+  padding: 16px 20px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  box-shadow: var(--shadow-sm);
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .input-container:focus-within {
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.05);
+  border-color: var(--border-color);
+  background-color: var(--bg-primary);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
 }
 
 .chat-input {
@@ -2332,7 +2346,7 @@ body.dark-mode .message-copy-button:hover {
   color: var(--text-primary);
   font-size: 16px;
   resize: none;
-  padding: 8px 4px;
+  padding: 0;
   line-height: 1.6;
   min-height: 24px;
   max-height: 200px;

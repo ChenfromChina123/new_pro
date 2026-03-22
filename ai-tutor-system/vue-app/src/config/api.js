@@ -41,6 +41,7 @@ export const API_ENDPOINTS = {
   chat: {
     askStream: '/api/ask-stream',
     ask: '/api/ask',
+    search: '/api/search',
     saveRecord: '/api/chat-records/save',
     getSessions: '/api/chat-records/sessions',
     getSessionMessages: (sessionId) => `/api/chat-records/session/${sessionId}`,

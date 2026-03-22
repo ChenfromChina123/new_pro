@@ -850,9 +850,9 @@ onMounted(() => {
 
 <style scoped>
 .app-sidebar {
-  width: var(--sidebar-width, 300px);
-  min-width: var(--sidebar-width, 300px);
-  background-color: var(--bg-secondary);
+  width: var(--sidebar-width, 280px);
+  min-width: var(--sidebar-width, 280px);
+  background-color: var(--bg-primary, #ffffff);
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
@@ -1003,11 +1003,11 @@ onMounted(() => {
 }
 
 .sidebar-top {
-  padding: 24px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid var(--border-color);
+  padding: 20px 24px;
+  background-color: var(--bg-primary);
 }
 
 .user-profile {
@@ -1016,19 +1016,19 @@ onMounted(() => {
   gap: 12px;
   flex: 1;
   min-width: 0;
-  margin-right: 8px;
 }
 
 .user-avatar-wrapper {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background-color: var(--bg-tertiary);
+  overflow: hidden;
+  background: var(--gradient-primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
   flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
 }
 
 .sidebar-avatar {
@@ -1038,13 +1038,13 @@ onMounted(() => {
 }
 
 .default-avatar-icon {
-  font-size: 18px;
-  color: var(--text-tertiary);
+  color: white;
+  font-size: 20px;
 }
 
 .sidebar-user-name {
-  font-size: 14px;
   font-weight: 600;
+  font-size: 15px;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -1054,18 +1054,17 @@ onMounted(() => {
 .sidebar-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   flex-shrink: 0;
-  margin-left: 8px;
 }
 
 .sidebar-action-btn {
   width: 32px;
   height: 32px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s ease;
@@ -1084,7 +1083,7 @@ onMounted(() => {
 }
 
 .sidebar-nav {
-  padding: 12px 10px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -1137,23 +1136,30 @@ onMounted(() => {
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  color: var(--text-primary);
+  padding: 12px 16px;
+  border-radius: 12px;
+  color: var(--text-secondary);
   text-decoration: none;
-  font-size: 14px;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.nav-item i {
+  font-size: 18px;
+  margin-right: 12px;
+  width: 24px;
+  text-align: center;
 }
 
 .nav-item:hover {
   background-color: var(--bg-tertiary);
+  color: var(--text-primary);
 }
 
 .nav-item.active {
-  background-color: var(--chip-bg);
+  background-color: rgba(59, 130, 246, 0.1);
   color: var(--primary-color);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .sidebar-divider {
@@ -1174,7 +1180,7 @@ onMounted(() => {
 }
 
 .sidebar-header {
-  padding: 12px 20px;
+  padding: 16px 20px 8px;
 }
 
 .new-chat-btn {
@@ -1184,13 +1190,13 @@ onMounted(() => {
   gap: 8px;
   padding: 12px 16px;
   border-radius: 12px;
-  background: #1d4ed8;
+  background: var(--gradient-primary, linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%));
   color: #ffffff;
   border: none;
   font-weight: 600;
   width: 100%;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  transition: all 0.2s ease;
   cursor: pointer;
 }
 
@@ -1242,23 +1248,22 @@ onMounted(() => {
 }
 
 .new-chat-btn:hover {
-  background-color: #1e40af;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
 }
 
 .history-section-title {
-  padding: 16px 16px 8px;
-  font-size: 12px;
-  font-weight: 600;
+  padding: 16px 20px 8px;
+  font-size: 13px;
   color: var(--text-tertiary);
-  text-transform: uppercase;
+  font-weight: 500;
   letter-spacing: 0.5px;
 }
 
 .session-list-wrapper {
   flex: 1;
   overflow-y: auto;
+  padding: 0 12px 12px;
 }
 
 .guest-sidebar-tip {
@@ -1282,7 +1287,9 @@ onMounted(() => {
 }
 
 .session-list {
-  padding: 0 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .session-badge {
@@ -1299,11 +1306,11 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px;
-  border-radius: 10px;
+  padding: 12px 16px;
+  border-radius: 12px;
   cursor: pointer;
-  transition: all 0.2s;
-  margin-bottom: 4px;
+  transition: all 0.2s ease;
+  border-left: 3px solid transparent;
 }
 
 .session-item:hover {
@@ -1311,22 +1318,25 @@ onMounted(() => {
 }
 
 .session-item.active {
-  background-color: var(--bg-tertiary);
-  border-left: 3px solid var(--primary-color);
+  background-color: rgba(59, 130, 246, 0.08);
+  border-left-color: var(--primary-color);
 }
 
 .session-info {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .session-title {
   font-size: 14px;
+  font-weight: 500;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-bottom: 4px;
 }
 
 .session-meta {

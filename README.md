@@ -30,6 +30,11 @@
 - **AI 框架**: Spring AI
 - **默认端口**: 5000 (请确保此端口未被其他服务占用，如 Python Flask 等)
 
+## 📚 架构与设计文档
+- [AI 单词记忆模块与对话交互结合架构设计](./shared/docs/AI_VOCAB_ARCHITECTURE.md)
+- [Void-Main AI 机制深度解析](./shared/docs/VOID_MAIN_AI_MECHANISM_ANALYSIS.md)
+- [AISpring AI 终端系统重构指南](./shared/docs/AISPRING_AI_TERMINAL_REFACTOR_GUIDE.md)
+
 ## 🛠️ 服务启动指南
 
 ### 🛠️ 服务启动指南
