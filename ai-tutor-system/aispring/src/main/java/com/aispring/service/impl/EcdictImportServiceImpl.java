@@ -29,7 +29,7 @@ public class EcdictImportServiceImpl implements EcdictImportService {
 
     private final WordDictRepository wordDictRepository;
 
-    private static final String ECDICT_DOWNLOAD_URL = "https://raw.githubusercontent.com/skywind3000/ECDICT/master/ecdict.csv";
+    private static final String ECDICT_DOWNLOAD_URL = "http://raw.githubusercontent.com/skywind3000/ECDICT/master/ecdict.csv";
     private static final int BATCH_SIZE = 1000;
 
     @Override

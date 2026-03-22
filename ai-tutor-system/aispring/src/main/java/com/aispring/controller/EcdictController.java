@@ -49,7 +49,7 @@ public class EcdictController {
         } catch (Exception e) {
             log.error("ECDICT 词库导入失败", e);
             return ResponseEntity.internalServerError()
-                    .body(ApiResponse.error("词库导入失败: " + e.getMessage()));
+                    .body(ApiResponse.error(500, "词库导入失败: " + e.getMessage()));
         }
     }
 
@@ -69,7 +69,7 @@ public class EcdictController {
         } catch (Exception e) {
             log.error("本地文件导入失败", e);
             return ResponseEntity.internalServerError()
-                    .body(ApiResponse.error("文件导入失败: " + e.getMessage()));
+                    .body(ApiResponse.error(500, "文件导入失败: " + e.getMessage()));
         }
     }
 }

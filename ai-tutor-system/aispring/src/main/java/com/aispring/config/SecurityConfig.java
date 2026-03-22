@@ -52,6 +52,8 @@ public class SecurityConfig {
                 // 外部链接公开访问（无需登录）
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/external-links").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/external-links/*/click").permitAll()
+                // 词库导入接口公开访问
+                .requestMatchers("/api/admin/dict/**").permitAll()
                 .requestMatchers("/error").permitAll()
                 // 其他需要认证
                 .anyRequest().authenticated()
