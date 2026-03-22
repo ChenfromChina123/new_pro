@@ -37,14 +37,18 @@ def test_search():
         print("❌ 获取 token 失败")
         return
     
+    print(f"✅ 获取 Token 成功：{token[:50]}...")
+    
     url = f"{BASE_URL}/api/search"
     headers = {
-        "Authorization": f"Bearer {token}"
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
     }
     
     keyword = "科技英语单词"
     print(f"\n搜索关键词：{keyword}")
     print(f"请求 URL: {url}")
+    print(f"请求头：Authorization: Bearer {token[:30]}...")
     
     try:
         response = requests.get(url, headers=headers, params={"q": keyword}, timeout=30)
