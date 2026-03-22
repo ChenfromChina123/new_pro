@@ -8,13 +8,10 @@ set -e
 export LANG=C.UTF-8
 export LC_ALL=C.UTF-8
 
-# 加载 Java 环境变量
-if [ -f /etc/profile.d/java_env.sh ]; then
-    source /etc/profile.d/java_env.sh
-fi
-if [ -f ~/.bashrc ]; then
-    source ~/.bashrc
-fi
+# 显式配置 Java 环境变量
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk
+export PATH=$JAVA_HOME/bin:$PATH
+export CLASSPATH=.:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar
 
 # 项目根目录
 PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"

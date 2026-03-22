@@ -8,12 +8,15 @@ set -e
 export LANG=C.UTF-8
 export LC_ALL=C.UTF-8
 
-# 加载 Java 环境变量
-if [ -f /etc/profile.d/java_env.sh ]; then
-    source /etc/profile.d/java_env.sh
-fi
-if [ -f ~/.bashrc ]; then
-    source ~/.bashrc
+# 显式配置 Java 环境变量
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk
+export PATH=$JAVA_HOME/bin:$PATH
+export CLASSPATH=.:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar
+
+# 验证 Java 是否可用
+if ! command -v java &> /dev/null; then
+    echo "❌ Java 未找到，请检查 JAVA_HOME 配置"
+    exit 1
 fi
 
 PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
