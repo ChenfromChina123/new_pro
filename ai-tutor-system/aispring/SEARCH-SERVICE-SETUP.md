@@ -4,14 +4,21 @@
 
 ### 1. 远程 SearXNG 服务集成
 - **服务地址**：`https://search.aistudy.icu/search`
-- **配置位置**：[SearchServiceImpl.java](file://d:\Users\Administrator\AistudyProject\new_pro\ai-tutor-system\aispring\src\main\java\com\aispring\service\impl\SearchServiceImpl.java#L41)
+- **配置位置**：`SearchServiceImpl.java` 第 41 行
 - **超时时间**：30 秒
 - **返回结果数**：最多 5 条
 
-### 2. API Key 认证模块
-- **配置类**：[ApiKeyConfig.java](file://d:\Users\Administrator\AistudyProject\new_pro\ai-tutor-system\aispring\src\main\java\com\aispring\config\ApiKeyConfig.java)
-- **控制器**：[SearchController.java](file://d:\Users\Administrator\AistudyProject\new_pro\ai-tutor-system\aispring\src\main\java\com\aispring\controller\SearchController.java)（已更新）
-- **配置文件**：[application.yml](file://d:\Users\Administrator\AistudyProject\new_pro\ai-tutor-system\aispring\src\main\resources\application.yml#L215-L220)
+### 2. API Key 认证模块（两层）
+
+#### 第一层：Nginx 层（SearXNG 访问验证）
+- **文件**：`searxng-nginx-full.conf`、`searxng-lua-apikey.lua`
+- **方式**：通过 Nginx + Lua 脚本验证
+- **支持**：`?apiKey=xxx` 或 `X-API-Key: xxx`
+
+#### 第二层：后端层（搜索接口验证）
+- **配置类**：`ApiKeyConfig.java`
+- **控制器**：`SearchController.java`（已更新）
+- **配置文件**：`application.yml`
 
 ### 3. 支持的认证方式
 - **请求参数**：`?apiKey=YOUR_API_KEY`
@@ -23,53 +30,97 @@
 
 ### 服务器端配置
 
-#### 1. 配置 API Key（可选但推荐）
+#### 1. 安装 Nginx Lua 模块（如未安装）
 
-**方法 A：环境变量（推荐）**
 ```bash
-# 生成随机 API Key
-API_KEY="sk-aispring-2026-$(openssl rand -hex 16)"
-echo $API_KEY
+# 检查是否已安装
+nginx -V 2>&1 | grep -o lua
 
-# 添加到环境变量
-echo "export SEARCH_API_KEY=\"$API_KEY\"" >> ~/.bashrc
-source ~/.bashrc
-
-# 验证
-echo $SEARCH_API_KEY
+# 如未安装，需要安装 OpenResty 或 ngx_http_lua_module
 ```
 
-**方法 B：直接修改配置文件**
-```yaml
-# application.yml
-search:
-  api:
-    key: "your-secret-api-key-here"
+#### 2. 配置 API Key（一键脚本）
+
+```bash
+# 上传并运行配置脚本
+chmod +x setup-searxng-apikey.sh
+sudo ./setup-searxng-apikey.sh
 ```
 
-#### 2. 重启后端服务
+脚本会自动：
+- ✅ 生成随机 API Key
+- ✅ 配置 Nginx Lua 验证
+- ✅ 重启 Nginx 服务
+- ✅ 保存 API Key 到文件
+
+#### 3. 手动配置（如果一键脚本失败）
+
+**步骤 1：创建 Lua 验证脚本**
 ```bash
-# 停止服务
-# （找到进程 ID 后 kill）
+# 创建目录
+mkdir -p /etc/nginx/lua
 
-# 启动服务
-cd /www/project/new_pro/ai-tutor-system/aispring
-java -jar target/ai-tutor-1.0.0.jar &
+# 创建 API Keys 配置文件
+cat > /etc/nginx/lua/api_keys.conf << EOF
+local valid_api_keys = {
+    "sk-aispring-2026-your-key-here",
+}
+return valid_api_keys
+EOF
 
-# 或使用 nohup
-nohup java -jar target/ai-tutor-1.0.0.jar > logs/backend.log 2>&1 &
+# 创建验证脚本
+cat > /etc/nginx/lua/api_key_check.lua << 'EOF'
+local cjson = require "cjson"
+local valid_api_keys = require "api_keys"
+
+local api_key = ngx.var.arg_apiKey
+if not api_key or api_key == "" then
+    api_key = ngx.var.http_x_api_key
+end
+
+local is_valid = false
+for _, key in ipairs(valid_api_keys) do
+    if api_key == key then
+        is_valid = true
+        break
+    end
+end
+
+if not is_valid then
+    ngx.status = 401
+    ngx.header.content_type = "application/json"
+    ngx.say(cjson.encode({code=401, message="无效的 API Key"}))
+    return ngx.exit(401)
+end
+EOF
 ```
 
-#### 3. 验证服务
+**步骤 2：配置 Nginx**
+```nginx
+# 在 server 块中添加
+location /search {
+    access_by_lua_file /etc/nginx/lua/api_key_check.lua;
+    proxy_pass http://127.0.0.1:9080/search;
+    # ... 其他 proxy 配置
+}
+```
+
+**步骤 3：重启 Nginx**
 ```bash
-# 检查端口监听
-netstat -tuln | grep 5000
+nginx -t && systemctl restart nginx
+```
 
-# 测试本地访问（不带 API Key）
-curl "http://localhost:5000/api/search?q=test"
+#### 4. 验证配置
 
-# 测试带 API Key 访问
-curl "http://localhost:5000/api/search?q=test&apiKey=YOUR_API_KEY"
+```bash
+# 测试带正确 API Key
+curl "http://localhost/search?q=test&apiKey=sk-aispring-2026-your-key-here"
+
+# 测试带错误 API Key
+curl "http://localhost/search?q=test&apiKey=wrong-key"
+
+# 测试不带 API Key
+curl "http://localhost/search?q=test"
 ```
 
 ### 客户端调用配置
@@ -78,310 +129,117 @@ curl "http://localhost:5000/api/search?q=test&apiKey=YOUR_API_KEY"
 
 **JavaScript (axios)**
 ```javascript
-// 方式 1：请求参数
+const API_KEY = 'sk-aispring-2026-your-key-here';
+
 const response = await axios.get('/api/search', {
   params: {
     q: '人工智能',
-    apiKey: 'YOUR_API_KEY'  // 如果配置了 API Key
-  }
-});
-
-// 方式 2：请求头
-const response = await axios.get('/api/search', {
-  params: {
-    q: '人工智能'
-  },
-  headers: {
-    'X-API-Key': 'YOUR_API_KEY'
+    apiKey: API_KEY
   }
 });
 ```
 
-**Python (requests)**
-```python
-import requests
+---
 
-# 方式 1：请求参数
-response = requests.get(
-    'http://localhost:5000/api/search',
-    params={'q': '人工智能', 'apiKey': 'YOUR_API_KEY'}
-)
+## 🔐 安全架构
 
-# 方式 2：请求头
-response = requests.get(
-    'http://localhost:5000/api/search',
-    params={'q': '人工智能'},
-    headers={'X-API-Key': 'YOUR_API_KEY'}
-)
+```
+用户请求
+    ↓
+┌─────────────────────────────────────────┐
+│  1. Nginx 层（SearXNG 访问验证）       │
+│     - 验证 API Key                      │
+│     - 过滤无效请求                      │
+└─────────────────────────────────────────┘
+    ↓
+┌─────────────────────────────────────────┐
+│  2. SearXNG 服务（搜索功能）            │
+│     - 处理搜索请求                      │
+│     - 返回搜索结果                      │
+└─────────────────────────────────────────┘
+    ↓
+┌─────────────────────────────────────────┐
+│  3. 后端服务（应用层验证）              │
+│     - JWT 认证                          │
+│     - API Key 验证（可选）              │
+└─────────────────────────────────────────┘
+    ↓
+用户收到响应
 ```
 
 ---
 
-## 🔧 配置说明
+## 📚 相关文件
 
-### 1. API Key 配置选项
-
-| 配置方式 | 优点 | 缺点 | 推荐场景 |
-|----------|------|------|----------|
-| 环境变量 | 安全，不提交代码 | 需要手动设置 | 生产环境 ✅ |
-| application.yml | 简单直接 | 可能提交到代码库 | 开发环境 |
-| 启动参数 | 灵活 | 每次启动都要指定 | 临时测试 |
-
-### 2. 不启用 API Key
-
-如果 `search.api.key` 未配置或为空，则：
-- ✅ 不需要提供 API Key 即可访问
-- ✅ 适合开发环境或内部网络
-- ❌ 任何人都可以访问（不安全）
-
-### 3. 启用 API Key
-
-如果配置了 `search.api.key`，则：
-- ✅ 必须提供正确的 API Key
-- ✅ 返回 401 错误给未授权请求
-- ✅ 适合生产环境
+| 文件 | 说明 |
+|------|------|
+| `searxng-nginx-full.conf` | Nginx 完整配置（含 API Key 验证） |
+| `searxng-lua-apikey.lua` | Lua 验证脚本（独立版） |
+| `searxng-nginx-apikey.conf` | Nginx API Key 配置片段 |
+| `setup-searxng-apikey.sh` | 一键配置脚本 |
+| `API-KEY-GUIDE.md` | API Key 使用指南 |
+| `SEARCH-SERVICE-SETUP.md` | 完整部署文档 |
 
 ---
 
-## 📝 使用示例
+## 🎯 使用示例
 
-### 示例 1：不启用 API Key（开发环境）
+### 调用 SearXNG API（需要 Key）
 
-**配置**：
-```yaml
-# application.yml
-search:
-  api:
-    key:  # 留空或不配置
-```
-
-**调用**：
-```bash
-curl "http://localhost:5000/api/search?q=人工智能"
-```
-
-### 示例 2：启用 API Key（生产环境）
-
-**配置**：
-```bash
-# 服务器环境变量
-export SEARCH_API_KEY="sk-aispring-2026-secure-key-xyz789"
-```
-
-**调用**：
 ```bash
 # 方式 1：参数传递
-curl "http://localhost:5000/api/search?q=人工智能&apiKey=sk-aispring-2026-secure-key-xyz789"
+curl "https://search.aistudy.icu/search?q=人工智能&apiKey=YOUR_API_KEY"
 
 # 方式 2：请求头
-curl -H "X-API-Key: sk-aispring-2026-secure-key-xyz789" "http://localhost:5000/api/search?q=人工智能"
+curl -H "X-API-Key: YOUR_API_KEY" "https://search.aistudy.icu/search?q=人工智能"
 ```
 
-### 示例 3：前端集成
-
-**Vue/React 项目**
-```javascript
-// src/utils/request.js 或 api.js
-const API_KEY = process.env.VUE_APP_SEARCH_API_KEY || 'your-api-key';
-
-export function searchKnowledge(keyword) {
-  return request({
-    url: '/api/search',
-    method: 'get',
-    params: {
-      q: keyword,
-      apiKey: API_KEY
-    }
-  });
-}
-```
-
----
-
-## 🔍 故障排查
-
-### 问题 1：返回 401 错误
-
-**现象**：
-```json
-{
-  "code": 401,
-  "message": "无效的 API Key",
-  "data": null
-}
-```
-
-**原因**：
-- 配置了 API Key 但未提供
-- 提供的 API Key 不正确
-
-**解决**：
-```bash
-# 检查配置
-grep "search.api.key" application.yml
-
-# 检查环境变量
-echo $SEARCH_API_KEY
-
-# 使用正确的 API Key 调用
-curl "http://localhost:5000/api/search?q=test&apiKey=正确的 API_KEY"
-```
-
-### 问题 2：搜索返回空结果
-
-**现象**：
-```json
-{
-  "code": 200,
-  "message": "成功",
-  "data": {
-    "result": "针对关键词\"xxx\"的搜索没有找到相关结果。"
-  }
-}
-```
-
-**原因**：
-- SearXNG 服务不可用
-- 网络连接问题
-- 搜索词过于冷门
-
-**解决**：
-```bash
-# 检查 SearXNG 服务
-curl "https://search.aistudy.icu/search?q=test&format=json"
-
-# 查看后端日志
-tail -f logs/application.log | grep "SearXNG"
-
-# 检查网络连接
-ping search.aistudy.icu
-```
-
-### 问题 3：SSL 证书错误
-
-**现象**：
-```
-javax.net.ssl.SSLHandshakeException
-```
-
-**解决**：
-代码中已配置忽略 SSL 证书错误，如果仍有问题，检查：
-- 服务器时间是否同步
-- SSL 证书是否过期
-
----
-
-## 📊 性能优化
-
-### 1. 超时时间配置
-
-当前配置：30 秒
-```java
-.timeout(30000)  // SearchServiceImpl.java 第 54 行
-```
-
-可根据实际情况调整：
-- 网络好：15-20 秒
-- 网络差：30-45 秒
-
-### 2. 结果数量配置
-
-当前配置：5 条
-```java
-if (count >= 5) break;  // SearchServiceImpl.java 第 91 行
-```
-
-可根据需求调整：
-- 快速响应：3 条
-- 完整结果：10 条
-
-### 3. 缓存优化（未来优化）
-
-可以添加 Redis 缓存搜索结果：
-```java
-// 伪代码
-String cacheKey = "search:" + MD5(keywords);
-String cached = redisTemplate.opsForValue().get(cacheKey);
-if (cached != null) {
-    return cached;
-}
-String result = searchFromSearXNG(keywords);
-redisTemplate.opsForValue().set(cacheKey, result, 3600);
-return result;
-```
-
----
-
-## 🔐 安全建议
-
-### 1. API Key 管理
-
-- ✅ 使用强随机密钥（至少 32 位）
-- ✅ 定期更换（建议每 3 个月）
-- ✅ 不要在代码中硬编码
-- ✅ 使用环境变量或密钥管理服务
-
-### 2. 访问控制
-
-- ✅ 配置防火墙限制访问 IP
-- ✅ 使用 HTTPS 加密传输
-- ✅ 记录所有访问日志
-- ✅ 监控异常访问
-
-### 3. 日志审计
+### 调用后端 API（需要 JWT + 可选 Key）
 
 ```bash
-# 查看 API Key 验证失败记录
-grep "Invalid API Key" logs/application.log
+# 方式 1：参数传递
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+     "http://localhost:5000/api/search?q=人工智能&apiKey=YOUR_SEARCH_KEY"
 
-# 查看搜索请求统计
-grep "Searching web for query" logs/application.log | wc -l
-
-# 查看错误请求
-grep "ERROR" logs/application.log | grep search
+# 方式 2：请求头
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+     -H "X-API-Key: YOUR_SEARCH_KEY" \
+     "http://localhost:5000/api/search?q=人工智能"
 ```
 
 ---
 
-## 📚 相关文档
+## ⚠️ 注意事项
 
-- [API Key 配置与使用指南](./API-KEY-GUIDE.md)
-- [SearXNG 部署配置文档](./DEPLOYMENT-GUIDE.md)
-- [Linux 一键启动脚本](./LINUX-STARTUP-GUIDE.md)
-
----
-
-## 🎯 下一步操作
-
-### 立即执行
-
-1. **配置 API Key**（如果启用）
-   ```bash
-   export SEARCH_API_KEY="your-secret-key"
-   ```
-
-2. **重启后端服务**
-   ```bash
-   # 停止旧服务
-   # 启动新服务
-   java -jar target/ai-tutor-1.0.0.jar &
-   ```
-
-3. **测试验证**
-   ```bash
-   curl "http://localhost:5000/api/search?q=test&apiKey=YOUR_API_KEY"
-   ```
-
-### 后续优化
-
-- [ ] 添加搜索结果缓存
-- [ ] 实现 API Key 速率限制
-- [ ] 配置监控告警
-- [ ] 添加访问统计
+1. **API Key 保密**：不要将 API Key 提交到 Git
+2. **定期更换**：建议每 3 个月更换一次
+3. **监控日志**：定期查看访问日志，发现异常
+4. **HTTPS 建议**：生产环境务必使用 HTTPS
 
 ---
 
-**部署版本**：v1.0  
+## 🔧 故障排查
+
+### 问题：返回 401 无效 API Key
+
+1. 检查 API Key 是否正确
+2. 检查 Nginx Lua 脚本是否生效
+3. 查看 Nginx 错误日志
+
+```bash
+# 查看 API Key
+cat /root/searxng_api_key.txt
+
+# 查看 Nginx 错误日志
+tail -f /www/wwwlogs/search.aistudy.icu_error.log
+
+# 测试本地 SearXNG
+curl "http://localhost:9080/search?q=test"
+```
+
+---
+
+**部署版本**：v2.0  
 **更新时间**：2026-03-22  
 **服务地址**：https://search.aistudy.icu  
 **后端端口**：5000
