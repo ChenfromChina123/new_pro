@@ -2444,6 +2444,10 @@ body.dark-mode .tool-btn-special.active {
   background-color: rgba(0, 0, 0, 0.02);
 }
 
+body.dark-mode .tool-btn-pill:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
 .model-pill {
   position: relative;
   padding: 0 !important;
@@ -2832,6 +2836,10 @@ body.dark-mode .model-menu-item.active .item-icon-wrapper {
   background-color: rgba(0, 0, 0, 0.02);
 }
 
+body.dark-mode .reasoning-header:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
 .reasoning-title-wrapper {
   display: flex;
   align-items: center;
@@ -3160,6 +3168,25 @@ body.dark-mode .scroll-to-bottom-btn {
   }
 }
 
+body.dark-mode .highlight-message {
+  animation: highlight-pulse-dark 2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes highlight-pulse-dark {
+  0% {
+    background-color: rgba(59, 130, 246, 0.25);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+  }
+  30% {
+    background-color: rgba(59, 130, 246, 0.35);
+    box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.25);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+
 .typing-cursor::after {
   content: ''; /* 移除光标以匹配图 2 风格 */
   display: inline-block;
@@ -3301,6 +3328,10 @@ body.dark-mode .reasoning-preview {
 
 .reasoning-block .reasoning-header:hover {
   background: rgba(0, 0, 0, 0.02);
+}
+
+body.dark-mode .reasoning-block .reasoning-header:hover {
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .reasoning-block .header-left {
