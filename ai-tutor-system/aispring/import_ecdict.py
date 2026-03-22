@@ -200,7 +200,7 @@ def parse_csv_row(row):
 
 def import_from_csv(conn, csv_file, batch_size=DEFAULT_BATCH_SIZE, limit=None):
     """
-    从 CSV 文件导入数据到数据库
+    从 CSV 文件导入数据到数据库（支持去重）
 
     Args:
         conn: 数据库连接对象
@@ -217,20 +217,20 @@ def import_from_csv(conn, csv_file, batch_size=DEFAULT_BATCH_SIZE, limit=None):
 
     file_size = os.path.getsize(csv_file) / (1024 * 1024)
     print(f"📄 CSV 文件: {csv_file} ({file_size:.1f} MB)")
+    print("🔄 正在读取并去重...")
 
     cursor = conn.cursor()
 
-    # 准备插入语句（使用 INSERT IGNORE 避免重复）
+    # 准备插入语句（使用 INSERT IGNORE 避免数据库重复）
     insert_sql = """
     INSERT IGNORE INTO word_dict (word, phonetic, definition, translation, level_tags, created_at)
     VALUES (%s, %s, %s, %s, %s, %s)
     """
 
-    imported = 0
-    skipped = 0
-    batch = []
-    start_time = time.time()
-    now = datetime.now()
+    # 使用字典进行去重，key 为单词（小写），value 为数据元组
+    word_dict = {}
+    total_lines = 0
+    invalid_lines = 0
 
     # 尝试不同的编码
     encodings = ['utf-8', 'utf-8-sig', 'gbk', 'latin-1']
@@ -247,50 +247,79 @@ def import_from_csv(conn, csv_file, batch_size=DEFAULT_BATCH_SIZE, limit=None):
                     pass
 
                 for row in reader:
-                    if limit and imported >= limit:
-                        break
+                    total_lines += 1
 
                     parsed = parse_csv_row(row)
                     if parsed:
-                        batch.append((*parsed, now))
-
-                        if len(batch) >= batch_size:
-                            try:
-                                cursor.executemany(insert_sql, batch)
-                                conn.commit()
-                                imported += len(batch)
-
-                                elapsed = time.time() - start_time
-                                speed = imported / elapsed if elapsed > 0 else 0
-                                print(f"\r⏳ 已导入: {imported:,} 条 | 速度: {speed:.0f} 条/秒", end='', flush=True)
-
-                            except Error as e:
-                                conn.rollback()
-                                print(f"\n⚠️ 批量插入失败: {e}")
-                                skipped += len(batch)
-
-                            batch = []
+                        word_key = parsed[0].lower()  # 使用小写作为 key 进行去重
+                        if word_key not in word_dict:
+                            word_dict[word_key] = parsed
                     else:
-                        skipped += 1
-
-                # 处理最后一批
-                if batch:
-                    try:
-                        cursor.executemany(insert_sql, batch)
-                        conn.commit()
-                        imported += len(batch)
-                    except Error as e:
-                        conn.rollback()
-                        print(f"\n⚠️ 最后一批插入失败: {e}")
-                        skipped += len(batch)
+                        invalid_lines += 1
 
                 break  # 成功读取，跳出编码循环
 
         except UnicodeDecodeError:
             continue
         except Exception as e:
-            print(f"\n❌ 读取文件失败 ({encoding}): {e}")
+            print(f"⚠️ 读取文件失败 ({encoding}): {e}")
             continue
+
+    # 去重统计
+    duplicates = total_lines - invalid_lines - len(word_dict)
+    print(f"📊 CSV 文件统计:")
+    print(f"   - 总行数: {total_lines:,}")
+    print(f"   - 无效行数: {invalid_lines:,}")
+    print(f"   - 重复单词: {duplicates:,}")
+    print(f"   - 去重后数量: {len(word_dict):,}")
+
+    # 应用 limit 限制
+    words_to_import = list(word_dict.values())
+    if limit and len(words_to_import) > limit:
+        words_to_import = words_to_import[:limit]
+        print(f"   - 限制导入: {limit:,}")
+
+    # 批量导入
+    print("\n🚀 开始导入数据库...")
+    imported = 0
+    db_duplicates = 0
+    batch = []
+    start_time = time.time()
+    now = datetime.now()
+
+    for parsed in words_to_import:
+        batch.append((*parsed, now))
+
+        if len(batch) >= batch_size:
+            try:
+                cursor.executemany(insert_sql, batch)
+                # 计算实际插入数量
+                inserted_rows = cursor.rowcount
+                imported += inserted_rows
+                db_duplicates += len(batch) - inserted_rows
+                conn.commit()
+
+                elapsed = time.time() - start_time
+                speed = imported / elapsed if elapsed > 0 else 0
+                print(f"\r⏳ 已导入: {imported:,} 条 | 速度: {speed:.0f} 条/秒", end='', flush=True)
+
+            except Error as e:
+                conn.rollback()
+                print(f"\n⚠️ 批量插入失败: {e}")
+
+            batch = []
+
+    # 处理最后一批
+    if batch:
+        try:
+            cursor.executemany(insert_sql, batch)
+            inserted_rows = cursor.rowcount
+            imported += inserted_rows
+            db_duplicates += len(batch) - inserted_rows
+            conn.commit()
+        except Error as e:
+            conn.rollback()
+            print(f"\n⚠️ 最后一批插入失败: {e}")
 
     cursor.close()
 
@@ -299,7 +328,9 @@ def import_from_csv(conn, csv_file, batch_size=DEFAULT_BATCH_SIZE, limit=None):
     print(f"{'='*50}")
     print(f"✅ 导入完成!")
     print(f"   - 成功导入: {imported:,} 条")
-    print(f"   - 跳过记录: {skipped:,} 条")
+    print(f"   - CSV 重复跳过: {duplicates:,} 条")
+    print(f"   - 数据库重复跳过: {db_duplicates:,} 条")
+    print(f"   - 无效记录: {invalid_lines:,} 条")
     print(f"   - 耗时: {elapsed:.1f} 秒")
     print(f"   - 平均速度: {imported / elapsed:.0f} 条/秒")
     print(f"{'='*50}")
