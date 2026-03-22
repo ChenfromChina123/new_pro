@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -28,6 +29,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class EcdictImportServiceImpl implements EcdictImportService {
 
     private final WordDictRepository wordDictRepository;
+    private final TransactionTemplate transactionTemplate;
 
     private static final String ECDICT_DOWNLOAD_URL = "http://raw.githubusercontent.com/skywind3000/ECDICT/master/ecdict.csv";
     private static final int BATCH_SIZE = 1000;
@@ -54,7 +56,6 @@ public class EcdictImportServiceImpl implements EcdictImportService {
     }
 
     @Override
-    @Transactional
     public long importFromFile(String filePath) {
         log.info("开始从文件导入 ECDICT 词典库: {}", filePath);
         AtomicLong importedCount = new AtomicLong(0);
@@ -183,16 +184,18 @@ public class EcdictImportServiceImpl implements EcdictImportService {
     }
 
     private void saveBatch(List<WordDict> batch) {
-        try {
-            wordDictRepository.saveAll(batch);
-        } catch (Exception e) {
-            for (WordDict word : batch) {
-                try {
-                    wordDictRepository.save(word);
-                } catch (Exception ex) {
-                    log.debug("保存单词失败: {}", word.getWord());
+        transactionTemplate.executeWithoutResult(status -> {
+            try {
+                wordDictRepository.saveAll(batch);
+            } catch (Exception e) {
+                for (WordDict word : batch) {
+                    try {
+                        wordDictRepository.save(word);
+                    } catch (Exception ex) {
+                        log.debug("保存单词失败: {}", word.getWord());
+                    }
                 }
             }
-        }
+        });
     }
 }
