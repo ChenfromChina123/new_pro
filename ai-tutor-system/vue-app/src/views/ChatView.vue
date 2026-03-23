@@ -1850,10 +1850,10 @@ const explainImages = async () => {
 
   isPinnedToBottom.value = true
 
-  // 添加用户消息（只显示用户输入）
+  // 添加用户消息（只显示图片，不显示文字）
   const userMessage = {
     role: 'user',
-    content: userInput,
+    content: '',
     images: imagesData,
     timestamp: new Date().toISOString(),
     model: chatStore.selectedModel
