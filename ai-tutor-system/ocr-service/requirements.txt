@@ -1,0 +1,12 @@
+# OCR Service - CRNN ONNX轻量级部署
+# 内存限制: ~150MB, CPU推理
+
+# 核心依赖 - 使用RapidOCR轻量级方案
+flask>=3.0.0
+flask-cors>=4.0.0
+rapidocr-onnxruntime>=1.3.0
+numpy>=1.26.0
+Pillow>=10.0.0
+
+# 可选: 内存监控
+psutil>=5.9.0

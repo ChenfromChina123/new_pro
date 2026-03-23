@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  ocr-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ocr-service
+    ports:
+      - "8089:8089"
+    environment:
+      - PORT=8089
+      - HOST=0.0.0.0
+      - OMP_NUM_THREADS=1
+      - MKL_NUM_THREADS=1
+      - OPENBLAS_NUM_THREADS=1
+    deploy:
+      resources:
+        limits:
+          memory: 200M
+          cpus: '1.0'
+        reservations:
+          memory: 100M
+          cpus: '0.5'
+    volumes:
+      - ./models:/app/models
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8089/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
