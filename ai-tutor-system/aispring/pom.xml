@@ -264,6 +264,18 @@
             <version>21.0</version>
         </dependency>
 
+        <!-- 阿里云OCR SDK -->
+        <dependency>
+            <groupId>com.aliyun</groupId>
+            <artifactId>ocr_api20210707</artifactId>
+            <version>3.1.2</version>
+        </dependency>
+        <dependency>
+            <groupId>com.aliyun</groupId>
+            <artifactId>tea-openapi</artifactId>
+            <version>0.3.8</version>
+        </dependency>
+
     </dependencies>
 
     <build>
