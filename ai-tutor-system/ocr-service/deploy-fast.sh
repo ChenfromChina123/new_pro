@@ -50,7 +50,7 @@ detect_os() {
 
 install_dependencies() {
     print_info "安装系统依赖..."
-    
+
     case $OS in
         ubuntu|debian)
             apt-get update -qq
@@ -81,7 +81,7 @@ install_dependencies() {
             exit 1
             ;;
     esac
-    
+
     print_success "系统依赖安装完成"
 }
 
@@ -94,38 +94,38 @@ create_user() {
 
 install_python_deps() {
     print_info "安装Python依赖..."
-    
+
     cd $INSTALL_DIR
-    
+
     python3 -m venv venv
     source venv/bin/activate
-    
+
     pip install --upgrade pip -q
     pip install -r requirements.txt -q
-    
+
     deactivate
-    
+
     print_success "Python依赖安装完成"
 }
 
 deploy_service() {
     print_info "部署服务文件..."
-    
+
     mkdir -p $INSTALL_DIR
-    
+
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    
+
     cp -r $SCRIPT_DIR/app_fast.py $INSTALL_DIR/app.py
     cp -r $SCRIPT_DIR/requirements.txt $INSTALL_DIR/
-    
+
     chown -R $SERVICE_USER:$SERVICE_USER $INSTALL_DIR
-    
+
     print_success "服务文件部署完成"
 }
 
 setup_systemd() {
     print_info "配置systemd服务..."
-    
+
     cat > /etc/systemd/system/$SERVICE_NAME.service << EOF
 [Unit]
 Description=OCR Service - RapidOCR Optimized
@@ -146,8 +146,8 @@ StandardOutput=journal
 StandardError=journal
 
 LimitNOFILE=65535
-MemoryMax=300M
-CPUQuota=200%
+MemoryMax=500M
+CPUQuota=100%
 
 [Install]
 WantedBy=multi-user.target
@@ -155,7 +155,7 @@ EOF
 
     systemctl daemon-reload
     systemctl enable $SERVICE_NAME
-    
+
     print_success "systemd服务配置完成"
 }
 
@@ -168,7 +168,7 @@ start_service() {
 
 test_service() {
     print_info "测试服务..."
-    
+
     if curl -sf http://localhost:$SERVICE_PORT/health > /dev/null; then
         print_success "健康检查通过"
         echo ""
@@ -182,7 +182,7 @@ test_service() {
 
 print_deploy_info() {
     SERVER_IP=$(hostname -I | awk '{print $1}')
-    
+
     echo ""
     echo "=========================================="
     echo -e "${GREEN}OCR服务部署完成!${NC}"
@@ -217,15 +217,15 @@ print_deploy_info() {
 
 uninstall_service() {
     print_warning "正在卸载OCR服务..."
-    
+
     systemctl stop $SERVICE_NAME 2>/dev/null || true
     systemctl disable $SERVICE_NAME 2>/dev/null || true
     rm -f /etc/systemd/system/$SERVICE_NAME.service
     systemctl daemon-reload
-    
+
     userdel -r $SERVICE_USER 2>/dev/null || true
     rm -rf $INSTALL_DIR
-    
+
     print_success "OCR服务已卸载"
 }
 
@@ -235,7 +235,7 @@ main() {
         uninstall_service
         exit 0
     fi
-    
+
     echo ""
     echo "=========================================="
     echo "  OCR服务 - 优化版部署脚本"
@@ -243,7 +243,7 @@ main() {
     echo "  服务端口: $SERVICE_PORT"
     echo "=========================================="
     echo ""
-    
+
     check_root
     detect_os
     install_dependencies
