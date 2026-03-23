@@ -46,6 +46,7 @@ app.config['JSON_AS_ASCII'] = False
 
 # 全局变量
 ocr_engine = None
+ocr_engine_type = None
 start_time = datetime.now()
 
 
@@ -76,28 +77,31 @@ def compress_old_logs():
 
 def init_ocr():
     """
-    初始化OCR引擎 - 优化配置
+    初始化OCR引擎 - 支持本地和阿里云OCR
     """
-    global ocr_engine
+    global ocr_engine, ocr_engine_type
     try:
         logger.info("正在初始化OCR引擎...")
-        from rapidocr_onnxruntime import RapidOCR
+        from ocr_engine_factory import OCREngineFactory
         
-        # 优化配置：禁用方向分类器加速
-        ocr_engine = RapidOCR(
-            use_det=True,      # 文本检测
-            use_cls=False,     # 禁用方向分类（加速）
-            use_rec=True,      # 文本识别
-        )
+        # 获取引擎类型
+        ocr_engine_type = os.getenv('OCR_ENGINE_TYPE', 'local')
+        logger.info(f"使用OCR引擎类型: {ocr_engine_type}")
         
-        # 预热模型
-        logger.info("预热模型...")
-        dummy_img = np.ones((100, 300, 3), dtype=np.uint8) * 255
-        ocr_engine(dummy_img)
+        # 使用工厂创建引擎
+        ocr_engine = OCREngineFactory.get_engine(ocr_engine_type)
         
-        logger.info("OCR引擎初始化完成（优化配置）")
+        # 预热模型（仅本地引擎需要）
+        if ocr_engine_type == 'local' and ocr_engine:
+            logger.info("预热本地模型...")
+            dummy_img = np.ones((100, 300, 3), dtype=np.uint8) * 255
+            ocr_engine.ocr(dummy_img)
+        
+        logger.info(f"OCR引擎初始化完成: {ocr_engine_type}")
     except Exception as e:
         logger.error(f"OCR引擎初始化失败: {e}")
+        import traceback
+        traceback.print_exc()
         ocr_engine = None
 
 
@@ -134,7 +138,7 @@ def health_check():
         "version": "1.0.0",
         "uptime_seconds": int(uptime),
         "model_loaded": ocr_engine is not None,
-        "engine": "RapidOCR (optimized)"
+        "engine": ocr_engine_type or "RapidOCR (optimized)"
     })
 
 
@@ -146,8 +150,8 @@ def index():
     return jsonify({
         "service": "OCR Service Fast",
         "version": "1.0.0",
-        "description": "优化版OCR服务 - RapidOCR",
-        "engine": "RapidOCR (optimized)",
+        "description": "优化版OCR服务 - 支持本地和阿里云OCR",
+        "engine": ocr_engine_type or "RapidOCR (optimized)",
         "endpoints": {
             "POST /ocr": "识别图像中的文字（返回纯文本）",
             "POST /ocr/base64": "识别Base64编码图像中的文字",
@@ -175,27 +179,48 @@ def ocr_image():
             }), 400
         
         file = request.files['image']
-        image_bytes = file.read()
         
-        # 解码图像
-        image = decode_image(image_bytes)
-        
-        # OCR识别
-        result, _ = ocr_engine(image)
-        
-        # 提取文本
-        if result:
-            text = '\n'.join([item[1] for item in result])
+        # 根据引擎类型处理
+        if ocr_engine_type == 'aliyun':
+            # 保存文件到临时目录
+            import tempfile
+            with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_file:
+                file.save(temp_file.name)
+                temp_path = temp_file.name
+            
+            try:
+                # 使用阿里云OCR
+                result = ocr_engine.ocr(temp_path)
+                # 提取文本
+                if result:
+                    text = '\n'.join([item['text'] for item in result])
+                else:
+                    text = ""
+            finally:
+                # 删除临时文件
+                import os
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
         else:
-            text = ""
+            # 本地OCR处理
+            image_bytes = file.read()
+            image = decode_image(image_bytes)
+            result = ocr_engine.ocr(image)
+            # 提取文本
+            if result:
+                text = '\n'.join([item['text'] for item in result])
+            else:
+                text = ""
         
         return jsonify({
             "success": True,
             "text": text
-        })
+        }), 200
         
     except Exception as e:
         logger.error(f"OCR处理错误: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             "success": False,
             "error": str(e)
@@ -228,24 +253,47 @@ def ocr_base64():
             image_data = image_data.split(',')[1]
         
         image_bytes = base64.b64decode(image_data)
-        image = decode_image(image_bytes)
         
-        # OCR识别
-        result, _ = ocr_engine(image)
-        
-        # 提取文本
-        if result:
-            text = '\n'.join([item[1] for item in result])
+        # 根据引擎类型处理
+        if ocr_engine_type == 'aliyun':
+            # 保存文件到临时目录
+            import tempfile
+            with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_file:
+                temp_file.write(image_bytes)
+                temp_path = temp_file.name
+            
+            try:
+                # 使用阿里云OCR
+                result = ocr_engine.ocr(temp_path)
+                # 提取文本
+                if result:
+                    text = '\n'.join([item['text'] for item in result])
+                else:
+                    text = ""
+            finally:
+                # 删除临时文件
+                import os
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
         else:
-            text = ""
+            # 本地OCR处理
+            image = decode_image(image_bytes)
+            result = ocr_engine.ocr(image)
+            # 提取文本
+            if result:
+                text = '\n'.join([item['text'] for item in result])
+            else:
+                text = ""
         
         return jsonify({
             "success": True,
             "text": text
-        })
+        }), 200
         
     except Exception as e:
         logger.error(f"OCR处理错误: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             "success": False,
             "error": str(e)
@@ -299,7 +347,7 @@ if __name__ == '__main__':
     host = os.environ.get('HOST', '0.0.0.0')
     
     logger.info(f"启动OCR服务: http://{host}:{port}")
-    logger.info("引擎: RapidOCR (优化配置)")
+    logger.info(f"引擎: {ocr_engine_type or 'RapidOCR (优化配置)'}")
     
     app.run(
         host=host,

@@ -4,9 +4,13 @@
 # 核心依赖 - 使用RapidOCR轻量级方案
 flask>=3.0.0
 flask-cors>=4.0.0
-rapidocr-onnxruntime>=1.3.0
+rapidocr-onnxruntime>=1.2.3
 numpy>=1.26.0
 Pillow>=10.0.0
+
+# 阿里云OCR SDK依赖
+alibabacloud-ocr-api20210707>=3.1.2
+alibabacloud-tea-openapi>=0.3.8
 
 # 可选: 内存监控
 psutil>=5.9.0
