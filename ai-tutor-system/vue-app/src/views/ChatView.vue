@@ -497,6 +497,7 @@ import 'katex/dist/katex.min.css'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
 import { API_CONFIG, API_ENDPOINTS } from '@/config/api'
+import request from '@/utils/request'
 import ChatContentRenderer from '@/components/chat/ChatContentRenderer.vue'
 
 const chatStore = useChatStore()
@@ -1806,11 +1807,14 @@ const explainImages = () => {
     .filter(img => img.ocrText)
     .map(img => img.ocrText)
 
-  let message = inputMessage.value.trim()
+  // 用户消息只显示输入的内容，不显示OCR结果
+  const userDisplayMessage = inputMessage.value.trim()
 
+  // 发送给AI的完整消息（包含OCR识别结果，隐式注入）
+  let aiMessage = userDisplayMessage
   if (ocrTexts.length > 0) {
     const ocrMessage = ocrTexts.map(text => `[图片识别结果]\n${text}`).join('\n\n')
-    message = message ? `${message}\n\n${ocrMessage}` : ocrMessage
+    aiMessage = aiMessage ? `${aiMessage}\n\n${ocrMessage}` : ocrMessage
   }
 
   inputMessage.value = ''
@@ -1820,7 +1824,7 @@ const explainImages = () => {
 
   // 发送消息，传递图片数据
   const sendMessageWithImages = async () => {
-    if (!message.trim() || chatStore.isLoading) return
+    if (!aiMessage.trim() || chatStore.isLoading) return
 
     // 如果没有当前会话，先创建一个（仅针对已登录用户）
     // 游客模式下不需要预先创建会话，由后端在发送第一条消息时自动生成
@@ -1838,10 +1842,268 @@ const explainImages = () => {
     }
 
     isPinnedToBottom.value = true
-    await chatStore.sendMessage(message, () => {
-      scheduleAutoScrollToBottom()
-    }, imagesData)
-    scheduleAutoScrollToBottom()
+
+    // 先手动添加用户消息到store，只显示用户输入的内容和图片
+    const userMessage = {
+      role: 'user',
+      content: userDisplayMessage,
+      images: imagesData,
+      timestamp: new Date().toISOString(),
+      model: chatStore.selectedModel
+    }
+    chatStore.messages.push(userMessage)
+
+    // 添加AI消息占位符
+    const aiMessagePlaceholder = {
+      role: 'assistant',
+      content: '',
+      reasoning_content: '',
+      search_status: '',
+      search_query: '',
+      search_results: '',
+      isSearchCollapsed: false,
+      isStreaming: true,
+      error: false,
+      isReasoningCollapsed: false,
+      timestamp: new Date().toISOString(),
+      model: chatStore.selectedModel
+    }
+    chatStore.messages.push(aiMessagePlaceholder)
+
+    // 获取响应式对象
+    const activeAiMessage = chatStore.messages[chatStore.messages.length - 1]
+
+    let systemPrompt = undefined
+
+    // 如果开启了联网搜索，先进行搜索
+    if (chatStore.isWebSearchEnabled) {
+      activeAiMessage.search_status = 'searching'
+      activeAiMessage.search_query = aiMessage
+      try {
+        const searchRes = await request.get(API_ENDPOINTS.chat.search, { params: { q: aiMessage } })
+        activeAiMessage.search_status = 'done'
+        const searchResultStr = searchRes?.data?.result || searchRes?.result || ''
+        activeAiMessage.search_results = searchResultStr
+        activeAiMessage.isSearchCollapsed = true
+        systemPrompt = "【系统提供的实时搜索结果】\n" + searchResultStr + "\n\n请根据上述搜索结果回答用户的问题。"
+      } catch (err) {
+        activeAiMessage.search_status = 'error'
+        activeAiMessage.search_results = '搜索失败：' + (err.response?.data?.message || err.message)
+      }
+    }
+
+    // 准备请求头
+    const headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'text/event-stream'
+    }
+
+    // 如果已登录，添加 token
+    const authStoreLocal = useAuthStore()
+    if (authStoreLocal.isAuthenticated && authStoreLocal.token) {
+      headers['Authorization'] = `Bearer ${authStoreLocal.token}`
+    }
+
+    try {
+      const payload = {
+        prompt: aiMessage,
+        session_id: chatStore.currentSessionId,
+        model: chatStore.selectedModel
+      }
+      if (systemPrompt) {
+        payload.system_prompt = systemPrompt
+      }
+
+      const response = await fetch(`${request.defaults.baseURL}${API_ENDPOINTS.chat.askStream}`, {
+        method: 'POST',
+        signal: chatStore.abortController?.signal,
+        headers,
+        body: JSON.stringify(payload)
+      })
+
+      // 若鉴权失败或服务拒绝，降级为非流式接口
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          authStoreLocal.logout()
+          window.location.href = '/login'
+          return
+        } else {
+          throw new Error(`请求失败: ${response.status}`)
+        }
+      }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+
+        // 保留最后一行（可能不完整），放入缓冲区等待下一次拼接
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (line.trim() === '') continue
+
+          if (line.startsWith('data:')) {
+            const data = line.slice(5).trim()
+            if (data === '[DONE]') {
+              continue
+            }
+            try {
+              const parsed = JSON.parse(data)
+
+              // 处理会话更新（标题和建议问题）
+              if (parsed.type === 'session_update') {
+                if (parsed.suggestions) {
+                  chatStore.suggestions = parsed.suggestions
+                }
+                if (parsed.session_id && (!chatStore.currentSessionId || chatStore.currentSessionId === 'null')) {
+                  chatStore.currentSessionId = parsed.session_id
+                }
+                if (parsed.title) {
+                  const session = chatStore.sessions.find(s => s.id === chatStore.currentSessionId)
+                  if (session) {
+                    session.title = parsed.title
+                  } else {
+                    chatStore.sessions.unshift({
+                      id: chatStore.currentSessionId,
+                      title: parsed.title,
+                      createdAt: new Date().toISOString()
+                    })
+                  }
+                }
+                continue
+              }
+
+              // 处理推理内容
+              const reasoningChunk = parsed.reasoning_content ? String(parsed.reasoning_content) : ''
+              if (reasoningChunk) {
+                activeAiMessage.reasoning_content = (activeAiMessage.reasoning_content || '') + reasoningChunk
+                scheduleAutoScrollToBottom()
+              }
+
+              // 处理回复内容
+              const contentChunk = parsed.content ? String(parsed.content) : ''
+              if (contentChunk) {
+                // 如果后端返回了错误信息，标记为错误状态
+                if (contentChunk.includes('AI服务暂时不可用') || contentChunk.includes('请求失败')) {
+                  activeAiMessage.error = true
+                }
+
+                if (!activeAiMessage.content) {
+                  activeAiMessage.isReasoningCollapsed = true
+                }
+                activeAiMessage.content += contentChunk
+                scheduleAutoScrollToBottom()
+              }
+            } catch {
+              console.warn('Failed to parse SSE data:', data)
+            }
+          }
+        }
+      }
+
+      // 处理流结束时剩余的 buffer
+      if (buffer.trim() && buffer.startsWith('data:')) {
+        const data = buffer.slice(5).trim()
+        if (data !== '[DONE]') {
+          try {
+            const parsed = JSON.parse(data)
+
+            // 处理会话更新（标题和建议问题）
+            if (parsed.type === 'session_update') {
+              if (parsed.suggestions) {
+                chatStore.suggestions = parsed.suggestions
+              }
+              if (parsed.session_id && (!chatStore.currentSessionId || chatStore.currentSessionId === 'null')) {
+                chatStore.currentSessionId = parsed.session_id
+              }
+              if (parsed.title) {
+                const session = chatStore.sessions.find(s => s.id === chatStore.currentSessionId)
+                if (session) {
+                  session.title = parsed.title
+                } else {
+                  chatStore.sessions.unshift({
+                    id: chatStore.currentSessionId,
+                    title: parsed.title,
+                    createdAt: new Date().toISOString()
+                  })
+                }
+              }
+              return // 结束当前 buffer 处理
+            }
+
+            const reasoningChunk = parsed.reasoning_content ? String(parsed.reasoning_content) : ''
+            if (reasoningChunk) {
+              activeAiMessage.reasoning_content = (activeAiMessage.reasoning_content || '') + reasoningChunk
+            }
+
+            const contentChunk = parsed.content ? String(parsed.content) : ''
+            if (contentChunk) {
+              if (!activeAiMessage.content) {
+                activeAiMessage.isReasoningCollapsed = true
+              }
+              activeAiMessage.content += contentChunk
+            }
+          } catch {
+            console.warn('Failed to parse final SSE data:', data)
+          }
+        }
+      }
+      activeAiMessage.isStreaming = false
+
+      // 保存消息记录
+      await request.post(API_ENDPOINTS.chat.saveRecord, {
+        session_id: chatStore.currentSessionId,
+        user_message: aiMessage,
+        ai_response: activeAiMessage.content,
+        ai_reasoning: activeAiMessage.reasoning_content || null,
+        search_query: activeAiMessage.search_query || null,
+        search_results: activeAiMessage.search_results || null,
+        model: chatStore.selectedModel
+      })
+
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log('Generation aborted by user')
+        // 被用户中止时，也要尝试保存已生成的内容
+        activeAiMessage.isStreaming = false
+        if (activeAiMessage.content || activeAiMessage.reasoning_content) {
+          await request.post(API_ENDPOINTS.chat.saveRecord, {
+            session_id: chatStore.currentSessionId,
+            user_message: aiMessage,
+            ai_response: activeAiMessage.content,
+            ai_reasoning: activeAiMessage.reasoning_content || null,
+            search_query: activeAiMessage.search_query || null,
+            search_results: activeAiMessage.search_results || null,
+            model: chatStore.selectedModel
+          })
+        }
+      } else {
+        console.error('Send message error:', error)
+
+        // 不再移除占位符，而是标记错误状态，让 UI 显示友好提示
+        activeAiMessage.isStreaming = false
+        activeAiMessage.error = true
+        // 如果已经有部分内容了，就在后面追加错误提示，否则直接显示错误
+        const errorHint = '\n\n [发送消息失败，请稍后重试]'
+        if (activeAiMessage.content) {
+          activeAiMessage.content += errorHint
+        } else {
+          activeAiMessage.content = '发送消息失败，请稍后重试。'
+        }
+      }
+    } finally {
+      chatStore.isLoading = false
+      if (activeAiMessage) {
+        activeAiMessage.isStreaming = false
+      }
+    }
 
     // 清除上传的图片
     uploadedImages.value.forEach(img => URL.revokeObjectURL(img.url))
