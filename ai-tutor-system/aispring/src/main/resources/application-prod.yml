@@ -35,6 +35,11 @@ spring:
     livereload:
       enabled: false
 
+# Whisper 语音识别服务配置
+whisper:
+  server:
+    url: ${WHISPER_SERVER_URL:https://audio-to-text.aistudy.icu/inference}
+
 # 日志配置
 logging:
   level:
@@ -58,3 +63,8 @@ cors:
 app:
   storage:
     root-dir: ${APP_STORAGE_ROOT:/data/aispring}
+
+# Whisper 语音识别服务配置
+whisper:
+  server:
+    url: ${WHISPER_SERVER_URL:https://audio-to-text.aistudy.icu/inference}
