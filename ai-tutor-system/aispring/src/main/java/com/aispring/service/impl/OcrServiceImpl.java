@@ -6,13 +6,17 @@ import com.aliyun.ocr_api20210707.models.RecognizeAllTextResponse;
 import com.aliyun.teaopenapi.models.Config;
 import com.aliyun.teautil.models.RuntimeOptions;
 import com.aliyun.ocr_api20210707.Client;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -23,6 +27,7 @@ import java.util.Map;
 public class OcrServiceImpl implements OcrService {
     
     private Client ocrClient;
+    private final ObjectMapper objectMapper = new ObjectMapper();
     
     /**
      * 初始化阿里云OCR客户端
@@ -55,6 +60,60 @@ public class OcrServiceImpl implements OcrService {
         }
     }
     
+    /**
+     * 解析OCR响应结果
+     * @param response OCR响应
+     * @return 解析后的文本内容
+     */
+    private String parseOcrResponse(RecognizeAllTextResponse response) {
+        try {
+            if (response == null || response.getBody() == null) {
+                return "";
+            }
+            
+            RecognizeAllTextResponse.RecognizeAllTextResponseBody body = response.getBody();
+            
+            // 检查是否有数据
+            if (body.getData() == null) {
+                return "";
+            }
+            
+            RecognizeAllTextResponse.RecognizeAllTextResponseBody.RecognizeAllTextResponseBodyData data = body.getData();
+            
+            // 获取内容字符串
+            String content = data.getContent();
+            if (content != null && !content.isEmpty()) {
+                return content.trim();
+            }
+            
+            // 如果content为空，尝试从subRegins中提取
+            if (data.getSubRegins() != null && !data.getSubRegins().isEmpty()) {
+                StringBuilder textBuilder = new StringBuilder();
+                for (Object subRegion : data.getSubRegins()) {
+                    // 尝试解析JSON格式的subRegion
+                    try {
+                        String subRegionStr = objectMapper.writeValueAsString(subRegion);
+                        JsonNode node = objectMapper.readTree(subRegionStr);
+                        if (node.has("text")) {
+                            textBuilder.append(node.get("text").asText()).append("\n");
+                        }
+                    } catch (Exception e) {
+                        // 忽略解析错误
+                    }
+                }
+                if (textBuilder.length() > 0) {
+                    return textBuilder.toString().trim();
+                }
+            }
+            
+            return "";
+            
+        } catch (Exception e) {
+            System.err.println("解析OCR响应失败: " + e.getMessage());
+            return "";
+        }
+    }
+    
     @Override
     public Map<String, Object> recognizeText(MultipartFile file) throws IOException {
         if (ocrClient == null) {
@@ -66,7 +125,12 @@ public class OcrServiceImpl implements OcrService {
         
         try {
             // 保存文件到临时目录
-            File tempFile = File.createTempFile("ocr", ".jpg");
+            String originalFilename = file.getOriginalFilename();
+            String suffix = ".jpg";
+            if (originalFilename != null && originalFilename.contains(".")) {
+                suffix = originalFilename.substring(originalFilename.lastIndexOf("."));
+            }
+            File tempFile = File.createTempFile("ocr", suffix);
             try (FileOutputStream fos = new FileOutputStream(tempFile)) {
                 fos.write(file.getBytes());
             }
@@ -80,22 +144,19 @@ public class OcrServiceImpl implements OcrService {
                 // 发送请求
                 RecognizeAllTextResponse response = ocrClient.recognizeAllTextWithOptions(request, runtime);
                 
-                // 处理响应
-                StringBuilder textBuilder = new StringBuilder();
-                if (response.getBody().getData().getWords() != null) {
-                    response.getBody().getData().getWords().forEach(word -> {
-                        textBuilder.append(word.getContent()).append("\n");
-                    });
-                }
+                // 解析响应
+                String recognizedText = parseOcrResponse(response);
                 
                 Map<String, Object> result = new HashMap<>();
                 result.put("success", true);
-                result.put("text", textBuilder.toString().trim());
+                result.put("text", recognizedText);
                 return result;
                 
             } finally {
                 // 删除临时文件
-                tempFile.delete();
+                if (tempFile.exists()) {
+                    tempFile.delete();
+                }
             }
             
         } catch (Exception e) {
@@ -121,7 +182,7 @@ public class OcrServiceImpl implements OcrService {
             if (base64Image.startsWith("data:image")) {
                 base64Image = base64Image.split(",")[1];
             }
-            imageBytes = javax.xml.bind.DatatypeConverter.parseBase64Binary(base64Image);
+            imageBytes = java.util.Base64.getDecoder().decode(base64Image);
             
             // 保存到临时文件
             File tempFile = File.createTempFile("ocr", ".jpg");
@@ -138,22 +199,19 @@ public class OcrServiceImpl implements OcrService {
                 // 发送请求
                 RecognizeAllTextResponse response = ocrClient.recognizeAllTextWithOptions(request, runtime);
                 
-                // 处理响应
-                StringBuilder textBuilder = new StringBuilder();
-                if (response.getBody().getData().getWords() != null) {
-                    response.getBody().getData().getWords().forEach(word -> {
-                        textBuilder.append(word.getContent()).append("\n");
-                    });
-                }
+                // 解析响应
+                String recognizedText = parseOcrResponse(response);
                 
                 Map<String, Object> result = new HashMap<>();
                 result.put("success", true);
-                result.put("text", textBuilder.toString().trim());
+                result.put("text", recognizedText);
                 return result;
                 
             } finally {
                 // 删除临时文件
-                tempFile.delete();
+                if (tempFile.exists()) {
+                    tempFile.delete();
+                }
             }
             
         } catch (Exception e) {

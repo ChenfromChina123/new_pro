@@ -169,6 +169,13 @@ export const API_ENDPOINTS = {
     download: (filename) => `/api/public-files/download/${encodeURIComponent(filename)}`,
     upload: '/api/public-files/upload',
     delete: (filename) => `/api/public-files/${encodeURIComponent(filename)}`
+  },
+
+  // OCR图片识别
+  ocr: {
+    health: '/api/ocr/health',
+    recognize: '/api/ocr/recognize',
+    recognizeBase64: '/api/ocr/recognize/base64'
   }
 }
 

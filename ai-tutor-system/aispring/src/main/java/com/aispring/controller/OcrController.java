@@ -4,6 +4,7 @@ import com.aispring.service.OcrService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -13,6 +14,7 @@ import java.util.Map;
 /**
  * OCR控制器
  * 处理文字识别相关的HTTP请求
+ * 所有接口需要用户认证后才能访问
  */
 @RestController
 @RequestMapping("/api/ocr")
@@ -23,10 +25,12 @@ public class OcrController {
     
     /**
      * 健康检查接口
+     * 需要认证才能访问
      * 
      * @return 服务状态
      */
     @GetMapping("/health")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Object>> healthCheck() {
         boolean isAvailable = ocrService.isAvailable();
         Map<String, Object> response = Map.of(
@@ -41,11 +45,13 @@ public class OcrController {
     
     /**
      * 识别图像中的文字
+     * 需要认证才能访问
      * 
      * @param file 图像文件
      * @return 识别结果
      */
     @PostMapping("/recognize")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Object>> recognizeText(@RequestParam("image") MultipartFile file) {
         try {
             Map<String, Object> result = ocrService.recognizeText(file);
@@ -65,11 +71,13 @@ public class OcrController {
     
     /**
      * 识别Base64编码的图像中的文字
+     * 需要认证才能访问
      * 
      * @param request 请求体，包含Base64编码的图像数据
      * @return 识别结果
      */
     @PostMapping("/recognize/base64")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Object>> recognizeTextFromBase64(@RequestBody Map<String, String> request) {
         try {
             String base64Image = request.get("image");

@@ -256,7 +256,24 @@
 
             <div class="input-toolbar">
               <div class="toolbar-left">
-                <!-- 已移除上传附件按钮 -->
+                <!-- OCR图片识别按钮 -->
+                <button
+                  class="tool-btn-special"
+                  :class="{ active: isOcrProcessing }"
+                  :disabled="isOcrProcessing"
+                  title="OCR图片识别"
+                  @click="triggerOcrUpload"
+                >
+                  <i :class="isOcrProcessing ? 'fas fa-spinner fa-spin' : 'fas fa-image'" />
+                  <span>{{ isOcrProcessing ? '识别中...' : '图片识别' }}</span>
+                </button>
+                <input
+                  ref="ocrFileInput"
+                  type="file"
+                  accept="image/*"
+                  style="display: none"
+                  @change="handleOcrFileSelect"
+                />
                 <button
                   class="tool-btn-special"
                   :class="{ active: chatStore.selectedModel.includes('reasoner') }"
@@ -431,7 +448,7 @@ import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
-import { API_CONFIG } from '@/config/api'
+import { API_CONFIG, API_ENDPOINTS } from '@/config/api'
 import ChatContentRenderer from '@/components/chat/ChatContentRenderer.vue'
 
 const chatStore = useChatStore()
@@ -441,6 +458,10 @@ const route = useRoute()
 const inputMessage = ref('')
 const messagesContainer = ref(null)
 const isPinnedToBottom = ref(true)
+
+// OCR相关状态
+const ocrFileInput = ref(null)
+const isOcrProcessing = ref(false)
 const SCROLL_BOTTOM_THRESHOLD_PX = 40  // 判断是否在底部的阈值（像素）
 const SCROLL_BOTTOM_SHOW_THRESHOLD_PX = 100  // 显示按钮的阈值（距离底部多少像素内显示）
 let autoScrollScheduled = false
@@ -1649,6 +1670,60 @@ const adjustTextareaHeight = (event) => {
   const textarea = event.target
   textarea.style.height = 'auto'
   textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`
+}
+
+/**
+ * 触发OCR文件选择
+ */
+const triggerOcrUpload = () => {
+  if (isOcrProcessing.value) return
+  ocrFileInput.value?.click()
+}
+
+/**
+ * 处理OCR文件选择
+ * @param {Event} event 文件选择事件
+ */
+const handleOcrFileSelect = async (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  isOcrProcessing.value = true
+
+  try {
+    const formData = new FormData()
+    formData.append('image', file)
+
+    const response = await fetch(`${API_CONFIG.baseURL}${API_ENDPOINTS.ocr.recognize}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${authStore.token}`
+      },
+      body: formData
+    })
+
+    const result = await response.json()
+
+    if (result.success && result.text) {
+      const recognizedText = result.text.trim()
+      if (recognizedText) {
+        inputMessage.value = inputMessage.value 
+          ? `${inputMessage.value}\n${recognizedText}` 
+          : recognizedText
+        nextTick(() => {
+          adjustTextareaHeight({ target: document.querySelector('.chat-input') })
+        })
+      }
+    } else {
+      alert(result.error || '图片识别失败，请重试')
+    }
+  } catch (error) {
+    console.error('OCR识别错误:', error)
+    alert('图片识别服务暂时不可用，请稍后重试')
+  } finally {
+    isOcrProcessing.value = false
+    event.target.value = ''
+  }
 }
 </script>
 
