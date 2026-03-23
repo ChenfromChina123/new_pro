@@ -94,14 +94,15 @@ export const useChatStore = defineStore('chat', () => {
   }
   
   // 发送消息（非流式）
-  async function sendMessageNonStream(content) {
+  async function sendMessageNonStream(content, images = []) {
     isLoading.value = true
     suggestions.value = [] // 清除之前的建议问题
     
     // 添加用户消息
     const userMessage = {
       role: 'user',
-      content,
+      content: content,
+      images: images,
       timestamp: new Date().toISOString(),
       model: selectedModel.value
     }
@@ -200,7 +201,7 @@ export const useChatStore = defineStore('chat', () => {
   }
   
   // 发送消息（流式）
-  async function sendMessage(content, onChunk) {
+  async function sendMessage(content, onChunk, images = []) {
     isLoading.value = true
     suggestions.value = [] // 清除之前的建议问题
     abortController.value = new AbortController()
@@ -241,7 +242,8 @@ export const useChatStore = defineStore('chat', () => {
     // 添加用户消息
     const userMessage = {
       role: 'user',
-      content,
+      content: content,
+      images: images,
       timestamp: new Date().toISOString(),
       model: selectedModel.value
     }

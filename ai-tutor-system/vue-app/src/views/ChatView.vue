@@ -47,6 +47,22 @@
 
             <div class="message-content">
               <div class="message-bubble">
+                <!-- 用户消息的图片缩略图 -->
+                <div
+                  v-if="message.role === 'user' && message.images && message.images.length > 0"
+                  class="message-images"
+                >
+                  <div class="message-images-list">
+                    <img
+                      v-for="(imageUrl, index) in message.images"
+                      :key="index"
+                      :src="imageUrl"
+                      class="message-image"
+                      alt="消息图片"
+                    />
+                  </div>
+                </div>
+
                 <!-- 联网搜索内容 -->
                 <div
                   v-if="message.search_status"
@@ -244,6 +260,37 @@
           </transition>
 
           <div class="input-container">
+            <!-- 图片预览区域 -->
+            <div v-if="uploadedImages.length > 0" class="image-preview-area">
+              <div class="image-preview-list">
+                <div
+                  v-for="image in uploadedImages"
+                  :key="image.id"
+                  class="image-preview-item"
+                >
+                  <img :src="image.url" class="preview-image" alt="预览图片" />
+                  <button
+                    class="remove-image-btn"
+                    @click="removeImage(image.id)"
+                    title="删除图片"
+                  >
+                    <i class="fas fa-times" />
+                  </button>
+                  <div v-if="image.isProcessing" class="ocr-processing-overlay">
+                    <i class="fas fa-spinner fa-spin" />
+                  </div>
+                </div>
+              </div>
+              <button
+                v-if="uploadedImages.length > 0"
+                class="explain-images-btn"
+                @click="explainImages"
+              >
+                <span>解释图片</span>
+                <i class="fas fa-arrow-right" />
+              </button>
+            </div>
+
             <textarea
               v-model="inputMessage"
               class="chat-input"
@@ -271,6 +318,7 @@
                   ref="ocrFileInput"
                   type="file"
                   accept="image/*"
+                  multiple
                   style="display: none"
                   @change="handleOcrFileSelect"
                 />
@@ -462,6 +510,9 @@ const isPinnedToBottom = ref(true)
 // OCR相关状态
 const ocrFileInput = ref(null)
 const isOcrProcessing = ref(false)
+// 图片上传相关状态
+const uploadedImages = ref([]) // 存储上传的图片 { id, url, file, ocrText? }
+let imageIdCounter = 0
 const SCROLL_BOTTOM_THRESHOLD_PX = 40  // 判断是否在底部的阈值（像素）
 const SCROLL_BOTTOM_SHOW_THRESHOLD_PX = 100  // 显示按钮的阈值（距离底部多少像素内显示）
 let autoScrollScheduled = false
@@ -1685,45 +1736,119 @@ const triggerOcrUpload = () => {
  * @param {Event} event 文件选择事件
  */
 const handleOcrFileSelect = async (event) => {
-  const file = event.target.files?.[0]
-  if (!file) return
+  const files = event.target.files
+  if (!files || files.length === 0) return
 
-  isOcrProcessing.value = true
+  for (const file of files) {
+    const imageId = ++imageIdCounter
+    const imageUrl = URL.createObjectURL(file)
 
-  try {
-    const formData = new FormData()
-    formData.append('image', file)
-
-    const response = await fetch(`${API_CONFIG.baseURL}${API_ENDPOINTS.ocr.recognize}`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${authStore.token}`
-      },
-      body: formData
+    uploadedImages.value.push({
+      id: imageId,
+      url: imageUrl,
+      file: file,
+      ocrText: null,
+      isProcessing: true
     })
 
-    const result = await response.json()
+    try {
+      const formData = new FormData()
+      formData.append('image', file)
 
-    if (result.success && result.text) {
-      const recognizedText = result.text.trim()
-      if (recognizedText) {
-        inputMessage.value = inputMessage.value 
-          ? `${inputMessage.value}\n${recognizedText}` 
-          : recognizedText
-        nextTick(() => {
-          adjustTextareaHeight({ target: document.querySelector('.chat-input') })
-        })
+      const response = await fetch(`${API_CONFIG.baseURL}${API_ENDPOINTS.ocr.recognize}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authStore.token}`
+        },
+        body: formData
+      })
+
+      const result = await response.json()
+
+      const imageIndex = uploadedImages.value.findIndex(img => img.id === imageId)
+      if (imageIndex !== -1) {
+        if (result.success && result.text) {
+          uploadedImages.value[imageIndex].ocrText = result.text.trim()
+        }
+        uploadedImages.value[imageIndex].isProcessing = false
       }
-    } else {
-      alert(result.error || '图片识别失败，请重试')
+    } catch (error) {
+      console.error('OCR识别错误:', error)
+      const imageIndex = uploadedImages.value.findIndex(img => img.id === imageId)
+      if (imageIndex !== -1) {
+        uploadedImages.value[imageIndex].isProcessing = false
+      }
     }
-  } catch (error) {
-    console.error('OCR识别错误:', error)
-    alert('图片识别服务暂时不可用，请稍后重试')
-  } finally {
-    isOcrProcessing.value = false
-    event.target.value = ''
   }
+
+  event.target.value = ''
+}
+
+/**
+ * 删除上传的图片
+ * @param {number} imageId 图片ID
+ */
+const removeImage = (imageId) => {
+  const index = uploadedImages.value.findIndex(img => img.id === imageId)
+  if (index !== -1) {
+    URL.revokeObjectURL(uploadedImages.value[index].url)
+    uploadedImages.value.splice(index, 1)
+  }
+}
+
+/**
+ * 解释图片
+ */
+const explainImages = () => {
+  if (uploadedImages.value.length === 0) return
+
+  const ocrTexts = uploadedImages.value
+    .filter(img => img.ocrText)
+    .map(img => img.ocrText)
+
+  let message = inputMessage.value.trim()
+
+  if (ocrTexts.length > 0) {
+    const ocrMessage = ocrTexts.map(text => `[图片识别结果]\n${text}`).join('\n\n')
+    message = message ? `${message}\n\n${ocrMessage}` : ocrMessage
+  }
+
+  inputMessage.value = ''
+
+  // 保存图片URLs以便传递
+  const imagesData = uploadedImages.value.map(img => img.url)
+
+  // 发送消息，传递图片数据
+  const sendMessageWithImages = async () => {
+    if (!message.trim() || chatStore.isLoading) return
+
+    // 如果没有当前会话，先创建一个（仅针对已登录用户）
+    // 游客模式下不需要预先创建会话，由后端在发送第一条消息时自动生成
+    if (!chatStore.currentSessionId && authStore.isAuthenticated) {
+      await createNewSession()
+    }
+
+    // 清除草稿
+    chatStore.saveDraft(chatStore.currentSessionId, '')
+
+    // 重置输入框高度
+    const textarea = document.querySelector('.chat-input')
+    if (textarea) {
+      textarea.style.height = 'auto'
+    }
+
+    isPinnedToBottom.value = true
+    await chatStore.sendMessage(message, () => {
+      scheduleAutoScrollToBottom()
+    }, imagesData)
+    scheduleAutoScrollToBottom()
+
+    // 清除上传的图片
+    uploadedImages.value.forEach(img => URL.revokeObjectURL(img.url))
+    uploadedImages.value = []
+  }
+
+  sendMessageWithImages()
 }
 </script>
 
@@ -3190,7 +3315,128 @@ body.dark-mode .scroll-to-bottom-btn {
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+/* 图片预览区域样式 */
+.image-preview-area {
+  margin-bottom: 12px;
+  padding: 12px;
+  background-color: var(--bg-secondary);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+}
+
+.image-preview-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.image-preview-item {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+}
+
+.preview-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.remove-image-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  transition: all 0.2s;
+  z-index: 10;
+}
+
+.remove-image-btn:hover {
+  background-color: rgba(220, 38, 38, 0.9);
+  transform: scale(1.1);
+}
+
+.ocr-processing-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 20px;
+  z-index: 5;
+}
+
+.explain-images-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background-color: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.explain-images-btn:hover {
+  background-color: #1d4ed8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);
+}
+
+.explain-images-btn:active {
+  transform: translateY(0);
+}
+
+/* 消息中的图片缩略图样式 */
+.message-images {
+  margin-bottom: 8px;
+}
+
+.message-images-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.message-image {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.message-image:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .empty-history {

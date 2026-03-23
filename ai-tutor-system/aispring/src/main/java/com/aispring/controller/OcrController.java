@@ -1,15 +1,21 @@
 package com.aispring.controller;
 
-import com.aispring.service.OcrService;
+import java.io.IOException;
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.util.Map;
+import com.aispring.service.OcrService;
 
 /**
  * OCR控制器
@@ -19,14 +25,14 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/ocr")
 public class OcrController {
-    
+
     @Autowired
     private OcrService ocrService;
-    
+
     /**
      * 健康检查接口
      * 需要认证才能访问
-     * 
+     *
      * @return 服务状态
      */
     @GetMapping("/health")
@@ -38,15 +44,15 @@ public class OcrController {
                 "service", "ocr-service",
                 "version", "1.0.0",
                 "available", isAvailable,
-                "engine", "阿里云OCR"
+                "provider", "阿里云 OCR 服务"
         );
         return ResponseEntity.ok(response);
     }
-    
+
     /**
      * 识别图像中的文字
      * 需要认证才能访问
-     * 
+     *
      * @param file 图像文件
      * @return 识别结果
      */
@@ -68,11 +74,11 @@ public class OcrController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResult);
         }
     }
-    
+
     /**
      * 识别Base64编码的图像中的文字
      * 需要认证才能访问
-     * 
+     *
      * @param request 请求体，包含Base64编码的图像数据
      * @return 识别结果
      */
@@ -88,7 +94,7 @@ public class OcrController {
                 );
                 return ResponseEntity.badRequest().body(errorResult);
             }
-            
+
             Map<String, Object> result = ocrService.recognizeTextFromBase64(base64Image);
             if ((boolean) result.getOrDefault("success", false)) {
                 return ResponseEntity.ok(result);
