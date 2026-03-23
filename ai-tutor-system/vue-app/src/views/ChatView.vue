@@ -1800,6 +1800,13 @@ const removeImage = (imageId) => {
 /**
  * 解释图片
  */
+const normalizeStreamChunk = (chunk) => {
+  if (chunk === null || chunk === undefined) return ''
+  if (typeof chunk !== 'string') return ''
+  if (chunk === 'null') return ''
+  return chunk
+}
+
 const explainImages = async () => {
   if (uploadedImages.value.length === 0) return
 
@@ -1821,17 +1828,216 @@ const explainImages = async () => {
 
   inputMessage.value = ''
 
-  // 先调用sendMessage发送完整消息给AI
-  await chatStore.sendMessage(aiMessage, () => {
-    scheduleAutoScrollToBottom()
-  }, imagesData)
+  // 手动添加用户消息（只显示用户输入，不显示OCR结果）
+  chatStore.isLoading = true
+  chatStore.suggestions = []
+  chatStore.abortController = new AbortController()
+  const authStoreLocal = useAuthStore()
 
-  // 然后修改最后一条用户消息，只显示用户输入的内容，隐藏OCR结果
-  const messages = chatStore.messages
-  if (messages.length > 0) {
-    const lastUserMessageIndex = messages.findLastIndex(msg => msg.role === 'user')
-    if (lastUserMessageIndex !== -1) {
-      messages[lastUserMessageIndex].content = userInput
+  // 如果没有当前会话，先创建一个
+  if (!chatStore.currentSessionId && authStoreLocal.isAuthenticated) {
+    await createNewSession()
+  }
+
+  // 清除草稿
+  chatStore.saveDraft(chatStore.currentSessionId, '')
+
+  // 重置输入框高度
+  const textarea = document.querySelector('.chat-input')
+  if (textarea) {
+    textarea.style.height = 'auto'
+  }
+
+  isPinnedToBottom.value = true
+
+  // 添加用户消息（只显示用户输入）
+  const userMessage = {
+    role: 'user',
+    content: userInput,
+    images: imagesData,
+    timestamp: new Date().toISOString(),
+    model: chatStore.selectedModel
+  }
+  chatStore.messages.push(userMessage)
+
+  // 添加AI消息占位符
+  const aiMessagePlaceholder = {
+    role: 'assistant',
+    content: '',
+    reasoning_content: '',
+    search_status: '',
+    search_query: '',
+    search_results: '',
+    isSearchCollapsed: false,
+    isStreaming: true,
+    error: false,
+    isReasoningCollapsed: false,
+    timestamp: new Date().toISOString(),
+    model: chatStore.selectedModel
+  }
+  chatStore.messages.push(aiMessagePlaceholder)
+
+  const activeAiMessage = chatStore.messages[chatStore.messages.length - 1]
+
+  let systemPrompt = undefined
+
+  // 如果开启了联网搜索，先进行搜索
+  if (chatStore.isWebSearchEnabled) {
+    activeAiMessage.search_status = 'searching'
+    activeAiMessage.search_query = aiMessage
+    try {
+      const searchRes = await request.get(API_ENDPOINTS.chat.search, { params: { q: aiMessage } })
+      activeAiMessage.search_status = 'done'
+      const searchResultStr = searchRes?.data?.result || searchRes?.result || ''
+      activeAiMessage.search_results = searchResultStr
+      activeAiMessage.isSearchCollapsed = true
+      systemPrompt = "【系统提供的实时搜索结果】\n" + searchResultStr + "\n\n请根据上述搜索结果回答用户的问题。"
+    } catch (err) {
+      activeAiMessage.search_status = 'error'
+      activeAiMessage.search_results = '搜索失败：' + (err.response?.data?.message || err.message)
+    }
+  }
+
+  // 准备请求头
+  const headers = {
+    'Content-Type': 'application/json',
+    'Accept': 'text/event-stream'
+  }
+
+  if (authStoreLocal.isAuthenticated && authStoreLocal.token) {
+    headers['Authorization'] = `Bearer ${authStoreLocal.token}`
+  }
+
+  try {
+    const payload = {
+      prompt: aiMessage,
+      session_id: chatStore.currentSessionId,
+      model: chatStore.selectedModel
+    }
+    if (systemPrompt) {
+      payload.system_prompt = systemPrompt
+    }
+
+    const response = await fetch(`${request.defaults.baseURL}${API_ENDPOINTS.chat.askStream}`, {
+      method: 'POST',
+      signal: chatStore.abortController?.signal,
+      headers,
+      body: JSON.stringify(payload)
+    })
+
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        authStoreLocal.logout()
+        window.location.href = '/login'
+        return
+      } else {
+        throw new Error(`请求失败: ${response.status}`)
+      }
+    }
+
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        if (line.trim() === '') continue
+
+        if (line.startsWith('data:')) {
+          const data = line.slice(5).trim()
+          if (data === '[DONE]') continue
+          try {
+            const parsed = JSON.parse(data)
+
+            if (parsed.type === 'session_update') {
+              if (parsed.suggestions) {
+                chatStore.suggestions = parsed.suggestions
+              }
+              if (parsed.session_id && (!chatStore.currentSessionId || chatStore.currentSessionId === 'null')) {
+                chatStore.currentSessionId = parsed.session_id
+              }
+              if (parsed.title) {
+                const session = chatStore.sessions.find(s => s.id === chatStore.currentSessionId)
+                if (session) {
+                  session.title = parsed.title
+                }
+              }
+              continue
+            }
+
+            const reasoningChunk = normalizeStreamChunk(parsed.reasoning_content)
+            if (reasoningChunk) {
+              activeAiMessage.reasoning_content = (activeAiMessage.reasoning_content || '') + reasoningChunk
+              scheduleAutoScrollToBottom()
+            }
+
+            const contentChunk = normalizeStreamChunk(parsed.content)
+            if (contentChunk) {
+              if (contentChunk.includes('AI服务暂时不可用') || contentChunk.includes('请求失败')) {
+                activeAiMessage.error = true
+              }
+              if (!activeAiMessage.content) {
+                activeAiMessage.isReasoningCollapsed = true
+              }
+              activeAiMessage.content += contentChunk
+              scheduleAutoScrollToBottom()
+            }
+          } catch {
+            console.warn('Failed to parse SSE data:', data)
+          }
+        }
+      }
+    }
+
+    activeAiMessage.isStreaming = false
+
+    await request.post(API_ENDPOINTS.chat.saveRecord, {
+      session_id: chatStore.currentSessionId,
+      user_message: aiMessage,
+      ai_response: activeAiMessage.content,
+      ai_reasoning: activeAiMessage.reasoning_content || null,
+      search_query: activeAiMessage.search_query || null,
+      search_results: activeAiMessage.search_results || null,
+      model: chatStore.selectedModel
+    })
+
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      console.log('Generation aborted by user')
+      activeAiMessage.isStreaming = false
+      if (activeAiMessage.content || activeAiMessage.reasoning_content) {
+        await request.post(API_ENDPOINTS.chat.saveRecord, {
+          session_id: chatStore.currentSessionId,
+          user_message: aiMessage,
+          ai_response: activeAiMessage.content,
+          ai_reasoning: activeAiMessage.reasoning_content || null,
+          search_query: activeAiMessage.search_query || null,
+          search_results: activeAiMessage.search_results || null,
+          model: chatStore.selectedModel
+        })
+      }
+    } else {
+      console.error('Send message error:', error)
+      activeAiMessage.isStreaming = false
+      activeAiMessage.error = true
+      const errorHint = '\n\n [发送消息失败，请稍后重试]'
+      if (activeAiMessage.content) {
+        activeAiMessage.content += errorHint
+      } else {
+        activeAiMessage.content = '发送消息失败，请稍后重试。'
+      }
+    }
+  } finally {
+    chatStore.isLoading = false
+    if (activeAiMessage) {
+      activeAiMessage.isStreaming = false
     }
   }
 
