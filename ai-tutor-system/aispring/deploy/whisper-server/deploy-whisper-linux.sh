@@ -46,7 +46,7 @@ check_root() {
 # 安装依赖
 install_dependencies() {
     log_info "安装依赖包..."
-    
+
     if command -v apt-get &> /dev/null; then
         apt-get update
         apt-get install -y wget curl git build-essential
@@ -74,7 +74,7 @@ create_directories() {
     mkdir -p ${INSTALL_DIR}
     mkdir -p ${MODEL_DIR}
     mkdir -p ${LOG_DIR}
-    
+
     chown -R ${USER}:${USER} ${INSTALL_DIR}
     chown -R ${USER}:${USER} ${LOG_DIR}
 }
@@ -82,9 +82,9 @@ create_directories() {
 # 下载 whisper.cpp
 download_whisper() {
     log_info "下载 whisper.cpp..."
-    
+
     cd /tmp
-    
+
     # 下载预编译版本
     ARCH=$(uname -m)
     case ${ARCH} in
@@ -99,36 +99,41 @@ download_whisper() {
             exit 1
             ;;
     esac
-    
+
     WHISPER_URL="https://github.com/ggerganov/whisper.cpp/releases/download/v${WHISPER_VERSION}/whisper-linux-${WHISPER_ARCH}.tar.gz"
-    
+
     wget -q ${WHISPER_URL} -O whisper.tar.gz || {
         log_warn "预编译版本下载失败，尝试从源码编译..."
         build_from_source
         return
     }
-    
+
     tar -xzf whisper.tar.gz
     cp -r whisper-linux-${WHISPER_ARCH}/* ${INSTALL_DIR}/
     chmod +x ${INSTALL_DIR}/whisper-server
-    
+
     rm -rf whisper.tar.gz whisper-linux-${WHISPER_ARCH}
 }
 
 # 从源码编译
 build_from_source() {
     log_info "从源码编译 whisper.cpp..."
-    
+
     cd /tmp
     git clone https://github.com/ggerganov/whisper.cpp.git
     cd whisper.cpp
-    
-    # 编译 server
-    make whisper-server
-    
-    cp ./main ${INSTALL_DIR}/whisper-server
-    cp -r ./models ${MODEL_DIR}/
-    
+
+    # 编译 server (正确的 make 目标是 server)
+    make server
+
+    # 复制编译产物
+    cp ./bin/whisper-server ${INSTALL_DIR}/whisper-server || cp ./server ${INSTALL_DIR}/whisper-server || {
+        log_error "找不到编译后的 whisper-server 可执行文件"
+        exit 1
+    }
+
+    chmod +x ${INSTALL_DIR}/whisper-server
+
     cd /tmp
     rm -rf whisper.cpp
 }
@@ -136,28 +141,28 @@ build_from_source() {
 # 下载模型
 download_model() {
     log_info "下载 Whisper 模型 (${WHISPER_MODEL})..."
-    
+
     MODEL_FILE="${MODEL_DIR}/ggml-${WHISPER_MODEL}.bin"
-    
+
     if [ -f "${MODEL_FILE}" ]; then
         log_info "模型已存在，跳过下载"
         return
     fi
-    
+
     MODEL_URL="https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-${WHISPER_MODEL}.bin"
-    
+
     wget -q ${MODEL_URL} -O ${MODEL_FILE} || {
         log_error "模型下载失败"
         exit 1
     }
-    
+
     chown ${USER}:${USER} ${MODEL_FILE}
 }
 
 # 创建 systemd 服务
 create_systemd_service() {
     log_info "创建 systemd 服务..."
-    
+
     cat > /etc/systemd/system/${SERVICE_NAME}.service << EOF
 [Unit]
 Description=Whisper.cpp Speech Recognition Server
@@ -193,7 +198,7 @@ EOF
 # 创建环境变量配置
 create_env_config() {
     log_info "创建环境配置..."
-    
+
     cat > ${INSTALL_DIR}/whisper-server.conf << EOF
 # Whisper Server 配置文件
 # 修改后需重启服务: systemctl restart whisper-server
@@ -220,7 +225,7 @@ EOF
 # 创建管理脚本
 create_manage_script() {
     log_info "创建管理脚本..."
-    
+
     cat > ${INSTALL_DIR}/manage.sh << 'EOF'
 #!/bin/bash
 # Whisper Server 管理脚本
@@ -261,7 +266,7 @@ EOF
 # 配置防火墙
 configure_firewall() {
     log_info "配置防火墙..."
-    
+
     if command -v ufw &> /dev/null; then
         ufw allow ${WHISPER_PORT}/tcp
         log_info "已添加 UFW 规则"
@@ -279,7 +284,7 @@ start_service() {
     log_info "启动 Whisper Server..."
     systemctl start ${SERVICE_NAME}
     sleep 3
-    
+
     if systemctl is-active --quiet ${SERVICE_NAME}; then
         log_info "Whisper Server 启动成功!"
     else
@@ -292,10 +297,10 @@ start_service() {
 # 测试服务
 test_service() {
     log_info "测试 Whisper Server..."
-    
+
     # 等待服务完全启动
     sleep 5
-    
+
     # 检查服务状态
     if curl -s http://localhost:${WHISPER_PORT}/ > /dev/null; then
         log_info "Whisper Server 运行正常"
@@ -332,7 +337,7 @@ main() {
     echo "  Whisper Server Linux 部署脚本"
     echo "=========================================="
     echo ""
-    
+
     check_root
     install_dependencies
     create_user
