@@ -3,6 +3,7 @@
 # OCR服务一键部署脚本 - Linux服务器
 # 支持: Ubuntu/Debian, CentOS/RHEL/Rocky Linux/Alibaba Cloud Linux
 # 内存限制: 200MB, CPU: 单核
+# 服务端口: 8089
 #
 
 set -e
@@ -12,7 +13,6 @@ SERVICE_NAME="ocr-service"
 SERVICE_PORT=8089
 INSTALL_DIR="/opt/ocr-service"
 SERVICE_USER="ocr"
-PYTHON_VERSION="3.10"
 
 # 颜色输出
 RED='\033[0;31m'
@@ -57,8 +57,7 @@ install_dependencies() {
             apt-get install -y -qq \
                 python3 python3-pip python3-venv \
                 curl wget git \
-                libgomp1 libgl1 libglib2.0-0 \
-                nginx > /dev/null
+                libgomp1 libgl1 libglib2.0-0 > /dev/null
             ;;
         centos|rhel|rocky|almalinux|alinux)
             # alinux 是阿里云Linux，基于CentOS/RHEL
@@ -66,14 +65,12 @@ install_dependencies() {
                 yum install -y -q \
                     python3 python3-pip \
                     curl wget git \
-                    libgomp libglvnd-glx glib2 \
-                    nginx > /dev/null
+                    libgomp libglvnd-glx glib2 > /dev/null
             elif command -v dnf &> /dev/null; then
                 dnf install -y -q \
                     python3 python3-pip \
                     curl wget git \
-                    libgomp libglvnd-glx glib2 \
-                    nginx > /dev/null
+                    libgomp libglvnd-glx glib2 > /dev/null
             else
                 print_error "未找到 yum 或 dnf 包管理器"
                 exit 1
@@ -163,72 +160,6 @@ EOF
     print_success "systemd服务配置完成"
 }
 
-setup_nginx() {
-    print_info "配置Nginx反向代理..."
-    
-    # 检查nginx配置目录
-    if [ -d /etc/nginx/sites-available ]; then
-        # Debian/Ubuntu 风格
-        cat > /etc/nginx/sites-available/$SERVICE_NAME << 'EOF'
-server {
-    listen 80;
-    server_name _;
-
-    location / {
-        proxy_pass http://127.0.0.1:8089;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        
-        proxy_connect_timeout 60s;
-        proxy_send_timeout 60s;
-        proxy_read_timeout 60s;
-        
-        client_max_body_size 20M;
-    }
-}
-EOF
-        ln -sf /etc/nginx/sites-available/$SERVICE_NAME /etc/nginx/sites-enabled/
-    elif [ -d /etc/nginx/conf.d ]; then
-        # CentOS/RHEL 风格
-        cat > /etc/nginx/conf.d/$SERVICE_NAME.conf << 'EOF'
-server {
-    listen 80;
-    server_name _;
-
-    location / {
-        proxy_pass http://127.0.0.1:8089;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        
-        proxy_connect_timeout 60s;
-        proxy_send_timeout 60s;
-        proxy_read_timeout 60s;
-        
-        client_max_body_size 20M;
-    }
-}
-EOF
-    else
-        print_warning "未找到Nginx配置目录，跳过Nginx配置"
-        return
-    fi
-    
-    if nginx -t 2>/dev/null; then
-        systemctl reload nginx
-        print_success "Nginx配置完成"
-    else
-        print_warning "Nginx配置有误，跳过"
-        rm -f /etc/nginx/sites-enabled/$SERVICE_NAME 2>/dev/null
-        rm -f /etc/nginx/conf.d/$SERVICE_NAME.conf 2>/dev/null
-    fi
-}
-
 start_service() {
     print_info "启动OCR服务..."
     systemctl start $SERVICE_NAME
@@ -258,9 +189,16 @@ print_deploy_info() {
     echo -e "${GREEN}OCR服务部署完成!${NC}"
     echo "=========================================="
     echo ""
+    echo "服务端口: $SERVICE_PORT"
+    echo ""
     echo "服务地址:"
     echo "  - 本地: http://localhost:$SERVICE_PORT"
-    echo "  - 外部: http://$SERVER_IP"
+    echo "  - 外部: http://$SERVER_IP:$SERVICE_PORT"
+    echo ""
+    echo "API接口:"
+    echo "  健康检查: GET  http://localhost:$SERVICE_PORT/health"
+    echo "  文件识别: POST http://localhost:$SERVICE_PORT/ocr"
+    echo "  Base64:   POST http://localhost:$SERVICE_PORT/ocr/base64"
     echo ""
     echo "管理命令:"
     echo "  启动:   systemctl start $SERVICE_NAME"
@@ -268,11 +206,6 @@ print_deploy_info() {
     echo "  重启:   systemctl restart $SERVICE_NAME"
     echo "  状态:   systemctl status $SERVICE_NAME"
     echo "  日志:   journalctl -u $SERVICE_NAME -f"
-    echo ""
-    echo "API接口:"
-    echo "  健康检查: GET  /health"
-    echo "  文件识别: POST /ocr"
-    echo "  Base64:   POST /ocr/base64"
     echo ""
     echo "资源限制:"
     echo "  内存: 200MB"
@@ -290,11 +223,6 @@ uninstall_service() {
     rm -f /etc/systemd/system/$SERVICE_NAME.service
     systemctl daemon-reload
     
-    rm -f /etc/nginx/sites-enabled/$SERVICE_NAME 2>/dev/null
-    rm -f /etc/nginx/sites-available/$SERVICE_NAME 2>/dev/null
-    rm -f /etc/nginx/conf.d/$SERVICE_NAME.conf 2>/dev/null
-    nginx -t && systemctl reload nginx 2>/dev/null || true
-    
     userdel -r $SERVICE_USER 2>/dev/null || true
     rm -rf $INSTALL_DIR
     
@@ -311,6 +239,7 @@ main() {
     echo ""
     echo "=========================================="
     echo "  OCR服务 - Linux一键部署脚本"
+    echo "  服务端口: $SERVICE_PORT"
     echo "  内存限制: 200MB | CPU: 单核"
     echo "=========================================="
     echo ""
@@ -322,7 +251,6 @@ main() {
     deploy_service
     install_python_deps
     setup_systemd
-    setup_nginx
     start_service
     test_service
     print_deploy_info
