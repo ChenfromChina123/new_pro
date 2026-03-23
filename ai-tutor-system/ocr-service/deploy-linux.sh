@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # OCR服务一键部署脚本 - Linux服务器
-# 支持: Ubuntu/Debian, CentOS/RHEL/Rocky Linux
+# 支持: Ubuntu/Debian, CentOS/RHEL/Rocky Linux/Alibaba Cloud Linux
 # 内存限制: 200MB, CPU: 单核
 #
 
@@ -60,15 +60,28 @@ install_dependencies() {
                 libgomp1 libgl1 libglib2.0-0 \
                 nginx > /dev/null
             ;;
-        centos|rhel|rocky|almalinux)
-            yum install -y -q \
-                python3 python3-pip \
-                curl wget git \
-                libgomp libglvnd-glx glib2 \
-                nginx > /dev/null
+        centos|rhel|rocky|almalinux|alinux)
+            # alinux 是阿里云Linux，基于CentOS/RHEL
+            if command -v yum &> /dev/null; then
+                yum install -y -q \
+                    python3 python3-pip \
+                    curl wget git \
+                    libgomp libglvnd-glx glib2 \
+                    nginx > /dev/null
+            elif command -v dnf &> /dev/null; then
+                dnf install -y -q \
+                    python3 python3-pip \
+                    curl wget git \
+                    libgomp libglvnd-glx glib2 \
+                    nginx > /dev/null
+            else
+                print_error "未找到 yum 或 dnf 包管理器"
+                exit 1
+            fi
             ;;
         *)
             print_error "不支持的操作系统: $OS"
+            print_info "支持的系统: ubuntu, debian, centos, rhel, rocky, almalinux, alinux"
             exit 1
             ;;
     esac
@@ -153,7 +166,10 @@ EOF
 setup_nginx() {
     print_info "配置Nginx反向代理..."
     
-    cat > /etc/nginx/sites-available/$SERVICE_NAME << 'EOF'
+    # 检查nginx配置目录
+    if [ -d /etc/nginx/sites-available ]; then
+        # Debian/Ubuntu 风格
+        cat > /etc/nginx/sites-available/$SERVICE_NAME << 'EOF'
 server {
     listen 80;
     server_name _;
@@ -174,15 +190,42 @@ server {
     }
 }
 EOF
+        ln -sf /etc/nginx/sites-available/$SERVICE_NAME /etc/nginx/sites-enabled/
+    elif [ -d /etc/nginx/conf.d ]; then
+        # CentOS/RHEL 风格
+        cat > /etc/nginx/conf.d/$SERVICE_NAME.conf << 'EOF'
+server {
+    listen 80;
+    server_name _;
 
-    ln -sf /etc/nginx/sites-available/$SERVICE_NAME /etc/nginx/sites-enabled/
+    location / {
+        proxy_pass http://127.0.0.1:8089;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        
+        client_max_body_size 20M;
+    }
+}
+EOF
+    else
+        print_warning "未找到Nginx配置目录，跳过Nginx配置"
+        return
+    fi
     
     if nginx -t 2>/dev/null; then
         systemctl reload nginx
         print_success "Nginx配置完成"
     else
         print_warning "Nginx配置有误，跳过"
-        rm -f /etc/nginx/sites-enabled/$SERVICE_NAME
+        rm -f /etc/nginx/sites-enabled/$SERVICE_NAME 2>/dev/null
+        rm -f /etc/nginx/conf.d/$SERVICE_NAME.conf 2>/dev/null
     fi
 }
 
@@ -247,8 +290,9 @@ uninstall_service() {
     rm -f /etc/systemd/system/$SERVICE_NAME.service
     systemctl daemon-reload
     
-    rm -f /etc/nginx/sites-enabled/$SERVICE_NAME
-    rm -f /etc/nginx/sites-available/$SERVICE_NAME
+    rm -f /etc/nginx/sites-enabled/$SERVICE_NAME 2>/dev/null
+    rm -f /etc/nginx/sites-available/$SERVICE_NAME 2>/dev/null
+    rm -f /etc/nginx/conf.d/$SERVICE_NAME.conf 2>/dev/null
     nginx -t && systemctl reload nginx 2>/dev/null || true
     
     userdel -r $SERVICE_USER 2>/dev/null || true
