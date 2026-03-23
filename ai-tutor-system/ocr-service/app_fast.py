@@ -9,16 +9,30 @@ import os
 import base64
 import logging
 import time
-from datetime import datetime
+import gzip
+import shutil
+from datetime import datetime, timedelta
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import cv2
 import numpy as np
 
+# 日志配置
+LOG_DIR = 'logs'
+LOG_FILE = os.path.join(LOG_DIR, 'ocr-service.log')
+
+# 创建日志目录
+if not os.path.exists(LOG_DIR):
+    os.makedirs(LOG_DIR)
+
 # 配置日志
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(LOG_FILE),
+        logging.StreamHandler()
+    ]
 )
 logger = logging.getLogger(__name__)
 
@@ -33,6 +47,31 @@ app.config['JSON_AS_ASCII'] = False
 # 全局变量
 ocr_engine = None
 start_time = datetime.now()
+
+
+def compress_old_logs():
+    """
+    压缩旧日志文件
+    压缩7天前的日志文件
+    """
+    try:
+        current_time = datetime.now()
+        for file in os.listdir(LOG_DIR):
+            if file.endswith('.log') and file != os.path.basename(LOG_FILE):
+                file_path = os.path.join(LOG_DIR, file)
+                file_mtime = datetime.fromtimestamp(os.path.getmtime(file_path))
+                
+                # 压缩7天前的日志
+                if current_time - file_mtime > timedelta(days=7):
+                    gz_path = file_path + '.gz'
+                    with open(file_path, 'rb') as f_in:
+                        with gzip.open(gz_path, 'wb') as f_out:
+                            shutil.copyfileobj(f_in, f_out)
+                    # 删除原文件
+                    os.remove(file_path)
+                    logger.info(f"压缩并删除旧日志文件: {file}")
+    except Exception as e:
+        logger.error(f"压缩日志文件错误: {e}")
 
 
 def init_ocr():
@@ -226,7 +265,29 @@ def print_memory_usage():
         pass
 
 
+@app.before_request
+def before_request():
+    """
+    请求前处理
+    """
+    request.start_time = time.time()
+    logger.info("收到请求: %s %s", request.method, request.path)
+
+
+@app.after_request
+def after_request(response):
+    """
+    请求后处理
+    """
+    elapsed = time.time() - request.start_time
+    logger.info("请求完成: %s %s - %d - %.3f秒", request.method, request.path, response.status_code, elapsed)
+    return response
+
+
 if __name__ == '__main__':
+    # 压缩旧日志
+    compress_old_logs()
+    
     # 初始化OCR引擎
     init_ocr()
     
@@ -244,5 +305,6 @@ if __name__ == '__main__':
         host=host,
         port=port,
         debug=False,
-        threaded=True
+        threaded=True,   # 启用多线程，充分利用两核CPU
+        processes=1      # 单进程
     )
