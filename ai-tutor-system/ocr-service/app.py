@@ -55,16 +55,16 @@ def init_ocr():
 def decode_image(image_data):
     """
     解码图像数据
-    
+
     Args:
         image_data: 图像数据 (bytes, base64, 或 numpy array)
-        
+
     Returns:
         numpy array (BGR格式)
     """
     if isinstance(image_data, np.ndarray):
         return image_data
-    
+
     if isinstance(image_data, str):
         # Base64编码
         if image_data.startswith('data:image'):
@@ -72,11 +72,11 @@ def decode_image(image_data):
         image_bytes = base64.b64decode(image_data)
     else:
         image_bytes = image_data
-    
+
     # 解码图像
     image_array = np.frombuffer(image_bytes, dtype=np.uint8)
     image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
-    
+
     return image
 
 
@@ -86,7 +86,7 @@ def health_check():
     健康检查接口
     """
     uptime = (datetime.now() - start_time).total_seconds()
-    
+
     return jsonify({
         "status": "healthy",
         "service": "ocr-service",
@@ -119,10 +119,10 @@ def index():
 def ocr_image():
     """
     OCR识别接口 - 文件上传
-    
+
     请求:
         multipart/form-data: image文件
-        
+
     返回:
         {
             "success": true,
@@ -141,7 +141,7 @@ def ocr_image():
             "success": False,
             "error": "OCR引擎未初始化"
         }), 500
-    
+
     try:
         # 检查文件
         if 'image' not in request.files:
@@ -149,39 +149,39 @@ def ocr_image():
                 "success": False,
                 "error": "未找到图像文件，请使用 'image' 字段上传"
             }), 400
-        
+
         file = request.files['image']
         if file.filename == '':
             return jsonify({
                 "success": False,
                 "error": "未选择文件"
             }), 400
-        
+
         # 读取图像
         image_bytes = file.read()
         image = decode_image(image_bytes)
-        
+
         if image is None:
             return jsonify({
                 "success": False,
                 "error": "无法解析图像文件"
             }), 400
-        
+
         logger.info(f"处理图像: {image.shape}")
-        
+
         # OCR识别
         results = ocr_engine.ocr(image)
-        
+
         # 拼接完整文本
         full_text = '\n'.join([r['text'] for r in results])
-        
+
         return jsonify({
             "success": True,
             "results": results,
             "full_text": full_text,
             "count": len(results)
         })
-        
+
     except Exception as e:
         logger.error(f"OCR处理错误: {e}")
         return jsonify({
@@ -194,7 +194,7 @@ def ocr_image():
 def ocr_base64():
     """
     OCR识别接口 - Base64编码
-    
+
     请求:
         {
             "image": "base64编码的图像数据",
@@ -202,7 +202,7 @@ def ocr_base64():
                 "preprocess": true
             }
         }
-        
+
     返回:
         {
             "success": true,
@@ -215,40 +215,40 @@ def ocr_base64():
             "success": False,
             "error": "OCR引擎未初始化"
         }), 500
-    
+
     try:
         data = request.get_json()
-        
+
         if not data or 'image' not in data:
             return jsonify({
                 "success": False,
                 "error": "请求体需要包含 'image' 字段"
             }), 400
-        
+
         # 解码图像
         image = decode_image(data['image'])
-        
+
         if image is None:
             return jsonify({
                 "success": False,
                 "error": "无法解析图像数据"
             }), 400
-        
+
         logger.info(f"处理Base64图像: {image.shape}")
-        
+
         # OCR识别
         results = ocr_engine.ocr(image)
-        
+
         # 拼接完整文本
         full_text = '\n'.join([r['text'] for r in results])
-        
+
         return jsonify({
             "success": True,
             "results": results,
             "full_text": full_text,
             "count": len(results)
         })
-        
+
     except Exception as e:
         logger.error(f"OCR处理错误: {e}")
         return jsonify({
@@ -261,7 +261,7 @@ def ocr_base64():
 def ocr_url():
     """
     OCR识别接口 - URL
-    
+
     请求:
         {
             "url": "图像URL"
@@ -272,43 +272,43 @@ def ocr_url():
             "success": False,
             "error": "OCR引擎未初始化"
         }), 500
-    
+
     try:
         import urllib.request
-        
+
         data = request.get_json()
-        
+
         if not data or 'url' not in data:
             return jsonify({
                 "success": False,
                 "error": "请求体需要包含 'url' 字段"
             }), 400
-        
+
         # 下载图像
         with urllib.request.urlopen(data['url'], timeout=10) as response:
             image_bytes = response.read()
-        
+
         image = decode_image(image_bytes)
-        
+
         if image is None:
             return jsonify({
                 "success": False,
                 "error": "无法解析图像数据"
             }), 400
-        
+
         logger.info(f"处理URL图像: {image.shape}")
-        
+
         # OCR识别
         results = ocr_engine.ocr(image)
         full_text = '\n'.join([r['text'] for r in results])
-        
+
         return jsonify({
             "success": True,
             "results": results,
             "full_text": full_text,
             "count": len(results)
         })
-        
+
     except Exception as e:
         logger.error(f"OCR处理错误: {e}")
         return jsonify({
@@ -356,17 +356,17 @@ def print_memory_usage():
 if __name__ == '__main__':
     # 初始化OCR引擎
     init_ocr()
-    
+
     # 打印内存使用
     print_memory_usage()
-    
+
     # 启动服务
     port = int(os.environ.get('PORT', 8089))
     host = os.environ.get('HOST', '0.0.0.0')
-    
+
     logger.info(f"启动OCR服务: http://{host}:{port}")
     logger.info("API文档: http://localhost:8089/")
-    
+
     # 开发模式
     app.run(
         host=host,
