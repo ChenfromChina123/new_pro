@@ -146,8 +146,8 @@ StandardOutput=journal
 StandardError=journal
 
 LimitNOFILE=65535
-MemoryMax=200M
-CPUQuota=100%
+MemoryMax=300M
+CPUQuota=200%
 
 [Install]
 WantedBy=multi-user.target
