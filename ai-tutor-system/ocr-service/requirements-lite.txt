@@ -1,0 +1,10 @@
+# OCR Service - 超轻量级版本
+# 使用ddddocr，内存约80MB，速度更快
+
+flask>=3.0.0
+flask-cors>=4.0.0
+ddddocr>=1.4.0
+Pillow>=10.0.0
+
+# 可选: 内存监控
+psutil>=5.9.0
