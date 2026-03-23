@@ -147,7 +147,7 @@ StandardError=journal
 
 LimitNOFILE=65535
 MemoryMax=500M
-CPUQuota=100%
+# CPUQuota=100%  # 移除CPU限制，全量使用服务器CPU
 
 [Install]
 WantedBy=multi-user.target
