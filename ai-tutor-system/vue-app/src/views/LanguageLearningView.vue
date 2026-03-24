@@ -257,123 +257,62 @@
           v-if="currentView === 'public-library'"
           class="view-section public-library-view"
         >
-          <!-- 顶部标题行 - 标题与提示同行 -->
-          <div class="public-header-row">
-            <h2 class="public-title">公共词库</h2>
-            <p class="public-subtitle">搜索并添加单词到你的个人词库</p>
+          <div class="view-header">
+            <h2>公共词库</h2>
+            <p>搜索并添加单词到你的个人词库</p>
           </div>
 
-          <!-- 顶部功能区 - 横向排版 -->
-          <div class="public-toolbar">
-            <div class="toolbar-left">
-              <div class="search-input-wrapper-enhanced">
-                <i class="fas fa-search search-icon-enhanced" />
-                <input
-                  ref="publicSearchInput"
-                  v-model="publicKeyword"
-                  type="text"
-                  class="search-input-enhanced"
-                  placeholder="搜索单词、释义、词性..."
-                  @keyup.enter="handlePublicSearch"
-                  @input="handleSearchInput"
-                >
-                <div
-                  v-if="searchSuggestions.length > 0 && publicKeyword"
-                  class="search-suggestions"
-                >
-                  <div
-                    v-for="suggestion in searchSuggestions"
-                    :key="suggestion.id"
-                    class="suggestion-item"
-                    @click="selectSuggestion(suggestion)"
-                  >
-                    <span class="suggestion-word">{{ suggestion.word }}</span>
-                    <span class="suggestion-pos">{{ suggestion.partOfSpeech }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="toolbar-center">
-              <div class="wordlist-selector-enhanced">
-                <label class="selector-label">添加到</label>
-                <select
-                  v-model="currentListId"
-                  class="selector-dropdown"
-                  @change="onListChange"
-                >
-                  <option
-                    :value="null"
-                    disabled
-                  >
-                    请选择单词表
-                  </option>
-                  <option
-                    v-for="list in vocabularyLists"
-                    :key="list.id"
-                    :value="list.id"
-                  >
-                    {{ list.name }} ({{ list.wordCount || 0 }}词)
-                  </option>
-                </select>
-              </div>
-            </div>
-            <div class="toolbar-right">
-              <button
-                class="btn btn-primary search-btn-enhanced"
-                @click="handlePublicSearch"
+          <div class="search-bar-container">
+            <div class="search-input-wrapper">
+              <input
+                v-model="publicKeyword"
+                type="text"
+                class="search-input"
+                placeholder="搜索单词、释义..."
+                @keyup.enter="() => { currentPage = 1; searchPublic(); }"
               >
-                <i class="fas fa-search" />
+              <button
+                class="btn btn-primary search-btn"
+                @click="() => { currentPage = 1; searchPublic(); }"
+              >
                 搜索
               </button>
             </div>
-          </div>
-
-          <!-- 统计与操作行 -->
-          <div class="public-stats-row">
-            <div class="stats-left">
-              <span class="stats-count">共找到 <strong>{{ vocabularyStore.publicSearchTotal }}</strong> 个单词</span>
-              <div
-                v-if="selectedPublicWordIds.size > 0"
-                class="selected-count"
-              >
-                已选 <strong>{{ selectedPublicWordIds.size }}</strong> 个
-              </div>
-            </div>
-            <div class="stats-right">
+            <div class="wordlist-selection">
+              <label for="wordlist-select">添加到：</label>
               <select
-                v-model="publicSortOrder"
-                class="sort-select"
+                id="wordlist-select"
+                v-model="currentListId"
+                class="select-input"
+                @change="onListChange"
               >
-                <option value="default">
-                  默认排序
+                <option
+                  :value="null"
+                  disabled
+                >
+                  请选择单词表
                 </option>
-                <option value="word-asc">
-                  单词 A-Z
-                </option>
-                <option value="word-desc">
-                  单词 Z-A
+                <option
+                  value="public"
+                  disabled
+                  style="display:none;"
+                />
+                <option
+                  v-for="list in vocabularyLists"
+                  :key="list.id"
+                  :value="list.id"
+                >
+                  {{ list.name }} ({{ list.wordCount || 0 }}词)
                 </option>
               </select>
-              <button
-                v-if="selectedPublicWordIds.size > 0"
-                class="btn btn-sm btn-outline"
-                @click="clearPublicSelection"
-              >
-                取消选择
-              </button>
-              <button
-                class="btn btn-sm btn-primary batch-add-btn"
-                :disabled="selectedPublicWordIds.size === 0 || !currentListId"
-                @click="batchAddPublicWords"
-              >
-                <i class="fas fa-plus" />
-                批量添加 ({{ selectedPublicWordIds.size }})
-              </button>
             </div>
           </div>
 
-          <!-- 单词列表区域 -->
-          <div class="public-results-area">
+          <div style="margin-bottom: 16px; color: var(--text-secondary); font-size: 14px;">
+            共找到 {{ vocabularyStore.publicSearchTotal }} 个单词
+          </div>
+
+          <div class="public-results-grid">
             <div
               v-if="isLoading"
               class="loading-state"
@@ -385,113 +324,72 @@
               v-else-if="publicResults.length === 0"
               class="empty-state"
             >
-              <div class="empty-icon">📭</div>
               <p>未找到匹配的词汇，尝试更换关键词</p>
             </div>
             <div
               v-else
-              class="public-words-container"
+              class="public-results-container"
             >
-              <!-- 全选复选框 -->
-              <div class="select-all-row">
-                <label class="checkbox-wrapper">
-                  <input
-                    type="checkbox"
-                    :checked="isAllPublicSelected"
-                    :indeterminate.prop="isPartialPublicSelected"
-                    @change="toggleSelectAllPublic"
-                  >
-                  <span class="checkbox-label">全选当前页</span>
-                </label>
-              </div>
-
-              <!-- 单词卡片网格 -->
-              <div
-                ref="publicWordsGrid"
-                class="public-words-grid"
-                @scroll="handlePublicScroll"
-              >
+              <div class="public-results-scroll-container">
                 <div
-                  v-for="w in sortedPublicResults"
-                  :key="w.id"
-                  class="public-word-card"
-                  :class="{ selected: selectedPublicWordIds.has(w.id), added: addedWordIds.has(w.id) }"
+                  class="review-grid"
                 >
-                  <div class="card-checkbox">
-                    <input
-                      type="checkbox"
-                      :checked="selectedPublicWordIds.has(w.id)"
-                      @change="togglePublicWordSelection(w.id)"
-                    >
-                  </div>
-                  <div class="card-content">
-                    <div class="card-header-row">
-                      <h4 class="card-word">{{ w.word }}</h4>
-                      <span
-                        v-if="w.partOfSpeech"
-                        class="card-pos"
-                        :class="getPosClass(w.partOfSpeech)"
-                      >
-                        {{ w.partOfSpeech }}
-                      </span>
-                    </div>
-                    <p
-                      class="card-definition"
-                      :title="w.definition"
-                    >
-                      {{ w.definition }}
-                    </p>
-                  </div>
-                  <button
-                    class="card-add-btn"
-                    :class="{ added: addedWordIds.has(w.id) }"
-                    :disabled="!currentListId || addedWordIds.has(w.id)"
-                    @click="handleAddPublicWord(w)"
+                  <div
+                    v-for="w in publicResults"
+                    :key="w.id"
+                    class="review-card-item"
                   >
-                    <template v-if="addedWordIds.has(w.id)">
-                      <i class="fas fa-check" />
-                      已添加
-                    </template>
-                    <template v-else>
-                      <i class="fas fa-plus" />
-                      添加
-                    </template>
-                  </button>
+                    <div class="review-content">
+                      <h4 class="review-word">
+                        {{ w.word }}
+                        <span
+                          v-if="w.partOfSpeech"
+                          class="public-pos"
+                        >
+                          {{ w.partOfSpeech }}
+                        </span>
+                      </h4>
+                      <p class="review-def">
+                        {{ w.definition }}
+                      </p>
+                    </div>
+                    <div class="review-actions">
+                      <button
+                        class="btn btn-sm btn-primary"
+                        :disabled="!currentListId"
+                        @click="addPublicWord(w)"
+                      >
+                        添加
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <!-- 分页控件 -->
               <div
                 v-if="totalPages > 1"
-                class="pagination-enhanced"
+                class="pagination-container"
               >
-                <button
-                  class="pagination-btn"
-                  :disabled="currentPage <= 1"
-                  @click="goToPage(currentPage - 1)"
-                >
-                  <i class="fas fa-chevron-left" />
-                  上一页
-                </button>
-                <div class="pagination-numbers">
+                <div class="pagination-info">
+                  显示第 {{ (currentPage - 1) * pageSize + 1 }} - {{ Math.min(currentPage * pageSize, vocabularyStore.publicSearchTotal) }} 条，共 {{ vocabularyStore.publicSearchTotal }} 条
+                </div>
+                <div class="pagination-buttons">
                   <button
-                    v-for="page in getVisiblePages"
-                    :key="page"
-                    class="pagination-number"
-                    :class="{ active: page === currentPage }"
-                    @click="goToPage(page)"
+                    class="btn btn-sm btn-outline"
+                    :disabled="currentPage <= 1"
+                    @click="goToPage(currentPage - 1)"
                   >
-                    {{ page }}
+                    上一页
+                  </button>
+                  <span class="pagination-current">第 {{ currentPage }} / {{ totalPages }} 页</span>
+                  <button
+                    class="btn btn-sm btn-outline"
+                    :disabled="currentPage >= totalPages"
+                    @click="goToPage(currentPage + 1)"
+                  >
+                    下一页
                   </button>
                 </div>
-                <button
-                  class="pagination-btn"
-                  :disabled="currentPage >= totalPages"
-                  @click="goToPage(currentPage + 1)"
-                >
-                  下一页
-                  <i class="fas fa-chevron-right" />
-                </button>
               </div>
             </div>
           </div>
@@ -1285,65 +1183,9 @@ const articleGenerationInProgress = ref(false)
 const articleGenerationComplete = ref(false)
 const currentPage = ref(1)
 const pageSize = ref(50)
-const publicSortOrder = ref('default')
-const selectedPublicWordIds = reactive(new Set())
-const addedWordIds = reactive(new Set())
-const searchSuggestions = ref([])
-const publicSearchInput = ref(null)
-const publicWordsGrid = ref(null)
 
 const totalPages = computed(() => {
   return Math.ceil(vocabularyStore.publicSearchTotal / pageSize.value)
-})
-
-/**
- * 排序后的公共词库结果
- */
-const sortedPublicResults = computed(() => {
-  const results = [...publicResults.value]
-  if (publicSortOrder.value === 'word-asc') {
-    results.sort((a, b) => (a.word || '').localeCompare(b.word || ''))
-  } else if (publicSortOrder.value === 'word-desc') {
-    results.sort((a, b) => (b.word || '').localeCompare(a.word || ''))
-  }
-  return results
-})
-
-/**
- * 是否全选当前页
- */
-const isAllPublicSelected = computed(() => {
-  return publicResults.value.length > 0 && publicResults.value.every(w => selectedPublicWordIds.has(w.id))
-})
-
-/**
- * 是否部分选中
- */
-const isPartialPublicSelected = computed(() => {
-  const selectedCount = publicResults.value.filter(w => selectedPublicWordIds.has(w.id)).length
-  return selectedCount > 0 && selectedCount < publicResults.value.length
-})
-
-/**
- * 获取可见的分页数字
- */
-const getVisiblePages = computed(() => {
-  const pages = []
-  const total = totalPages.value
-  const current = currentPage.value
-  let start = Math.max(1, current - 2)
-  let end = Math.min(total, current + 2)
-  if (end - start < 4) {
-    if (start === 1) {
-      end = Math.min(total, start + 4)
-    } else if (end === total) {
-      start = Math.max(1, end - 4)
-    }
-  }
-  for (let i = start; i <= end; i++) {
-    pages.push(i)
-  }
-  return pages
 })
 
 const filteredWords = computed(() => {
@@ -1556,7 +1398,6 @@ const setupEventListeners = () => {
   window.addEventListener('focus', markActive)
   window.addEventListener('blur', flushDuration)
   document.addEventListener('visibilitychange', onVisibilityChange)
-  window.addEventListener('keydown', handleGlobalKeydown)
 
   if (!durationTimer) {
     lastTickAt.value = Date.now()
@@ -1576,25 +1417,6 @@ const removeEventListeners = () => {
   window.removeEventListener('focus', markActive)
   window.removeEventListener('blur', flushDuration)
   document.removeEventListener('visibilitychange', onVisibilityChange)
-  window.removeEventListener('keydown', handleGlobalKeydown)
-}
-
-/**
- * 处理全局键盘快捷键
- * Ctrl+F: 聚焦搜索框
- * Enter: 执行搜索
- * Space: 切换选中状态（当焦点在卡片上时）
- */
-const handleGlobalKeydown = (e) => {
-  if (currentView.value !== 'public-library') return
-  
-  // Ctrl+F 聚焦搜索框
-  if (e.ctrlKey && e.key === 'f') {
-    e.preventDefault()
-    if (publicSearchInput.value) {
-      publicSearchInput.value.focus()
-    }
-  }
 }
 
 onMounted(async () => {
@@ -2364,165 +2186,6 @@ const searchPublic = async () => {
   }
 }
 
-/**
- * 处理公共词库搜索
- */
-const handlePublicSearch = async () => {
-  currentPage.value = 1
-  selectedPublicWordIds.clear()
-  await searchPublic()
-}
-
-/**
- * 处理搜索输入（实时联想）
- */
-const handleSearchInput = () => {
-  const kw = publicKeyword.value.trim().toLowerCase()
-  if (kw.length < 1) {
-    searchSuggestions.value = []
-    return
-  }
-  searchSuggestions.value = publicResults.value
-    .filter(w => (w.word || '').toLowerCase().includes(kw))
-    .slice(0, 5)
-}
-
-/**
- * 选择搜索建议
- */
-const selectSuggestion = (suggestion) => {
-  publicKeyword.value = suggestion.word
-  searchSuggestions.value = []
-  handlePublicSearch()
-}
-
-/**
- * 切换单个单词选择状态
- */
-const togglePublicWordSelection = (wordId) => {
-  markActive()
-  if (selectedPublicWordIds.has(wordId)) {
-    selectedPublicWordIds.delete(wordId)
-  } else {
-    selectedPublicWordIds.add(wordId)
-  }
-}
-
-/**
- * 全选/取消全选当前页
- */
-const toggleSelectAllPublic = (e) => {
-  markActive()
-  if (e.target.checked) {
-    publicResults.value.forEach(w => selectedPublicWordIds.add(w.id))
-  } else {
-    publicResults.value.forEach(w => selectedPublicWordIds.delete(w.id))
-  }
-}
-
-/**
- * 清除所有选择
- */
-const clearPublicSelection = () => {
-  selectedPublicWordIds.clear()
-}
-
-/**
- * 批量添加公共词库单词
- */
-const batchAddPublicWords = async () => {
-  markActive()
-  if (!currentListId.value) {
-    uiStore.showToast('请先选择目标单词表')
-    return
-  }
-  if (selectedPublicWordIds.size === 0) {
-    uiStore.showToast('请先选择要添加的单词')
-    return
-  }
-  const wordsToAdd = publicResults.value.filter(w => selectedPublicWordIds.has(w.id))
-  let successCount = 0
-  let failCount = 0
-  for (const w of wordsToAdd) {
-    const result = await vocabularyStore.addWord(currentListId.value, {
-      word: w.word,
-      definition: w.definition,
-      partOfSpeech: w.partOfSpeech,
-      example: w.example,
-      language: w.language || currentList.value?.language || 'en'
-    })
-    if (result.success) {
-      successCount++
-      addedWordIds.add(w.id)
-    } else {
-      failCount++
-    }
-  }
-  if (successCount > 0) {
-    uiStore.showToast(`成功添加 ${successCount} 个单词到词表`)
-    await vocabularyStore.recordActivity({
-      activityType: 'vocabulary_batch_add',
-      activityDetails: JSON.stringify({ listId: currentListId.value, count: successCount }),
-      duration: 0
-    })
-  }
-  if (failCount > 0) {
-    uiStore.showToast(`${failCount} 个单词添加失败`)
-  }
-  selectedPublicWordIds.clear()
-}
-
-/**
- * 处理单个单词添加
- */
-const handleAddPublicWord = async (w) => {
-  markActive()
-  if (!currentListId.value) {
-    uiStore.showToast('请先选择目标单词表')
-    return
-  }
-  const result = await vocabularyStore.addWord(currentListId.value, {
-    word: w.word,
-    definition: w.definition,
-    partOfSpeech: w.partOfSpeech,
-    example: w.example,
-    language: w.language || currentList.value?.language || 'en'
-  })
-  if (!result.success) {
-    uiStore.showToast('添加失败: ' + (result.message || '未知错误'))
-    return
-  }
-  addedWordIds.add(w.id)
-  uiStore.showToast(`已添加 "${w.word}" 到词表`)
-  await vocabularyStore.recordActivity({
-    activityType: 'vocabulary_add_public_word',
-    activityDetails: JSON.stringify({ listId: currentListId.value, publicWordId: w.id, wordId: result.data?.id }),
-    duration: 0
-  })
-}
-
-/**
- * 获取词性对应的样式类
- */
-const getPosClass = (pos) => {
-  if (!pos) return ''
-  const p = pos.toLowerCase()
-  if (p.includes('n') || p.includes('名词')) return 'pos-noun'
-  if (p.includes('v') || p.includes('动词')) return 'pos-verb'
-  if (p.includes('adj') || p.includes('形容词')) return 'pos-adj'
-  if (p.includes('adv') || p.includes('副词')) return 'pos-adv'
-  if (p.includes('prep') || p.includes('介词')) return 'pos-prep'
-  if (p.includes('conj') || p.includes('连词')) return 'pos-conj'
-  return 'pos-other'
-}
-
-/**
- * 处理公共词库滚动（用于无限滚动加载）
- */
-const handlePublicScroll = () => {
-  // 预留无限滚动加载功能
-}
-
 const addPublicWord = async (w) => {
   markActive()
   if (!currentListId.value) {
@@ -2844,569 +2507,6 @@ body.dark-mode .copy-button.copied {
   font-style: italic;
   font-weight: 400;
   margin-left: 8px;
-}
-
-/* ========== 公共词库优化样式 ========== */
-
-/* 顶部标题行 */
-.public-header-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-  height: 40px;
-}
-
-.public-title {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.public-subtitle {
-  font-size: 13px;
-  color: var(--text-secondary);
-  margin: 0;
-}
-
-/* 顶部功能区 - 横向排版 */
-.public-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 12px 16px;
-  background-color: #F5F7FA;
-  border-radius: 12px;
-  margin-bottom: 12px;
-}
-
-:global(body.dark-mode) .public-toolbar {
-  background-color: rgba(30, 41, 59, 0.5);
-}
-
-.toolbar-left {
-  flex: 0 0 60%;
-  position: relative;
-}
-
-.toolbar-center {
-  flex: 0 0 25%;
-}
-
-.toolbar-right {
-  flex: 0 0 10%;
-  display: flex;
-  justify-content: flex-end;
-}
-
-/* 搜索输入框增强 */
-.search-input-wrapper-enhanced {
-  position: relative;
-  width: 100%;
-}
-
-.search-icon-enhanced {
-  position: absolute;
-  left: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--text-tertiary);
-  font-size: 14px;
-  pointer-events: none;
-}
-
-.search-input-enhanced {
-  width: 100%;
-  height: 48px;
-  padding: 0 16px 0 42px;
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  font-size: 14px;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  transition: all 0.2s ease;
-}
-
-.search-input-enhanced:focus {
-  outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.search-input-enhanced::placeholder {
-  color: var(--text-tertiary);
-}
-
-/* 搜索建议下拉 */
-.search-suggestions {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background-color: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  box-shadow: var(--shadow-lg);
-  z-index: 100;
-  margin-top: 4px;
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.suggestion-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 14px;
-  cursor: pointer;
-  transition: background-color 0.15s;
-}
-
-.suggestion-item:hover {
-  background-color: var(--bg-tertiary);
-}
-
-.suggestion-word {
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.suggestion-pos {
-  font-size: 12px;
-  color: var(--text-tertiary);
-}
-
-/* 单词表选择器增强 */
-.wordlist-selector-enhanced {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-}
-
-.selector-label {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-  white-space: nowrap;
-}
-
-.selector-dropdown {
-  flex: 1;
-  height: 48px;
-  padding: 0 36px 0 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  font-size: 14px;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  cursor: pointer;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-size: 16px;
-}
-
-.selector-dropdown:focus {
-  outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-/* 搜索按钮增强 */
-.search-btn-enhanced {
-  height: 48px;
-  min-width: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-}
-
-/* 统计与操作行 */
-.public-stats-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-  padding: 0 4px;
-}
-
-.stats-left {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.stats-count {
-  font-size: 14px;
-  color: var(--text-secondary);
-}
-
-.stats-count strong {
-  color: var(--primary-color);
-  font-weight: 700;
-}
-
-.selected-count {
-  font-size: 13px;
-  color: var(--primary-color);
-  background-color: var(--chip-bg);
-  padding: 4px 10px;
-  border-radius: 6px;
-}
-
-.stats-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.sort-select {
-  height: 32px;
-  padding: 0 28px 0 10px;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  font-size: 13px;
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
-  cursor: pointer;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 8px center;
-  background-size: 12px;
-}
-
-.batch-add-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-/* 单词列表区域 */
-.public-results-area {
-  flex: 1;
-  min-height: 0;
-}
-
-.public-words-container {
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  height: calc(100vh - 320px);
-  min-height: 400px;
-}
-
-/* 全选行 */
-.select-all-row {
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--border-color);
-  background-color: var(--bg-tertiary);
-}
-
-.checkbox-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  user-select: none;
-}
-
-.checkbox-wrapper input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-}
-
-.checkbox-label {
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
-/* 单词卡片网格 - 响应式布局 */
-.public-words-grid {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 16px;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  align-content: start;
-}
-
-/* 单词卡片 */
-.public-word-card {
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  min-height: 140px;
-  transition: all 0.2s ease;
-  position: relative;
-}
-
-.public-word-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-  border-color: var(--primary-color);
-}
-
-.public-word-card.selected {
-  border-color: var(--primary-color);
-  background-color: rgba(59, 130, 246, 0.05);
-}
-
-.public-word-card.added {
-  opacity: 0.7;
-}
-
-.card-checkbox {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-}
-
-.card-checkbox input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-}
-
-.card-content {
-  flex: 1;
-  padding-top: 20px;
-}
-
-.card-header-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 8px;
-}
-
-.card-word {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--primary-color);
-  margin: 0;
-}
-
-.card-pos {
-  font-size: 12px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-weight: 500;
-}
-
-/* 词性颜色标签 */
-.card-pos.pos-noun {
-  background-color: rgba(59, 130, 246, 0.15);
-  color: #3b82f6;
-}
-
-.card-pos.pos-verb {
-  background-color: rgba(16, 185, 129, 0.15);
-  color: #10b981;
-}
-
-.card-pos.pos-adj {
-  background-color: rgba(245, 158, 11, 0.15);
-  color: #f59e0b;
-}
-
-.card-pos.pos-adv {
-  background-color: rgba(139, 92, 246, 0.15);
-  color: #8b5cf6;
-}
-
-.card-pos.pos-prep {
-  background-color: rgba(236, 72, 153, 0.15);
-  color: #ec4899;
-}
-
-.card-pos.pos-conj {
-  background-color: rgba(6, 182, 212, 0.15);
-  color: #06b6d4;
-}
-
-.card-pos.pos-other {
-  background-color: var(--bg-tertiary);
-  color: var(--text-secondary);
-}
-
-.card-definition {
-  font-size: 14px;
-  color: var(--text-primary);
-  line-height: 1.5;
-  margin: 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.card-add-btn {
-  width: 100%;
-  height: 36px;
-  margin-top: 12px;
-  border: 1px solid var(--primary-color);
-  border-radius: 6px;
-  background-color: transparent;
-  color: var(--primary-color);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  transition: all 0.2s ease;
-}
-
-.card-add-btn:hover:not(:disabled) {
-  background-color: var(--primary-color);
-  color: white;
-}
-
-.card-add-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-.card-add-btn.added {
-  background-color: rgba(16, 185, 129, 0.1);
-  border-color: #10b981;
-  color: #10b981;
-}
-
-/* 分页控件增强 */
-.pagination-enhanced {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
-  padding: 16px;
-  border-top: 1px solid var(--border-color);
-  background-color: var(--bg-tertiary);
-}
-
-.pagination-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.pagination-btn:hover:not(:disabled) {
-  border-color: var(--primary-color);
-  color: var(--primary-color);
-}
-
-.pagination-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.pagination-numbers {
-  display: flex;
-  gap: 4px;
-}
-
-.pagination-number {
-  min-width: 36px;
-  height: 36px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.pagination-number:hover {
-  border-color: var(--primary-color);
-}
-
-.pagination-number.active {
-  background-color: var(--primary-color);
-  border-color: var(--primary-color);
-  color: white;
-}
-
-/* 响应式布局 */
-@media (max-width: 1440px) {
-  .public-words-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-@media (max-width: 1200px) {
-  .public-words-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  .public-toolbar {
-    flex-wrap: wrap;
-  }
-  
-  .toolbar-left {
-    flex: 1 1 100%;
-  }
-  
-  .toolbar-center {
-    flex: 1 1 60%;
-  }
-  
-  .toolbar-right {
-    flex: 0 0 auto;
-  }
-}
-
-@media (max-width: 768px) {
-  .public-words-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .public-header-row {
-    flex-direction: column;
-    align-items: flex-start;
-    height: auto;
-    gap: 4px;
-  }
-  
-  .public-stats-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-  
-  .stats-right {
-    width: 100%;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-  }
-  
-  .public-words-container {
-    height: auto;
-    min-height: 300px;
-  }
 }
 
 /* Search Bar Styles */

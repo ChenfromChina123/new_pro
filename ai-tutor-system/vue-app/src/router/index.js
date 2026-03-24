@@ -109,6 +109,12 @@ const router = createRouter({
           name: 'Editor',
           component: () => import('@/views/EditorView.vue'),
           meta: { requiresAuth: true }
+        },
+        {
+          path: 'playground',
+          name: 'Playground',
+          component: () => import('@/views/PlaygroundView.vue'),
+          meta: { requiresAuth: true }
         }
       ]
     },

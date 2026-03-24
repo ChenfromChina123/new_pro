@@ -138,7 +138,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
@@ -156,6 +156,27 @@ const form = ref({
 
 const isLoading = ref(false)
 const errorMessage = ref('')
+
+/**
+ * 开发环境自动登录
+ * 检查环境变量配置，如果启用自动登录则自动填充凭据并登录
+ */
+const devAutoLogin = async () => {
+  const autoLogin = import.meta.env.VITE_DEV_AUTO_LOGIN === 'true'
+  const devEmail = import.meta.env.VITE_DEV_LOGIN_EMAIL
+  const devPassword = import.meta.env.VITE_DEV_LOGIN_PASSWORD
+  
+  if (autoLogin && devEmail && devPassword) {
+    console.log('[Dev Mode] 开发环境自动登录中...')
+    form.value.email = devEmail
+    form.value.password = devPassword
+    await handleLogin()
+  }
+}
+
+onMounted(() => {
+  devAutoLogin()
+})
 
 const handleLogin = async () => {
   isLoading.value = true

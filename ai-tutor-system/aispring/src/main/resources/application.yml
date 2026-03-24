@@ -212,6 +212,16 @@ app:
     # 高频单词列表（可在 WordDictServiceImpl 中自定义）
     high-frequency-words-count: 100
 
+# Piston 代码执行引擎配置
+piston:
+  api-url: ${PISTON_API_URL:http://localhost:2000}
+  execute-timeout: 10000       # 执行超时 10 秒
+  max-code-length: 65536       # 代码最大长度 64KB
+  max-stdin-length: 8192       # stdin 最大长度 8KB
+  rate-limit:
+    max-requests: 30           # 每用户每小时最大执行次数
+    window-hours: 1            # 限流窗口（小时）
+
 # 搜索服务 API Key 配置
 # 如果未配置，则不需要 API Key 即可访问搜索接口
 # 生产环境建议使用环境变量：SEARCH_API_KEY

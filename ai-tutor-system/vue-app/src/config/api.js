@@ -176,6 +176,13 @@ export const API_ENDPOINTS = {
     health: '/api/ocr/health',
     recognize: '/api/ocr/recognize',
     recognizeBase64: '/api/ocr/recognize/base64'
+  },
+
+  // 代码运行沙箱
+  playground: {
+    execute: '/api/playground/execute',
+    runtimes: '/api/playground/runtimes',
+    health: '/api/playground/health'
   }
 }
 

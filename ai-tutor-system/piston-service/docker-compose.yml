@@ -1,0 +1,24 @@
+services:
+  piston:
+    image: ghcr.io/engineer-man/piston
+    container_name: piston-engine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:2000:2000"
+    volumes:
+      - piston-packages:/piston/packages
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+    tmpfs:
+      - /piston/jobs:exec,size=256M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:2000/api/v2/runtimes"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  piston-packages:

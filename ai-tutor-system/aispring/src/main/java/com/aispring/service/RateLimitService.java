@@ -13,7 +13,7 @@ import java.time.Duration;
 public class RateLimitService {
 
     private final StringRedisTemplate redisTemplate;
-    
+
     private static final String KEY_PREFIX = "chat_limit:";
     private static final int MAX_REQUESTS = 5;
     private static final Duration EXPIRATION = Duration.ofHours(24);
@@ -26,20 +26,20 @@ public class RateLimitService {
      */
     public boolean checkAndIncrement(String ip) {
         String key = KEY_PREFIX + ip;
-        
+
         try {
             Long count = redisTemplate.opsForValue().increment(key);
-            
+
             // If it's the first request (count == 1), set expiration
             if (count != null && count == 1) {
                 redisTemplate.expire(key, EXPIRATION);
             }
-            
+
             if (count != null && count > MAX_REQUESTS) {
                 log.warn("Rate limit exceeded for IP: {} (Count: {})", ip, count);
                 return false;
             }
-            
+
             return true;
         } catch (Exception e) {
             log.error("Error accessing Redis for rate limiting", e);
@@ -48,7 +48,7 @@ public class RateLimitService {
             return true;
         }
     }
-    
+
     /**
      * Get remaining requests for an IP
      * @param ip Client IP address
@@ -65,6 +65,53 @@ public class RateLimitService {
             return Math.max(0, MAX_REQUESTS - used);
         } catch (NumberFormatException e) {
             return MAX_REQUESTS;
+        }
+    }
+
+    /**
+     * 通用限流检查（支持自定义 key 前缀、上限和窗口）
+     * @param keyPrefix key 前缀
+     * @param identifier 标识符（如 userId）
+     * @param maxRequests 最大请求数
+     * @param window 限流窗口时长
+     * @return true 表示允许，false 表示超限
+     */
+    public boolean checkAndIncrement(String keyPrefix, String identifier, int maxRequests, Duration window) {
+        String key = keyPrefix + identifier;
+        try {
+            Long count = redisTemplate.opsForValue().increment(key);
+            if (count != null && count == 1) {
+                redisTemplate.expire(key, window);
+            }
+            if (count != null && count > maxRequests) {
+                log.warn("Rate limit exceeded for {}{} (Count: {})", keyPrefix, identifier, count);
+                return false;
+            }
+            return true;
+        } catch (Exception e) {
+            log.error("Error accessing Redis for rate limiting ({}{})", keyPrefix, identifier, e);
+            return true;
+        }
+    }
+
+    /**
+     * 获取通用限流的剩余请求数
+     * @param keyPrefix key 前缀
+     * @param identifier 标识符
+     * @param maxRequests 最大请求数
+     * @return 剩余请求数
+     */
+    public int getRemainingRequests(String keyPrefix, String identifier, int maxRequests) {
+        String key = keyPrefix + identifier;
+        String val = redisTemplate.opsForValue().get(key);
+        if (val == null) {
+            return maxRequests;
+        }
+        try {
+            int used = Integer.parseInt(val);
+            return Math.max(0, maxRequests - used);
+        } catch (NumberFormatException e) {
+            return maxRequests;
         }
     }
 }

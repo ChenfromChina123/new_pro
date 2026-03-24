@@ -63,79 +63,71 @@
 
       <!-- 中间：全局导航 -->
       <div class="sidebar-nav">
-        <!-- 第一组：通用工具 -->
-        <div class="nav-group">
-          <div class="nav-group-title">通用工具</div>
-          <router-link
-            to="/chat"
-            class="nav-item"
-            active-class="active"
-          >
-            <i class="fas fa-comments" />
-            <span>AI问答</span>
-          </router-link>
-          <router-link
-            v-if="authStore.isAuthenticated"
-            to="/cloud-disk"
-            class="nav-item"
-            active-class="active"
-          >
-            <i class="fas fa-cloud" />
-            <span>云盘</span>
-          </router-link>
-          <!-- 运维工具入口 -->
-          <div
-            class="nav-item"
-            :class="{ active: isOpsRoute }"
-            style="cursor: pointer;"
-            @click="router.push('/public-files')"
-          >
-            <i class="fas fa-tools" />
-            <span>运维工具</span>
-          </div>
-        </div>
+        <router-link
+          to="/chat"
+          class="nav-item"
+          active-class="active"
+        >
+          <i class="fas fa-comments" />
+          <span>AI问答</span>
+        </router-link>
+        <router-link
+          v-if="authStore.isAuthenticated"
+          to="/cloud-disk"
+          class="nav-item"
+          active-class="active"
+        >
+          <i class="fas fa-cloud" />
+          <span>云盘</span>
+        </router-link>
+        <router-link
+          v-if="authStore.isAuthenticated && featureFlags.languageLearning"
+          to="/language-learning"
+          class="nav-item"
+          active-class="active"
+        >
+          <i class="fas fa-book" />
+          <span>AI 语言学习</span>
+        </router-link>
+        <router-link
+          to="/word-game"
+          class="nav-item"
+          active-class="active"
+        >
+          <i class="fas fa-spell-check" />
+          <span>单词记忆</span>
+        </router-link>
+        <!-- PRD/需求分析：始终显示入口，未登录点击时由路由守卫跳转登录 -->
+        <router-link
+          v-if="featureFlags.requirement"
+          to="/requirement"
+          class="nav-item"
+          active-class="active"
+        >
+          <i class="fas fa-project-diagram" />
+          <span>需求分析</span>
+        </router-link>
 
-        <!-- 分隔线 -->
-        <div class="nav-group-divider" />
+        <!-- 代码运行入口 -->
+        <router-link
+          v-if="authStore.isAuthenticated"
+          to="/playground"
+          class="nav-item"
+          active-class="active"
+        >
+          <i class="fas fa-play-circle" />
+          <span>代码运行</span>
+        </router-link>
 
-        <!-- 第二组：语言学习核心 -->
-        <div class="nav-group">
-          <div class="nav-group-title">语言学习</div>
-          <router-link
-            to="/word-game"
-            class="nav-item"
-            active-class="active"
-          >
-            <i class="fas fa-spell-check" />
-            <span>单词记忆</span>
-          </router-link>
-          <router-link
-            v-if="authStore.isAuthenticated && featureFlags.languageLearning"
-            to="/language-learning"
-            class="nav-item"
-            active-class="active"
-          >
-            <i class="fas fa-book" />
-            <span>AI语言学习</span>
-          </router-link>
-        </div>
-
-        <!-- 分隔线 -->
-        <div class="nav-group-divider" />
-
-        <!-- 第三组：其他功能 -->
-        <div class="nav-group">
-          <div class="nav-group-title">其他</div>
-          <!-- PRD/需求分析：始终显示入口，未登录点击时由路由守卫跳转登录 -->
-          <router-link
-            v-if="featureFlags.requirement"
-            to="/requirement"
-            class="nav-item"
-            active-class="active"
-          >
-            <i class="fas fa-project-diagram" />
-            <span>需求分析</span>
-          </router-link>
+        <!-- 运维工具入口 -->
+        <div
+          class="nav-item"
+          :class="{ active: isOpsRoute }"
+          style="cursor: pointer;"
+          @click="router.push('/public-files')"
+        >
+          <i class="fas fa-tools" />
+          <span>运维工具</span>
         </div>
       </div>
 
@@ -1108,28 +1100,6 @@ onMounted(() => {
   gap: 4px;
 }
 
-/* 导航分组 */
-.nav-group {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.nav-group-title {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-tertiary);
-  padding: 8px 16px 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.nav-group-divider {
-  height: 1px;
-  background-color: var(--border-color);
-  margin: 8px 16px;
-}
-
 .sidebar-quota {
   padding: 12px 20px;
   font-size: 12px;
@@ -1253,25 +1223,24 @@ body.dark-mode .new-chat-btn {
 
 /* 语言学习子导航样式 */
 .sub-nav-list {
-  padding: 6px 12px;
+  padding: 8px 12px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   overflow-y: auto;
 }
 
 .sub-nav-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  border-radius: 8px;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: 12px;
   color: var(--text-secondary);
   text-decoration: none;
   transition: all 0.2s ease;
   cursor: pointer;
   background-color: transparent;
-  font-size: 13px;
 }
 
 .sub-nav-item:hover {
@@ -1280,23 +1249,23 @@ body.dark-mode .new-chat-btn {
 }
 
 .sub-nav-item.active {
-  background-color: rgba(59, 130, 246, 0.15);
+  background-color: var(--bg-tertiary);
   color: var(--primary-color);
   font-weight: 600;
   border-left: 3px solid var(--primary-color);
-  padding-left: 9px;
+  border-radius: 4px 10px 10px 4px;
 }
 
 .item-icon {
-  font-size: 16px;
+  font-size: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
+  width: 24px;
 }
 
 .item-text {
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .new-chat-btn:hover {
