@@ -348,7 +348,7 @@ utils/sftp/
 
 ## 重构进度总结
 
-### 已完成任务（5项）
+### ✅ 已完成任务（8项）
 
 | 项目 | 文件 | 原行数 | 重构后行数 | 新增文件数 |
 |------|------|--------|------------|------------|
@@ -357,14 +357,14 @@ utils/sftp/
 | vue-app | LanguageLearningView.vue | 4269 | - | 3 |
 | aispring | CloudDiskController.java | 521 | 422 | 6 |
 | aispring | SFTPServiceImpl.java | 515 | 143 | 2 |
+| aispring | WordGameServiceImpl.java | 477 | 308 | 3 |
+| aispring | ChatRecordService.java | 486 | - | 3 |
+| vue-app | AgentView.vue | 1553 | - | 6 |
 
-### 待完成任务（7项）
+### ⏳ 待完成任务（4项）
 
 | 优先级 | 项目 | 文件 | 行数 | 状态 |
 |--------|------|------|------|------|
-| P1 | aispring | WordGameServiceImpl.java | 477 | ⏳ 待开始 |
-| P1 | aispring | ChatRecordService.java | 486 | ⏳ 待开始 |
-| P1 | vue-app | AgentView.vue | 1553 | ⏳ 待开始 |
 | P2 | aispring | AdminController.java | 422 | ⏳ 待开始 |
 | P2 | vue-app | SFTPManagerView.vue | 735 | ⏳ 待开始 |
 | P2 | vue-app | chat.js | 632 | ⏳ 待开始 |

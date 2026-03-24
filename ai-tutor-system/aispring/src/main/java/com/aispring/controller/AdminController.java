@@ -1,5 +1,9 @@
 package com.aispring.controller;
 
+import com.aispring.controller.dto.admin.AdminStatistics;
+import com.aispring.controller.dto.admin.AdminUserDTO;
+import com.aispring.controller.dto.admin.AdminFileDTO;
+import com.aispring.controller.dto.admin.FileContentRequest;
 import com.aispring.dto.response.ApiResponse;
 import com.aispring.entity.User;
 import com.aispring.entity.UserFile;
@@ -9,8 +13,6 @@ import com.aispring.repository.UserRepository;
 import com.aispring.service.CloudDiskService;
 import com.aispring.utils.FileUtils;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
-import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -18,13 +20,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
@@ -33,6 +33,7 @@ import java.util.stream.Collectors;
 
 /**
  * 管理后台控制器
+ * 重构后：移除内部 DTO 类，使用独立的 DTO 文件
  */
 @RestController
 @RequestMapping("/api/admin")
@@ -47,125 +48,6 @@ public class AdminController {
     private final CloudDiskService cloudDiskService;
     private final com.aispring.repository.TokenUsageAuditRepository tokenUsageAuditRepository;
     private final com.aispring.service.ExternalLinkService externalLinkService;
-
-    @Data
-    public static class AdminStatistics {
-        @com.fasterxml.jackson.annotation.JsonProperty("totalUsers")
-        private long totalUsers;
-        @com.fasterxml.jackson.annotation.JsonProperty("totalChats")
-        private long totalChats;
-        @com.fasterxml.jackson.annotation.JsonProperty("totalFiles")
-        private long totalFiles;
-        @com.fasterxml.jackson.annotation.JsonProperty("totalStorage")
-        private long totalStorage;
-    }
-
-    @GetMapping("/files/download/{fileId}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> downloadFile(
-            @PathVariable Long fileId,
-            @RequestParam(required = false) String mode) {
-        log.info("Admin download request for fileId: {}, mode: {}", fileId, mode);
-        try {
-            Path filePath = cloudDiskService.downloadFileAdmin(fileId);
-            log.info("Resolved file path: {}", filePath);
-            Resource resource = new UrlResource(filePath.toUri());
-
-            if (resource.exists() || resource.isReadable()) {
-                String contentType = FileUtils.getContentType(filePath);
-
-                String disposition = "attachment";
-                if ("inline".equalsIgnoreCase(mode)) {
-                    disposition = "inline";
-                }
-
-                // 获取原始文件名
-                String originalFilename = filePath.getFileName().toString();
-                String encodedFilename = java.net.URLEncoder.encode(originalFilename, "UTF-8").replace("+", "%20");
-
-                HttpHeaders headers = new HttpHeaders();
-                headers.set(HttpHeaders.CONTENT_DISPOSITION, disposition + "; filename=\"" + encodedFilename + "\"; filename*=UTF-8''" + encodedFilename);
-                headers.set(HttpHeaders.CONTENT_TYPE, contentType);
-                headers.set("X-Content-Type-Options", "nosniff");
-                headers.setContentLength(resource.contentLength());
-
-                return ResponseEntity.ok()
-                        .headers(headers)
-                        .body(resource);
-            } else {
-                log.warn("File not found or not readable: {}", filePath);
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(ApiResponse.error(404, "文件不存在或不可读: " + filePath.getFileName()));
-            }
-        } catch (IllegalArgumentException e) {
-            log.warn("Invalid file request: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.error(400, e.getMessage()));
-        } catch (IOException e) {
-            log.error("Error downloading file {}: {}", fileId, e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error(500, "文件不存在或已被删除,请检查文件完整性"));
-        } catch (Exception e) {
-            log.error("Error downloading file {}: {}", fileId, e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error(500, "下载文件失败: " + e.getMessage()));
-        }
-    }
-
-    /**
-     * 验证文件完整性 - 检查数据库记录与物理文件是否一致
-     */
-    @GetMapping("/files/verify")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> verifyFiles() {
-        try {
-            Map<String, Object> result = cloudDiskService.verifyAllFiles();
-            return ResponseEntity.ok(ApiResponse.success(result));
-        } catch (Exception e) {
-            log.error("Error verifying files: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error(500, "验证文件失败: " + e.getMessage()));
-        }
-    }
-
-    /**
-     * 清理孤立的文件记录（数据库中存在但物理文件不存在）
-     */
-    @DeleteMapping("/files/cleanup-orphans")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> cleanupOrphanFiles() {
-        try {
-            Map<String, Object> result = cloudDiskService.cleanupOrphanFiles();
-            return ResponseEntity.ok(ApiResponse.success(result));
-        } catch (Exception e) {
-            log.error("Error cleaning up orphan files: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error(500, "清理失败: " + e.getMessage()));
-        }
-    }
-
-    @Data
-    public static class AdminUserDTO {
-        private Long id;
-        private String email;
-        private java.time.LocalDateTime createdAt;
-        private boolean active;
-    }
-
-    @Data
-    public static class AdminFileDTO {
-        private Long id;
-        private String filename;
-        private String userEmail;
-        private Long fileSize;
-        private java.time.LocalDateTime uploadTime;
-    }
-
-    @Data
-    public static class FileContentRequest {
-        @NotBlank
-        private String content;
-    }
 
     /**
      * 获取统计数据
@@ -188,43 +70,6 @@ public class AdminController {
         stats.setTotalFiles(fileCount);
         stats.setTotalStorage(storageSize);
         return ResponseEntity.ok(ApiResponse.success(stats));
-    }
-
-    /**
-     * 获取文件内容
-     */
-    @GetMapping("/files/content/{fileId}")
-    @Transactional(readOnly = true)
-    public ResponseEntity<ApiResponse<String>> getFileContent(@PathVariable Long fileId) {
-        try {
-            String content = cloudDiskService.getFileContentAdmin(fileId);
-            return ResponseEntity.ok(ApiResponse.success("获取文件内容成功", content));
-        } catch (IOException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "读取文件失败: " + e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "获取文件内容失败: " + e.getMessage()));
-        }
-    }
-
-    /**
-     * 更新文件内容
-     */
-    @PutMapping("/files/content/{fileId}")
-    public ResponseEntity<ApiResponse<Void>> updateFileContent(
-            @PathVariable Long fileId,
-            @Valid @RequestBody FileContentRequest request) {
-        try {
-            cloudDiskService.updateFileContentAdmin(fileId, request.getContent());
-            return ResponseEntity.ok(ApiResponse.success("文件内容更新成功", null));
-        } catch (IOException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "更新文件失败: " + e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "更新文件内容失败: " + e.getMessage()));
-        }
     }
 
     /**
@@ -269,6 +114,119 @@ public class AdminController {
     }
 
     /**
+     * 下载文件
+     */
+    @GetMapping("/files/download/{fileId}")
+    public ResponseEntity<?> downloadFile(
+            @PathVariable Long fileId,
+            @RequestParam(required = false) String mode) {
+        log.info("Admin download request for fileId: {}, mode: {}", fileId, mode);
+        try {
+            Path filePath = cloudDiskService.downloadFileAdmin(fileId);
+            log.info("Resolved file path: {}", filePath);
+            Resource resource = new UrlResource(filePath.toUri());
+
+            if (resource.exists() || resource.isReadable()) {
+                String contentType = FileUtils.getContentType(filePath);
+                String disposition = "inline".equalsIgnoreCase(mode) ? "inline" : "attachment";
+                String originalFilename = filePath.getFileName().toString();
+                String encodedFilename = java.net.URLEncoder.encode(originalFilename, "UTF-8").replace("+", "%20");
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.set(HttpHeaders.CONTENT_DISPOSITION, disposition + "; filename=\"" + encodedFilename + "\"; filename*=UTF-8''" + encodedFilename);
+                headers.set(HttpHeaders.CONTENT_TYPE, contentType);
+                headers.set("X-Content-Type-Options", "nosniff");
+                headers.setContentLength(resource.contentLength());
+
+                return ResponseEntity.ok().headers(headers).body(resource);
+            } else {
+                log.warn("File not found or not readable: {}", filePath);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(ApiResponse.error(404, "文件不存在或不可读: " + filePath.getFileName()));
+            }
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid file request: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error(400, e.getMessage()));
+        } catch (IOException e) {
+            log.error("Error downloading file {}: {}", fileId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error(500, "文件不存在或已被删除,请检查文件完整性"));
+        } catch (Exception e) {
+            log.error("Error downloading file {}: {}", fileId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error(500, "下载文件失败: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 验证文件完整性
+     */
+    @GetMapping("/files/verify")
+    public ResponseEntity<?> verifyFiles() {
+        try {
+            Map<String, Object> result = cloudDiskService.verifyAllFiles();
+            return ResponseEntity.ok(ApiResponse.success(result));
+        } catch (Exception e) {
+            log.error("Error verifying files: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error(500, "验证文件失败: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 清理孤立的文件记录
+     */
+    @DeleteMapping("/files/cleanup-orphans")
+    public ResponseEntity<?> cleanupOrphanFiles() {
+        try {
+            Map<String, Object> result = cloudDiskService.cleanupOrphanFiles();
+            return ResponseEntity.ok(ApiResponse.success(result));
+        } catch (Exception e) {
+            log.error("Error cleaning up orphan files: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error(500, "清理失败: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 获取文件内容
+     */
+    @GetMapping("/files/content/{fileId}")
+    @Transactional(readOnly = true)
+    public ResponseEntity<ApiResponse<String>> getFileContent(@PathVariable Long fileId) {
+        try {
+            String content = cloudDiskService.getFileContentAdmin(fileId);
+            return ResponseEntity.ok(ApiResponse.success("获取文件内容成功", content));
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "读取文件失败: " + e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "获取文件内容失败: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 更新文件内容
+     */
+    @PutMapping("/files/content/{fileId}")
+    public ResponseEntity<ApiResponse<Void>> updateFileContent(
+            @PathVariable Long fileId,
+            @Valid @RequestBody FileContentRequest request) {
+        try {
+            cloudDiskService.updateFileContentAdmin(fileId, request.getContent());
+            return ResponseEntity.ok(ApiResponse.success("文件内容更新成功", null));
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "更新文件失败: " + e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "更新文件内容失败: " + e.getMessage()));
+        }
+    }
+
+    /**
      * 获取 Token 审计统计
      */
     @GetMapping("/token-audit/stats")
@@ -287,7 +245,6 @@ public class AdminController {
         List<com.aispring.entity.TokenUsageAudit> audits = tokenUsageAuditRepository
             .findByCreatedAtBetween(start, end);
         
-        // 统计总量
         long totalRequests = audits.size();
         long totalInputTokens = audits.stream()
             .mapToLong(a -> a.getInputTokens() != null ? a.getInputTokens() : 0)
@@ -304,14 +261,12 @@ public class AdminController {
             .average()
             .orElse(0);
         
-        // 按提供方统计
         Map<String, Long> byProvider = audits.stream()
             .collect(java.util.stream.Collectors.groupingBy(
                 com.aispring.entity.TokenUsageAudit::getProvider,
                 java.util.stream.Collectors.counting()
             ));
         
-        // 按模型统计
         Map<String, Long> byModel = audits.stream()
             .filter(a -> a.getModelName() != null)
             .collect(java.util.stream.Collectors.groupingBy(
@@ -356,7 +311,6 @@ public class AdminController {
             audits = tokenUsageAuditRepository.findByCreatedAtBetweenOrderByCreatedAtDesc(start, end);
         }
         
-        // 分页
         int fromIndex = page * size;
         int toIndex = Math.min(fromIndex + size, audits.size());
         List<com.aispring.entity.TokenUsageAudit> pageAudits = audits.subList(fromIndex, toIndex);
@@ -381,7 +335,7 @@ public class AdminController {
     }
 
     /**
-     * 获取所有外部链接（管理后台）
+     * 获取所有外部链接
      */
     @GetMapping("/external-links")
     @Transactional(readOnly = true)
@@ -420,4 +374,3 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success("删除成功", null));
     }
 }
-
