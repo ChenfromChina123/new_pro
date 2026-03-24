@@ -86,8 +86,9 @@ public class SessionMetadataService {
         boolean needTitle = checkNeedTitle(sessionId);
         String systemPrompt = buildSystemPrompt(needTitle);
 
+        String effectiveModel = normalizeModelName(model);
         OpenAiChatOptions options = OpenAiChatOptions.builder()
-                .withModel((model == null || model.isBlank()) ? "deepseek-v3.2" : model)
+                .withModel(effectiveModel)
                 .withTemperature(0.3f)
                 .build();
 
@@ -101,6 +102,27 @@ public class SessionMetadataService {
         String content = response.getResult().getOutput().getContent();
 
         parseAndSaveResult(content, needTitle, sessionId, userId, emitter);
+    }
+
+    /**
+     * 标准化模型名称
+     * 将前端传递的模型名称转换为 DeepSeek API 支持的格式
+     */
+    private String normalizeModelName(String model) {
+        if (model == null || model.isBlank()) {
+            return "deepseek-chat";
+        }
+        String normalized = model.toLowerCase().trim();
+        if (normalized.contains("reasoner") || normalized.contains("r1")) {
+            return "deepseek-reasoner";
+        }
+        if (normalized.contains("v3") || normalized.contains("chat")) {
+            return "deepseek-chat";
+        }
+        if (normalized.contains("coder")) {
+            return "deepseek-coder";
+        }
+        return "deepseek-chat";
     }
 
     /**
