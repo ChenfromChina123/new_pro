@@ -3,10 +3,12 @@ package com.aispring;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.annotation.Bean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.boot.autoconfigure.flyway.FlywayMigrationStrategy;
 import org.springframework.scheduling.annotation.EnableAsync;
 import com.aispring.service.CloudDiskService;
@@ -20,6 +22,8 @@ import org.slf4j.LoggerFactory;
  * AI智能学习助手 - Spring Boot版本启动成功！
  */
 @SpringBootApplication(scanBasePackages = {"com.aispring", "com.example.aispring"})
+@EntityScan(basePackages = "com.aispring.entity")
+@EnableJpaRepositories(basePackages = "com.aispring.repository")
 @EnableJpaAuditing
 @EnableAsync
 @EnableConfigurationProperties
