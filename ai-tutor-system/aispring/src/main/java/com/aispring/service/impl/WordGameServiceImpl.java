@@ -48,7 +48,7 @@ public class WordGameServiceImpl implements WordGameService {
         List<Map<String, Object>> result = new ArrayList<>();
         
         // 添加内置课程包
-        List<Map<String, Object>> builtinCourses = builtinCourseLoader.loadCourses();
+        List<Map<String, Object>> builtinCourses = builtinCourseLoader.loadBuiltinCourses();
         if (WordGameUtils.matchSearch("星荣零基础学英语", 
                 "从零开始，系统掌握日常英语词汇与基础句型，适合完全零基础的学习者。", search)) {
             int totalQuestions = builtinCourses.stream()

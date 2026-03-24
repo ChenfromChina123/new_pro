@@ -232,8 +232,8 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
   async function recordActivity(payload) {
     try {
       await request.post(API_ENDPOINTS.vocabulary.activity, {
-        activity_type: payload.activityType,
-        activity_details: payload.activityDetails,
+        activityType: payload.activityType,
+        activityDetails: payload.activityDetails,
         duration: payload.duration
       })
       return { success: true }
