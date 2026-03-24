@@ -129,7 +129,7 @@ public class WordGameServiceImpl implements WordGameService {
         String targetPackageId = (packageId == null || packageId.isBlank()) 
                 ? builtinCourseLoader.getBuiltinPackageId() : packageId;
         if (builtinCourseLoader.isBuiltinPackage(targetPackageId)) {
-            return builtinCourseLoader.loadCourseQuestions(courseIndex);
+            return builtinCourseLoader.loadBuiltinCourseQuestions(courseIndex);
         }
         WordGamePackage pkg = getVisiblePackage(userId, targetPackageId);
         List<WordGameStatement> rows = statementRepository.findByPackageIdAndCourseIndexOrderBySortOrderAscIdAsc(
