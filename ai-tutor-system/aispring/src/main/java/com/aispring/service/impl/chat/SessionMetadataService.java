@@ -83,30 +83,23 @@ public class SessionMetadataService {
         if (deepseekChatClient == null) return;
         if (sessionId == null || sessionId.isEmpty()) return;
 
-        // 检查是否需要生成标题
         boolean needTitle = checkNeedTitle(sessionId);
-
-        // 构建系统提示词
         String systemPrompt = buildSystemPrompt(needTitle);
 
-        // 配置选项
         OpenAiChatOptions options = OpenAiChatOptions.builder()
                 .withModel((model == null || model.isBlank()) ? "deepseek-v3.2" : model)
                 .withTemperature(0.3f)
                 .build();
 
-        // 构建用户提示词
         String userPromptWithHistory = chatHistoryBuilder.buildTitleAndSuggestionsUserPrompt(userPrompt, sessionId, userId);
         List<Message> messages = List.of(
                 new org.springframework.ai.chat.messages.SystemMessage(systemPrompt),
                 new UserMessage(userPromptWithHistory)
         );
 
-        // 调用 AI
         ChatResponse response = deepseekChatClient.call(new Prompt(messages, options));
         String content = response.getResult().getOutput().getContent();
 
-        // 解析结果
         parseAndSaveResult(content, needTitle, sessionId, userId, emitter);
     }
 
@@ -128,11 +121,11 @@ public class SessionMetadataService {
         StringBuilder sb = new StringBuilder();
         sb.append("你是一个中文助手，需要基于【当前用户询问】（最重要）以及【历史用户询问】（仅供参考）生成结果。\n")
           .append("仅输出 JSON，不要输出任何额外文字（包括 Markdown/代码块）。\n")
-          .append("请生成 3 个"用户视角"的下一步追问（用户对助手说的话），要求：\n")
+          .append("请生成 3 个\"用户视角\"的下一步追问（用户对助手说的话），要求：\n")
           .append("1) 每个都是完整问题，优先更具体、更可执行；\n")
-          .append("2) 不要以 AI 口吻表达（如"我可以为你…/我还能…"），不要自称"AI/助手"；\n")
+          .append("2) 不要以 AI 口吻表达（如\"我可以为你.../我还能...\"），不要自称\"AI/助手\"；\n")
           .append("3) 不要复述历史问题，不要照抄历史原句；\n")
-          .append("4) 每个问题 8~25 个汉字，末尾使用"？"。\n");
+          .append("4) 每个问题 8~25 个汉字，末尾使用\"？\"。\n");
 
         if (needTitle) {
             sb.append("由于这是会话的第一条消息，请同时生成一个简短的标题（不超过15个字）。\n");
@@ -164,11 +157,9 @@ public class SessionMetadataService {
         String title = needTitle ? root.path("title").asText() : null;
         List<String> suggestionsList = parseSuggestions(root);
 
-        // 保存到数据库
         String suggestionsJson = objectMapper.writeValueAsString(suggestionsList);
         chatRecordService.updateSessionTitleAndSuggestions(sessionId, title, suggestionsJson, userId);
 
-        // 发送 SSE 事件
         sendSseEvent(sessionId, title, suggestionsList, emitter);
     }
 
@@ -184,7 +175,6 @@ public class SessionMetadataService {
             }
         }
 
-        // 规范化建议问题
         LinkedHashSet<String> normalized = new LinkedHashSet<>();
         for (String s : suggestionsList) {
             if (s == null) continue;
@@ -198,7 +188,6 @@ public class SessionMetadataService {
         }
 
         suggestionsList = new ArrayList<>(normalized);
-        // 填充默认建议
         while (suggestionsList.size() < 3) {
             if (suggestionsList.size() == 0) suggestionsList.add("我下一步应该先做什么？");
             else if (suggestionsList.size() == 1) suggestionsList.add("你能给我一个可执行的步骤清单吗？");
