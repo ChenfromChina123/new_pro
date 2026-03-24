@@ -560,6 +560,10 @@ const loadImagesFromStorage = () => {
             ocrText: img.ocrText,
             isProcessing: img.isProcessing
           })
+          // 更新 imageIdCounter 为最大的图片 ID
+          if (img.id > imageIdCounter) {
+            imageIdCounter = img.id
+          }
         }
       })
     }
@@ -617,11 +621,12 @@ onMounted(() => {
   loadImagesFromStorage()
 })
 
+let imageIdCounter = 0
+
 // 监听图片变化并保存
 watch(uploadedImages, async () => {
   await saveImagesToStorage()
 }, { deep: true })
-let imageIdCounter = 0
 const SCROLL_BOTTOM_THRESHOLD_PX = 40  // 判断是否在底部的阈值（像素）
 const SCROLL_BOTTOM_SHOW_THRESHOLD_PX = 100  // 显示按钮的阈值（距离底部多少像素内显示）
 let autoScrollScheduled = false
@@ -1970,7 +1975,6 @@ const clearUploadedImageDraft = async () => {
     }
   })
   uploadedImages.value = []
-  await saveImagesToStorage()
   localStorage.removeItem('uploadedImages')
 }
 
