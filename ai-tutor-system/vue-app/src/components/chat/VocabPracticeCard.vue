@@ -1,85 +1,179 @@
 <template>
-  <div class="vocab-practice-card" :class="mode">
+  <div
+    class="vocab-practice-card"
+    :class="mode"
+  >
     <div class="card-header">
       <div class="word-info">
-        <h3 v-if="mode === 'pronunciation'" class="word">{{ word }}</h3>
-        <h3 v-else class="word spelling-hidden">
+        <h3
+          v-if="mode === 'pronunciation'"
+          class="word"
+        >
+          {{ word }}
+        </h3>
+        <h3
+          v-else
+          class="word spelling-hidden"
+        >
           <span class="hidden-chars">
-            <template v-for="(char, i) in word" :key="i">_</template>
+            <template
+              v-for="(char, i) in word"
+              :key="i"
+            >_</template>
           </span>
         </h3>
         <span class="phonetic">{{ phonetic }}</span>
       </div>
       <div class="mode-switch">
-        <button class="switch-btn" :class="{ active: mode === 'pronunciation' }" @click="mode = 'pronunciation'">发音</button>
-        <button class="switch-btn" :class="{ active: mode === 'spelling' }" @click="mode = 'spelling'">拼写</button>
+        <button
+          class="switch-btn"
+          :class="{ active: mode === 'pronunciation' }"
+          @click="mode = 'pronunciation'"
+        >
+          发音
+        </button>
+        <button
+          class="switch-btn"
+          :class="{ active: mode === 'spelling' }"
+          @click="mode = 'spelling'"
+        >
+          拼写
+        </button>
       </div>
     </div>
 
     <div class="translation-box">
-      <p class="translation">{{ translation }}</p>
+      <p class="translation">
+        {{ translation }}
+      </p>
     </div>
 
-    <div class="sentence-box" v-if="sentence">
-      <p class="sentence" v-html="formattedSentence"></p>
+    <div
+      v-if="sentence"
+      class="sentence-box"
+    >
+      <p
+        class="sentence"
+        v-html="formattedSentence"
+      />
     </div>
 
     <!-- 拼写模式下的输入区域 -->
-    <div v-if="mode === 'spelling'" class="spelling-input-area">
+    <div
+      v-if="mode === 'spelling'"
+      class="spelling-input-area"
+    >
       <input 
         ref="spellingInput"
         v-model="userInput" 
         class="spelling-input" 
         :placeholder="`请输入单词 ( ${word.length} 字母 )`"
         @keyup.enter="checkSpelling"
-      />
-      <button class="check-btn" @click="checkSpelling" :disabled="!userInput.trim() || isChecking">验证</button>
+      >
+      <button
+        class="check-btn"
+        :disabled="!userInput.trim() || isChecking"
+        @click="checkSpelling"
+      >
+        验证
+      </button>
     </div>
 
     <!-- 操作区 -->
-    <div class="card-actions" v-if="mode === 'pronunciation'">
-      <button class="action-btn play-btn" @click="playAudio" :disabled="isPlaying">
-        <i class="fas" :class="isPlaying ? 'fa-spinner fa-spin' : 'fa-volume-up'"></i> 朗读
+    <div
+      v-if="mode === 'pronunciation'"
+      class="card-actions"
+    >
+      <button
+        class="action-btn play-btn"
+        :disabled="isPlaying"
+        @click="playAudio"
+      >
+        <i
+          class="fas"
+          :class="isPlaying ? 'fa-spinner fa-spin' : 'fa-volume-up'"
+        /> 朗读
       </button>
       <button 
         class="action-btn record-btn" 
         :class="{ recording: isRecording }" 
-        @mousedown="startRecording" 
+        title="按住录音" 
+        @mousedown="startRecording"
         @mouseup="stopRecording"
         @mouseleave="stopRecording"
         @touchstart.prevent="startRecording"
         @touchend.prevent="stopRecording"
-        title="按住录音"
       >
-        <i class="fas fa-microphone"></i> {{ isRecording ? '松开结束' : '按住发音' }}
+        <i class="fas fa-microphone" /> {{ isRecording ? '松开结束' : '按住发音' }}
       </button>
     </div>
 
     <!-- 反馈区 -->
-    <div class="feedback-area" v-if="feedback">
-      <div class="feedback-score" v-if="feedback.score !== undefined">
-        <span class="score" :class="scoreClass">{{ feedback.score }}分</span>
+    <div
+      v-if="feedback"
+      class="feedback-area"
+    >
+      <div
+        v-if="feedback.score !== undefined"
+        class="feedback-score"
+      >
+        <span
+          class="score"
+          :class="scoreClass"
+        >{{ feedback.score }}分</span>
       </div>
-      <p class="feedback-text">{{ feedback.aiFeedback }}</p>
+      <p class="feedback-text">
+        {{ feedback.aiFeedback }}
+      </p>
     </div>
 
     <!-- 发音历史区 -->
-    <div class="history-section" v-if="pronunciationHistory.length > 0">
-      <div class="history-header" @click="showPronunciationHistory = !showPronunciationHistory">
+    <div
+      v-if="pronunciationHistory.length > 0"
+      class="history-section"
+    >
+      <div
+        class="history-header"
+        @click="showPronunciationHistory = !showPronunciationHistory"
+      >
         <h4>🎤 发音历史 ({{ pronunciationHistory.length }}次)</h4>
-        <span class="expand-icon" :class="{ expanded: showPronunciationHistory }">▼</span>
+        <span
+          class="expand-icon"
+          :class="{ expanded: showPronunciationHistory }"
+        >▼</span>
       </div>
-      <div v-if="showPronunciationHistory" class="history-list">
-        <div v-for="(record, index) in pronunciationHistory.slice(0, 5)" :key="index" class="history-item">
-          <div class="history-score" :class="getScoreClass(record.score)">{{ record.score }}分</div>
+      <div
+        v-if="showPronunciationHistory"
+        class="history-list"
+      >
+        <div
+          v-for="(record, index) in pronunciationHistory.slice(0, 5)"
+          :key="index"
+          class="history-item"
+        >
+          <div
+            class="history-score"
+            :class="getScoreClass(record.score)"
+          >
+            {{ record.score }}分
+          </div>
           <div class="history-details">
             <div class="history-text">
-              <span class="recognized" :class="{ correct: isCorrect(record) }">{{ record.recognizedText }}</span>
-              <span v-if="!isCorrect(record)" class="target">→ {{ record.targetText }}</span>
+              <span
+                class="recognized"
+                :class="{ correct: isCorrect(record) }"
+              >{{ record.recognizedText }}</span>
+              <span
+                v-if="!isCorrect(record)"
+                class="target"
+              >→ {{ record.targetText }}</span>
             </div>
             <div class="history-meta">
               <span class="history-date">{{ formatDate(record.createdAt) }}</span>
-              <span v-if="record.aiFeedback" class="history-feedback">{{ record.aiFeedback }}</span>
+              <span
+                v-if="record.aiFeedback"
+                class="history-feedback"
+              >{{ record.aiFeedback }}</span>
             </div>
           </div>
         </div>
@@ -87,25 +181,54 @@
     </div>
 
     <!-- 练习历史区 -->
-    <div class="history-section" v-if="practiceHistory.length > 0">
-      <div class="history-header" @click="showPracticeHistory = !showPracticeHistory">
+    <div
+      v-if="practiceHistory.length > 0"
+      class="history-section"
+    >
+      <div
+        class="history-header"
+        @click="showPracticeHistory = !showPracticeHistory"
+      >
         <h4>✏️ 练习历史 ({{ practiceHistory.length }}次)</h4>
-        <span class="expand-icon" :class="{ expanded: showPracticeHistory }">▼</span>
+        <span
+          class="expand-icon"
+          :class="{ expanded: showPracticeHistory }"
+        >▼</span>
       </div>
-      <div v-if="showPracticeHistory" class="history-list">
-        <div v-for="(record, index) in practiceHistory.slice(0, 5)" :key="index" class="history-item" :class="record.isCorrect ? 'correct' : 'incorrect'">
-          <div class="history-score" :class="record.isCorrect ? 'correct' : 'incorrect'">
+      <div
+        v-if="showPracticeHistory"
+        class="history-list"
+      >
+        <div
+          v-for="(record, index) in practiceHistory.slice(0, 5)"
+          :key="index"
+          class="history-item"
+          :class="record.isCorrect ? 'correct' : 'incorrect'"
+        >
+          <div
+            class="history-score"
+            :class="record.isCorrect ? 'correct' : 'incorrect'"
+          >
             {{ record.isCorrect ? '✓' : '✗' }}
           </div>
           <div class="history-details">
             <div class="history-text">
-              <span class="user-input" :class="{ correct: record.isCorrect }">{{ record.userInput || 'N/A' }}</span>
-              <span v-if="!record.isCorrect" class="target">→ {{ record.correctAnswer }}</span>
+              <span
+                class="user-input"
+                :class="{ correct: record.isCorrect }"
+              >{{ record.userInput || 'N/A' }}</span>
+              <span
+                v-if="!record.isCorrect"
+                class="target"
+              >→ {{ record.correctAnswer }}</span>
             </div>
             <div class="history-meta">
               <span class="history-type">{{ getPracticeTypeName(record.practiceType) }}</span>
               <span class="history-date">{{ formatDate(record.createdAt) }}</span>
-              <span v-if="record.aiFeedback" class="history-feedback">{{ record.aiFeedback }}</span>
+              <span
+                v-if="record.aiFeedback"
+                class="history-feedback"
+              >{{ record.aiFeedback }}</span>
             </div>
           </div>
         </div>

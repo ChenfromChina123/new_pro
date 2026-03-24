@@ -5,27 +5,44 @@
         <div class="progress-indicator">
           {{ currentIndex + 1 }} / {{ words.length }}
         </div>
-        <button class="close-btn" @click="emit('close')" title="退出练习">
-          <i class="fas fa-times"></i>
+        <button
+          class="close-btn"
+          title="退出练习"
+          @click="emit('close')"
+        >
+          <i class="fas fa-times" />
         </button>
       </div>
 
       <div class="modal-body">
-        <Transition name="slide-fade" mode="out-in">
-          <div :key="currentIndex" class="card-wrapper">
+        <Transition
+          name="slide-fade"
+          mode="out-in"
+        >
+          <div
+            :key="currentIndex"
+            class="card-wrapper"
+          >
             <VocabPracticeCard
               v-if="currentWord"
               :word="currentWord.word"
               :phonetic="currentWord.phonetic"
               :sentence="currentWord.sentence"
               :translation="currentWord.translation"
-              :initialMode="currentWord.mode"
+              :initial-mode="currentWord.mode"
             />
             
             <!-- 进阶补充：单词详细释义展示 -->
-            <div class="definition-box" v-if="currentWord && currentWord.definition">
-              <h4 class="def-title">详细释义</h4>
-              <p class="def-content">{{ currentWord.definition }}</p>
+            <div
+              v-if="currentWord && currentWord.definition"
+              class="definition-box"
+            >
+              <h4 class="def-title">
+                详细释义
+              </h4>
+              <p class="def-content">
+                {{ currentWord.definition }}
+              </p>
             </div>
           </div>
         </Transition>
@@ -37,14 +54,17 @@
           :disabled="currentIndex === 0" 
           @click="prevWord"
         >
-          <i class="fas fa-chevron-left"></i> 上一个
+          <i class="fas fa-chevron-left" /> 上一个
         </button>
         <button 
           class="nav-btn next-btn" 
           :class="{ finish: currentIndex === words.length - 1 }"
           @click="nextWord"
         >
-          {{ currentIndex === words.length - 1 ? '完成练习' : '下一个' }} <i v-if="currentIndex !== words.length - 1" class="fas fa-chevron-right"></i>
+          {{ currentIndex === words.length - 1 ? '完成练习' : '下一个' }} <i
+            v-if="currentIndex !== words.length - 1"
+            class="fas fa-chevron-right"
+          />
         </button>
       </div>
     </div>

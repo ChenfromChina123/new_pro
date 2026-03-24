@@ -1,7 +1,10 @@
 <template>
   <div class="typing-area">
     <div class="words-wrapper">
-      <template v-for="(w, i) in words" :key="i">
+      <template
+        v-for="(w, i) in words"
+        :key="i"
+      >
         <div
           v-if="isWord(w)"
           class="word-slot"
@@ -10,11 +13,17 @@
         >
           {{ findWordById(i)?.userInput }}
         </div>
-        <div v-else class="word-punct">{{ w }}</div>
+        <div
+          v-else
+          class="word-punct"
+        >
+          {{ w }}
+        </div>
       </template>
 
       <input
         ref="inputEl"
+        v-model="inputValue"
         lang="en"
         class="hidden-input"
         type="text"
@@ -22,7 +31,7 @@
         autocorrect="off"
         autocapitalize="off"
         spellcheck="false"
-        v-model="inputValue"
+        autofocus
         @keydown="handleKeydown"
         @focus="onFocus"
         @blur="onBlur"
@@ -30,16 +39,22 @@
         @mousedown="preventCursorMove"
         @compositionstart="onCompositionStart"
         @compositionend="onCompositionEnd"
-        autofocus
-      />
+      >
     </div>
 
-    <div v-if="showAnswerTip" class="answer-tip">
+    <div
+      v-if="showAnswerTip"
+      class="answer-tip"
+    >
       <span class="tip-label">答案：</span>
       <span class="tip-content">{{ english }}</span>
     </div>
 
-    <button type="button" class="mobile-submit-btn" @click="doSubmitAnswer">
+    <button
+      type="button"
+      class="mobile-submit-btn"
+      @click="doSubmitAnswer"
+    >
       提交 / 下一词
     </button>
   </div>

@@ -11,12 +11,24 @@
       </span>
     </div>
 
-    <div class="soundmark">{{ statement?.soundmark }}</div>
-    <div class="chinese">{{ statement?.chinese }}</div>
+    <div class="soundmark">
+      {{ statement?.soundmark }}
+    </div>
+    <div class="chinese">
+      {{ statement?.chinese }}
+    </div>
 
     <div class="actions">
-      <button class="btn btn-outline" @click="emit('retry')">再来一次</button>
-      <button class="btn btn-primary" @click="emit('next')">
+      <button
+        class="btn btn-outline"
+        @click="emit('retry')"
+      >
+        再来一次
+      </button>
+      <button
+        class="btn btn-primary"
+        @click="emit('next')"
+      >
         下一题
         <span class="kbd-hint">Space / Enter</span>
       </button>

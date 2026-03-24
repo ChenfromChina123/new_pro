@@ -1,21 +1,21 @@
 <template>
   <div class="vocab-skeleton">
     <div class="skeleton-header">
-      <div class="skeleton-icon pulse"></div>
-      <div class="skeleton-title pulse"></div>
+      <div class="skeleton-icon pulse" />
+      <div class="skeleton-title pulse" />
     </div>
     <div class="skeleton-content">
       <div class="skeleton-tags">
-        <div class="skeleton-tag pulse"></div>
-        <div class="skeleton-tag pulse"></div>
-        <div class="skeleton-tag pulse"></div>
-        <div class="skeleton-tag pulse"></div>
-        <div class="skeleton-tag pulse"></div>
+        <div class="skeleton-tag pulse" />
+        <div class="skeleton-tag pulse" />
+        <div class="skeleton-tag pulse" />
+        <div class="skeleton-tag pulse" />
+        <div class="skeleton-tag pulse" />
       </div>
-      <div class="skeleton-btn pulse"></div>
+      <div class="skeleton-btn pulse" />
     </div>
     <div class="loading-text">
-      <i class="fas fa-spinner fa-spin"></i>
+      <i class="fas fa-spinner fa-spin" />
       <span>正在生成词汇卡片...</span>
     </div>
   </div>

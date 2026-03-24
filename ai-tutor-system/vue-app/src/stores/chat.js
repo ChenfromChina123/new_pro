@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import request from '@/utils/request'
 import { useAuthStore } from '@/stores/auth'
 import { API_ENDPOINTS } from '@/config/api'
+import { parseImageMeta, buildImageMeta } from '@/utils/chatImagePayload'
 
 export const useChatStore = defineStore('chat', () => {
   // 状态
@@ -160,8 +161,18 @@ export const useChatStore = defineStore('chat', () => {
       messages.value = (response.messages || []).map(msg => {
         const role = (msg.role === 'user' || msg.sender_type === 1) ? 'user' : 'assistant'
         const reasoningContent = msg?.reasoning_content ?? ''
+        const persistedImages = role === 'user'
+          ? parseImageMeta(msg?.search_query || '')
+          : []
+        const fallbackImages = Array.isArray(msg?.images) ? msg.images : []
+        const images = persistedImages.length > 0 ? persistedImages : fallbackImages
+        const hasImages = images.length > 0
+        const content = (role === 'user' && hasImages) ? '' : msg.content
+        
         return {
           ...msg,
+          content,
+          images,
         // 确保角色是前端期望的格式：user 或 assistant
         // 后端返回 sender_type: 1 (user), 2 (AI)
           role,
@@ -514,9 +525,12 @@ export const useChatStore = defineStore('chat', () => {
   // 保存消息记录
   async function saveMessages(userMessage, aiMessage) {
     try {
+      const persistedUserImages = (userMessage.images || []).slice(0, 3)
+      const userImagesMeta = buildImageMeta(persistedUserImages)
       await request.post(API_ENDPOINTS.chat.saveRecord, {
         session_id: currentSessionId.value,
         user_message: userMessage.content,
+        user_images: userImagesMeta ? persistedUserImages : [],
         ai_response: aiMessage.content,
         ai_reasoning: aiMessage.reasoning_content || null,  // 保存深度思考内容
         search_query: aiMessage.search_query || null,

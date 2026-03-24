@@ -54,12 +54,12 @@
                 >
                   <div class="message-images-list">
                     <img
-                      v-for="(imageUrl, index) in message.images"
-                      :key="index"
+                      v-for="(imageUrl, imageIndex) in message.images"
+                      :key="imageIndex"
                       :src="imageUrl"
                       class="message-image"
                       alt="消息图片"
-                    />
+                    >
                   </div>
                 </div>
 
@@ -78,11 +78,26 @@
                   >
                     <div class="header-left">
                       <div class="header-text">
-                        <i v-if="message.search_status === 'searching'" class="fas fa-circle-notch fa-spin" style="margin-right: 6px; color: #3b82f6;"></i>
-                        <i v-else-if="message.search_status === 'done'" class="fas fa-globe" style="margin-right: 6px; color: #10b981;"></i>
-                        <i v-else class="fas fa-exclamation-circle" style="margin-right: 6px; color: #ef4444;"></i>
+                        <i
+                          v-if="message.search_status === 'searching'"
+                          class="fas fa-circle-notch fa-spin"
+                          style="margin-right: 6px; color: #3b82f6;"
+                        />
+                        <i
+                          v-else-if="message.search_status === 'done'"
+                          class="fas fa-globe"
+                          style="margin-right: 6px; color: #10b981;"
+                        />
+                        <i
+                          v-else
+                          class="fas fa-exclamation-circle"
+                          style="margin-right: 6px; color: #ef4444;"
+                        />
                         <span class="reasoning-title">联网搜索</span>
-                        <span class="reasoning-subtitle" v-if="!message.isSearchCollapsed">
+                        <span
+                          v-if="!message.isSearchCollapsed"
+                          class="reasoning-subtitle"
+                        >
                           {{ message.search_status === 'searching' ? '正在搜索: ' + message.search_query : (message.search_status === 'done' ? '已完成搜索' : '搜索失败') }}
                         </span>
                       </div>
@@ -100,9 +115,12 @@
                       v-show="!message.isSearchCollapsed"
                       class="reasoning-content"
                     >
-                      <div v-if="message.search_results" class="markdown-body">
+                      <div
+                        v-if="message.search_results"
+                        class="markdown-body"
+                      >
                         <p><strong>搜索内容：</strong> {{ message.search_query }}</p>
-                        <div v-html="formatMessageCached(message, 'search_results')"></div>
+                        <div v-html="formatMessageCached(message, 'search_results')" />
                       </div>
                     </div>
                   </transition>
@@ -177,8 +195,8 @@
                 >
                   <ChatContentRenderer
                     :content="sanitizeNullRuns(message.content)"
-                    :formatMarkdown="(txt) => formatMessage(txt)"
-                    :isStreaming="message.isStreaming"
+                    :format-markdown="(txt) => formatMessage(txt)"
+                    :is-streaming="message.isStreaming"
                   />
                 </div>
                 <!-- 如果流式进行中且没有内容，显示输入状态 -->
@@ -190,7 +208,7 @@
                 </div>
                 <!-- 如果流式结束但内容为空，显示空状态提示 -->
                 <div
-                  v-else
+                  v-else-if="message.role === 'assistant'"
                   class="message-text empty-response"
                 >
                   <div class="empty-content">
@@ -261,22 +279,32 @@
 
           <div class="input-container">
             <!-- 图片预览区域 -->
-            <div v-if="uploadedImages.length > 0" class="image-preview-area">
+            <div
+              v-if="uploadedImages.length > 0"
+              class="image-preview-area"
+            >
               <div class="image-preview-list">
                 <div
                   v-for="image in uploadedImages"
                   :key="image.id"
                   class="image-preview-item"
                 >
-                  <img :src="image.url" class="preview-image" alt="预览图片" />
+                  <img
+                    :src="image.url"
+                    class="preview-image"
+                    alt="预览图片"
+                  >
                   <button
                     class="remove-image-btn"
-                    @click="removeImage(image.id)"
                     title="删除图片"
+                    @click="removeImage(image.id)"
                   >
                     <i class="fas fa-times" />
                   </button>
-                  <div v-if="image.isProcessing" class="ocr-processing-overlay">
+                  <div
+                    v-if="image.isProcessing"
+                    class="ocr-processing-overlay"
+                  >
                     <i class="fas fa-spinner fa-spin" />
                   </div>
                 </div>
@@ -321,7 +349,7 @@
                   multiple
                   style="display: none"
                   @change="handleOcrFileSelect"
-                />
+                >
                 <button
                   class="tool-btn-special"
                   :class="{ active: chatStore.selectedModel.includes('reasoner') }"
@@ -499,6 +527,7 @@ import 'highlight.js/styles/github-dark.css'
 import { API_CONFIG, API_ENDPOINTS } from '@/config/api'
 import request from '@/utils/request'
 import ChatContentRenderer from '@/components/chat/ChatContentRenderer.vue'
+import { buildImageMeta } from '@/utils/chatImagePayload'
 
 const chatStore = useChatStore()
 const authStore = useAuthStore()
@@ -513,6 +542,85 @@ const ocrFileInput = ref(null)
 const isOcrProcessing = ref(false)
 // 图片上传相关状态
 const uploadedImages = ref([]) // 存储上传的图片 { id, url, file, ocrText? }
+
+// 从本地存储加载图片
+const loadImagesFromStorage = () => {
+  try {
+    const storedImages = localStorage.getItem('uploadedImages')
+    if (storedImages) {
+      const parsedImages = JSON.parse(storedImages)
+      parsedImages.forEach(img => {
+        // 恢复图片URL
+        if (img.fileData) {
+          const blob = dataURLToBlob(img.fileData)
+          const imageUrl = URL.createObjectURL(blob)
+          uploadedImages.value.push({
+            id: img.id,
+            url: imageUrl,
+            ocrText: img.ocrText,
+            isProcessing: img.isProcessing
+          })
+        }
+      })
+    }
+  } catch (error) {
+    console.error('加载图片失败:', error)
+  }
+}
+
+// 将图片保存到本地存储
+const saveImagesToStorage = async () => {
+  try {
+    const imagesToStore = await Promise.all(uploadedImages.value.map(async img => {
+      // 转换文件为base64
+      if (img.file) {
+        try {
+          const fileData = await readFileAsDataUrl(img.file)
+          return {
+            id: img.id,
+            fileData: fileData,
+            ocrText: img.ocrText,
+            isProcessing: img.isProcessing
+          }
+        } catch (error) {
+          console.error('转换图片失败:', error)
+          return {
+            id: img.id,
+            ocrText: img.ocrText,
+            isProcessing: img.isProcessing
+          }
+        }
+      }
+      return img
+    }))
+    localStorage.setItem('uploadedImages', JSON.stringify(imagesToStore))
+  } catch (error) {
+    console.error('保存图片失败:', error)
+  }
+}
+
+// 将dataURL转换为Blob
+const dataURLToBlob = (dataURL) => {
+  const arr = dataURL.split(',')
+  const mime = arr[0].match(/:(.*?);/)[1]
+  const bstr = atob(arr[1])
+  let n = bstr.length
+  const u8arr = new Uint8Array(n)
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n)
+  }
+  return new Blob([u8arr], { type: mime })
+}
+
+// 组件初始化时加载图片
+onMounted(() => {
+  loadImagesFromStorage()
+})
+
+// 监听图片变化并保存
+watch(uploadedImages, async () => {
+  await saveImagesToStorage()
+}, { deep: true })
 let imageIdCounter = 0
 const SCROLL_BOTTOM_THRESHOLD_PX = 40  // 判断是否在底部的阈值（像素）
 const SCROLL_BOTTOM_SHOW_THRESHOLD_PX = 100  // 显示按钮的阈值（距离底部多少像素内显示）
@@ -1224,6 +1332,7 @@ const sendMessage = async () => {
 
   const message = inputMessage.value.trim()
   inputMessage.value = ''
+  await clearUploadedImageDraft()
 
   // 清除草稿
   chatStore.saveDraft(chatStore.currentSessionId, '')
@@ -1797,6 +1906,74 @@ const removeImage = (imageId) => {
   }
 }
 
+const readFileAsDataUrl = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '')
+    reader.onerror = () => reject(new Error('图片读取失败'))
+    reader.readAsDataURL(file)
+  })
+}
+
+const createImageThumbnailDataUrl = (file, maxSize = 192, quality = 0.72) => {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file)
+    const image = new Image()
+    image.onload = () => {
+      const canvas = document.createElement('canvas')
+      const scale = Math.min(maxSize / image.width, maxSize / image.height, 1)
+      canvas.width = Math.max(1, Math.round(image.width * scale))
+      canvas.height = Math.max(1, Math.round(image.height * scale))
+      const context = canvas.getContext('2d')
+      if (!context) {
+        URL.revokeObjectURL(objectUrl)
+        reject(new Error('缩略图绘制失败'))
+        return
+      }
+      context.drawImage(image, 0, 0, canvas.width, canvas.height)
+      const result = canvas.toDataURL('image/jpeg', quality)
+      URL.revokeObjectURL(objectUrl)
+      resolve(result)
+    }
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      reject(new Error('缩略图生成失败'))
+    }
+    image.src = objectUrl
+  })
+}
+
+const materializeImageDataUrls = async (images) => {
+  if (!Array.isArray(images) || images.length === 0) return []
+  const results = await Promise.all(
+    images.map(async (image) => {
+      if (image?.file) {
+        try {
+          return await createImageThumbnailDataUrl(image.file)
+        } catch {
+          return readFileAsDataUrl(image.file)
+        }
+      }
+      if (typeof image?.url === 'string' && image.url.startsWith('data:image/')) {
+        return image.url
+      }
+      return ''
+    })
+  )
+  return results.filter(item => typeof item === 'string' && item.trim().length > 0)
+}
+
+const clearUploadedImageDraft = async () => {
+  uploadedImages.value.forEach(img => {
+    if (img?.url) {
+      URL.revokeObjectURL(img.url)
+    }
+  })
+  uploadedImages.value = []
+  await saveImagesToStorage()
+  localStorage.removeItem('uploadedImages')
+}
+
 /**
  * 解释图片
  */
@@ -1810,7 +1987,9 @@ const normalizeStreamChunk = (chunk) => {
 const explainImages = async () => {
   if (uploadedImages.value.length === 0) return
 
-  const ocrTexts = uploadedImages.value
+  const pendingImages = [...uploadedImages.value]
+
+  const ocrTexts = pendingImages
     .filter(img => img.ocrText)
     .map(img => img.ocrText)
 
@@ -1824,20 +2003,45 @@ const explainImages = async () => {
   }
 
   // 保存图片URLs以便传递
-  const imagesData = uploadedImages.value.map(img => img.url)
+  const imagesData = await materializeImageDataUrls(pendingImages)
+  const authStoreLocal = useAuthStore()
+
+  if (!chatStore.currentSessionId && authStoreLocal.isAuthenticated) {
+    await createNewSession()
+  }
 
   inputMessage.value = ''
+  await clearUploadedImageDraft()
+
+  if (!aiMessage.trim()) {
+    const userMessage = {
+      role: 'user',
+      content: '',
+      images: imagesData,
+      timestamp: new Date().toISOString(),
+      model: chatStore.selectedModel
+    }
+    chatStore.messages.push(userMessage)
+    const persistedUserImages = (userMessage.images || []).slice(0, 3)
+    const userImagesMeta = buildImageMeta(persistedUserImages)
+    if (chatStore.currentSessionId || !authStoreLocal.isAuthenticated) {
+      await request.post(API_ENDPOINTS.chat.saveRecord, {
+        session_id: chatStore.currentSessionId,
+        role: 'user',
+        content: '',
+        user_images: userImagesMeta ? persistedUserImages : [],
+        search_query: userImagesMeta || null,
+        model: chatStore.selectedModel
+      })
+    }
+    scheduleAutoScrollToBottom()
+    return
+  }
 
   // 手动添加用户消息（只显示用户输入，不显示OCR结果）
   chatStore.isLoading = true
   chatStore.suggestions = []
   chatStore.abortController = new AbortController()
-  const authStoreLocal = useAuthStore()
-
-  // 如果没有当前会话，先创建一个
-  if (!chatStore.currentSessionId && authStoreLocal.isAuthenticated) {
-    await createNewSession()
-  }
 
   // 清除草稿
   chatStore.saveDraft(chatStore.currentSessionId, '')
@@ -1880,13 +2084,14 @@ const explainImages = async () => {
   const activeAiMessage = chatStore.messages[chatStore.messages.length - 1]
 
   let systemPrompt = undefined
+  const visibleSearchQuery = userInput
 
   // 如果开启了联网搜索，先进行搜索
-  if (chatStore.isWebSearchEnabled) {
+  if (chatStore.isWebSearchEnabled && visibleSearchQuery) {
     activeAiMessage.search_status = 'searching'
-    activeAiMessage.search_query = aiMessage
+    activeAiMessage.search_query = visibleSearchQuery
     try {
-      const searchRes = await request.get(API_ENDPOINTS.chat.search, { params: { q: aiMessage } })
+      const searchRes = await request.get(API_ENDPOINTS.chat.search, { params: { q: visibleSearchQuery } })
       activeAiMessage.search_status = 'done'
       const searchResultStr = searchRes?.data?.result || searchRes?.result || ''
       activeAiMessage.search_results = searchResultStr
@@ -1998,12 +2203,15 @@ const explainImages = async () => {
 
     activeAiMessage.isStreaming = false
 
+    const persistedUserImages = (userMessage.images || []).slice(0, 3)
+    const userImagesMeta = buildImageMeta(persistedUserImages)
     await request.post(API_ENDPOINTS.chat.saveRecord, {
       session_id: chatStore.currentSessionId,
-      user_message: aiMessage,
+      user_message: '',
+      user_images: userImagesMeta ? persistedUserImages : [],
       ai_response: activeAiMessage.content,
       ai_reasoning: activeAiMessage.reasoning_content || null,
-      search_query: activeAiMessage.search_query || null,
+      search_query: userImagesMeta || activeAiMessage.search_query || null,
       search_results: activeAiMessage.search_results || null,
       model: chatStore.selectedModel
     })
@@ -2013,12 +2221,15 @@ const explainImages = async () => {
       console.log('Generation aborted by user')
       activeAiMessage.isStreaming = false
       if (activeAiMessage.content || activeAiMessage.reasoning_content) {
+        const persistedUserImages = (userMessage.images || []).slice(0, 3)
+        const userImagesMeta = buildImageMeta(persistedUserImages)
         await request.post(API_ENDPOINTS.chat.saveRecord, {
           session_id: chatStore.currentSessionId,
-          user_message: aiMessage,
+          user_message: '',
+          user_images: userImagesMeta ? persistedUserImages : [],
           ai_response: activeAiMessage.content,
           ai_reasoning: activeAiMessage.reasoning_content || null,
-          search_query: activeAiMessage.search_query || null,
+          search_query: userImagesMeta || activeAiMessage.search_query || null,
           search_results: activeAiMessage.search_results || null,
           model: chatStore.selectedModel
         })
@@ -2040,10 +2251,6 @@ const explainImages = async () => {
       activeAiMessage.isStreaming = false
     }
   }
-
-  // 清除上传的图片
-  uploadedImages.value.forEach(img => URL.revokeObjectURL(img.url))
-  uploadedImages.value = []
 }
 </script>
 

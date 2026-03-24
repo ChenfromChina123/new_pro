@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -32,7 +33,13 @@ import jakarta.servlet.http.HttpServletRequest;
 @RequiredArgsConstructor
 public class ChatRecordController {
     
+    private static final String IMAGE_META_PREFIX = "IMG_META_JSON:";
+    private static final int MAX_IMAGE_COUNT = 3;
+    private static final int MAX_IMAGE_ITEM_LENGTH = 14000;
+    private static final int MAX_IMAGE_META_LENGTH = 50000;
+
     private final ChatRecordService chatRecordService;
+    private final ObjectMapper objectMapper;
     
     // DTO类
     @Data
@@ -66,6 +73,9 @@ public class ChatRecordController {
         
         @JsonProperty("search_results")
         private String searchResults;  // 联网搜索结果
+
+        @JsonProperty("user_images")
+        private List<String> userImages;
         
         private String model;
         private String role; // "user" or "assistant"
@@ -95,6 +105,25 @@ public class ChatRecordController {
         
         String session = request.getSessionId();
         String model = request.getModel();
+        String userImageMeta = null;
+        if (request.getUserImages() != null && !request.getUserImages().isEmpty()) {
+            try {
+                List<String> safeImages = request.getUserImages().stream()
+                    .filter(item -> item != null && !item.isBlank())
+                    .map(item -> item.length() > MAX_IMAGE_ITEM_LENGTH ? item.substring(0, MAX_IMAGE_ITEM_LENGTH) : item)
+                    .limit(MAX_IMAGE_COUNT)
+                    .toList();
+                if (!safeImages.isEmpty()) {
+                    String json = objectMapper.writeValueAsString(Map.of("images", safeImages));
+                    String payload = IMAGE_META_PREFIX + json;
+                    if (payload.length() <= MAX_IMAGE_META_LENGTH) {
+                        userImageMeta = payload;
+                    }
+                }
+            } catch (Exception ignored) {
+                userImageMeta = null;
+            }
+        }
         
         if (request.getUserMessage() != null || request.getAiResponse() != null) {
             // 保存用户消息
@@ -109,7 +138,7 @@ public class ChatRecordController {
                 null,
                 null, null, null,
                 ip,
-                null, null
+                userImageMeta, null
             );
             // 保存 AI 消息，包含 reasoning_content 和 search_results
             chatRecordService.createChatRecord(
@@ -130,7 +159,7 @@ public class ChatRecordController {
             Integer senderType = (request.getRole() != null && request.getRole().equalsIgnoreCase("user")) ? 1 : 2;
             String content = request.getContent();
             String reasoningContent = senderType == 2 ? request.getAiReasoning() : null;
-            String searchQuery = senderType == 2 ? request.getSearchQuery() : null;
+            String searchQuery = senderType == 2 ? request.getSearchQuery() : userImageMeta;
             String searchResults = senderType == 2 ? request.getSearchResults() : null;
             chatRecordService.createChatRecord(
                 content,

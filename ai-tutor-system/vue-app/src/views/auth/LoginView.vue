@@ -1,27 +1,35 @@
 <template>
   <div class="auth-page">
     <!-- 装饰性背景元素 -->
-    <div class="bg-shape shape-1"></div>
-    <div class="bg-shape shape-2"></div>
+    <div class="bg-shape shape-1" />
+    <div class="bg-shape shape-2" />
 
     <div class="auth-container">
       <!-- 左侧网站功能介绍 -->
       <div class="auth-info">
-        <h1 class="info-title">探索无限可能<br>开启智能学习新时代</h1>
+        <h1 class="info-title">
+          探索无限可能<br>开启智能学习新时代
+        </h1>
         <p class="info-desc">
           AI学习助手为您提供全方位的智能辅导，通过个性化的学习路径规划、实时答疑和海量知识库，助您高效掌握核心技能，让学习变得更简单。
         </p>
         <div class="feature-list">
           <div class="feature-item">
-            <div class="feature-icon"><i class="fas fa-brain"></i></div>
+            <div class="feature-icon">
+              <i class="fas fa-brain" />
+            </div>
             <span>智能对话解析，随问随答</span>
           </div>
           <div class="feature-item">
-            <div class="feature-icon"><i class="fas fa-folder-open"></i></div>
+            <div class="feature-icon">
+              <i class="fas fa-folder-open" />
+            </div>
             <span>云端知识库，随时查阅</span>
           </div>
           <div class="feature-item">
-            <div class="feature-icon"><i class="fas fa-chart-line"></i></div>
+            <div class="feature-icon">
+              <i class="fas fa-chart-line" />
+            </div>
             <span>个性化学习，精准提升</span>
           </div>
         </div>
@@ -30,90 +38,103 @@
       <!-- 右侧登录框 -->
       <div class="auth-card">
         <div class="auth-header">
-          <h2 class="auth-title">AI学习助手</h2>
-          <p class="auth-subtitle">欢迎回来，开启智能学习之旅</p>
+          <h2 class="auth-title">
+            AI学习助手
+          </h2>
+          <p class="auth-subtitle">
+            欢迎回来，开启智能学习之旅
+          </p>
         </div>
 
-      <form
-        class="auth-form"
-        @submit.prevent="handleLogin"
-      >
-        <div class="form-group">
-          <div class="input-wrapper">
-            <i class="fas fa-envelope input-icon"></i>
-            <input
-              v-model="form.email"
-              type="email"
-              class="input"
-              placeholder="请输入邮箱"
-              required
-              autocomplete="off"
-            >
-          </div>
-        </div>
-
-        <div class="form-group">
-          <div class="input-wrapper">
-            <i class="fas fa-lock input-icon"></i>
-            <input
-              v-model="form.password"
-              type="password"
-              class="input"
-              placeholder="请输入密码"
-              required
-              autocomplete="new-password"
-            >
-          </div>
-        </div>
-
-        <div
-          v-if="errorMessage"
-          class="error-message"
+        <form
+          class="auth-form"
+          @submit.prevent="handleLogin"
         >
-          <i class="fas fa-exclamation-circle"></i>
-          {{ errorMessage }}
-        </div>
+          <div class="form-group">
+            <div class="input-wrapper">
+              <i class="fas fa-envelope input-icon" />
+              <input
+                v-model="form.email"
+                type="email"
+                class="input"
+                placeholder="请输入邮箱"
+                required
+                autocomplete="off"
+              >
+            </div>
+          </div>
 
-        <button
-          type="submit"
-          class="btn btn-primary login-btn"
-          :disabled="isLoading"
-        >
-          <span
-            v-if="isLoading"
-            class="loading-spinner"
+          <div class="form-group">
+            <div class="input-wrapper">
+              <i class="fas fa-lock input-icon" />
+              <input
+                v-model="form.password"
+                type="password"
+                class="input"
+                placeholder="请输入密码"
+                required
+                autocomplete="new-password"
+              >
+            </div>
+          </div>
+
+          <div
+            v-if="errorMessage"
+            class="error-message"
           >
-            <i class="fas fa-circle-notch fa-spin"></i>
-          </span>
-          <span>{{ isLoading ? '登录中...' : '立即登录' }}</span>
-          <i v-if="!isLoading" class="fas fa-arrow-right btn-icon"></i>
-        </button>
+            <i class="fas fa-exclamation-circle" />
+            {{ errorMessage }}
+          </div>
 
-        <div class="guest-login-divider">
-          <span>OR</span>
-        </div>
+          <button
+            type="submit"
+            class="btn btn-primary login-btn"
+            :disabled="isLoading"
+          >
+            <span
+              v-if="isLoading"
+              class="loading-spinner"
+            >
+              <i class="fas fa-circle-notch fa-spin" />
+            </span>
+            <span>{{ isLoading ? '登录中...' : '立即登录' }}</span>
+            <i
+              v-if="!isLoading"
+              class="fas fa-arrow-right btn-icon"
+            />
+          </button>
 
-        <button
-          type="button"
-          class="btn btn-secondary guest-btn"
-          @click="handleGuestLogin"
-        >
-          <i class="fas fa-user-secret"></i>
-          <span>游客试用体验</span>
-        </button>
+          <div class="guest-login-divider">
+            <span>OR</span>
+          </div>
 
-        <div class="auth-links">
-          <router-link to="/register" class="link-item">
-            还没有账号？<span class="highlight">立即注册</span>
-          </router-link>
-          <router-link to="/forgot-password" class="link-item">
-            忘记密码？
-          </router-link>
-        </div>
-      </form>
+          <button
+            type="button"
+            class="btn btn-secondary guest-btn"
+            @click="handleGuestLogin"
+          >
+            <i class="fas fa-user-secret" />
+            <span>游客试用体验</span>
+          </button>
+
+          <div class="auth-links">
+            <router-link
+              to="/register"
+              class="link-item"
+            >
+              还没有账号？<span class="highlight">立即注册</span>
+            </router-link>
+            <router-link
+              to="/forgot-password"
+              class="link-item"
+            >
+              忘记密码？
+            </router-link>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
-</div>
 </template>
 
 <script setup>

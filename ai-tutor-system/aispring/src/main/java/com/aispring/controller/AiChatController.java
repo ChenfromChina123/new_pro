@@ -19,6 +19,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * AI聊天控制器
@@ -26,6 +27,7 @@ import java.util.Map;
  */
 @RestController
 @RequiredArgsConstructor
+@Slf4j
 public class AiChatController {
     
     private final AiChatService aiChatService;
@@ -71,7 +73,8 @@ public class AiChatController {
                     emitter.send(SseEmitter.event().data("[DONE]"));
                     emitter.complete();
                 } catch (IOException e) {
-                    emitter.completeWithError(e);
+                    log.warn("Failed to send rate limit error to client, client likely disconnected: {}", e.getMessage());
+                    // 客户端已断开，无需再 completeWithError，直接返回即可
                 }
                 return emitter;
             }

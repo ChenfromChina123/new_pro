@@ -1,28 +1,51 @@
 <template>
   <div class="chat-content-renderer">
-    <template v-for="(block, index) in parsedBlocks" :key="getBlockKey(block, index)">
+    <template
+      v-for="(block, index) in parsedBlocks"
+      :key="getBlockKey(block, index)"
+    >
       <!-- eslint-disable-next-line vue/no-v-html -->
-      <div v-if="block.type === 'markdown'" class="markdown-block" v-html="block.htmlContent"></div>
+      <div
+        v-if="block.type === 'markdown'"
+        class="markdown-block"
+        v-html="block.htmlContent"
+      />
 
       <!-- 如果解析到了 vocab 标签，我们不再直接平铺所有卡片，而是显示一个概览入口面板 -->
-      <div v-else-if="block.type === 'vocab-collection' && block.words.length > 0" class="vocab-collection-panel">
+      <div
+        v-else-if="block.type === 'vocab-collection' && block.words.length > 0"
+        class="vocab-collection-panel"
+      >
         <div class="panel-header">
-          <i class="fas fa-bullseye text-blue-500"></i>
+          <i class="fas fa-bullseye text-blue-500" />
           <span>你的专属词汇练习生成完毕（共 {{ block.words.length }} 词）</span>
         </div>
         <div class="panel-body">
           <div class="word-tags">
-            <span v-for="(w, idx) in block.words" :key="idx" class="word-tag">{{ w.word }}</span>
+            <span
+              v-for="(w, idx) in block.words"
+              :key="idx"
+              class="word-tag"
+            >{{ w.word }}</span>
           </div>
-          <button class="start-practice-btn" @click="openVocabModal(block.words)">
-            <i class="fas fa-play-circle"></i> 进入专注模式开始练习
+          <button
+            class="start-practice-btn"
+            @click="openVocabModal(block.words)"
+          >
+            <i class="fas fa-play-circle" /> 进入专注模式开始练习
           </button>
         </div>
       </div>
 
-      <VocabSkeleton v-else-if="block.type === 'vocab-skeleton'" :key="'skeleton'" />
+      <VocabSkeleton
+        v-else-if="block.type === 'vocab-skeleton'"
+        :key="'skeleton'"
+      />
     </template>
-    <span v-if="isStreaming" class="typing-cursor"></span>
+    <span
+      v-if="isStreaming"
+      class="typing-cursor"
+    />
 
     <!-- 专注模式弹窗 -->
     <Teleport to="body">

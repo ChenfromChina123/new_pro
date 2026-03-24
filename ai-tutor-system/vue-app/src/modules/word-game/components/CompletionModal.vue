@@ -1,10 +1,18 @@
 <template>
   <Transition name="fade">
-    <div v-if="show" class="modal-overlay" @click.self="emit('close')">
+    <div
+      v-if="show"
+      class="modal-overlay"
+      @click.self="emit('close')"
+    >
       <div class="modal-box">
         <div class="modal-header">
-          <div class="completion-icon">🎉</div>
-          <h2 class="modal-title">恭喜完成！</h2>
+          <div class="completion-icon">
+            🎉
+          </div>
+          <h2 class="modal-title">
+            恭喜完成！
+          </h2>
           <p class="modal-subtitle">
             {{ courseTitle }} · 共 {{ totalCount }} 题
           </p>
@@ -23,8 +31,18 @@
         </div>
 
         <div class="modal-actions">
-          <button class="btn btn-outline" @click="emit('again')">再练一遍</button>
-          <button class="btn btn-primary" @click="emit('back-to-list')">返回课程列表</button>
+          <button
+            class="btn btn-outline"
+            @click="emit('again')"
+          >
+            再练一遍
+          </button>
+          <button
+            class="btn btn-primary"
+            @click="emit('back-to-list')"
+          >
+            返回课程列表
+          </button>
         </div>
       </div>
     </div>

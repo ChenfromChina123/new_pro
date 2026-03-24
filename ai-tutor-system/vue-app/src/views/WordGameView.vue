@@ -1,28 +1,71 @@
 <template>
   <div class="word-game-view">
-    <div v-if="viewLoading" class="center-state">加载中...</div>
-    <div v-else-if="errorMessage" class="center-state">
+    <div
+      v-if="viewLoading"
+      class="center-state"
+    >
+      加载中...
+    </div>
+    <div
+      v-else-if="errorMessage"
+      class="center-state"
+    >
       <p>{{ errorMessage }}</p>
-      <button class="btn btn-primary" @click="reloadCurrentView">重试</button>
+      <button
+        class="btn btn-primary"
+        @click="reloadCurrentView"
+      >
+        重试
+      </button>
     </div>
 
     <template v-else-if="stage === 'packages'">
       <div class="top-bar">
         <div>
           <h2>单词记忆</h2>
-          <p class="sub-text">选择课程包，开始学习之旅</p>
+          <p class="sub-text">
+            选择课程包，开始学习之旅
+          </p>
         </div>
         <div class="actions">
-          <input v-model="search" class="search" placeholder="搜索课程包" @input="handleSearch" />
-          <button class="btn btn-outline" @click="showUpload = true">上传课程包</button>
+          <input
+            v-model="search"
+            class="search"
+            placeholder="搜索课程包"
+            @input="handleSearch"
+          >
+          <button
+            class="btn btn-outline"
+            @click="showUpload = true"
+          >
+            上传课程包
+          </button>
         </div>
       </div>
       <div class="package-list">
-        <button v-for="(pkg, index) in packages" :key="pkg.id" class="card package-item" @click="openPackage(pkg.id)">
-          <div class="pkg-rank" :class="{ 'rank-top3': index < 3 }">{{ index + 1 }}</div>
+        <button
+          v-for="(pkg, index) in packages"
+          :key="pkg.id"
+          class="card package-item"
+          @click="openPackage(pkg.id)"
+        >
+          <div
+            class="pkg-rank"
+            :class="{ 'rank-top3': index < 3 }"
+          >
+            {{ index + 1 }}
+          </div>
           <div class="pkg-icon-wrap">
-            <img v-if="isIconImage(pkg.icon)" :src="pkg.icon" alt="" class="pkg-icon-img" />
-            <span v-else class="pkg-icon">{{ pkg.icon || '📦' }}</span>
+            <img
+              v-if="isIconImage(pkg.icon)"
+              :src="pkg.icon"
+              alt=""
+              class="pkg-icon-img"
+            >
+            <span
+              v-else
+              class="pkg-icon"
+            >{{ pkg.icon || '📦' }}</span>
           </div>
           <div class="pkg-body">
             <div class="title-row">
@@ -32,19 +75,28 @@
             <p>{{ pkg.description }}</p>
             <small>{{ pkg.courseCount }} 课 · {{ pkg.totalQuestions }} 题 · {{ pkg.clickCount || 0 }} 点击</small>
           </div>
-          <div class="pkg-arrow">→</div>
+          <div class="pkg-arrow">
+            →
+          </div>
         </button>
       </div>
     </template>
 
     <template v-else-if="stage === 'courses'">
       <div class="top-bar">
-        <button class="btn btn-outline" @click="goPackages">← 课程包</button>
+        <button
+          class="btn btn-outline"
+          @click="goPackages"
+        >
+          ← 课程包
+        </button>
         <div class="courses-head">
           <h2>{{ activePackage?.name || '课程列表' }}</h2>
           <p class="sub-text">
             共 {{ courses.length }} 课
-            <template v-if="completedCoursesCount > 0"> · 已完成 {{ completedCoursesCount }} 课</template>
+            <template v-if="completedCoursesCount > 0">
+              · 已完成 {{ completedCoursesCount }} 课
+            </template>
           </p>
         </div>
       </div>
@@ -56,7 +108,9 @@
           :class="{ 'is-completed': isCourseCompleted(course.index), 'in-progress': getCourseProgressPercent(course.index, course.count) > 0 && !isCourseCompleted(course.index) }"
           @click="openGame(course.index)"
         >
-          <div class="course-badge">{{ String(course.index).padStart(2, '0') }}</div>
+          <div class="course-badge">
+            {{ String(course.index).padStart(2, '0') }}
+          </div>
           <div class="course-content-wrapper">
             <div class="course-main">
               <strong>{{ course.title }}</strong>
@@ -69,13 +123,21 @@
               v-if="getCourseProgressPercent(course.index, course.count) > 0 && !isCourseCompleted(course.index)"
               class="course-progress-bar"
             >
-              <div class="course-progress-fill" :style="{ width: `${getCourseProgressPercent(course.index, course.count)}%` }" />
+              <div
+                class="course-progress-fill"
+                :style="{ width: `${getCourseProgressPercent(course.index, course.count)}%` }"
+              />
             </div>
           </div>
-          <div class="course-arrow">{{ isCourseCompleted(course.index) ? '✓' : '→' }}</div>
+          <div class="course-arrow">
+            {{ isCourseCompleted(course.index) ? '✓' : '→' }}
+          </div>
         </button>
       </div>
-      <div v-if="courses.length > 16" class="scroll-tip">
+      <div
+        v-if="courses.length > 16"
+        class="scroll-tip"
+      >
         向上/向下滑动可查看更多课程
       </div>
     </template>
@@ -84,7 +146,12 @@
       <div class="game-page">
         <header class="game-header">
           <div class="header-inner">
-            <button class="btn btn-outline back-btn" @click="goCourses">课程列表</button>
+            <button
+              class="btn btn-outline back-btn"
+              @click="goCourses"
+            >
+              课程列表
+            </button>
             <div class="course-info">
               <span class="course-title">{{ activeCourseTitle }}</span>
               <span class="progress-text">{{ visibleIndex }} / {{ totalCount }}</span>
@@ -96,10 +163,16 @@
             >
               提示
             </button>
-            <div v-else class="hint-placeholder" />
+            <div
+              v-else
+              class="hint-placeholder"
+            />
           </div>
           <div class="progress-bar">
-            <div class="progress-fill" :style="{ width: progressPercent }" />
+            <div
+              class="progress-fill"
+              :style="{ width: progressPercent }"
+            />
           </div>
         </header>
 
@@ -112,17 +185,33 @@
                 @click="startGame"
                 @touchstart.passive="startGame"
               >
-                <p class="ready-hint">准备好了吗？</p>
-                <p class="ready-sub">点击或按任意键开始</p>
+                <p class="ready-hint">
+                  准备好了吗？
+                </p>
+                <p class="ready-sub">
+                  点击或按任意键开始
+                </p>
               </div>
             </Transition>
 
             <Transition name="fade">
-              <div v-if="gameStarted" class="playing-area">
-                <div v-if="!currentQuestion" class="center-state">暂无题目数据，请返回重试</div>
+              <div
+                v-if="gameStarted"
+                class="playing-area"
+              >
+                <div
+                  v-if="!currentQuestion"
+                  class="center-state"
+                >
+                  暂无题目数据，请返回重试
+                </div>
                 <template v-else-if="isQuestion()">
-                  <div class="chinese-hint">{{ currentQuestion.chinese }}</div>
-                  <div class="soundmark">{{ currentQuestion.soundmark }}</div>
+                  <div class="chinese-hint">
+                    {{ currentQuestion.chinese }}
+                  </div>
+                  <div class="soundmark">
+                    {{ currentQuestion.soundmark }}
+                  </div>
                   <TypingInput
                     ref="typingInputRef"
                     :english="currentQuestion.english"
@@ -152,20 +241,53 @@
       />
     </template>
 
-    <div v-if="showUpload" class="modal-mask" @click.self="closeUpload">
+    <div
+      v-if="showUpload"
+      class="modal-mask"
+      @click.self="closeUpload"
+    >
       <div class="modal-box">
         <h3>上传课程包</h3>
-        <input v-model="uploadForm.name" class="search" placeholder="课程包名称" />
-        <input v-model="uploadForm.description" class="search" placeholder="简介" />
-        <input v-model="uploadForm.level" class="search" placeholder="难度" />
+        <input
+          v-model="uploadForm.name"
+          class="search"
+          placeholder="课程包名称"
+        >
+        <input
+          v-model="uploadForm.description"
+          class="search"
+          placeholder="简介"
+        >
+        <input
+          v-model="uploadForm.level"
+          class="search"
+          placeholder="难度"
+        >
         <label class="check">
-          <input v-model="uploadForm.isPublic" type="checkbox" />
+          <input
+            v-model="uploadForm.isPublic"
+            type="checkbox"
+          >
           公开课程包
         </label>
-        <textarea v-model="uploadRaw" class="raw" placeholder="粘贴JSON数组：[{english,chinese,soundmark}]" />
+        <textarea
+          v-model="uploadRaw"
+          class="raw"
+          placeholder="粘贴JSON数组：[{english,chinese,soundmark}]"
+        />
         <div class="answer-actions">
-          <button class="btn btn-outline" @click="closeUpload">取消</button>
-          <button class="btn btn-primary" @click="submitUpload">提交</button>
+          <button
+            class="btn btn-outline"
+            @click="closeUpload"
+          >
+            取消
+          </button>
+          <button
+            class="btn btn-primary"
+            @click="submitUpload"
+          >
+            提交
+          </button>
         </div>
       </div>
     </div>

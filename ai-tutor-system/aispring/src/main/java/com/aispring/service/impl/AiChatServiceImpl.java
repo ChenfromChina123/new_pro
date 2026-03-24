@@ -224,7 +224,12 @@ public class AiChatServiceImpl implements AiChatService {
                     .name("message");
                 emitter.send(event);
             } catch (java.io.IOException e) {
-                throw new RuntimeException("Failed to send chat response", e);
+                // 客户端断开连接，记录警告并停止发送
+                log.warn("Client disconnected during SSE stream (sendChatResponse): {}", e.getMessage());
+                // 这里不需要抛出异常，因为客户端已经断开，后续发送也无意义
+                // 可以选择在这里 complete 掉 emitter，或者依赖外部的 complete/onError 机制
+                // emitter.completeWithError(e); // 如果希望立即终止，可以这样处理
+                return; // 停止继续发送
             }
         }
     }
