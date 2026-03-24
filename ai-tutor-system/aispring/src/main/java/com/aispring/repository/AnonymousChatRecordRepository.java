@@ -3,6 +3,8 @@ package com.aispring.repository;
 import com.aispring.entity.AnonymousChatRecord;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -30,12 +32,14 @@ public interface AnonymousChatRecordRepository extends JpaRepository<AnonymousCh
     /**
      * 根据会话ID分页查询聊天记录，按创建时间倒序
      */
-    List<AnonymousChatRecord> findBySessionIdOrderByCreatedAtDesc(String sessionId, int offset, int limit);
+    @Query("SELECT a FROM AnonymousChatRecord a WHERE a.sessionId = :sessionId ORDER BY a.createdAt DESC LIMIT :limit OFFSET :offset")
+    List<AnonymousChatRecord> findBySessionIdOrderByCreatedAtDesc(@Param("sessionId") String sessionId, @Param("offset") int offset, @Param("limit") int limit);
     
     /**
      * 根据会话ID和IP地址分页查询聊天记录，按创建时间倒序
      */
-    List<AnonymousChatRecord> findBySessionIdAndIpAddressOrderByCreatedAtDesc(String sessionId, String ipAddress, int offset, int limit);
+    @Query("SELECT a FROM AnonymousChatRecord a WHERE a.sessionId = :sessionId AND a.ipAddress = :ipAddress ORDER BY a.createdAt DESC LIMIT :limit OFFSET :offset")
+    List<AnonymousChatRecord> findBySessionIdAndIpAddressOrderByCreatedAtDesc(@Param("sessionId") String sessionId, @Param("ipAddress") String ipAddress, @Param("offset") int offset, @Param("limit") int limit);
     
     /**
      * 统计会话的消息数量
