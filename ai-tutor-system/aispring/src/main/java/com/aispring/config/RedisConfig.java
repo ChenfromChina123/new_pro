@@ -10,6 +10,12 @@ import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 /**
  * 缓存配置类
@@ -20,7 +26,7 @@ import org.springframework.context.annotation.Profile;
  */
 @Configuration
 @EnableCaching
-@Profile("!prod") // 非生产环境使用内存缓存
+@Profile("!prod")
 public class RedisConfig {
     
     /**
@@ -39,23 +45,44 @@ public class RedisConfig {
     }
     
     /**
-     * 为开发环境提供一个 Mock 的 RedisTemplate，防止启动报错
+     * Redis 连接工厂
+     * 配置本地 Redis 连接
      */
     @Bean
-    public org.springframework.data.redis.core.RedisTemplate<String, Object> redisTemplate() {
-        org.springframework.data.redis.core.RedisTemplate<String, Object> template = new org.springframework.data.redis.core.RedisTemplate<>();
-        // 这里只是为了满足依赖注入，在开发环境下不会真正连接 Redis
-        template.setConnectionFactory(new org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory());
+    public RedisConnectionFactory redisConnectionFactory() {
+        LettuceConnectionFactory factory = new LettuceConnectionFactory("localhost", 6379);
+        factory.afterPropertiesSet();
+        return factory;
+    }
+    
+    /**
+     * RedisTemplate 配置
+     */
+    @Bean
+    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory redisConnectionFactory, ObjectMapper objectMapper) {
+        RedisTemplate<String, Object> template = new RedisTemplate<>();
+        template.setConnectionFactory(redisConnectionFactory);
+        
+        GenericJackson2JsonRedisSerializer jsonSerializer = new GenericJackson2JsonRedisSerializer(objectMapper);
+        StringRedisSerializer stringSerializer = new StringRedisSerializer();
+        
+        template.setKeySerializer(stringSerializer);
+        template.setHashKeySerializer(stringSerializer);
+        template.setValueSerializer(jsonSerializer);
+        template.setHashValueSerializer(jsonSerializer);
+        
+        template.afterPropertiesSet();
         return template;
     }
 
     /**
-     * 为开发环境提供一个 Mock 的 StringRedisTemplate，防止启动报错
+     * StringRedisTemplate 配置
      */
     @Bean
-    public org.springframework.data.redis.core.StringRedisTemplate stringRedisTemplate() {
-        org.springframework.data.redis.core.StringRedisTemplate template = new org.springframework.data.redis.core.StringRedisTemplate();
-        template.setConnectionFactory(new org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory());
+    public StringRedisTemplate stringRedisTemplate(RedisConnectionFactory redisConnectionFactory) {
+        StringRedisTemplate template = new StringRedisTemplate();
+        template.setConnectionFactory(redisConnectionFactory);
+        template.afterPropertiesSet();
         return template;
     }
     
@@ -77,4 +104,3 @@ public class RedisConfig {
         return objectMapper;
     }
 }
-
