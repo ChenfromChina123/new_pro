@@ -6,10 +6,8 @@ import com.aispring.service.CloudDiskService;
 import com.aispring.dto.response.ApiResponse;
 import com.aispring.security.CustomUserDetails;
 import com.aispring.utils.FileUtils;
-import com.fasterxml.jackson.annotation.JsonAlias;
-import lombok.Data;
+import com.aispring.controller.dto.*;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -31,7 +29,7 @@ import java.util.List;
 
 /**
  * 云盘控制器
- * 对应Python: app.py中的/api/cloud_disk端点
+ * 重构后：移除内部 DTO 类，使用独立的 DTO 文件
  */
 @RestController
 @RequestMapping("/api/cloud_disk")
@@ -39,59 +37,9 @@ import java.util.List;
 public class CloudDiskController {
     
     private final CloudDiskService cloudDiskService;
-    
-    // DTO类
-    @Data
-    public static class CreateFolderRequest {
-        @NotBlank
-        @JsonAlias({"folderName","folder_name"})
-        private String folderName;
-        @JsonAlias({"folderPath","folder_path"})
-        private String folderPath;
-        @JsonAlias({"parentId","parent_id"})
-        private Long parentId;
-    }
-    
-    @Data
-    public static class MoveFileRequest {
-        private Long targetFolderId;
-        private String targetPath;
-    }
-    
-    @Data
-    public static class RenameFolderRequest {
-        @NotBlank
-        @JsonAlias({"newName","new_name"})
-        private String newName;
-    }
-
-    @Data
-    public static class RenameFileRequest {
-        @NotBlank
-        @JsonAlias({"newName","new_name"})
-        private String newName;
-    }
-    
-    @Data
-    public static class ResolveRenameRequest {
-        @JsonAlias({"action"})
-        private String action;
-        @NotBlank
-        @JsonAlias({"finalName","final_name"})
-        private String finalName;
-    }
-    
-    @Data
-    public static class FileContentRequest {
-        @NotBlank
-        private String content;
-    }
 
     /**
      * 获取文件内容
-     * @param fileId 文件ID
-     * @param customUserDetails 当前用户
-     * @return 文件文本内容
      */
     @GetMapping("/content/{fileId}")
     public ResponseEntity<ApiResponse<String>> getFileContent(
@@ -115,10 +63,6 @@ public class CloudDiskController {
 
     /**
      * 更新文件内容
-     * @param fileId 文件ID
-     * @param request 包含新内容的请求体
-     * @param customUserDetails 当前用户
-     * @return 响应结果
      */
     @PutMapping("/content/{fileId}")
     public ResponseEntity<ApiResponse<Void>> updateFileContent(
@@ -143,15 +87,12 @@ public class CloudDiskController {
 
     /**
      * 初始化用户文件夹结构
-     * Python: POST /api/cloud_disk/init-folder-structure
      */
     @PostMapping("/init-folder-structure")
     public ResponseEntity<ApiResponse<Void>> initFolderStructure(
             @AuthenticationPrincipal CustomUserDetails customUserDetails) {
-        
         Long userId = customUserDetails.getUser().getId();
         cloudDiskService.initUserFolderStructure(userId);
-        
         return ResponseEntity.ok(ApiResponse.success("文件夹结构初始化成功", null));
     }
 
@@ -161,30 +102,24 @@ public class CloudDiskController {
     @GetMapping("/quota")
     public ResponseEntity<ApiResponse<CloudDiskService.QuotaInfo>> getQuota(
             @AuthenticationPrincipal CustomUserDetails customUserDetails) {
-        
         Long userId = customUserDetails.getUser().getId();
         CloudDiskService.QuotaInfo quota = cloudDiskService.getQuota(userId);
-        
         return ResponseEntity.ok(ApiResponse.success("获取存储配额成功", quota));
     }
     
     /**
      * 获取文件夹树
-     * Python: GET /api/cloud_disk/folders
      */
     @GetMapping("/folders")
     public ResponseEntity<ApiResponse<List<UserFolder>>> getFolders(
             @AuthenticationPrincipal CustomUserDetails customUserDetails) {
-        
         Long userId = customUserDetails.getUser().getId();
         List<UserFolder> folders = cloudDiskService.getUserFolders(userId);
-        
         return ResponseEntity.ok(ApiResponse.success("获取文件夹树成功", folders));
     }
     
     /**
      * 创建文件夹
-     * Python: POST /api/cloud_disk/create-folder
      */
     @PostMapping("/create-folder")
     public ResponseEntity<ApiResponse<UserFolder>> createFolder(
@@ -211,22 +146,18 @@ public class CloudDiskController {
     
     /**
      * 删除文件夹
-     * Python: POST /api/cloud_disk/delete-folder
      */
     @PostMapping("/delete-folder")
     public ResponseEntity<ApiResponse<Void>> deleteFolder(
             @RequestParam Long folderId,
             @AuthenticationPrincipal CustomUserDetails customUserDetails) throws IOException {
-        
         Long userId = customUserDetails.getUser().getId();
         cloudDiskService.deleteFolder(userId, folderId);
-        
         return ResponseEntity.ok(ApiResponse.success("文件夹已删除", null));
     }
     
     /**
      * 上传文件
-     * Python: POST /api/cloud_disk/upload
      */
     @PostMapping("/upload")
     public ResponseEntity<ApiResponse<UserFile>> uploadFile(
@@ -235,10 +166,8 @@ public class CloudDiskController {
             @RequestParam String folderPath,
             @RequestParam(required = false, defaultValue = "RENAME") String conflictStrategy,
             @AuthenticationPrincipal CustomUserDetails customUserDetails) throws IOException {
-        
         Long userId = customUserDetails.getUser().getId();
         UserFile userFile = cloudDiskService.uploadFile(userId, folderId, folderPath, file, conflictStrategy);
-        
         return ResponseEntity.ok(ApiResponse.success("文件上传成功", userFile));
     }
 
@@ -265,17 +194,14 @@ public class CloudDiskController {
     
     /**
      * 获取文件列表
-     * Python: GET /api/cloud_disk/files
      */
     @GetMapping("/files")
     public ResponseEntity<ApiResponse<List<UserFile>>> getFiles(
             @RequestParam(required = false) Long folderId,
             @RequestParam(required = false) String folderPath,
             @AuthenticationPrincipal CustomUserDetails customUserDetails) {
-        
         Long userId = customUserDetails.getUser().getId();
         List<UserFile> files = cloudDiskService.getUserFiles(userId, folderId, folderPath);
-        
         return ResponseEntity.ok(ApiResponse.success(files));
     }
 
@@ -317,20 +243,16 @@ public class CloudDiskController {
     
     /**
      * 下载文件
-     * Python: GET /api/cloud_disk/download/{file_id}
-     * 支持 mode 参数：inline (预览) 或 attachment (下载，默认)
      */
     @GetMapping("/download/{fileId}")
     public ResponseEntity<?> downloadFile(
             @PathVariable Long fileId,
             @RequestParam(required = false) String mode,
             @AuthenticationPrincipal CustomUserDetails customUserDetails) {
-        
         try {
             Long userId = customUserDetails.getUser().getId();
             Path filePath = cloudDiskService.downloadFile(userId, fileId);
             
-            // 再次检查文件是否存在
             if (!Files.exists(filePath) || !Files.isRegularFile(filePath)) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(ApiResponse.error(HttpStatus.NOT_FOUND.value(), "文件不存在或已被删除"));
@@ -339,7 +261,6 @@ public class CloudDiskController {
             Resource resource;
             try {
                 resource = new UrlResource(filePath.toUri());
-                // 检查资源是否存在和可读
                 if (!resource.exists() || !resource.isReadable()) {
                     return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(ApiResponse.error(HttpStatus.NOT_FOUND.value(), "文件不可访问"));
@@ -349,35 +270,24 @@ public class CloudDiskController {
                     .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "文件路径无效: " + e.getMessage()));
             }
             
-            // 检测文件的 MIME 类型
             String contentType = FileUtils.getContentType(filePath);
             String filename = filePath.getFileName().toString();
             
-            // 针对 APK 文件，强制使用正确的 MIME 类型
             if (filename.toLowerCase().endsWith(".apk")) {
                 contentType = "application/vnd.android.package-archive";
             }
             
-            // 根据 mode 参数决定是内联预览还是下载
-            String disposition = "attachment";
-            if ("inline".equalsIgnoreCase(mode)) {
-                disposition = "inline";
-            }
-            
+            String disposition = "inline".equalsIgnoreCase(mode) ? "inline" : "attachment";
             String encodedFilename = URLEncoder.encode(filename, StandardCharsets.UTF_8).replace("+", "%20");
             
             HttpHeaders headers = new HttpHeaders();
             headers.set(HttpHeaders.CONTENT_DISPOSITION, disposition + "; filename=\"" + encodedFilename + "\"; filename*=UTF-8''" + encodedFilename);
             headers.set(HttpHeaders.CONTENT_TYPE, contentType);
-            // 禁止浏览器 MIME 嗅探
             headers.set("X-Content-Type-Options", "nosniff");
             headers.setContentLength(resource.contentLength());
-            // 支持断点续传
             headers.set("Accept-Ranges", "bytes");
 
-            return ResponseEntity.ok()
-                .headers(headers)
-                .body(resource);
+            return ResponseEntity.ok().headers(headers).body(resource);
                 
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -421,8 +331,7 @@ public class CloudDiskController {
             String encodedFilename = URLEncoder.encode(name + ".zip", StandardCharsets.UTF_8);
             return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .header(HttpHeaders.CONTENT_DISPOSITION, 
-                    "attachment; filename=\"" + encodedFilename + "\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + encodedFilename + "\"")
                 .body(resource);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -438,39 +347,31 @@ public class CloudDiskController {
     
     /**
      * 删除文件
-     * Python: DELETE /api/cloud_disk/delete/{file_id}
      */
     @DeleteMapping("/delete/{fileId}")
     public ResponseEntity<ApiResponse<Void>> deleteFile(
             @PathVariable Long fileId,
             @AuthenticationPrincipal CustomUserDetails customUserDetails) throws IOException {
-        
         Long userId = customUserDetails.getUser().getId();
         cloudDiskService.deleteFile(userId, fileId);
-        
         return ResponseEntity.ok(ApiResponse.success("文件已删除", null));
     }
     
     /**
      * 移动文件
-     * Python: PUT /api/cloud_disk/move-file
      */
     @PutMapping("/move-file")
     public ResponseEntity<ApiResponse<UserFile>> moveFile(
             @RequestParam Long fileId,
             @RequestBody MoveFileRequest request,
             @AuthenticationPrincipal CustomUserDetails customUserDetails) throws IOException {
-        
         Long userId = customUserDetails.getUser().getId();
-        UserFile file = cloudDiskService.moveFile(
-            userId, fileId, request.getTargetFolderId(), request.getTargetPath());
-        
+        UserFile file = cloudDiskService.moveFile(userId, fileId, request.getTargetFolderId(), request.getTargetPath());
         return ResponseEntity.ok(ApiResponse.success("文件移动成功", file));
     }
     
     /**
      * 重命名文件夹
-     * Python: PUT /api/cloud_disk/rename-folder
      */
     @PutMapping("/rename-folder")
     public ResponseEntity<?> renameFolder(
@@ -519,4 +420,3 @@ public class CloudDiskController {
         return ResponseEntity.ok(ApiResponse.success("迁移完成", null));
     }
 }
-
