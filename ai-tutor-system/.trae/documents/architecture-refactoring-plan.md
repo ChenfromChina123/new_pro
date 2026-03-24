@@ -339,6 +339,46 @@ utils/sftp/
 - ✅ `ResolveRenameRequest.java` - 解决重命名冲突请求 DTO
 - ✅ `FileContentRequest.java` - 文件内容请求 DTO
 
+**SFTPServiceImpl.java 拆分（515行 → 143行）**：
+- ✅ `SftpTransferService.java` - 文件传输服务（上传/下载）
+- ✅ `SftpDirectoryService.java` - 目录操作服务（列表/创建/删除）
+- ✅ `SFTPServiceImpl.java` - 门面服务（重构后143行）
+
+---
+
+## 重构进度总结
+
+### 已完成任务（5项）
+
+| 项目 | 文件 | 原行数 | 重构后行数 | 新增文件数 |
+|------|------|--------|------------|------------|
+| aispring | AiChatServiceImpl.java | 1099 | 401 | 5 |
+| vue-app | ChatView.vue | 4501 | - | 9 |
+| vue-app | LanguageLearningView.vue | 4269 | - | 3 |
+| aispring | CloudDiskController.java | 521 | 422 | 6 |
+| aispring | SFTPServiceImpl.java | 515 | 143 | 2 |
+
+### 待完成任务（7项）
+
+| 优先级 | 项目 | 文件 | 行数 | 状态 |
+|--------|------|------|------|------|
+| P1 | aispring | WordGameServiceImpl.java | 477 | ⏳ 待开始 |
+| P1 | aispring | ChatRecordService.java | 486 | ⏳ 待开始 |
+| P1 | vue-app | AgentView.vue | 1553 | ⏳ 待开始 |
+| P2 | aispring | AdminController.java | 422 | ⏳ 待开始 |
+| P2 | vue-app | SFTPManagerView.vue | 735 | ⏳ 待开始 |
+| P2 | vue-app | chat.js | 632 | ⏳ 待开始 |
+| P3 | vue-app | sftp.js | 455 | ⏳ 待开始 |
+
+---
+
+## 重构收益
+
+1. **可维护性提升**：每个组件职责单一，修改影响范围可控
+2. **可复用性增强**：拆分后的组件可在其他页面复用
+3. **代码行数控制**：核心文件行数大幅减少
+4. **团队协作**：多人可并行开发不同组件
+
 ### 4.2 阶段二：中高优先级文件（P1）
 
 **预计工作量**：2-3 天
