@@ -32,7 +32,12 @@ public class ModelCapabilityServiceImpl implements ModelCapabilityService {
      * 初始化默认模型能力配置
      */
     private void initializeDefaultCapabilities() {
-        // DeepSeek 模型
+        // DeepSeek 模型（阿里百炼API格式）
+        capabilityCache.put("deepseek:deepseek-v3", ModelCapability.deepseekChat());
+        capabilityCache.put("deepseek:deepseek-r1", ModelCapability.deepseekReasoner());
+        capabilityCache.put("deepseek:deepseek-coder", ModelCapability.deepseekChat());
+        
+        // 兼容旧名称
         capabilityCache.put("deepseek:deepseek-chat", ModelCapability.deepseekChat());
         capabilityCache.put("deepseek:deepseek-reasoner", ModelCapability.deepseekReasoner());
         

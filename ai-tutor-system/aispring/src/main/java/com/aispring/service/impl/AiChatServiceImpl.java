@@ -169,7 +169,7 @@ public class AiChatServiceImpl implements AiChatService {
                                        StringBuilder fullReasoning) throws IOException {
         String maskedPrompt = SensitiveDataMasker.mask(prompt);
         StringBuilder fullContent = new StringBuilder();
-        boolean enableThinking = "deepseek-reasoner".equals(model) || "deepseek-r1".equals(model);
+        boolean enableThinking = "deepseek-reasoner".equals(model) || "deepseek-r1".equals(model) || model.contains("r1");
 
         // 构建系统提示词
         String enhancedSystemPrompt = buildEnhancedSystemPrompt(systemPrompt);
@@ -195,7 +195,7 @@ public class AiChatServiceImpl implements AiChatService {
 
         // 记录审计
         long responseTimeMs = System.currentTimeMillis() - startMs;
-        tokenUsageAuditService.recordEstimated("deepseek", "deepseek-v3.2", userId, sessionId,
+        tokenUsageAuditService.recordEstimated("deepseek", "deepseek-v3", userId, sessionId,
                                                prompt.length(), fullContent.length(), responseTimeMs, true);
 
         return fullContent.toString();
@@ -322,7 +322,7 @@ public class AiChatServiceImpl implements AiChatService {
             }
 
             long responseTimeMs = System.currentTimeMillis() - startMs;
-            tokenUsageAuditService.recordEstimated("deepseek", "deepseek-v3.2", userId, sessionId,
+            tokenUsageAuditService.recordEstimated("deepseek", "deepseek-v3", userId, sessionId,
                     prompt.length(), content.length(), responseTimeMs, false);
 
             return content;

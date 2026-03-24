@@ -66,7 +66,7 @@ public class AiVocabServiceImpl implements AiVocabService {
         String prompt = String.format("目标文本：%s\n实际发音识别结果：%s\n基础相似度得分：%d", targetText, recognizedText, baseScore);
 
         // 4. 调用大模型
-        String aiResponse = aiChatService.ask(prompt, null, "deepseek-v3.2", userId, systemPrompt, null);
+        String aiResponse = aiChatService.ask(prompt, null, "deepseek-v3", userId, systemPrompt, null);
         
         Map<String, Object> result = parseJsonToMap(aiResponse, recognizedText, targetText, "speech");
         
@@ -106,7 +106,7 @@ public class AiVocabServiceImpl implements AiVocabService {
         String prompt = String.format("目标单词：%s\n用户错误拼写：%s", targetWord, userSpelling);
 
         // 调用大模型
-        String aiResponse = aiChatService.ask(prompt, null, "deepseek-v3.2", userId, systemPrompt, null);
+        String aiResponse = aiChatService.ask(prompt, null, "deepseek-v3", userId, systemPrompt, null);
 
         return parseJsonToMap(aiResponse, userSpelling, targetWord, "spelling");
     }

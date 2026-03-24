@@ -19,7 +19,7 @@ public class AgentServiceImpl implements AgentService {
     private final com.aispring.service.SystemPromptService promptService;
 
     // 默认使用的模型
-    private static final String DEFAULT_MODEL = "deepseek-chat";
+    private static final String DEFAULT_MODEL = "deepseek-v3";
 
     /**
      * 根据用户想法识别领域并生成细化问题

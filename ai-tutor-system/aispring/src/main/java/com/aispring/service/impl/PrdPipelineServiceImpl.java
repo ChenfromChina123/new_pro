@@ -18,7 +18,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class PrdPipelineServiceImpl implements PrdPipelineService {
 
-    private static final String DEFAULT_MODEL = "deepseek-chat";
+    private static final String DEFAULT_MODEL = "deepseek-v3";
     private static final int MAX_REVISIONS = 3;
     private static final String APPROVAL_PHRASE = "No issues found.";
 

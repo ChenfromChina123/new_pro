@@ -430,8 +430,8 @@ public class VocabularyService {
             wordsStr, language == null ? "英语" : language
         );
 
-        // 使用新的 ask 方法签名，不传入 model 参数，默认使用 deepseek-chat
-        String response = aiChatService.ask(prompt, null, "deepseek-chat", null, null);
+        // 使用新的 ask 方法签名，不传入 model 参数，默认使用 deepseek-v3
+        String response = aiChatService.ask(prompt, null, "deepseek-v3", null, null);
         if (response == null) return new ArrayList<>();
 
         // Clean response (remove markdown code blocks if any)
@@ -512,7 +512,7 @@ public class VocabularyService {
             "如果文章包含标题，请以 'Title: ' 开头放在第一行。",
             finalTopic, languageName, targetWords, normalizedDifficulty, vocabularyList
         );
-        String content = aiChatService.ask(prompt, null, "deepseek-chat", userId, null);
+        String content = aiChatService.ask(prompt, null, "deepseek-v3", userId, null);
         if (content != null) {
             content = content.replaceAll("```markdown", "").replaceAll("```", "").trim();
             if (content.startsWith("Title:")) {
@@ -617,7 +617,7 @@ public class VocabularyService {
             "仅返回标题文本。不要添加引号或任何 Markdown 格式。",
             wordsStr
         );
-        String response = aiChatService.ask(prompt, null, "deepseek-chat", userId, null);
+        String response = aiChatService.ask(prompt, null, "deepseek-v3", userId, null);
         if (response == null) return "学习文章";
         String cleaned = response.replaceAll("```", "").trim();
         cleaned = cleaned.replaceAll("^\"|\"$", "");
@@ -632,7 +632,7 @@ public class VocabularyService {
             "根据这些单词：[%s]，提供一个简短的文章标题（不超过 20 个字符）。仅返回标题文本。",
             wordsStr
         );
-        String response = aiChatService.ask(prompt, null, "deepseek-chat", userId, null);
+        String response = aiChatService.ask(prompt, null, "deepseek-v3", userId, null);
         if (response == null) return "学习文章";
         String cleaned = response.replaceAll("```", "").trim();
         cleaned = cleaned.replaceAll("^\"|\"$", "");
@@ -649,7 +649,7 @@ public class VocabularyService {
             "不要包含任何 Markdown 格式。不要包含 ** 标记，保持单词为普通文本。 " +
             "仅返回中文翻译文本。\n\n" +
             content;
-        String response = aiChatService.ask(prompt, null, "deepseek-chat", userId, null);
+        String response = aiChatService.ask(prompt, null, "deepseek-v3", userId, null);
         if (response == null) return null;
         String cleaned = response.replaceAll("```markdown", "").replaceAll("```", "").trim();
         cleaned = cleaned.replace("**", "");
