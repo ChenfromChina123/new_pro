@@ -88,12 +88,11 @@ public class AiChatServiceImpl implements AiChatService {
             WordDictRepository wordDictRepository,
             UserWordProgressRepository userWordProgressRepository,
             SemanticSearchService semanticSearchService,
-            @Value("${ai.deepseek.api-key:}") String deepseekApiKey,
-            @Value("${ai.deepseek.api-url:}") String deepseekApiUrl,
-            @Value("${ai.max-tokens:4096}") Integer maxTokens,
-            @Value("${ai.context.max-history-messages:30}") Integer maxHistoryMessages,
-            @Value("${ai.context.max-history-chars:20000}") Integer maxHistoryChars,
-            @Value("${ai.context.max-tool-result-chars:8000}") Integer maxToolResultChars,
+            DeepSeekApiClient deepSeekApiClient,
+            ChatHistoryBuilder chatHistoryBuilder,
+            SearchInstructionHandler searchInstructionHandler,
+            SessionMetadataService sessionMetadataService,
+            SseChatHandler sseChatHandler,
             @org.springframework.beans.factory.annotation.Qualifier("chatExecutor") ExecutorService chatExecutor) {
 
         this.chatClientProvider = chatClientProvider;
@@ -106,41 +105,13 @@ public class AiChatServiceImpl implements AiChatService {
         this.userWordProgressRepository = userWordProgressRepository;
         this.chatExecutor = chatExecutor;
 
-        this.deepSeekApiClient = new DeepSeekApiClient(deepseekApiKey, deepseekApiUrl, maxTokens);
-        this.chatHistoryBuilder = new ChatHistoryBuilder(chatRecordRepository, anonymousChatRecordRepository,
-                                                          maxHistoryMessages, maxHistoryChars, maxToolResultChars);
-        this.searchInstructionHandler = new SearchInstructionHandler(searchService, semanticSearchService, wordDictRepository);
-        this.sseChatHandler = new SseChatHandler();
-
-        initDeepSeekClient(deepseekApiKey, deepseekApiUrl);
-        this.sessionMetadataService = new SessionMetadataService(deepseekChatClient, chatRecordService, chatHistoryBuilder);
+        this.deepSeekApiClient = deepSeekApiClient;
+        this.chatHistoryBuilder = chatHistoryBuilder;
+        this.searchInstructionHandler = searchInstructionHandler;
+        this.sessionMetadataService = sessionMetadataService;
+        this.sseChatHandler = sseChatHandler;
 
         log.info("AiChatServiceImpl initialized with refactored components");
-    }
-
-    /**
-     * 初始化 DeepSeek 客户端
-     */
-    private void initDeepSeekClient(String apiKey, String apiUrl) {
-        if (apiKey != null && !apiKey.isEmpty() && apiUrl != null && !apiUrl.isEmpty()) {
-            try {
-                org.springframework.ai.openai.api.OpenAiApi deepseekApi =
-                    new org.springframework.ai.openai.api.OpenAiApi(apiUrl, apiKey);
-                org.springframework.ai.openai.OpenAiChatOptions deepseekOptions =
-                    org.springframework.ai.openai.OpenAiChatOptions.builder()
-                        .withModel("deepseek-v3.2")
-                        .withTemperature(0.7f)
-                        .withMaxTokens(maxTokens)
-                        .build();
-                org.springframework.ai.openai.OpenAiChatClient client =
-                    new org.springframework.ai.openai.OpenAiChatClient(deepseekApi, deepseekOptions);
-                this.deepseekChatClient = client;
-                this.deepseekStreamingChatClient = client;
-                log.info("DeepSeek AI client initialized successfully");
-            } catch (Exception e) {
-                log.error("Failed to initialize DeepSeek AI client: {}", e.getMessage());
-            }
-        }
     }
 
     @PreDestroy
