@@ -24,7 +24,6 @@ import java.util.regex.Matcher;
 @Slf4j
 public class SearchInstructionHandler {
 
-    private static final ObjectMapper objectMapper = new ObjectMapper();
     private static final Pattern SEARCH_PATTERN = Pattern.compile(
         "<search(?:\\s+site=\"([^\"]+)\")?>(.*?)</search>", Pattern.DOTALL);
     private static final Pattern VOCAB_PATTERN = Pattern.compile(
@@ -144,7 +143,7 @@ public class SearchInstructionHandler {
      * 构建搜索状态消息
      */
     public String buildSearchStatusMessage(String keyword, String site) {
-        String searchDisplay = site != null && !site.isEmpty() 
+        String searchDisplay = site != null && !site.isEmpty()
             ? keyword + " (在 " + site + " 中)" : keyword;
         return "\n\n*正在为您搜索: " + searchDisplay + "*...\n\n";
     }

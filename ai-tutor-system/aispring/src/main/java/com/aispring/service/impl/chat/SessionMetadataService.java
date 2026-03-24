@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -33,7 +32,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Slf4j
 public class SessionMetadataService {
 
-    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
     private static final AtomicInteger BG_THREAD_SEQ = new AtomicInteger(1);
 
     private final ChatClient deepseekChatClient;
@@ -45,18 +44,16 @@ public class SessionMetadataService {
     private Integer maxTokens;
 
     public SessionMetadataService(
+            ObjectMapper objectMapper,
             ChatClient deepseekChatClient,
             ChatRecordService chatRecordService,
-            ChatHistoryBuilder chatHistoryBuilder) {
+            ChatHistoryBuilder chatHistoryBuilder,
+            @org.springframework.beans.factory.annotation.Qualifier("backgroundExecutor") ExecutorService backgroundExecutor) {
+        this.objectMapper = objectMapper;
         this.deepseekChatClient = deepseekChatClient;
         this.chatRecordService = chatRecordService;
         this.chatHistoryBuilder = chatHistoryBuilder;
-        this.backgroundExecutor = Executors.newFixedThreadPool(2, r -> {
-            Thread t = new Thread(r);
-            t.setName("ai-bg-" + BG_THREAD_SEQ.getAndIncrement());
-            t.setDaemon(true);
-            return t;
-        });
+        this.backgroundExecutor = backgroundExecutor;
     }
 
     /**
@@ -67,7 +64,7 @@ public class SessionMetadataService {
      * @param emitter SSE 发射器（可为 null）
      * @param model 模型名称
      */
-    public void generateTitleAndSuggestionsAsync(String userPrompt, String sessionId, 
+    public void generateTitleAndSuggestionsAsync(String userPrompt, String sessionId,
                                                   Long userId, SseEmitter emitter, String model) {
         backgroundExecutor.execute(() -> {
             try {
@@ -81,7 +78,7 @@ public class SessionMetadataService {
     /**
      * 生成标题和建议的核心逻辑
      */
-    private void generateTitleAndSuggestions(String userPrompt, String sessionId, 
+    private void generateTitleAndSuggestions(String userPrompt, String sessionId,
                                              Long userId, SseEmitter emitter, String model) throws Exception {
         if (deepseekChatClient == null) return;
         if (sessionId == null || sessionId.isEmpty()) return;
@@ -118,9 +115,9 @@ public class SessionMetadataService {
      */
     private boolean checkNeedTitle(String sessionId) {
         Optional<ChatSession> sessionOpt = chatRecordService.getChatSession(sessionId);
-        return sessionOpt.isEmpty() || 
+        return sessionOpt.isEmpty() ||
                sessionOpt.get().getTitle() == null ||
-               "新对话".equals(sessionOpt.get().getTitle()) || 
+               "新对话".equals(sessionOpt.get().getTitle()) ||
                sessionOpt.get().getTitle().isEmpty();
     }
 
@@ -136,11 +133,11 @@ public class SessionMetadataService {
           .append("2) 不要以 AI 口吻表达（如"我可以为你…/我还能…"），不要自称"AI/助手"；\n")
           .append("3) 不要复述历史问题，不要照抄历史原句；\n")
           .append("4) 每个问题 8~25 个汉字，末尾使用"？"。\n");
-        
+
         if (needTitle) {
             sb.append("由于这是会话的第一条消息，请同时生成一个简短的标题（不超过15个字）。\n");
         }
-        
+
         sb.append("请严格按照以下 JSON 格式返回，不要包含任何其他文字：\n")
           .append("{\n");
         if (needTitle) {
@@ -148,7 +145,7 @@ public class SessionMetadataService {
         }
         sb.append("  \"suggestions\": [\"问题1\", \"问题2\", \"问题3\"]\n")
           .append("}");
-        
+
         return sb.toString();
     }
 
@@ -216,7 +213,7 @@ public class SessionMetadataService {
      */
     private void sendSseEvent(String sessionId, String title, List<String> suggestionsList, SseEmitter emitter) {
         if (emitter == null) return;
-        
+
         try {
             Map<String, Object> sseData = new HashMap<>();
             sseData.put("type", "session_update");

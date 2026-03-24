@@ -17,7 +17,11 @@ import java.util.Map;
 @Slf4j
 public class SseChatHandler {
 
-    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
+
+    public SseChatHandler(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
 
     /**
      * 发送聊天响应
@@ -95,9 +99,9 @@ public class SseChatHandler {
         String msg = e.getMessage();
         if (e instanceof org.springframework.web.context.request.async.AsyncRequestNotUsableException ||
             e instanceof IllegalStateException ||
-            (msg != null && (msg.contains("SocketTimeoutException") || 
-                            msg.contains("Broken pipe") || 
-                            msg.contains("connection was aborted") || 
+            (msg != null && (msg.contains("SocketTimeoutException") ||
+                            msg.contains("Broken pipe") ||
+                            msg.contains("connection was aborted") ||
                             msg.contains("ResponseBodyEmitter has already completed")))) {
             log.warn("Client disconnected, timed out, or emitter already completed during chat: {}", msg);
             return;

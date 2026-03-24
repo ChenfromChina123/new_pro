@@ -26,16 +26,18 @@ import java.security.cert.CertificateException;
 @Slf4j
 public class DeepSeekApiClient {
 
-    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
     private final OkHttpClient okHttpClient;
     private final String deepseekApiKey;
     private final String deepseekApiUrl;
     private final Integer maxTokens;
 
     public DeepSeekApiClient(
+            ObjectMapper objectMapper,
             @Value("${ai.deepseek.api-key:}") String deepseekApiKey,
             @Value("${ai.deepseek.api-url:}") String deepseekApiUrl,
             @Value("${ai.max-tokens:4096}") Integer maxTokens) {
+        this.objectMapper = objectMapper;
         this.deepseekApiKey = deepseekApiKey;
         this.deepseekApiUrl = deepseekApiUrl;
         this.maxTokens = maxTokens;
@@ -55,7 +57,7 @@ public class DeepSeekApiClient {
                           BiConsumer<String, String> chunkProcessor) throws IOException {
         String apiUrl = buildApiUrl();
         Map<String, Object> payload = buildPayload(messages, model, true, enableThinking);
-        
+
         String jsonPayload = objectMapper.writeValueAsString(payload);
         RequestBody body = RequestBody.create(jsonPayload, MediaType.get("application/json; charset=utf-8"));
         Request request = new Request.Builder()
@@ -86,7 +88,7 @@ public class DeepSeekApiClient {
     public String chat(List<Map<String, String>> messages, String model) throws IOException {
         String apiUrl = buildApiUrl();
         Map<String, Object> payload = buildPayload(messages, model, false, false);
-        
+
         String jsonPayload = objectMapper.writeValueAsString(payload);
         RequestBody body = RequestBody.create(jsonPayload, MediaType.get("application/json; charset=utf-8"));
         Request request = new Request.Builder()
