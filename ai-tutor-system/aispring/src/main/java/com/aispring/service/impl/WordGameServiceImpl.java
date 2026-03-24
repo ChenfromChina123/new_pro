@@ -102,7 +102,7 @@ public class WordGameServiceImpl implements WordGameService {
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getPackageCourses(Long userId, String packageId) {
         if (builtinCourseLoader.isBuiltinPackage(packageId)) {
-            return builtinCourseLoader.loadCourses();
+            return builtinCourseLoader.loadBuiltinCourses();
         }
         WordGamePackage pkg = getVisiblePackage(userId, packageId);
         List<WordGameCourse> courses = courseRepository.findByPackageIdOrderByCourseIndexAsc(pkg.getId());
