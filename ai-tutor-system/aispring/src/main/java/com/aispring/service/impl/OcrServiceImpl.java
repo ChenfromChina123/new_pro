@@ -27,14 +27,14 @@ import java.util.Map;
 public class OcrServiceImpl implements OcrService {
 
     private Client ocrClient;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
     /**
      * 初始化阿里云OCR客户端
      */
-    public OcrServiceImpl() {
+    public OcrServiceImpl(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
         try {
-            // 从环境变量获取AccessKey
             String accessKeyId = System.getenv("ALIBABA_CLOUD_ACCESS_KEY_ID");
             String accessKeySecret = System.getenv("ALIBABA_CLOUD_ACCESS_KEY_SECRET");
 
@@ -43,14 +43,11 @@ public class OcrServiceImpl implements OcrService {
                 return;
             }
 
-            // 配置
             Config config = new Config()
                     .setAccessKeyId(accessKeyId)
                     .setAccessKeySecret(accessKeySecret);
-            // 默认公网接入地址
             config.endpoint = "ocr-api.cn-hangzhou.aliyuncs.com";
 
-            // 创建客户端
             ocrClient = new Client(config);
             System.out.println("阿里云OCR引擎初始化成功");
 

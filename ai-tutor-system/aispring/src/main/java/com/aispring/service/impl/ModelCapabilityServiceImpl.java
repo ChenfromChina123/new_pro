@@ -8,9 +8,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 模型能力服务实现（参考 void-main 的 modelCapabilities.ts）
@@ -22,8 +22,7 @@ import java.util.Map;
 @Slf4j
 public class ModelCapabilityServiceImpl implements ModelCapabilityService {
     
-    // 模型能力缓存（providerName:modelName -> ModelCapability）
-    private final Map<String, ModelCapability> capabilityCache = new HashMap<>();
+    private final Map<String, ModelCapability> capabilityCache = new ConcurrentHashMap<>();
     
     public ModelCapabilityServiceImpl() {
         initializeDefaultCapabilities();

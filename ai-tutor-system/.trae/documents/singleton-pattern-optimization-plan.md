@@ -147,23 +147,23 @@ public class RestTemplateConfig {
 
 | 序号 | 任务 | 项目 | 状态 |
 |------|------|------|------|
-| 1 | 创建 RestTemplateConfig 配置类 | aispring | ⏳ 待开始 |
-| 2 | 修改 AiVocabServiceImpl 注入 RestTemplate | aispring | ⏳ 待开始 |
-| 3 | 修改 SystemPromptServiceImpl 注入 RestTemplate | aispring | ⏳ 待开始 |
-| 4 | RedisConfig ObjectMapper 改为 Bean | aispring | ⏳ 待开始 |
-| 5 | 修改 OcrServiceImpl 注入 ObjectMapper | aispring | ⏳ 待开始 |
-| 6 | AiChatServiceImpl 注入 chatExecutor | aispring | ⏳ 待开始 |
-| 7 | SSHWebSocketHandler 注入 sshExecutor | aispring | ⏳ 待开始 |
-| 8 | VocabPracticeCard.vue 使用 audioService | vue-app | ⏳ 待开始 |
-| 9 | useEnglishSound.js 使用 audioService | vue-app | ⏳ 待开始 |
-| 10 | TerminalWindowView.vue 使用 webSocketService | vue-app | ⏳ 待开始 |
-| 11 | TerminalTab.vue 使用 webSocketService | vue-app | ⏳ 待开始 |
+| 1 | 创建 RestTemplateConfig 配置类 | aispring | ✅ 已完成 |
+| 2 | 修改 AiVocabServiceImpl 注入 RestTemplate | aispring | ✅ 已完成 |
+| 3 | 修改 SystemPromptServiceImpl 注入 RestTemplate | aispring | ✅ 已完成 |
+| 4 | RedisConfig ObjectMapper 改为 Bean | aispring | ✅ 已完成 |
+| 5 | 修改 OcrServiceImpl 注入 ObjectMapper | aispring | ✅ 已完成 |
+| 6 | AiChatServiceImpl 注入 chatExecutor | aispring | ✅ 已完成 |
+| 7 | SSHWebSocketHandler 注入 sshExecutor | aispring | ✅ 已完成 |
+| 8 | VocabPracticeCard.vue 使用 audioService | vue-app | ✅ 已完成 |
+| 9 | useEnglishSound.js 使用 audioService | vue-app | ✅ 已完成 |
+| 10 | TerminalWindowView.vue 使用 webSocketService | vue-app | ✅ 已完成 |
+| 11 | TerminalTab.vue 使用 webSocketService | vue-app | ✅ 已完成 |
 
 ### 4.2 中优先级任务
 
 | 序号 | 任务 | 项目 | 状态 |
 |------|------|------|------|
-| 1 | ModelCapabilityServiceImpl 缓存优化 | aispring | ⏳ 待开始 |
+| 1 | ModelCapabilityServiceImpl 缓存优化 | aispring | ✅ 已完成 |
 | 2 | 创建 StorageService 统一管理 localStorage | vue-app | ⏳ 待开始 |
 
 ---

@@ -238,9 +238,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { API_CONFIG } from '@/config/api'
 import request from '@/utils/request'
+import audioService from '@/services/audioService'
 
 const props = defineProps({
   word: { type: String, required: true },
@@ -378,21 +379,14 @@ const playAudio = () => {
   if (isPlaying.value) return
   isPlaying.value = true
   
-  const audio = new Audio(`https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(props.word)}&type=1`)
-  
-  audio.onended = () => {
-    isPlaying.value = false
-  }
-  
-  audio.onerror = () => {
-    console.warn('Youdao API failed, falling back to Web Speech API')
-    fallbackTTS(props.word)
-  }
-  
-  audio.play().catch(e => {
-    console.error('Audio play error:', e)
-    fallbackTTS(props.word)
-  })
+  audioService.playWordSound(props.word, 1)
+    .then(() => {
+      isPlaying.value = false
+    })
+    .catch(() => {
+      console.warn('Youdao API failed, falling back to Web Speech API')
+      fallbackTTS(props.word)
+    })
 }
 
 const fallbackTTS = (text) => {

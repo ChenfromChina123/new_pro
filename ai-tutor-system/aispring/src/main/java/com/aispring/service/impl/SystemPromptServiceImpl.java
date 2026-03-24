@@ -23,7 +23,7 @@ import java.util.regex.Pattern;
 public class SystemPromptServiceImpl implements SystemPromptService {
 
     private final SystemPromptRepository promptRepository;
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
 
     private static final String REMOTE_CSV_URL = "https://raw.githubusercontent.com/f/awesome-chatgpt-prompts/main/prompts.csv";
 

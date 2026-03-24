@@ -56,7 +56,7 @@ public class AiChatServiceImpl implements AiChatService {
     private final TokenUsageAuditService tokenUsageAuditService;
     private final WordDictRepository wordDictRepository;
     private final UserWordProgressRepository userWordProgressRepository;
-    
+
     private final DeepSeekApiClient deepSeekApiClient;
     private final ChatHistoryBuilder chatHistoryBuilder;
     private final SearchInstructionHandler searchInstructionHandler;
@@ -75,7 +75,6 @@ public class AiChatServiceImpl implements AiChatService {
     private ChatClient deepseekChatClient;
     private StreamingChatClient deepseekStreamingChatClient;
 
-    private static final AtomicInteger CHAT_THREAD_SEQ = new AtomicInteger(1);
     private final ExecutorService chatExecutor;
 
     public AiChatServiceImpl(
@@ -94,8 +93,9 @@ public class AiChatServiceImpl implements AiChatService {
             @Value("${ai.max-tokens:4096}") Integer maxTokens,
             @Value("${ai.context.max-history-messages:30}") Integer maxHistoryMessages,
             @Value("${ai.context.max-history-chars:20000}") Integer maxHistoryChars,
-            @Value("${ai.context.max-tool-result-chars:8000}") Integer maxToolResultChars) {
-        
+            @Value("${ai.context.max-tool-result-chars:8000}") Integer maxToolResultChars,
+            @org.springframework.beans.factory.annotation.Qualifier("chatExecutor") ExecutorService chatExecutor) {
+
         this.chatClientProvider = chatClientProvider;
         this.streamingChatClientProvider = streamingChatClientProvider;
         this.chatRecordRepository = chatRecordRepository;
@@ -104,25 +104,16 @@ public class AiChatServiceImpl implements AiChatService {
         this.tokenUsageAuditService = tokenUsageAuditService;
         this.wordDictRepository = wordDictRepository;
         this.userWordProgressRepository = userWordProgressRepository;
+        this.chatExecutor = chatExecutor;
 
-        // 初始化拆分后的服务类
         this.deepSeekApiClient = new DeepSeekApiClient(deepseekApiKey, deepseekApiUrl, maxTokens);
-        this.chatHistoryBuilder = new ChatHistoryBuilder(chatRecordRepository, anonymousChatRecordRepository, 
+        this.chatHistoryBuilder = new ChatHistoryBuilder(chatRecordRepository, anonymousChatRecordRepository,
                                                           maxHistoryMessages, maxHistoryChars, maxToolResultChars);
         this.searchInstructionHandler = new SearchInstructionHandler(searchService, semanticSearchService, wordDictRepository);
         this.sseChatHandler = new SseChatHandler();
 
-        // 初始化 DeepSeek 客户端
         initDeepSeekClient(deepseekApiKey, deepseekApiUrl);
         this.sessionMetadataService = new SessionMetadataService(deepseekChatClient, chatRecordService, chatHistoryBuilder);
-
-        // 初始化线程池
-        this.chatExecutor = Executors.newFixedThreadPool(8, r -> {
-            Thread t = new Thread(r);
-            t.setName("ai-chat-" + CHAT_THREAD_SEQ.getAndIncrement());
-            t.setDaemon(true);
-            return t;
-        });
 
         log.info("AiChatServiceImpl initialized with refactored components");
     }
@@ -133,15 +124,15 @@ public class AiChatServiceImpl implements AiChatService {
     private void initDeepSeekClient(String apiKey, String apiUrl) {
         if (apiKey != null && !apiKey.isEmpty() && apiUrl != null && !apiUrl.isEmpty()) {
             try {
-                org.springframework.ai.openai.api.OpenAiApi deepseekApi = 
+                org.springframework.ai.openai.api.OpenAiApi deepseekApi =
                     new org.springframework.ai.openai.api.OpenAiApi(apiUrl, apiKey);
-                org.springframework.ai.openai.OpenAiChatOptions deepseekOptions = 
+                org.springframework.ai.openai.OpenAiChatOptions deepseekOptions =
                     org.springframework.ai.openai.OpenAiChatOptions.builder()
                         .withModel("deepseek-v3.2")
                         .withTemperature(0.7f)
                         .withMaxTokens(maxTokens)
                         .build();
-                org.springframework.ai.openai.OpenAiChatClient client = 
+                org.springframework.ai.openai.OpenAiChatClient client =
                     new org.springframework.ai.openai.OpenAiChatClient(deepseekApi, deepseekOptions);
                 this.deepseekChatClient = client;
                 this.deepseekStreamingChatClient = client;
@@ -166,7 +157,7 @@ public class AiChatServiceImpl implements AiChatService {
     /**
      * 普通流式问答核心实现
      */
-    private SseEmitter askStreamInternal(String initialPrompt, String sessionId, String model, 
+    private SseEmitter askStreamInternal(String initialPrompt, String sessionId, String model,
                                          Long userId, String ipAddress, String systemPrompt) {
         SseEmitter emitter = new SseEmitter(300_000L);
         final String finalSessionId = (sessionId == null || sessionId.isEmpty())
@@ -178,11 +169,11 @@ public class AiChatServiceImpl implements AiChatService {
         chatExecutor.execute(() -> {
             try {
                 StringBuilder fullReasoning = new StringBuilder();
-                String fullContent = performBlockingChat(initialPrompt, finalSessionId, model, userId, 
+                String fullContent = performBlockingChat(initialPrompt, finalSessionId, model, userId,
                                                          systemPrompt, emitter, ipAddress, fullReasoning);
 
                 // 处理搜索指令
-                fullContent = handleSearchInstructions(fullContent, initialPrompt, finalSessionId, model, 
+                fullContent = handleSearchInstructions(fullContent, initialPrompt, finalSessionId, model,
                                                        userId, emitter, ipAddress, fullReasoning);
 
                 // 保存聊天记录
@@ -233,7 +224,7 @@ public class AiChatServiceImpl implements AiChatService {
 
         // 记录审计
         long responseTimeMs = System.currentTimeMillis() - startMs;
-        tokenUsageAuditService.recordEstimated("deepseek", "deepseek-v3.2", userId, sessionId, 
+        tokenUsageAuditService.recordEstimated("deepseek", "deepseek-v3.2", userId, sessionId,
                                                prompt.length(), fullContent.length(), responseTimeMs, true);
 
         return fullContent.toString();
@@ -243,22 +234,22 @@ public class AiChatServiceImpl implements AiChatService {
      * 处理搜索指令
      */
     private String handleSearchInstructions(String content, String initialPrompt, String sessionId,
-                                            String model, Long userId, SseEmitter emitter, 
+                                            String model, Long userId, SseEmitter emitter,
                                             String ipAddress, StringBuilder fullReasoning) throws IOException {
         // 检查搜索指令
         SearchInstructionHandler.SearchResult searchResult = searchInstructionHandler.detectAndHandleSearch(content);
         if (searchResult != null && searchResult.hasSearch()) {
             sseChatHandler.sendMessage(emitter, searchInstructionHandler.buildSearchStatusMessage(
                 searchResult.getKeyword(), searchResult.getSite()));
-            
+
             String searchResultText = searchInstructionHandler.executeSearch(
                 searchResult.getKeyword(), searchResult.getSite());
-            
-            String newPrompt = initialPrompt + "\n\n【系统反馈的搜索结果】\n" + searchResultText + 
+
+            String newPrompt = initialPrompt + "\n\n【系统反馈的搜索结果】\n" + searchResultText +
                               "\n\n请根据上述搜索结果回答用户的问题。";
-            
+
             String secondContent = performBlockingChat(newPrompt, sessionId, model, userId,
-                "【系统提示】你已经获取了搜索结果，请直接回答用户问题，不要再输出<search>标签。", 
+                "【系统提示】你已经获取了搜索结果，请直接回答用户问题，不要再输出<search>标签。",
                 emitter, ipAddress, fullReasoning);
             return content + "\n\n" + secondContent;
         }
@@ -266,17 +257,17 @@ public class AiChatServiceImpl implements AiChatService {
         // 检查单词检索指令
         SearchInstructionHandler.VocabResult vocabResult = searchInstructionHandler.detectAndHandleVocab(content);
         if (vocabResult != null && vocabResult.hasVocab()) {
-            sseChatHandler.sendMessage(emitter, 
+            sseChatHandler.sendMessage(emitter,
                 searchInstructionHandler.buildVocabStatusMessage(vocabResult.getTopic()));
-            
+
             String ragResult = searchInstructionHandler.executeVocabSearch(
                 vocabResult.getTopic(), vocabResult.getLimit());
-            
-            String newPrompt = initialPrompt + "\n\n【系统反馈的候选单词数据】\n" + ragResult + 
+
+            String newPrompt = initialPrompt + "\n\n【系统反馈的候选单词数据】\n" + ragResult +
                               "\n\n请严格使用上述数据生成 <vocab-practice> 练习卡片。";
-            
+
             String secondContent = performBlockingChat(newPrompt, sessionId, model, userId,
-                "【系统提示】你已经获取了本地词库数据，请直接生成练习卡片，不要再输出<query-vocab>标签。", 
+                "【系统提示】你已经获取了本地词库数据，请直接生成练习卡片，不要再输出<query-vocab>标签。",
                 emitter, ipAddress, fullReasoning);
             return content + "\n\n" + secondContent;
         }
@@ -287,14 +278,14 @@ public class AiChatServiceImpl implements AiChatService {
     /**
      * 保存聊天记录
      */
-    private void saveChatRecord(String prompt, String content, StringBuilder reasoning, 
+    private void saveChatRecord(String prompt, String content, StringBuilder reasoning,
                                 String sessionId, Long userId, String ipAddress, String model) {
         if (userId != null) {
             // 已登录用户逻辑由 ChatRecordService 处理
         } else {
             // 匿名用户
             String finalIp = (ipAddress == null || ipAddress.isEmpty()) ? "unknown" : ipAddress;
-            
+
             AnonymousChatRecord userRecord = AnonymousChatRecord.builder()
                 .sessionId(sessionId)
                 .ipAddress(finalIp)
@@ -328,7 +319,7 @@ public class AiChatServiceImpl implements AiChatService {
             "\n【单词记忆与RAG检索】当用户需要学习或复习某类单词时，" +
             "请输出检索意图标签，例如：<query-vocab topic=\"主题\" limit=\"5\" />。" +
             "系统会从本地词库中提取真实单词数据反馈给你。";
-        
+
         if (systemPrompt == null || systemPrompt.isEmpty()) {
             return systemInstructions;
         }
@@ -353,9 +344,9 @@ public class AiChatServiceImpl implements AiChatService {
             if (searchResult != null && searchResult.hasSearch()) {
                 String searchResultText = searchInstructionHandler.executeSearch(
                     searchResult.getKeyword(), searchResult.getSite());
-                String newPrompt = prompt + "\n\n【系统反馈的搜索结果】\n" + searchResultText + 
+                String newPrompt = prompt + "\n\n【系统反馈的搜索结果】\n" + searchResultText +
                                   "\n\n请根据上述搜索结果回答用户的问题。";
-                return ask(newPrompt, sessionId, model, userId, 
+                return ask(newPrompt, sessionId, model, userId,
                           "【系统提示】你已经获取了搜索结果，请直接回答用户问题。", ipAddress);
             }
 

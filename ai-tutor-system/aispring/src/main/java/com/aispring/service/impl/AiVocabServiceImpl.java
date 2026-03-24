@@ -30,7 +30,7 @@ public class AiVocabServiceImpl implements AiVocabService {
 
     private final AiChatService aiChatService;
     private final ObjectMapper objectMapper;
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
     private final LearningRecordService learningRecordService;
 
     @Value("${whisper.server.url:http://127.0.0.1:8090/inference}")

@@ -3,6 +3,7 @@ package com.aispring.service.impl.chat;
 import com.aispring.entity.AnonymousChatRecord;
 import com.aispring.entity.ChatRecord;
 import com.aispring.repository.AnonymousChatRecordRepository;
+import com.aispring.service.RedisCacheService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

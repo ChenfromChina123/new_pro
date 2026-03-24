@@ -153,6 +153,7 @@ import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import request from '@/utils/request'
+import webSocketService from '@/services/webSocketService'
 
 const route = useRoute()
 const router = useRouter()
@@ -168,20 +169,18 @@ const commandHistory = ref([])
 const commandHistoryIndex = ref(-1)
 const terminalOutput = ref('')
 
-// 粘贴确认相关
 const showPasteModal = ref(false)
 const pasteBuffer = ref('')
 
-// 右键菜单相关
 const contextMenu = ref({
   visible: false,
   x: 0,
   y: 0
 })
 
-let ws = null
 const wsConnected = ref(false)
 let ctrlKeyPressed = false
+const wsConnectionId = `terminal-${Date.now()}`
 
 const API_BASE = '/api/server-terminal'
 
@@ -231,55 +230,49 @@ const connectServer = async () => {
 const connectWebSocket = () => {
   const wsUrl = getTerminalWsUrl(serverId.value)
 
-  ws = new WebSocket(wsUrl)
+  webSocketService.getConnection(wsConnectionId, wsUrl, {
+    onOpen: () => {
+      console.log('WebSocket 连接已建立')
+      wsConnected.value = true
+      connecting.value = false
+      appendOutput('正在连接服务器...\r\n')
 
-  ws.onopen = () => {
-    console.log('WebSocket 连接已建立')
-    wsConnected.value = true
-    connecting.value = false
-    appendOutput('正在连接服务器...\r\n')
+      const userId = authStore.userId || authStore.userInfo?.id || 'unknown'
+      webSocketService.send(wsConnectionId, `connect:${userId}`)
+    },
+    onMessage: (event) => {
+      const message = event.data
+      console.log('收到 WebSocket 消息:', message)
 
-    const userId = authStore.userId || authStore.userInfo?.id || 'unknown'
-    ws.send(`connect:${userId}`)
-  }
-
-  ws.onmessage = (event) => {
-    const message = event.data
-    console.log('收到 WebSocket 消息:', message)
-
-    if (message.startsWith('connected:')) {
-      const msg = message.substring(10)
-      appendOutput(msg + '\r\n')
-    } else if (message.startsWith('output:')) {
-      const output = message.substring(7)
-      appendOutput(output)
-    } else if (message.startsWith('error:')) {
-      const error = message.substring(6)
-      appendOutput(`错误：${error}\r\n`)
-    } else if (message.startsWith('disconnected:')) {
-      const msg = message.substring(13)
-      appendOutput(msg + '\r\n')
+      if (message.startsWith('connected:')) {
+        const msg = message.substring(10)
+        appendOutput(msg + '\r\n')
+      } else if (message.startsWith('output:')) {
+        const output = message.substring(7)
+        appendOutput(output)
+      } else if (message.startsWith('error:')) {
+        const error = message.substring(6)
+        appendOutput(`错误：${error}\r\n`)
+      } else if (message.startsWith('disconnected:')) {
+        const msg = message.substring(13)
+        appendOutput(msg + '\r\n')
+      }
+    },
+    onError: (error) => {
+      console.error('WebSocket 错误:', error)
+      appendOutput('连接错误\r\n')
+      connecting.value = false
+    },
+    onClose: () => {
+      console.log('WebSocket 连接已关闭')
+      wsConnected.value = false
+      connecting.value = false
     }
-  }
-
-  ws.onerror = (error) => {
-    console.error('WebSocket 错误:', error)
-    appendOutput('连接错误\r\n')
-    connecting.value = false
-  }
-
-  ws.onclose = () => {
-    console.log('WebSocket 连接已关闭')
-    wsConnected.value = false
-    connecting.value = false
-  }
+  })
 }
 
 const disconnectWebSocket = () => {
-  if (ws) {
-    ws.close()
-    ws = null
-  }
+  webSocketService.closeConnection(wsConnectionId)
   wsConnected.value = false
 }
 
@@ -298,9 +291,7 @@ const disconnectAndClose = async () => {
 }
 
 const sendMessage = (message) => {
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(message)
-  }
+  webSocketService.send(wsConnectionId, message)
 }
 
 const sendCommand = () => {
@@ -313,9 +304,7 @@ const sendCommand = () => {
 }
 
 const sendControlCharacter = (char) => {
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(`input:${char}`)
-  }
+  webSocketService.send(wsConnectionId, `input:${char}`)
 }
 
 const previousCommand = () => {

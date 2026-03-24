@@ -21,15 +21,16 @@ import java.util.concurrent.Executors;
 public class SSHWebSocketHandler extends TextWebSocketHandler {
 
     private static ServerConnectionRepository serverConnectionRepository;
-    // WebSocket 会话映射（sessionId -> WebSocketSession）
     private static final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
-    // SSH 会话映射（sessionId -> Jsch Session）
     private static final Map<String, com.jcraft.jsch.Session> jschSessions = new ConcurrentHashMap<>();
-    // Shell 通道映射（sessionId -> ChannelShell）
     private static final Map<String, ChannelShell> channels = new ConcurrentHashMap<>();
-    // 输出流映射（sessionId -> OutputStream）
     private static final Map<String, OutputStream> outputStreams = new ConcurrentHashMap<>();
-    private static final ExecutorService executorService = Executors.newCachedThreadPool();
+    private final ExecutorService sshExecutor;
+
+    public SSHWebSocketHandler(
+            @org.springframework.beans.factory.annotation.Qualifier("sshExecutor") ExecutorService sshExecutor) {
+        this.sshExecutor = sshExecutor;
+    }
 
     @Autowired
     public void setServerConnectionRepository(ServerConnectionRepository repository) {
@@ -111,7 +112,7 @@ public class SSHWebSocketHandler extends TextWebSocketHandler {
      * @param userId 用户 ID
      */
     private void handleConnect(WebSocketSession session, Long serverId, String userId) {
-        executorService.submit(() -> {
+        sshExecutor.submit(() -> {
             com.jcraft.jsch.Session sshSession = null;
             ChannelShell channel = null;
             try {

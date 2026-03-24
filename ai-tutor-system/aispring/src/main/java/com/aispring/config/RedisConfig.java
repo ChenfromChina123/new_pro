@@ -65,19 +65,13 @@ public class RedisConfig {
      * - 忽略 null 字段
      * - 格式化输出
      */
-    private ObjectMapper objectMapper() {
+    @Bean
+    public ObjectMapper objectMapper() {
         ObjectMapper objectMapper = new ObjectMapper();
         
-        // 注册 Java 8 时间模块
         objectMapper.registerModule(new JavaTimeModule());
-        
-        // 禁用将日期写为时间戳
         objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        
-        // 忽略 null 字段
         objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
-        
-        // 忽略未知属性
         objectMapper.configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         
         return objectMapper;

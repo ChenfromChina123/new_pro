@@ -2,6 +2,7 @@ package com.aispring.service.impl.chat;
 
 import com.aispring.entity.ChatSession;
 import com.aispring.repository.ChatSessionRepository;
+import com.aispring.service.RedisCacheService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

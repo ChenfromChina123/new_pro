@@ -1,11 +1,4 @@
-const sentenceAudio = new Audio()
-let sentencePlayId = 0
-let sentenceOnError = null
-let sentenceOnEnded = null
-
-function getPronunciationUrl(english) {
-  return `https://dict.youdao.com/dictvoice?type=2&audio=${encodeURIComponent(english)}`
-}
+import audioService from '@/services/audioService'
 
 function playWithBrowserTTS(english) {
   if (typeof window === 'undefined' || !window.speechSynthesis) return
@@ -16,102 +9,35 @@ function playWithBrowserTTS(english) {
   window.speechSynthesis.speak(u)
 }
 
+/**
+ * 播放英语句子音频
+ * 使用 audioService 单例服务
+ */
 export function playEnglishSound(english) {
   if (!english) return
-  const url = getPronunciationUrl(english)
-  const currentPlayId = ++sentencePlayId
-  let fallbackDone = false
-
-  const doFallback = () => {
-    if (fallbackDone || currentPlayId !== sentencePlayId) return
-    fallbackDone = true
-    if (sentenceOnError) sentenceAudio.removeEventListener('error', sentenceOnError)
-    if (sentenceOnEnded) sentenceAudio.removeEventListener('ended', sentenceOnEnded)
-    sentenceOnError = null
-    sentenceOnEnded = null
-    playWithBrowserTTS(english)
-  }
-
-  const onSentenceError = () => doFallback()
-  const onSentenceEnded = () => {
-    if (currentPlayId !== sentencePlayId) return
-    if (sentenceOnError) sentenceAudio.removeEventListener('error', sentenceOnError)
-    sentenceOnError = null
-    sentenceOnEnded = null
-  }
-
-  if (sentenceOnError) sentenceAudio.removeEventListener('error', sentenceOnError)
-  if (sentenceOnEnded) sentenceAudio.removeEventListener('ended', sentenceOnEnded)
-  sentenceOnError = onSentenceError
-  sentenceOnEnded = onSentenceEnded
-  if (typeof window !== 'undefined' && window.speechSynthesis) {
-    window.speechSynthesis.cancel()
-  }
-  sentenceAudio.pause()
-  sentenceAudio.currentTime = 0
-  sentenceAudio.addEventListener('error', onSentenceError, { once: true })
-  sentenceAudio.addEventListener('ended', onSentenceEnded, { once: true })
-  sentenceAudio.src = url
-  sentenceAudio.play().catch(() => {
-    doFallback()
-  })
+  
+  audioService.playSentence(english, 'en')
+    .catch(() => {
+      playWithBrowserTTS(english)
+    })
 }
 
+/**
+ * 播放单词音频的 composable
+ * 使用 audioService 单例服务
+ */
 export function usePlayWordSound() {
-  const wordAudio = new Audio()
-  let isPlaying = false
   let lastWord = ''
-  let wordPlayId = 0
-  let wordOnError = null
-  let wordOnEnded = null
-
-  wordAudio.onplay = () => {
-    isPlaying = true
-  }
-  wordAudio.onended = () => {
-    isPlaying = false
-  }
 
   function handlePlayWordSound(word) {
     if (!word) return
-    if (isPlaying && lastWord === word) return
+    if (audioService.isCurrentlyPlaying() && lastWord === word) return
     lastWord = word
-    const currentPlayId = ++wordPlayId
-    let fallbackDone = false
 
-    const doFallback = () => {
-      if (fallbackDone || currentPlayId !== wordPlayId) return
-      fallbackDone = true
-      if (wordOnError) wordAudio.removeEventListener('error', wordOnError)
-      if (wordOnEnded) wordAudio.removeEventListener('ended', wordOnEnded)
-      wordOnError = null
-      wordOnEnded = null
-      playWithBrowserTTS(word)
-    }
-
-    const onWordError = () => doFallback()
-    const onWordEnded = () => {
-      if (currentPlayId !== wordPlayId) return
-      if (wordOnError) wordAudio.removeEventListener('error', wordOnError)
-      wordOnError = null
-      wordOnEnded = null
-    }
-
-    if (wordOnError) wordAudio.removeEventListener('error', wordOnError)
-    if (wordOnEnded) wordAudio.removeEventListener('ended', wordOnEnded)
-    wordOnError = onWordError
-    wordOnEnded = onWordEnded
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.cancel()
-    }
-    wordAudio.pause()
-    wordAudio.currentTime = 0
-    wordAudio.addEventListener('error', onWordError, { once: true })
-    wordAudio.addEventListener('ended', onWordEnded, { once: true })
-    wordAudio.src = getPronunciationUrl(word)
-    wordAudio.play().catch(() => {
-      doFallback()
-    })
+    audioService.playWordSound(word, 2)
+      .catch(() => {
+        playWithBrowserTTS(word)
+      })
   }
 
   return { handlePlayWordSound }

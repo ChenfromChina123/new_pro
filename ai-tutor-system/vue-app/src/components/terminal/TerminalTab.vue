@@ -122,6 +122,7 @@
 import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import request from '@/utils/request'
 import { useAuthStore } from '@/stores/auth'
+import webSocketService from '@/services/webSocketService'
 
 const props = defineProps({
   serverId: {
@@ -142,7 +143,6 @@ const emit = defineEmits(['status-change'])
 
 const authStore = useAuthStore()
 
-// 终端相关
 const terminalContainer = ref(null)
 const currentCommand = ref('')
 const commandHistory = ref([])
@@ -150,31 +150,25 @@ const commandHistoryIndex = ref(-1)
 const terminalOutput = ref('')
 const terminalFontSize = ref(13)
 
-// 移动端双指缩放相关
 let initialTouchDistance = 0
 let initialFontSizeAtTouch = 0
 
-// 右键菜单相关
 const showContextMenu = ref(false)
 const menuX = ref(0)
 const menuY = ref(0)
 
-// 粘贴确认相关
 const showPasteModal = ref(false)
 const pasteBuffer = ref('')
 
-// WebSocket 连接
-let ws = null
 const wsConnected = ref(false)
 let ctrlKeyPressed = false
-// 自动导航状态标记
+const wsConnectionId = `terminal-tab-${Date.now()}`
 const hasAutoNavigated = ref(false)
 const autoNavWaitingPrompt = ref(false)
 const autoNavPendingCommand = ref('')
 const autoNavExpectedPath = ref('')
 const autoNavAwaitingPwd = ref(false)
 
-// API 基础 URL
 const API_BASE = '/api/server-terminal'
 
 const escapePathForShell = (path) => {
@@ -370,79 +364,73 @@ const disconnect = async () => {
 
 const connectWebSocket = () => {
   const wsUrl = getTerminalWsUrl(props.serverId)
-  ws = new WebSocket(wsUrl)
 
-  ws.onopen = () => {
-    wsConnected.value = true
-    appendOutput('正在连接服务器...\r\n')
-    const userId = authStore.userId || authStore.userInfo?.id || 'unknown'
-    ws.send(`connect:${userId}`)
-  }
-
-  ws.onmessage = (event) => {
-    const message = event.data
-    if (message.startsWith('connected:')) {
-      appendOutput(message.substring(10) + '\r\n')
-      if (props.initialPath) {
-        hasAutoNavigated.value = false
-        autoNavExpectedPath.value = props.initialPath
-        const escapedPath = escapePathForShell(props.initialPath)
-        autoNavPendingCommand.value = `cd "${escapedPath}"`
-        autoNavWaitingPrompt.value = true
-        autoNavAwaitingPwd.value = false
-        pushAutoNavOutput(`已挂起命令，等待首个提示符: ${autoNavPendingCommand.value}`)
-        sendAutoNavCommand('connected')
-      }
-    } else if (message.startsWith('output:')) {
-      const content = message.substring(7)
-      appendOutput(content)
-      const cleanText = normalizeOutputText(content)
-      if (props.initialPath && !hasAutoNavigated.value) {
-        console.log('[AutoNav] 输出片段:', JSON.stringify(cleanText))
-      }
-      if (autoNavWaitingPrompt.value && ws && ws.readyState === WebSocket.OPEN) {
-        const hasPrompt = /[$#>]\s*$/.test(cleanText) || /[$#>]\s/.test(cleanText.slice(-80))
-        if (hasPrompt) {
-          sendAutoNavCommand('prompt')
-        }
-      }
-      if (autoNavAwaitingPwd.value && autoNavExpectedPath.value) {
-        if (cleanText.includes(autoNavExpectedPath.value)) {
-          hasAutoNavigated.value = true
+  webSocketService.getConnection(wsConnectionId, wsUrl, {
+    onOpen: () => {
+      wsConnected.value = true
+      appendOutput('正在连接服务器...\r\n')
+      const userId = authStore.userId || authStore.userInfo?.id || 'unknown'
+      webSocketService.send(wsConnectionId, `connect:${userId}`)
+    },
+    onMessage: (event) => {
+      const message = event.data
+      if (message.startsWith('connected:')) {
+        appendOutput(message.substring(10) + '\r\n')
+        if (props.initialPath) {
+          hasAutoNavigated.value = false
+          autoNavExpectedPath.value = props.initialPath
+          const escapedPath = escapePathForShell(props.initialPath)
+          autoNavPendingCommand.value = `cd "${escapedPath}"`
+          autoNavWaitingPrompt.value = true
           autoNavAwaitingPwd.value = false
-          pushAutoNavOutput(`目录确认成功: ${autoNavExpectedPath.value}`)
+          pushAutoNavOutput(`已挂起命令，等待首个提示符: ${autoNavPendingCommand.value}`)
+          sendAutoNavCommand('connected')
         }
+      } else if (message.startsWith('output:')) {
+        const content = message.substring(7)
+        appendOutput(content)
+        const cleanText = normalizeOutputText(content)
+        if (props.initialPath && !hasAutoNavigated.value) {
+          console.log('[AutoNav] 输出片段:', JSON.stringify(cleanText))
+        }
+        if (autoNavWaitingPrompt.value && wsConnected.value) {
+          const hasPrompt = /[$#>]\s*$/.test(cleanText) || /[$#>]\s/.test(cleanText.slice(-80))
+          if (hasPrompt) {
+            sendAutoNavCommand('prompt')
+          }
+        }
+        if (autoNavAwaitingPwd.value && autoNavExpectedPath.value) {
+          if (cleanText.includes(autoNavExpectedPath.value)) {
+            hasAutoNavigated.value = true
+            autoNavAwaitingPwd.value = false
+            pushAutoNavOutput(`目录确认成功: ${autoNavExpectedPath.value}`)
+          }
+        }
+      } else if (message.startsWith('error:')) {
+        appendOutput(`错误：${message.substring(6)}\r\n`)
+      } else if (message.startsWith('disconnected:')) {
+        appendOutput(message.substring(13) + '\r\n')
+        hasAutoNavigated.value = false
+        autoNavWaitingPrompt.value = false
+        autoNavAwaitingPwd.value = false
+        autoNavPendingCommand.value = ''
+        autoNavExpectedPath.value = ''
       }
-    } else if (message.startsWith('error:')) {
-      appendOutput(`错误：${message.substring(6)}\r\n`)
-    } else if (message.startsWith('disconnected:')) {
-      appendOutput(message.substring(13) + '\r\n')
-      hasAutoNavigated.value = false
-      autoNavWaitingPrompt.value = false
-      autoNavAwaitingPwd.value = false
-      autoNavPendingCommand.value = ''
-      autoNavExpectedPath.value = ''
+    },
+    onError: () => appendOutput(`连接错误\r\n`),
+    onClose: () => {
+      wsConnected.value = false
+      appendOutput('\r\n连接已关闭\r\n')
     }
-  }
-
-  ws.onerror = () => appendOutput(`连接错误\r\n`)
-
-  ws.onclose = () => {
-    wsConnected.value = false
-    appendOutput('\r\n连接已关闭\r\n')
-  }
+  })
 }
 
 const disconnectWebSocket = () => {
-  if (ws) {
-    // 仅在连接开启状态下发送断开消息
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send('disconnect')
-    }
-    ws.close()
-    ws = null
-    wsConnected.value = false
+  if (wsConnected.value) {
+    webSocketService.send(wsConnectionId, 'disconnect')
   }
+  webSocketService.closeConnection(wsConnectionId)
+  wsConnected.value = false
 }
 
 const sendCommand = () => {
@@ -450,7 +438,7 @@ const sendCommand = () => {
   const command = currentCommand.value
   commandHistory.value.push(command)
   commandHistoryIndex.value = commandHistory.value.length
-  ws.send(`input:${command}\n`)
+  webSocketService.send(wsConnectionId, `input:${command}\n`)
   currentCommand.value = ''
 }
 
@@ -536,8 +524,8 @@ const handleKeyUp = (event) => {
 }
 
 const sendControlCharacter = (char) => {
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(`input:${char}`)
+  if (wsConnected.value) {
+    webSocketService.send(wsConnectionId, `input:${char}`)
   }
 }
 
