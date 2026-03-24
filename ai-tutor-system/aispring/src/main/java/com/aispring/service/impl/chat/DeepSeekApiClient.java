@@ -150,23 +150,26 @@ public class DeepSeekApiClient {
 
     /**
      * 规范化模型名称
-     * 将前端传递的模型名称转换为 DeepSeek API 支持的格式
+     * 将前端传递的模型名称转换为阿里百炼 API 支持的格式
      */
     private String normalizeModel(String model) {
         if (model == null || model.isEmpty()) {
-            return "deepseek-chat";
+            return "deepseek-v3";
         }
         String normalized = model.toLowerCase().trim();
         if (normalized.contains("reasoner") || normalized.contains("r1")) {
-            return "deepseek-reasoner";
+            return "deepseek-r1";
         }
         if (normalized.contains("coder")) {
             return "deepseek-coder";
         }
         if (normalized.contains("v3") || normalized.contains("chat") || normalized.equals("deepseek")) {
-            return "deepseek-chat";
+            return "deepseek-v3";
         }
-        return model;
+        if (normalized.contains("qwen")) {
+            return model;
+        }
+        return "deepseek-v3";
     }
 
     /**

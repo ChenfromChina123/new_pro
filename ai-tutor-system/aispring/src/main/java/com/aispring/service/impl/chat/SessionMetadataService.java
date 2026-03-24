@@ -106,23 +106,26 @@ public class SessionMetadataService {
 
     /**
      * 标准化模型名称
-     * 将前端传递的模型名称转换为 DeepSeek API 支持的格式
+     * 将前端传递的模型名称转换为阿里百炼 API 支持的格式
      */
     private String normalizeModelName(String model) {
         if (model == null || model.isBlank()) {
-            return "deepseek-chat";
+            return "deepseek-v3";
         }
         String normalized = model.toLowerCase().trim();
         if (normalized.contains("reasoner") || normalized.contains("r1")) {
-            return "deepseek-reasoner";
+            return "deepseek-r1";
         }
         if (normalized.contains("v3") || normalized.contains("chat")) {
-            return "deepseek-chat";
+            return "deepseek-v3";
         }
         if (normalized.contains("coder")) {
             return "deepseek-coder";
         }
-        return "deepseek-chat";
+        if (normalized.contains("qwen")) {
+            return model;
+        }
+        return "deepseek-v3";
     }
 
     /**
