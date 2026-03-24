@@ -18,8 +18,14 @@
           class="messages-container"
           @scroll.passive="handleMessagesScroll"
         >
+          <!-- 加载更多指示器 -->
+          <div v-if="isLoadingMore" class="loading-more">
+            <div class="loading-spinner"></div>
+            <span>加载更多消息...</span>
+          </div>
+
           <div
-            v-if="chatStore.messages.length === 0"
+            v-if="chatStore.messages.length === 0 && !isLoadingMore"
             class="empty-state"
           >
             <h3 class="empty-title">
@@ -56,8 +62,8 @@
                     <img
                       v-for="(imageUrl, imageIndex) in message.images"
                       :key="imageIndex"
-                      :src="imageUrl"
-                      class="message-image"
+                      :data-src="imageUrl"
+                      class="message-image lazy-image"
                       alt="消息图片"
                     >
                   </div>
@@ -537,6 +543,11 @@ const inputMessage = ref('')
 const messagesContainer = ref(null)
 const isPinnedToBottom = ref(true)
 
+// 懒加载相关状态
+const isLoadingMore = ref(false)
+const currentPage = ref(1)
+const hasMoreMessages = ref(true)
+
 // OCR相关状态
 const ocrFileInput = ref(null)
 const isOcrProcessing = ref(false)
@@ -570,6 +581,31 @@ const loadImagesFromStorage = () => {
   } catch (error) {
     console.error('加载图片失败:', error)
   }
+}
+
+/**
+ * 初始化图片懒加载
+ */
+const initLazyLoading = () => {
+  const lazyImages = document.querySelectorAll('.lazy-image')
+
+  const imageObserver = new IntersectionObserver((entries, observer) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const image = entry.target
+        const imageUrl = image.getAttribute('data-src')
+        if (imageUrl) {
+          image.src = imageUrl
+          image.classList.remove('lazy-image')
+          observer.unobserve(image)
+        }
+      }
+    })
+  })
+
+  lazyImages.forEach(image => {
+    imageObserver.observe(image)
+  })
 }
 
 // 将图片保存到本地存储
@@ -1008,7 +1044,46 @@ const scheduleAutoScrollToBottom = () => {
  * 处理消息容器的滚动事件
  * 当滚动到底部时自动隐藏"最新消息"按钮
  */
-const handleMessagesScroll = () => {
+/**
+ * 加载更多历史消息
+ */
+const loadMoreMessages = async () => {
+  if (isLoadingMore.value || !hasMoreMessages.value || !chatStore.currentSessionId) return
+
+  isLoadingMore.value = true
+  const nextPage = currentPage.value + 1
+
+  try {
+    const result = await chatStore.fetchSessionMessages(chatStore.currentSessionId, nextPage, 20, true)
+    if (result.success) {
+      currentPage.value = nextPage
+      hasMoreMessages.value = result.hasMore
+    }
+  } catch (error) {
+    console.error('加载更多消息失败:', error)
+  } finally {
+    isLoadingMore.value = false
+  }
+}
+
+/**
+ * 节流函数
+ * @param {Function} func - 要执行的函数
+ * @param {number} delay - 延迟时间（毫秒）
+ * @returns {Function} - 节流后的函数
+ */
+const throttle = (func, delay) => {
+  let lastCall = 0
+  return function(...args) {
+    const now = Date.now()
+    if (now - lastCall >= delay) {
+      lastCall = now
+      return func.apply(this, args)
+    }
+  }
+}
+
+const handleMessagesScroll = throttle(() => {
   updatePinnedState()
 
   const el = messagesContainer.value
@@ -1067,8 +1142,13 @@ const handleMessagesScroll = () => {
         showNavArrows.value = false
       }, 2000)
     }
+
+    // 滚动到顶部时加载更多历史消息
+    if (scrollTop <= 10 && !isLoadingMore.value && hasMoreMessages.value && chatStore.messages.length > 0) {
+      loadMoreMessages()
+    }
   }
-}
+}, 100)
 
 /**
  * 统一的滚动到底部触发函数
@@ -1110,6 +1190,9 @@ onMounted(async () => {
   const querySessionId = route.query.session
   if (querySessionId) {
     chatStore.currentSessionId = querySessionId
+    // 重置分页状态
+    currentPage.value = 1
+    hasMoreMessages.value = true
     await chatStore.fetchSessionMessages(querySessionId)
 
     // 加载草稿
@@ -1123,6 +1206,8 @@ onMounted(async () => {
       } else {
         triggerScrollToBottom(100)
       }
+      // 初始化图片懒加载
+      initLazyLoading()
     })
     return
   }
@@ -1131,6 +1216,9 @@ onMounted(async () => {
   if (!chatStore.currentSessionId && chatStore.sessions.length > 0) {
     const firstSessionId = chatStore.sessions[0].id
     chatStore.currentSessionId = firstSessionId
+    // 重置分页状态
+    currentPage.value = 1
+    hasMoreMessages.value = true
     await chatStore.fetchSessionMessages(firstSessionId)
 
     // 加载草稿
@@ -2331,6 +2419,31 @@ const explainImages = async () => {
   flex-direction: column;
   align-items: center; /* 居中对齐消息容器 */
   overflow-x: hidden;
+}
+
+/* 加载更多指示器 */
+.loading-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  gap: 8px;
+}
+
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--gray-300);
+  border-top: 2px solid var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .messages-container::-webkit-scrollbar {

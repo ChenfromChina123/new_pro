@@ -29,6 +29,7 @@ public class ChatRecordService {
     private final ChatSessionRepository chatSessionRepository;
     private final UserRepository userRepository;
     private final AnonymousChatRecordRepository anonymousChatRecordRepository;
+    private final RedisCacheService redisCacheService;
     
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -84,6 +85,12 @@ public class ChatRecordService {
             
             anonymousChatRecordRepository.save(anonymousRecord);
             
+            // 删除缓存
+            if (anonymousRecord.getSessionId() != null) {
+                redisCacheService.deletePagedSessionMessagesCache(anonymousRecord.getSessionId());
+                redisCacheService.deleteSessionMessagesCache(anonymousRecord.getSessionId());
+            }
+            
             return mapToChatRecord(anonymousRecord);
         }
 
@@ -134,7 +141,14 @@ public class ChatRecordService {
             .stderr(stderr)
             .build();
         
-        return chatRecordRepository.save(chatRecord);
+        ChatRecord savedRecord = chatRecordRepository.save(chatRecord);
+        
+        // 删除缓存
+        redisCacheService.deletePagedSessionMessagesCache(sessionId);
+        redisCacheService.deleteSessionMessagesCache(sessionId);
+        redisCacheService.deleteSessionInfoCache(sessionId);
+        
+        return savedRecord;
     }
 
     /**
@@ -219,6 +233,54 @@ public class ChatRecordService {
             ? anonymousChatRecordRepository.findBySessionIdOrderByCreatedAtAsc(sessionId)
             : anonymousChatRecordRepository.findBySessionIdAndIpAddressOrderByCreatedAtAsc(sessionId, ipAddress);
         return records.stream().map(this::mapToChatRecord).collect(Collectors.toList());
+    }
+
+    /**
+     * 分页获取会话消息
+     */
+    public Map<String, Object> getSessionMessagesWithPagination(Long userId, String sessionId, String ipAddress, int page, int pageSize) {
+        // 尝试从缓存获取数据
+        Map<String, Object> cachedResult = redisCacheService.getCachedPagedSessionMessages(sessionId, page, pageSize);
+        if (cachedResult != null) {
+            return cachedResult;
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        List<ChatRecord> messages;
+        long total;
+
+        if (userId != null) {
+            // 计算总数
+            total = chatRecordRepository.countByUserIdAndSessionId(userId, sessionId);
+            // 分页查询，按消息顺序倒序（最新的消息在前）
+            int offset = (page - 1) * pageSize;
+            messages = chatRecordRepository.findByUserIdAndSessionIdOrderByMessageOrderDesc(userId, sessionId, offset, pageSize);
+            // 反转列表，使最早的消息在前
+            Collections.reverse(messages);
+        } else {
+            // 匿名用户
+            if (ipAddress == null || ipAddress.isEmpty()) {
+                total = anonymousChatRecordRepository.countBySessionId(sessionId);
+                messages = anonymousChatRecordRepository.findBySessionIdOrderByCreatedAtDesc(sessionId, (page - 1) * pageSize, pageSize)
+                        .stream().map(this::mapToChatRecord).collect(Collectors.toList());
+            } else {
+                total = anonymousChatRecordRepository.countBySessionIdAndIpAddress(sessionId, ipAddress);
+                messages = anonymousChatRecordRepository.findBySessionIdAndIpAddressOrderByCreatedAtDesc(sessionId, ipAddress, (page - 1) * pageSize, pageSize)
+                        .stream().map(this::mapToChatRecord).collect(Collectors.toList());
+            }
+            // 反转列表，使最早的消息在前
+            Collections.reverse(messages);
+        }
+
+        result.put("messages", messages);
+        result.put("total", total);
+        result.put("page", page);
+        result.put("pageSize", pageSize);
+        
+        // 缓存结果
+        redisCacheService.cachePagedSessionMessages(sessionId, page, pageSize, result);
+        
+        return result;
     }
      
     private ChatRecord mapToChatRecord(AnonymousChatRecord ar) {

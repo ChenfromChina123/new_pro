@@ -221,15 +221,22 @@ public class ChatRecordController {
     @GetMapping("/session/{sessionId}")
     public ResponseEntity<Map<String, Object>> getSessionMessages(
             @PathVariable String sessionId,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int pageSize,
             @AuthenticationPrincipal CustomUserDetails customUserDetails,
             HttpServletRequest servletRequest) {
         
         Long userId = customUserDetails != null ? customUserDetails.getUser().getId() : null;
         String ip = getClientIp(servletRequest);
-        List<ChatRecord> messages = chatRecordService.getSessionMessages(userId, sessionId, ip);
+        
+        Map<String, Object> result = chatRecordService.getSessionMessagesWithPagination(userId, sessionId, ip, page, pageSize);
+        List<ChatRecord> messages = (List<ChatRecord>) result.get("messages");
         
         Map<String, Object> response = new HashMap<>();
         response.put("messages", messages.stream().map(ChatRecord::toMap).toList());
+        response.put("total", result.get("total"));
+        response.put("page", result.get("page"));
+        response.put("pageSize", result.get("pageSize"));
         
         // 添加会话级别的建议问题
         chatRecordService.getChatSession(sessionId).ifPresent(session -> {

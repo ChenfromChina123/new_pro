@@ -40,6 +40,17 @@ public interface ChatRecordRepository extends JpaRepository<ChatRecord, Long> {
     List<ChatRecord> findByUserIdAndSessionIdOrderByMessageOrderDesc(Long userId, String sessionId, Pageable pageable);
     
     /**
+     * 根据用户ID和会话ID分页查询聊天记录，按消息顺序倒序
+     */
+    @Query("SELECT c FROM ChatRecord c WHERE c.userId = :userId AND c.sessionId = :sessionId ORDER BY c.messageOrder DESC LIMIT :limit OFFSET :offset")
+    List<ChatRecord> findByUserIdAndSessionIdOrderByMessageOrderDesc(@Param("userId") Long userId, @Param("sessionId") String sessionId, @Param("offset") int offset, @Param("limit") int limit);
+    
+    /**
+     * 统计用户会话的消息数量
+     */
+    long countByUserIdAndSessionId(Long userId, String sessionId);
+    
+    /**
      * 根据会话ID和用户ID删除聊天记录
      */
     void deleteByUserIdAndSessionId(Long userId, String sessionId);

@@ -154,11 +154,13 @@ export const useChatStore = defineStore('chat', () => {
   }
   
   // 获取会话消息
-  async function fetchSessionMessages(sessionId) {
+  async function fetchSessionMessages(sessionId, page = 1, pageSize = 20, append = false) {
     try {
-      const response = await request.get(API_ENDPOINTS.chat.getSessionMessages(sessionId))
+      const response = await request.get(API_ENDPOINTS.chat.getSessionMessages(sessionId), {
+        params: { page, pageSize }
+      })
       // 确保消息角色正确映射
-      messages.value = (response.messages || []).map(msg => {
+      const mappedMessages = (response.messages || []).map(msg => {
         const role = (msg.role === 'user' || msg.sender_type === 1) ? 'user' : 'assistant'
         const reasoningContent = msg?.reasoning_content ?? ''
         const persistedImages = role === 'user'
@@ -188,6 +190,14 @@ export const useChatStore = defineStore('chat', () => {
             : undefined
         }
       })
+      
+      // 如果是追加模式，将新消息添加到现有消息的前面（因为最新的消息在前面）
+      if (append) {
+        messages.value = [...mappedMessages, ...messages.value]
+      } else {
+        messages.value = mappedMessages
+      }
+      
       currentSessionId.value = sessionId
       
       // 解析建议问题
@@ -204,7 +214,13 @@ export const useChatStore = defineStore('chat', () => {
         suggestions.value = []
       }
       
-      return { success: true }
+      return {
+        success: true,
+        total: response.total || 0,
+        page: response.page || 1,
+        pageSize: response.pageSize || pageSize,
+        hasMore: (response.page || 1) * (response.pageSize || pageSize) < (response.total || 0)
+      }
     } catch (error) {
       console.error('Fetch messages error:', error)
       return { success: false, message: '获取消息失败' }

@@ -28,6 +28,26 @@ public interface AnonymousChatRecordRepository extends JpaRepository<AnonymousCh
     List<AnonymousChatRecord> findBySessionIdAndIpAddressOrderByCreatedAtDesc(String sessionId, String ipAddress, Pageable pageable);
     
     /**
+     * 根据会话ID分页查询聊天记录，按创建时间倒序
+     */
+    List<AnonymousChatRecord> findBySessionIdOrderByCreatedAtDesc(String sessionId, int offset, int limit);
+    
+    /**
+     * 根据会话ID和IP地址分页查询聊天记录，按创建时间倒序
+     */
+    List<AnonymousChatRecord> findBySessionIdAndIpAddressOrderByCreatedAtDesc(String sessionId, String ipAddress, int offset, int limit);
+    
+    /**
+     * 统计会话的消息数量
+     */
+    long countBySessionId(String sessionId);
+    
+    /**
+     * 统计会话和IP地址的消息数量
+     */
+    long countBySessionIdAndIpAddress(String sessionId, String ipAddress);
+    
+    /**
      * 根据IP地址查询最近的聊天记录（可选，用于审计）
      */
     List<AnonymousChatRecord> findByIpAddressOrderByCreatedAtDesc(String ipAddress);

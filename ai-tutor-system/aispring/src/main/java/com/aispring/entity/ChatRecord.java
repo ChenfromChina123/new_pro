@@ -20,7 +20,8 @@ import java.util.Map;
     indexes = {
         @Index(name = "idx_user_id", columnList = "user_id"),
         @Index(name = "idx_session_id", columnList = "session_id"),
-        @Index(name = "idx_user_session", columnList = "user_id, session_id")
+        @Index(name = "idx_user_session", columnList = "user_id, session_id"),
+        @Index(name = "idx_user_session_order", columnList = "user_id, session_id, message_order")
     }
 )
 @Data
