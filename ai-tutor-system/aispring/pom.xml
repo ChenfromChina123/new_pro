@@ -9,10 +9,10 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.aispring</groupId>
-    <artifactId>ai-tutor</artifactId>
+    <artifactId>zhixueyunjing</artifactId>
     <version>1.0.0</version>
-    <name>AI Smart Tutor</name>
-    <description>AI智能学习助手系统 - Spring Boot版本</description>
+    <name>智学云境 (AI LearnSphere)</name>
+    <description>智学云境 (AI LearnSphere) - Spring Boot版本</description>
 
     <properties>
         <java.version>17</java.version> <!-- 注意：Spring Boot 3.x 必须使用 Java 17 或更高版本运行 -->

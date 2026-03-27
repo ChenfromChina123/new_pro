@@ -1,4 +1,4 @@
-# AI智能学习助手系统 - Vue 3版本
+# 智学云境 (AI LearnSphere) - Vue 3版本
 
 这是基于Vue 3的现代化前端重构版本，将原有的HTML页面转换为组件化的Vue应用。
 

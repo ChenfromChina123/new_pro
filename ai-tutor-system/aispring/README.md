@@ -1,10 +1,10 @@
-# AI智能学习助手系统 - Spring Boot版本
+# 智学云境 (AI LearnSphere) - Spring Boot版本
 
 这是从Python FastAPI转换的Spring Boot版本，保持所有原有功能。
 
 ## 📋 项目概述
 
-基于Spring Boot 3.2的AI智能学习助手系统，提供AI问答、云盘管理、语言学习等功能。
+基于Spring Boot 3.2的智学云境 (AI LearnSphere) 系统，提供AI问答、云盘管理、语言学习等功能。
 
 ## 🛠️ 技术栈
 
@@ -81,7 +81,7 @@ mvn clean package
 mvn spring-boot:run
 
 # 或直接运行jar
-java -jar target/ai-tutor-1.0.0.jar
+java -jar target/zhixueyunjing-1.0.0.jar
 ```
 
 应用将在 `http://localhost:5000` 启动
@@ -436,6 +436,6 @@ MIT License
 
 ---
 
-**开发团队**: AI Spring Team
+**开发团队**: 智学云境团队
 **版本**: 1.0.0
 **最后更新**: 2025年12月

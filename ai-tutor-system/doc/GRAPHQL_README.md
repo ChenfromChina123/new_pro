@@ -1,4 +1,4 @@
-# ✅ Spring for GraphQL 数据分片加载 - 实现完成
+# ✅ 智学云境 (AI LearnSphere) - Spring for GraphQL 数据分片加载实现完成
 
 ## 📋 实现概览
 

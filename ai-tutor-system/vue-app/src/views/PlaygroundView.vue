@@ -7,9 +7,9 @@
             {{ lang.language }} ({{ lang.version }})
           </option>
         </select>
-        <button 
-          class="run-button" 
-          @click="executeCode" 
+        <button
+          class="run-button"
+          @click="executeCode"
           :disabled="isRunning"
         >
           <i :class="isRunning ? 'fas fa-spinner fa-spin' : 'fas fa-play'"></i>
@@ -70,9 +70,9 @@
           </div>
           <div class="stdin-container">
             <label for="stdin-input">标准输入:</label>
-            <textarea 
-              id="stdin-input" 
-              v-model="stdinInput" 
+            <textarea
+              id="stdin-input"
+              v-model="stdinInput"
               placeholder="输入运行时需要的标准输入..."
               class="stdin-input"
             ></textarea>
@@ -97,6 +97,17 @@ import 'splitpanes/dist/splitpanes.css'
 import { useThemeStore } from '@/stores/theme'
 import { API_ENDPOINTS } from '@/config/api'
 import request from '@/utils/request'
+
+// 修复 Monaco Editor Web Worker 报错
+window.MonacoEnvironment = {
+  getWorkerUrl: (workerId, label) => {
+    const code = `
+      self.MonacoEnvironment = { baseUrl: '${import.meta.env.BASE_URL}' };
+      importScripts('${import.meta.env.BASE_URL}node_modules/monaco-editor/min/vs/base/worker/workerMain.js');
+    `;
+    return `data:text/javascript;charset=utf-8,${encodeURIComponent(code)}`;
+  }
+};
 
 const themeStore = useThemeStore()
 const editorContainer = ref(null)
@@ -146,11 +157,11 @@ const handleLanguageChange = () => {
 
 const executeCode = async () => {
   if (isRunning.value || !editor) return
-  
+
   isRunning.value = true
   errorMessage.value = ''
   executionResult.value = null
-  
+
   try {
     const code = editor.getValue()
     const response = await request.post(API_ENDPOINTS.playground.execute, {
@@ -158,9 +169,9 @@ const executeCode = async () => {
       code: code,
       stdin: stdinInput.value
     })
-    
-    executionResult.value = response
-    remainingRequests.value = Math.max(0, remainingRequests.value - 1)
+
+    executionResult.value = response.data
+    remainingRequests.value = response.remaining || Math.max(0, remainingRequests.value - 1)
   } catch (error) {
     if (error.response?.status === 429) {
       errorMessage.value = '执行次数已达上限，请稍后再试'
@@ -203,7 +214,7 @@ const handleKeydown = (event) => {
 onMounted(async () => {
   await checkPistonHealth()
   await fetchRuntimes()
-  
+
   editor = monaco.editor.create(editorContainer.value, {
     value: languageTemplates[selectedLanguage.value] || '',
     language: languageMonacoMap[selectedLanguage.value] || 'plaintext',
@@ -214,9 +225,9 @@ onMounted(async () => {
     lineNumbers: 'on',
     scrollBeyondLastLine: false
   })
-  
+
   document.addEventListener('keydown', handleKeydown)
-  
+
   watch(() => themeStore.isDarkMode, () => {
     if (editor) {
       monaco.editor.setTheme(getEditorTheme())

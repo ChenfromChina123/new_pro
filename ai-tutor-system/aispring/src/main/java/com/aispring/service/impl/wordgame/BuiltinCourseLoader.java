@@ -123,7 +123,7 @@ public class BuiltinCourseLoader {
     /**
      * 数字转中文标题
      */
-    private String toChineseTitle(int num) {
+    public String toChineseTitle(int num) {
         String[] nums = {"零", "一", "二", "三", "四", "五", "六", "七", "八", "九", "十"};
         if (num <= 10) {
             return "第" + nums[num] + "课";

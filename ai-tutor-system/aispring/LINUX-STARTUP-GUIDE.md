@@ -155,9 +155,9 @@ Requires=docker.service
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-WorkingDirectory=/opt/ai-tutor-system/aispring
-ExecStart=/opt/ai-tutor-system/aispring/start-search-service.sh
-ExecStop=/opt/ai-tutor-system/aispring/docker-compose down
+WorkingDirectory=/opt/zhixueyunjing/aispring
+ExecStart=/opt/zhixueyunjing/aispring/start-search-service.sh
+ExecStop=/opt/zhixueyunjing/aispring/docker-compose down
 User=root
 
 [Install]
@@ -206,4 +206,4 @@ volumes:
 
 - [SearXNG 官方文档](https://docs.searxng.org/)
 - [Docker 官方文档](https://docs.docker.com/)
-- [项目 GitHub](https://github.com/ChenfromChina123/AiSpring)
+- [项目 GitHub](https://github.com/ChenfromChina123/ZhiXueYunJing)

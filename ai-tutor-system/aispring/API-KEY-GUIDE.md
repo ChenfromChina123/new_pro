@@ -35,7 +35,7 @@ export SEARCH_API_KEY="your-secret-api-key-here"
 ### 方法 3：启动参数配置
 
 ```bash
-java -jar target/ai-tutor-1.0.0.jar --search.api.key="your-secret-api-key-here"
+java -jar target/zhixueyunjing-1.0.0.jar --search.api.key="your-secret-api-key-here"
 ```
 
 ## 三、API 使用方式
@@ -128,7 +128,7 @@ response = requests.get(
 推荐使用以下格式生成强密钥：
 
 ```
-sk-aispring-{年份}-{随机字符串}
+sk-zhixueyunjing-{年份}-{随机字符串}
 ```
 
 **示例**：
@@ -138,6 +138,11 @@ openssl rand -hex 32
 
 # 输出示例：
 # a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6
+```
+
+**示例**：
+```bash
+sk-zhixueyunjing-2026-$(openssl rand -hex 16)
 ```
 
 ### 2. 密钥存储
@@ -164,7 +169,7 @@ openssl rand -hex 32
 ```yaml
 search:
   api:
-    key: "${SEARCH_API_KEY:sk-aispring-2026-secure-key-xyz789}"
+    key: "${SEARCH_API_KEY:sk-zhixueyunjing-2026-secure-key-xyz789}"
 ```
 
 设置环境变量：
@@ -182,8 +187,8 @@ source /etc/profile
 ```yaml
 # docker-compose.yml
 services:
-  ai-tutor:
-    image: ai-tutor:latest
+  zhixueyunjing:
+    image: zhixueyunjing:latest
     environment:
       - SEARCH_API_KEY=your-secret-api-key-here
 ```
@@ -254,7 +259,7 @@ grep "search.api.key" logs/application.log
 #!/bin/bash
 
 # 生成随机 API Key
-API_KEY="sk-aispring-2026-$(openssl rand -hex 16)"
+API_KEY="sk-zhixueyunjing-2026-$(openssl rand -hex 16)"
 
 # 添加到环境变量
 echo "export SEARCH_API_KEY=\"$API_KEY\"" >> ~/.bashrc
@@ -276,4 +281,4 @@ chmod +x setup_api_key.sh
 
 **文档版本**：v1.0  
 **更新时间**：2026-03-22  
-**适用版本**：AI Tutor System 1.0.0+
+**适用版本**：智学云境 (AI LearnSphere) 1.0.0+

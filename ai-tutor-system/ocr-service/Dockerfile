@@ -3,8 +3,8 @@
 
 FROM python:3.10-slim
 
-LABEL maintainer="AI-Tutor-System"
-LABEL description="Lightweight OCR Service with CRNN ONNX"
+LABEL maintainer="ZhiXueYunJing"
+LABEL description="智学云境 (AI LearnSphere) - Lightweight OCR Service with CRNN ONNX"
 
 # 设置环境变量 - 优化内存使用
 ENV PYTHONDONTWRITEBYTECODE=1 \

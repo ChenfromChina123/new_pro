@@ -16,7 +16,7 @@
   "window": {
     "backgroundTextStyle": "light",
     "navigationBarBackgroundColor": "#ffffff",
-    "navigationBarTitleText": "AI Tutor",
+    "navigationBarTitleText": "智学云境",
     "navigationBarTextStyle": "black"
   },
   "tabBar": {

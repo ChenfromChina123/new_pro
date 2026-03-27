@@ -106,10 +106,13 @@ public final class WordGameUtils {
         if (!(sections instanceof List<?> list)) {
             return List.of();
         }
-        return list.stream()
-                .filter(item -> item instanceof Map<?, ?>)
-                .map(item -> new LinkedHashMap<>((Map<String, Object>) item))
-                .toList();
+        List<Map<String, Object>> result = new java.util.ArrayList<>();
+        for (Object item : list) {
+            if (item instanceof Map<?, ?> map) {
+                result.add(new LinkedHashMap<>((Map<String, Object>) map));
+            }
+        }
+        return result;
     }
 
     /**
@@ -120,10 +123,13 @@ public final class WordGameUtils {
         if (!(source instanceof List<?> list)) {
             return List.of();
         }
-        return list.stream()
-                .filter(item -> item instanceof Map<?, ?>)
-                .map(item -> new LinkedHashMap<>((Map<String, Object>) item))
-                .toList();
+        List<Map<String, Object>> result = new java.util.ArrayList<>();
+        for (Object item : list) {
+            if (item instanceof Map<?, ?> map) {
+                result.add(new LinkedHashMap<>((Map<String, Object>) map));
+            }
+        }
+        return result;
     }
 
     /**

@@ -19,7 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AI智能学习助手 - Spring Boot版本启动成功！
+ * 智学云境 (AI LearnSphere) - Spring Boot启动类
  */
 @SpringBootApplication(scanBasePackages = {"com.aispring", "com.example.aispring"})
 @EntityScan(basePackages = "com.aispring.entity")
@@ -36,7 +36,7 @@ public class AiTutorApplication {
             
             ╔═══════════════════════════════════════════════════════════╗
             ║                                                           ║
-            ║   🤖 AI智能学习助手系统 - Spring Boot版本启动成功！            ║
+            ║   🤖 智学云境 (AI LearnSphere) - Spring Boot启动成功！       ║
             ║                                                           ║
             ║   📚 API文档: http://localhost:5000/swagger-ui.html        ║
             ║   💻 管理后台: http://localhost:5000/admin                 ║

@@ -1,4 +1,4 @@
-# Spring Boot 项目快速开始指南
+# 智学云境 (AI LearnSphere) - Spring Boot 快速开始指南
 
 ## 🚀 10分钟快速启动
 
@@ -43,7 +43,7 @@ mvn clean install
 mvn spring-boot:run
 
 # 方式2: 运行JAR
-java -jar target/ai-tutor-1.0.0.jar
+java -jar target/zhixueyunjing-1.0.0.jar
 
 # 方式3: 在IDE中直接运行 AiTutorApplication.java
 ```
@@ -56,7 +56,7 @@ java -jar target/ai-tutor-1.0.0.jar
 ```
 ╔═══════════════════════════════════════════════════════════╗
 ║                                                           ║
-║   🤖 AI智能学习助手系统 - Spring Boot版本启动成功！      ║
+║   🤖 智学云境 (AI LearnSphere) - Spring Boot启动成功！   ║
 ║                                                           ║
 ║   📚 API文档: http://localhost:5000/swagger-ui.html     ║
 ║   💻 管理后台: http://localhost:5000/admin               ║

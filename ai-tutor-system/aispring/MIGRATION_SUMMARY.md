@@ -1,4 +1,4 @@
-# Python到Spring Boot迁移总结
+# 智学云境 (AI LearnSphere) - Python到Spring Boot迁移总结
 
 ## 迁移完成的功能模块
 
@@ -301,7 +301,7 @@
 mvn clean package
 
 # 运行
-java -jar target/aispring-1.0.0.jar
+java -jar target/zhixueyunjing-1.0.0.jar
 
 # 或使用Maven
 mvn spring-boot:run

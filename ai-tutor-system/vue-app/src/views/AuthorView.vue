@@ -7,7 +7,7 @@
           关于作者
         </h1>
         <p class="text-lg text-secondary">
-          了解 AI 智能学习助手背后的开发者
+          了解 智学云境 (AI LearnSphere) 背后的开发者
         </p>
       </div>
 
@@ -148,7 +148,7 @@
           </h3>
           <div class="bio-content">
             <p>
-              热爱编程，专注于后端开发和AI应用。作为AI智能学习助手项目的主要开发者，致力于打造高效、易用的学习平台。
+              热爱编程，专注于后端开发和AI应用。作为智学云境 (AI LearnSphere) 项目的主要开发者，致力于打造高效、易用的学习平台。
               在校期间积极参与各类编程竞赛，不断提升自己的技术能力和解决问题的思维方式。
             </p>
             <p class="mt-2">
@@ -197,7 +197,7 @@
 
 <script setup>
 // 页面元数据
-document.title = "关于作者 - AI智能学习助手";
+document.title = "关于作者 - 智学云境 (AI LearnSphere)";
 </script>
 
 <style scoped>

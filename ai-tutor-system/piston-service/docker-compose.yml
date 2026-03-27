@@ -3,10 +3,13 @@ services:
     image: ghcr.io/engineer-man/piston
     container_name: piston-engine
     restart: unless-stopped
+    privileged: true
     ports:
       - "127.0.0.1:2000:2000"
     volumes:
       - piston-packages:/piston/packages
+    environment:
+      - PISTON_REPO_URL=https://mirror.ghproxy.com/https://github.com/engineer-man/piston/releases/download/pkgs/index
     deploy:
       resources:
         limits:
@@ -14,6 +17,10 @@ services:
           memory: 2G
     tmpfs:
       - /piston/jobs:exec,size=256M
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:2000/api/v2/runtimes"]
       interval: 30s
