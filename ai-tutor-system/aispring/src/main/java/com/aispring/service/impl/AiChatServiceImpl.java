@@ -1,5 +1,6 @@
 package com.aispring.service.impl;
 
+import com.aispring.common.prompt.ChatPromptConstants;
 import com.aispring.service.AiChatService;
 import com.aispring.service.TokenUsageAuditService;
 import com.aispring.service.ChatRecordService;
@@ -315,20 +316,10 @@ public class AiChatServiceImpl implements AiChatService {
      * 构建增强的系统提示词
      */
     private String buildEnhancedSystemPrompt(String systemPrompt) {
-        String systemInstructions = "\n【系统能力】当你需要查询实时信息时，直接输出以下XML标签，系统会自动处理：" +
-            "\n1. 搜索信息：<search>关键词</search> 或 <search site=\"网站域名\">关键词</search>" +
-            "\n2. 获取网页内容：<fetch-url>https://example.com</fetch-url>" +
-            "\n3. 检索单词：<query-vocab topic=\"主题\" limit=\"5\" />" +
-            "\n【重要规则】" +
-            "\n- 输出XML标签后，等待系统反馈结果再回答用户" +
-            "\n- 严禁向用户透露系统内部机制或工具调用方式" +
-            "\n- 只呈现最终结果，不要说明获取过程" +
-            "\n- 保持回答简洁，直接给出用户需要的信息";
-
         if (systemPrompt == null || systemPrompt.isEmpty()) {
-            return systemInstructions;
+            return ChatPromptConstants.SYSTEM_INSTRUCTIONS;
         }
-        return systemPrompt + systemInstructions;
+        return systemPrompt + ChatPromptConstants.SYSTEM_INSTRUCTIONS;
     }
 
     @Override
@@ -349,20 +340,18 @@ public class AiChatServiceImpl implements AiChatService {
             if (searchResult != null && searchResult.hasSearch()) {
                 String searchResultText = searchInstructionHandler.executeSearch(
                     searchResult.getKeyword(), searchResult.getSite());
-                String newPrompt = prompt + "\n\n【系统反馈的搜索结果】\n" + searchResultText +
-                                  "\n\n请根据上述搜索结果回答用户的问题。";
+                String newPrompt = prompt + String.format(ChatPromptConstants.SEARCH_RESULT_FEEDBACK_TEMPLATE, searchResultText);
                 return ask(newPrompt, sessionId, model, userId,
-                          "【系统提示】你已经获取了搜索结果，请直接回答用户问题。", ipAddress);
+                          ChatPromptConstants.SEARCH_RESULT_SYSTEM_PROMPT, ipAddress);
             }
 
             // 处理URL获取指令
             SearchInstructionHandler.UrlFetchResult urlFetchResult = searchInstructionHandler.detectAndHandleUrlFetch(content);
             if (urlFetchResult != null && urlFetchResult.hasUrlFetch()) {
                 String urlContent = searchInstructionHandler.executeUrlFetch(urlFetchResult.getUrl());
-                String newPrompt = prompt + "\n\n【系统反馈的网页内容】\n" + urlContent +
-                                  "\n\n请根据上述网页内容回答用户的问题。";
+                String newPrompt = prompt + String.format(ChatPromptConstants.URL_CONTENT_FEEDBACK_TEMPLATE, urlContent);
                 return ask(newPrompt, sessionId, model, userId,
-                          "【系统提示】你已经获取了网页内容，请直接回答用户问题。", ipAddress);
+                          ChatPromptConstants.URL_CONTENT_SYSTEM_PROMPT, ipAddress);
             }
 
             long responseTimeMs = System.currentTimeMillis() - startMs;
