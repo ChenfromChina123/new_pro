@@ -1,16 +1,23 @@
 package com.aispring.service.impl;
 
+import com.aispring.entity.UrlFilterRule;
 import com.aispring.service.SearchService;
+import com.aispring.service.UrlFilterService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
 import org.springframework.stereotype.Service;
 
 /**
  * 实时网络搜索服务实现类
+ * 集成URL过滤功能，自动过滤搜索结果中的不良URL
  */
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class SearchServiceImpl implements SearchService {
+
+    private final UrlFilterService urlFilterService;
 
     /**
      * 根据关键词搜索相关信息
@@ -37,7 +44,6 @@ public class SearchServiceImpl implements SearchService {
 
         log.info("Searching web for query: {}", searchQuery);
 
-        // 使用远程 SearXNG 服务（search.aistudy.icu）
         String searxngUrl = "https://search.aistudy.icu/search";
         
         try {
@@ -53,7 +59,6 @@ public class SearchServiceImpl implements SearchService {
                     .header("Accept", "application/json")
                     .timeout(30000);
 
-            // 忽略 SSL 证书错误
             javax.net.ssl.TrustManager[] trustAllCerts = new javax.net.ssl.TrustManager[]{
                 new javax.net.ssl.X509TrustManager() {
                     public java.security.cert.X509Certificate[] getAcceptedIssuers() { return null; }
@@ -87,6 +92,7 @@ public class SearchServiceImpl implements SearchService {
             sb.append("针对关键词\"").append(keywords).append("\"的实时搜索结果：\n\n");
             
             int count = 0;
+            int filteredCount = 0;
             for (com.fasterxml.jackson.databind.JsonNode result : resultsNode) {
                 if (count >= 5) break;
                 
@@ -94,21 +100,31 @@ public class SearchServiceImpl implements SearchService {
                 String snippet = result.path("content").asText();
                 String link = result.path("url").asText();
 
-                if (!title.isEmpty() && !snippet.isEmpty()) {
+                if (!title.isEmpty() && !snippet.isEmpty() && !link.isEmpty()) {
+                    UrlFilterService.FilterResult filterResult = urlFilterService.checkUrl(link);
+                    
+                    if (filterResult.shouldFilter() && filterResult.filterType() == UrlFilterRule.FilterType.BLOCK) {
+                        log.info("URL filtered by rule '{}': {}", filterResult.matchedRule(), link);
+                        filteredCount++;
+                        continue;
+                    }
+
                     sb.append(count + 1).append(". ").append(title).append("\n");
                     sb.append("   摘要：").append(snippet).append("\n");
-                    if (!link.isEmpty()) {
-                        sb.append("   链接：").append(link).append("\n");
-                    }
+                    sb.append("   链接：").append(link).append("\n");
                     sb.append("\n");
                     count++;
                 }
             }
 
+            if (filteredCount > 0) {
+                sb.append("注：已过滤 ").append(filteredCount).append(" 条不符合安全策略的结果。\n");
+            }
+
             if (count > 0) {
                 return sb.toString();
             } else {
-                return "针对关键词\"" + keywords + "\"的搜索没有找到相关结果。";
+                return "针对关键词\"" + keywords + "\"的搜索没有找到相关结果（可能已被安全策略过滤）。";
             }
 
         } catch (Exception e) {

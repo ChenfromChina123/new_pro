@@ -207,7 +207,6 @@ public class AiChatServiceImpl implements AiChatService {
     private String handleSearchInstructions(String content, String initialPrompt, String sessionId,
                                             String model, Long userId, SseEmitter emitter,
                                             String ipAddress, StringBuilder fullReasoning) throws IOException {
-        // 检查搜索指令
         SearchInstructionHandler.SearchResult searchResult = searchInstructionHandler.detectAndHandleSearch(content);
         if (searchResult != null && searchResult.hasSearch()) {
             sseChatHandler.sendMessage(emitter, searchInstructionHandler.buildSearchStatusMessage(
@@ -225,7 +224,22 @@ public class AiChatServiceImpl implements AiChatService {
             return content + "\n\n" + secondContent;
         }
 
-        // 检查单词检索指令
+        SearchInstructionHandler.UrlFetchResult urlFetchResult = searchInstructionHandler.detectAndHandleUrlFetch(content);
+        if (urlFetchResult != null && urlFetchResult.hasUrlFetch()) {
+            sseChatHandler.sendMessage(emitter,
+                searchInstructionHandler.buildUrlFetchStatusMessage(urlFetchResult.getUrl()));
+
+            String urlContent = searchInstructionHandler.executeUrlFetch(urlFetchResult.getUrl());
+
+            String newPrompt = initialPrompt + "\n\n【系统反馈的网页内容】\n" + urlContent +
+                              "\n\n请根据上述网页内容回答用户的问题。";
+
+            String secondContent = performBlockingChat(newPrompt, sessionId, model, userId,
+                "【系统提示】你已经获取了网页内容，请直接回答用户问题，不要再输出<fetch-url>标签。",
+                emitter, ipAddress, fullReasoning);
+            return content + "\n\n" + secondContent;
+        }
+
         SearchInstructionHandler.VocabResult vocabResult = searchInstructionHandler.detectAndHandleVocab(content);
         if (vocabResult != null && vocabResult.hasVocab()) {
             sseChatHandler.sendMessage(emitter,
@@ -287,6 +301,9 @@ public class AiChatServiceImpl implements AiChatService {
         String systemInstructions = "\n【系统搜索能力】如果你需要查询实时信息或不知道的内容，" +
             "请在回答中直接输出XML格式：<search site=\"网站域名(可选)\">关键词</search>。" +
             "系统会自动为你搜索并将结果反馈给你。" +
+            "\n【URL内容获取】如果你需要获取特定网页的内容，" +
+            "请输出：<fetch-url>https://example.com</fetch-url>。" +
+            "系统会自动获取该网页的内容并反馈给你。" +
             "\n【单词记忆与RAG检索】当用户需要学习或复习某类单词时，" +
             "请输出检索意图标签，例如：<query-vocab topic=\"主题\" limit=\"5\" />。" +
             "系统会从本地词库中提取真实单词数据反馈给你。";

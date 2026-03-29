@@ -2,23 +2,21 @@ package com.aispring.service.impl.chat;
 
 import com.aispring.service.SearchService;
 import com.aispring.service.SemanticSearchService;
+import com.aispring.service.UrlContentService;
 import com.aispring.entity.WordDict;
 import com.aispring.repository.WordDictRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
 /**
  * 搜索指令处理器
- * 负责处理 AI 输出中的搜索指令和单词检索指令
+ * 负责处理 AI 输出中的搜索指令、URL获取指令和单词检索指令
  */
 @Component
 @Slf4j
@@ -26,20 +24,25 @@ public class SearchInstructionHandler {
 
     private static final Pattern SEARCH_PATTERN = Pattern.compile(
         "<search(?:\\s+site=\"([^\"]+)\")?>(.*?)</search>", Pattern.DOTALL);
+    private static final Pattern URL_PATTERN = Pattern.compile(
+        "<fetch-url>(.*?)</fetch-url>", Pattern.DOTALL);
     private static final Pattern VOCAB_PATTERN = Pattern.compile(
         "<query-vocab\\s+topic=\"([^\"]+)\"\\s+limit=\"(\\d+)\"\\s*/>", Pattern.DOTALL);
 
     private final SearchService searchService;
     private final SemanticSearchService semanticSearchService;
     private final WordDictRepository wordDictRepository;
+    private final UrlContentService urlContentService;
 
     public SearchInstructionHandler(
             SearchService searchService,
             SemanticSearchService semanticSearchService,
-            WordDictRepository wordDictRepository) {
+            WordDictRepository wordDictRepository,
+            UrlContentService urlContentService) {
         this.searchService = searchService;
         this.semanticSearchService = semanticSearchService;
         this.wordDictRepository = wordDictRepository;
+        this.urlContentService = urlContentService;
     }
 
     /**
@@ -54,6 +57,21 @@ public class SearchInstructionHandler {
             String keyword = matcher.group(2).trim();
             log.info("检测到AI搜索请求: keyword={}, site={}", keyword, site);
             return new SearchResult(true, keyword, site, null, null);
+        }
+        return null;
+    }
+
+    /**
+     * 检测并处理URL获取指令
+     * @param content AI 响应内容
+     * @return URL获取结果，如果没有URL指令则返回 null
+     */
+    public UrlFetchResult detectAndHandleUrlFetch(String content) {
+        Matcher matcher = URL_PATTERN.matcher(content.trim());
+        if (matcher.find()) {
+            String url = matcher.group(1).trim();
+            log.info("检测到AI URL获取请求: url={}", url);
+            return new UrlFetchResult(true, url, null);
         }
         return null;
     }
@@ -85,6 +103,15 @@ public class SearchInstructionHandler {
     }
 
     /**
+     * 执行URL内容获取
+     * @param url 目标URL
+     * @return URL内容文本
+     */
+    public String executeUrlFetch(String url) {
+        return urlContentService.fetchUrlContent(url);
+    }
+
+    /**
      * 执行单词检索
      * @param topic 主题
      * @param limit 数量限制
@@ -93,7 +120,6 @@ public class SearchInstructionHandler {
     public String executeVocabSearch(String topic, int limit) {
         List<WordDict> words = semanticSearchService.semanticSearch(topic, limit);
 
-        // 如果语义搜索没有结果，降级为普通搜索
         if (words.isEmpty()) {
             log.info("语义搜索无结果，降级为普通搜索");
             Page<WordDict> wordsPage = wordDictRepository.searchByKeyword(topic, PageRequest.of(0, limit));
@@ -149,6 +175,13 @@ public class SearchInstructionHandler {
     }
 
     /**
+     * 构建URL获取状态消息
+     */
+    public String buildUrlFetchStatusMessage(String url) {
+        return "\n\n*正在获取网页内容: " + url + "*...\n\n";
+    }
+
+    /**
      * 构建单词检索状态消息
      */
     public String buildVocabStatusMessage(String topic) {
@@ -178,6 +211,25 @@ public class SearchInstructionHandler {
         public String getSite() { return site; }
         public String getResult() { return result; }
         public String getStatusMessage() { return statusMessage; }
+    }
+
+    /**
+     * URL获取结果数据类
+     */
+    public static class UrlFetchResult {
+        private final boolean hasUrlFetch;
+        private final String url;
+        private final String content;
+
+        public UrlFetchResult(boolean hasUrlFetch, String url, String content) {
+            this.hasUrlFetch = hasUrlFetch;
+            this.url = url;
+            this.content = content;
+        }
+
+        public boolean hasUrlFetch() { return hasUrlFetch; }
+        public String getUrl() { return url; }
+        public String getContent() { return content; }
     }
 
     /**
