@@ -9,19 +9,29 @@ export LANG=C.UTF-8
 export LC_ALL=C.UTF-8
 
 # 设置 Java 环境变量（自动检测）
-if [ -z "$JAVA_HOME" ]; then
-    if [ -d "/usr/lib/jvm/java-17-openjdk" ]; then
-        export JAVA_HOME=/usr/lib/jvm/java-17-openjdk
-    elif [ -d "/usr/lib/jvm/java-11-openjdk" ]; then
-        export JAVA_HOME=/usr/lib/jvm/java-11-openjdk
-    elif [ -d "/usr/lib/jvm/java-1.8.0-openjdk" ]; then
-        export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk
-    else
-        # 尝试自动查找
-        JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java 2>/dev/null) 2>/dev/null) 2>/dev/null) 2>/dev/null)
-        if [ -n "$JAVA_HOME" ] && [ "$JAVA_HOME" != "/" ]; then
-            export JAVA_HOME
+if [ -z "$JAVA_HOME" ] || [ ! -x "$JAVA_HOME/bin/java" ]; then
+    # 通过 which java 找到实际 java 路径，然后取其父目录的父目录作为 JAVA_HOME
+    JAVA_BIN=$(which java 2>/dev/null)
+    if [ -n "$JAVA_BIN" ]; then
+        # java/bin -> java -> /usr/lib/jvm/java-xxx
+        export JAVA_HOME=$(readlink -f "$JAVA_BIN/../../")
+        # 验证 JAVA_HOME 是否有效
+        if [ ! -x "$JAVA_HOME/bin/java" ]; then
+            # 尝试常见的 Java 安装路径
+            for dir in /usr/lib/jvm/java-17-openjdk /usr/lib/jvm/java-11-openjdk /usr/lib/jvm/java-1.8.0-openjdk; do
+                if [ -x "$dir/bin/java" ]; then
+                    export JAVA_HOME=$dir
+                    break
+                fi
+            done
         fi
+    else
+        for dir in /usr/lib/jvm/java-17-openjdk /usr/lib/jvm/java-11-openjdk /usr/lib/jvm/java-1.8.0-openjdk; do
+            if [ -x "$dir/bin/java" ]; then
+                export JAVA_HOME=$dir
+                break
+            fi
+        done
     fi
 fi
 
