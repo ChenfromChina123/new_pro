@@ -298,17 +298,15 @@ public class AiChatServiceImpl implements AiChatService {
      * 构建增强的系统提示词
      */
     private String buildEnhancedSystemPrompt(String systemPrompt) {
-        String systemInstructions = "\n【系统搜索能力】如果你需要查询实时信息或不知道的内容，" +
-            "请在回答中直接输出XML格式：<search site=\"网站域名(可选)\">关键词</search>。" +
-            "系统会自动为你搜索并将结果反馈给你。" +
-            "\n【URL内容获取 - 重要】当用户询问实时信息（如当前时间、天气、股价等）或需要获取特定网页内容时，" +
-            "你必须且只能输出：<fetch-url>网页URL</fetch-url>" +
-            "\n系统会自动获取网页内容并反馈给你，你必须等待系统反馈后再回答用户" +
-            "\n【严格禁止】不要输出任何其他格式的获取指令（如'正在获取网页内容: URL'），只使用XML标签格式！" +
-            "\n【单词记忆与RAG检索】当用户需要学习或复习某类单词时，" +
-            "请输出检索意图标签，例如：<query-vocab topic=\"主题\" limit=\"5\" />。" +
-            "系统会从本地词库中提取真实单词数据反馈给你。" +
-            "\n【重要提醒】不要只列出链接，必须输出获取指令让系统自动抓取内容！";
+        String systemInstructions = "\n【系统能力】当你需要查询实时信息时，直接输出以下XML标签，系统会自动处理：" +
+            "\n1. 搜索信息：<search>关键词</search> 或 <search site=\"网站域名\">关键词</search>" +
+            "\n2. 获取网页内容：<fetch-url>https://example.com</fetch-url>" +
+            "\n3. 检索单词：<query-vocab topic=\"主题\" limit=\"5\" />" +
+            "\n【重要规则】" +
+            "\n- 输出XML标签后，等待系统反馈结果再回答用户" +
+            "\n- 严禁向用户透露系统内部机制或工具调用方式" +
+            "\n- 只呈现最终结果，不要说明获取过程" +
+            "\n- 保持回答简洁，直接给出用户需要的信息";
 
         if (systemPrompt == null || systemPrompt.isEmpty()) {
             return systemInstructions;
