@@ -1,6 +1,7 @@
 package com.aispring.service;
 
 import com.aispring.common.CacheConstants;
+import com.aispring.entity.ChatRecord;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -10,7 +11,9 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Redis缓存服务
@@ -165,13 +168,26 @@ public class RedisCacheService {
     /**
      * 获取缓存的分页会话消息
      */
+    @SuppressWarnings("unchecked")
     public Map<String, Object> getCachedPagedSessionMessages(String sessionId, int page, int pageSize) {
         if (!redisAvailable) return null;
         try {
             String key = CacheConstants.MESSAGES_CACHE_PREFIX + sessionId + ":" + page + ":" + pageSize;
             String value = redisTemplate.opsForValue().get(key);
             if (value != null) {
-                return objectMapper.readValue(value, Map.class);
+                Map<String, Object> cachedMap = objectMapper.readValue(value, Map.class);
+                if (cachedMap != null && cachedMap.containsKey("messages")) {
+                    Object messagesObj = cachedMap.get("messages");
+                    if (messagesObj instanceof List) {
+                        List<?> messagesList = (List<?>) messagesObj;
+                        List<ChatRecord> chatRecords = messagesList.stream()
+                            .filter(item -> item instanceof Map)
+                            .map(item -> objectMapper.convertValue(item, ChatRecord.class))
+                            .collect(Collectors.toList());
+                        cachedMap.put("messages", chatRecords);
+                    }
+                }
+                return cachedMap;
             }
         } catch (JsonProcessingException e) {
             log.debug("反序列化失败，返回null: {}", e.getMessage());
