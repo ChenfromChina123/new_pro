@@ -90,7 +90,9 @@ cd aispring
 
 # 强制重新打包以应用最新的配置文件（如 API Key）
 echo "   正在清理并重新打包..."
-mvn clean package -DskipTests
+echo "   Java版本: $(java -version 2>&1 | head -n 1)"
+echo "   JAVA_HOME: $JAVA_HOME"
+./mvnw clean package -DskipTests
 if [ $? -ne 0 ]; then
     echo "❌ 打包失败"
     cd ..
