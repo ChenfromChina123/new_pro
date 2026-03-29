@@ -98,8 +98,10 @@ if [ -f "./mvnw" ]; then
     chmod +x ./mvnw
 fi
 
-# 使用 env 确保 JAVA_HOME 传递给 mvnw
-env JAVA_HOME="$JAVA_HOME" PATH="$JAVA_HOME/bin:$PATH" ./mvnw clean package -DskipTests
+# 直接 export JAVA_HOME 后执行 mvnw
+export JAVA_HOME
+export PATH="$JAVA_HOME/bin:$PATH"
+./mvnw clean package -DskipTests
 if [ $? -ne 0 ]; then
     echo "❌ 打包失败"
     cd ..
