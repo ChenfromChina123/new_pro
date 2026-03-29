@@ -301,12 +301,16 @@ public class AiChatServiceImpl implements AiChatService {
         String systemInstructions = "\n【系统搜索能力】如果你需要查询实时信息或不知道的内容，" +
             "请在回答中直接输出XML格式：<search site=\"网站域名(可选)\">关键词</search>。" +
             "系统会自动为你搜索并将结果反馈给你。" +
-            "\n【URL内容获取】如果你需要获取特定网页的内容，" +
-            "请输出：<fetch-url>https://example.com</fetch-url>。" +
-            "系统会自动获取该网页的内容并反馈给你。" +
+            "\n【URL内容获取 - 重要】当用户询问实时信息（如当前时间、天气、股价等）或需要获取特定网页内容时，" +
+            "你必须按以下步骤操作：" +
+            "\n1. 首先输出：<fetch-url>网页URL</fetch-url>（使用XML标签格式）" +
+            "\n2. 或者输出：正在获取网页内容: http://example.com（使用自然语言格式）" +
+            "\n3. 系统会自动获取网页内容并反馈给你" +
+            "\n4. 你必须等待系统反馈后再回答用户" +
             "\n【单词记忆与RAG检索】当用户需要学习或复习某类单词时，" +
             "请输出检索意图标签，例如：<query-vocab topic=\"主题\" limit=\"5\" />。" +
-            "系统会从本地词库中提取真实单词数据反馈给你。";
+            "系统会从本地词库中提取真实单词数据反馈给你。" +
+            "\n【重要提醒】不要只列出链接，必须输出获取指令让系统自动抓取内容！";
 
         if (systemPrompt == null || systemPrompt.isEmpty()) {
             return systemInstructions;
