@@ -338,6 +338,16 @@ public class AiChatServiceImpl implements AiChatService {
                           "【系统提示】你已经获取了搜索结果，请直接回答用户问题。", ipAddress);
             }
 
+            // 处理URL获取指令
+            SearchInstructionHandler.UrlFetchResult urlFetchResult = searchInstructionHandler.detectAndHandleUrlFetch(content);
+            if (urlFetchResult != null && urlFetchResult.hasUrlFetch()) {
+                String urlContent = searchInstructionHandler.executeUrlFetch(urlFetchResult.getUrl());
+                String newPrompt = prompt + "\n\n【系统反馈的网页内容】\n" + urlContent +
+                                  "\n\n请根据上述网页内容回答用户的问题。";
+                return ask(newPrompt, sessionId, model, userId,
+                          "【系统提示】你已经获取了网页内容，请直接回答用户问题。", ipAddress);
+            }
+
             long responseTimeMs = System.currentTimeMillis() - startMs;
             tokenUsageAuditService.recordEstimated("deepseek", "deepseek-v3", userId, sessionId,
                     prompt.length(), content.length(), responseTimeMs, false);
