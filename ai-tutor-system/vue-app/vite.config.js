@@ -2,7 +2,8 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { fileURLToPath, URL } from 'node:url'
 
-// https://vitejs.dev/config/
+const isProduction = process.env.NODE_ENV === 'production'
+
 export default defineConfig({
   plugins: [
     vue()
@@ -14,14 +15,15 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    host: '0.0.0.0',
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: isProduction ? 'http://localhost:5000' : 'http://localhost:5000',
         changeOrigin: true,
         secure: false
       },
       '/ws': {
-        target: 'ws://localhost:5000',
+        target: isProduction ? 'http://localhost:5000' : 'ws://localhost:5000',
         ws: true,
         changeOrigin: true,
         secure: false
