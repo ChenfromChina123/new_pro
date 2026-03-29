@@ -140,4 +140,28 @@ public class SseChatHandler {
             log.warn("Client disconnected during suggestion stream: {}", ex.getMessage());
         }
     }
+
+    /**
+     * 发送工具调用状态事件
+     * @param emitter SSE 发射器
+     * @param toolType 工具类型 (search/url_fetch/vocab)
+     * @param status 状态 (pending/processing/done/error)
+     * @param message 状态消息
+     * @param details 详细信息
+     */
+    public void sendToolStatus(SseEmitter emitter, String toolType, String status, String message, String details) {
+        try {
+            Map<String, Object> sseData = new HashMap<>();
+            sseData.put("type", "tool_status");
+            sseData.put("tool_type", toolType);
+            sseData.put("status", status);
+            sseData.put("message", message);
+            if (details != null) {
+                sseData.put("details", details);
+            }
+            emitter.send(SseEmitter.event().name("tool_status").data(objectMapper.writeValueAsString(sseData)));
+        } catch (IllegalStateException | IOException ex) {
+            log.warn("Client disconnected during tool status stream: {}", ex.getMessage());
+        }
+    }
 }

@@ -185,6 +185,47 @@
                   </transition>
                 </div>
 
+                <!-- 工具调用状态 -->
+                <div
+                  v-if="message.tool_status_list && message.tool_status_list.length > 0"
+                  class="tool-status-container"
+                >
+                  <div
+                    v-for="(toolStatus, toolIndex) in message.tool_status_list"
+                    :key="toolIndex"
+                    class="reasoning-block tool-status-block"
+                    :class="{
+                      'streaming': toolStatus.status === 'processing',
+                      'done': toolStatus.status === 'done',
+                      'error': toolStatus.status === 'error'
+                    }"
+                  >
+                    <div class="reasoning-header">
+                      <div class="header-left">
+                        <div class="header-text">
+                          <i
+                            v-if="toolStatus.status === 'processing'"
+                            class="fas fa-circle-notch fa-spin"
+                            style="margin-right: 6px; color: #3b82f6;"
+                          />
+                          <i
+                            v-else-if="toolStatus.status === 'done'"
+                            class="fas fa-check-circle"
+                            style="margin-right: 6px; color: #10b981;"
+                          />
+                          <i
+                            v-else
+                            class="fas fa-exclamation-circle"
+                            style="margin-right: 6px; color: #ef4444;"
+                          />
+                          <span class="reasoning-title">{{ getToolTypeName(toolStatus.tool_type) }}</span>
+                          <span class="reasoning-subtitle">{{ toolStatus.message }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <!-- AI 响应内容 -->
                 <div
                   v-if="message.error"
@@ -1734,6 +1775,18 @@ const getReasoningLength = (content) => {
     .replace(/\s+/g, ' ')
     .trim()
   return text.length
+}
+
+/**
+ * 获取工具类型的中文名称
+ */
+const getToolTypeName = (toolType) => {
+  const toolTypeMap = {
+    'search': '联网搜索',
+    'url_fetch': '网页获取',
+    'vocab': '单词检索'
+  }
+  return toolTypeMap[toolType] || toolType
 }
 
 const formatMessage = (content) => {

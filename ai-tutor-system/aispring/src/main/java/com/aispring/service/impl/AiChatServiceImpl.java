@@ -209,11 +209,18 @@ public class AiChatServiceImpl implements AiChatService {
                                             String ipAddress, StringBuilder fullReasoning) throws IOException {
         SearchInstructionHandler.SearchResult searchResult = searchInstructionHandler.detectAndHandleSearch(content);
         if (searchResult != null && searchResult.hasSearch()) {
-            sseChatHandler.sendMessage(emitter, searchInstructionHandler.buildSearchStatusMessage(
-                searchResult.getKeyword(), searchResult.getSite()));
+            // 发送工具调用状态 - 开始搜索
+            String searchDisplay = searchResult.getSite() != null && !searchResult.getSite().isEmpty()
+                ? searchResult.getKeyword() + " (在 " + searchResult.getSite() + " 中)" : searchResult.getKeyword();
+            sseChatHandler.sendToolStatus(emitter, "search", "processing",
+                "正在搜索: " + searchDisplay, null);
 
             String searchResultText = searchInstructionHandler.executeSearch(
                 searchResult.getKeyword(), searchResult.getSite());
+
+            // 发送工具调用状态 - 搜索完成
+            sseChatHandler.sendToolStatus(emitter, "search", "done",
+                "搜索完成", searchResultText);
 
             String newPrompt = initialPrompt + "\n\n【系统反馈的搜索结果】\n" + searchResultText +
                               "\n\n请根据上述搜索结果回答用户的问题。";
@@ -226,10 +233,15 @@ public class AiChatServiceImpl implements AiChatService {
 
         SearchInstructionHandler.UrlFetchResult urlFetchResult = searchInstructionHandler.detectAndHandleUrlFetch(content);
         if (urlFetchResult != null && urlFetchResult.hasUrlFetch()) {
-            sseChatHandler.sendMessage(emitter,
-                searchInstructionHandler.buildUrlFetchStatusMessage(urlFetchResult.getUrl()));
+            // 发送工具调用状态 - 开始获取URL
+            sseChatHandler.sendToolStatus(emitter, "url_fetch", "processing",
+                "正在获取网页内容", urlFetchResult.getUrl());
 
             String urlContent = searchInstructionHandler.executeUrlFetch(urlFetchResult.getUrl());
+
+            // 发送工具调用状态 - URL获取完成
+            sseChatHandler.sendToolStatus(emitter, "url_fetch", "done",
+                "网页内容获取完成", null);
 
             String newPrompt = initialPrompt + "\n\n【系统反馈的网页内容】\n" + urlContent +
                               "\n\n请根据上述网页内容回答用户的问题。";
@@ -242,11 +254,16 @@ public class AiChatServiceImpl implements AiChatService {
 
         SearchInstructionHandler.VocabResult vocabResult = searchInstructionHandler.detectAndHandleVocab(content);
         if (vocabResult != null && vocabResult.hasVocab()) {
-            sseChatHandler.sendMessage(emitter,
-                searchInstructionHandler.buildVocabStatusMessage(vocabResult.getTopic()));
+            // 发送工具调用状态 - 开始检索单词
+            sseChatHandler.sendToolStatus(emitter, "vocab", "processing",
+                "正在检索单词: " + vocabResult.getTopic(), null);
 
             String ragResult = searchInstructionHandler.executeVocabSearch(
                 vocabResult.getTopic(), vocabResult.getLimit());
+
+            // 发送工具调用状态 - 单词检索完成
+            sseChatHandler.sendToolStatus(emitter, "vocab", "done",
+                "单词检索完成", ragResult);
 
             String newPrompt = initialPrompt + "\n\n【系统反馈的候选单词数据】\n" + ragResult +
                               "\n\n请严格使用上述数据生成 <vocab-practice> 练习卡片。";

@@ -401,7 +401,46 @@ export const useChatStore = defineStore('chat', () => {
                 }
                 continue
               }
-              
+
+              // 处理工具调用状态
+              if (parsed.type === 'tool_status') {
+                const toolType = parsed.tool_type
+                const status = parsed.status
+                const message = parsed.message
+                const details = parsed.details
+
+                // 初始化工具状态数组
+                if (!activeAiMessage.tool_status_list) {
+                  activeAiMessage.tool_status_list = []
+                }
+
+                // 查找是否已有同类型的工具状态
+                const existingIndex = activeAiMessage.tool_status_list.findIndex(
+                  t => t.tool_type === toolType
+                )
+
+                const toolStatus = {
+                  tool_type: toolType,
+                  status: status,
+                  message: message,
+                  details: details,
+                  timestamp: new Date().toISOString()
+                }
+
+                if (existingIndex >= 0) {
+                  // 更新现有状态
+                  activeAiMessage.tool_status_list[existingIndex] = toolStatus
+                } else {
+                  // 添加新状态
+                  activeAiMessage.tool_status_list.push(toolStatus)
+                }
+
+                if (onChunk) {
+                  onChunk({ type: 'tool_status', ...toolStatus })
+                }
+                continue
+              }
+
               // 处理推理内容
               const reasoningChunk = normalizeStreamChunk(parsed.reasoning_content)
               if (reasoningChunk) {
