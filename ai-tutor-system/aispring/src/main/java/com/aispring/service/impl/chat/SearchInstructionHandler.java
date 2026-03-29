@@ -26,6 +26,8 @@ public class SearchInstructionHandler {
         "<search(?:\\s+site=\"([^\"]+)\")?>(.*?)</search>", Pattern.DOTALL);
     private static final Pattern URL_PATTERN = Pattern.compile(
         "<fetch-url>(.*?)</fetch-url>", Pattern.DOTALL);
+    private static final Pattern URL_AUTO_PATTERN = Pattern.compile(
+        "(?:正在获取|获取|fetch).*?(?:网页|页面|内容|url).*?(https?://[^\\s<>\"]+)", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
     private static final Pattern VOCAB_PATTERN = Pattern.compile(
         "<query-vocab\\s+topic=\"([^\"]+)\"\\s+limit=\"(\\d+)\"\\s*/>", Pattern.DOTALL);
 
@@ -63,16 +65,31 @@ public class SearchInstructionHandler {
 
     /**
      * 检测并处理URL获取指令
+     * 支持两种格式：
+     * 1. XML标签格式：<fetch-url>https://example.com</fetch-url>
+     * 2. 自然语言格式：正在获取网页内容: https://example.com
      * @param content AI 响应内容
      * @return URL获取结果，如果没有URL指令则返回 null
      */
     public UrlFetchResult detectAndHandleUrlFetch(String content) {
-        Matcher matcher = URL_PATTERN.matcher(content.trim());
+        String trimmedContent = content.trim();
+
+        // 首先尝试匹配XML标签格式
+        Matcher matcher = URL_PATTERN.matcher(trimmedContent);
         if (matcher.find()) {
             String url = matcher.group(1).trim();
-            log.info("检测到AI URL获取请求: url={}", url);
+            log.info("检测到AI URL获取请求(XML格式): url={}", url);
             return new UrlFetchResult(true, url, null);
         }
+
+        // 然后尝试匹配自然语言格式
+        Matcher autoMatcher = URL_AUTO_PATTERN.matcher(trimmedContent);
+        if (autoMatcher.find()) {
+            String url = autoMatcher.group(1).trim();
+            log.info("检测到AI URL获取请求(自然语言格式): url={}", url);
+            return new UrlFetchResult(true, url, null);
+        }
+
         return null;
     }
 
