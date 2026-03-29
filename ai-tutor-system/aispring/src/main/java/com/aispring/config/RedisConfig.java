@@ -40,7 +40,8 @@ public class RedisConfig {
         cacheManager.setCacheNames(java.util.Arrays.asList(
             "wordDict",
             "vocabulary",
-            "sessionState"
+            "sessionState",
+            "urlFilterRules"
         ));
         return cacheManager;
     }

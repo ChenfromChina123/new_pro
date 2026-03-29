@@ -126,14 +126,13 @@ public class UrlFilterController {
     @GetMapping("/check")
     public ResponseEntity<ApiResponse<Map<String, Object>>> checkUrl(@RequestParam String url) {
         UrlFilterService.FilterResult result = urlFilterService.checkUrl(url);
-        Map<String, Object> data = Map.of(
-                "url", url,
-                "shouldFilter", result.shouldFilter(),
-                "filterType", result.filterType() != null ? result.filterType().name() : null,
-                "redirectUrl", result.redirectUrl(),
-                "matchedRule", result.matchedRule(),
-                "matchedPattern", result.matchedPattern()
-        );
+        Map<String, Object> data = new java.util.HashMap<>();
+        data.put("url", url);
+        data.put("shouldFilter", result.shouldFilter());
+        data.put("filterType", result.filterType() != null ? result.filterType().name() : null);
+        data.put("redirectUrl", result.redirectUrl());
+        data.put("matchedRule", result.matchedRule());
+        data.put("matchedPattern", result.matchedPattern());
         return ResponseEntity.ok(ApiResponse.success(data));
     }
 
@@ -151,6 +150,39 @@ public class UrlFilterController {
                 "blockedCount", result.blockedUrls().size(),
                 "allowedUrls", result.allowedUrls(),
                 "blockedUrls", result.blockedUrls()
+        );
+        return ResponseEntity.ok(ApiResponse.success(data));
+    }
+
+    /**
+     * 公开测试端点 - 检查URL过滤状态
+     * @param url 待检查的URL
+     * @return 检查结果
+     */
+    @GetMapping("/test/check")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> testCheckUrl(@RequestParam String url) {
+        UrlFilterService.FilterResult result = urlFilterService.checkUrl(url);
+        Map<String, Object> data = new java.util.HashMap<>();
+        data.put("url", url);
+        data.put("shouldFilter", result.shouldFilter());
+        data.put("filterType", result.filterType() != null ? result.filterType().name() : null);
+        data.put("redirectUrl", result.redirectUrl());
+        data.put("matchedRule", result.matchedRule());
+        data.put("matchedPattern", result.matchedPattern());
+        return ResponseEntity.ok(ApiResponse.success(data));
+    }
+
+    /**
+     * 公开测试端点 - 获取系统状态
+     * @return 系统状态信息
+     */
+    @GetMapping("/test/status")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> testStatus() {
+        List<UrlFilterRule> enabledRules = urlFilterService.getEnabledRules();
+        Map<String, Object> data = Map.of(
+                "status", "running",
+                "enabledRulesCount", enabledRules.size(),
+                "message", "URL过滤服务运行正常"
         );
         return ResponseEntity.ok(ApiResponse.success(data));
     }
