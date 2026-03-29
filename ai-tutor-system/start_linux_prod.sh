@@ -93,22 +93,18 @@ echo "   正在清理并重新打包..."
 echo "   Java版本: $(java -version 2>&1 | head -n 1)"
 echo "   JAVA_HOME: $JAVA_HOME"
 
-# 尝试使用系统 mvn（更稳定）
-if command -v mvn &> /dev/null; then
-    echo "   使用系统 Maven: $(which mvn)"
-    mvn clean package -DskipTests
-else
-    echo "   系统 Maven 未找到，尝试 mvnw..."
-    # 确保 mvnw 有执行权限
-    if [ -f "./mvnw" ]; then
-        chmod +x ./mvnw
-    fi
-    # 直接 export JAVA_HOME 后执行 mvnw
-    export JAVA_HOME
-    export PATH="$JAVA_HOME/bin:$PATH"
-    echo "   验证 JAVA_HOME: $JAVA_HOME/bin/java exists: $(test -x "$JAVA_HOME/bin/java" && echo yes || echo no)"
-    ./mvnw clean package -DskipTests
+# 使用 mvnw 打包（必须用 jar 方式运行）
+echo "   使用 Maven Wrapper 打包..."
+if [ -f "./mvnw" ]; then
+    chmod +x ./mvnw
 fi
+export JAVA_HOME
+export PATH="$JAVA_HOME/bin:$PATH"
+export JAVACMD="$JAVA_HOME/bin/java"
+export JAVACCMD="$JAVA_HOME/bin/javac"
+echo "   验证 java: $(test -x "$JAVACMD" && echo "$JAVACMD OK" || echo "FAILED")"
+echo "   验证 javac: $(test -x "$JAVACCMD" && echo "$JAVACCMD OK" || echo "FAILED")"
+./mvnw clean package -DskipTests
 if [ $? -ne 0 ]; then
     echo "❌ 打包失败"
     cd ..
