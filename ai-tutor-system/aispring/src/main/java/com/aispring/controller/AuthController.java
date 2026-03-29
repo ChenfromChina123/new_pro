@@ -74,15 +74,5 @@ public class AuthController {
         authService.resetPassword(request);
         return ResponseEntity.ok(ApiResponse.success("密码重置成功", null));
     }
-    
-    /**
-     * 测试接口：生成测试用户token
-     * 仅用于开发测试环境
-     */
-    @PostMapping("/test/token")
-    public ResponseEntity<ApiResponse<AuthResponse>> generateTestToken() {
-        AuthResponse response = authService.createTestUser();
-        return ResponseEntity.ok(ApiResponse.success("测试token生成成功", response));
-    }
 }
 
