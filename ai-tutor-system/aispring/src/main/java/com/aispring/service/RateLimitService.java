@@ -1,5 +1,6 @@
 package com.aispring.service;
 
+import com.aispring.common.RateLimitConstants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -14,9 +15,7 @@ public class RateLimitService {
 
     private final StringRedisTemplate redisTemplate;
 
-    private static final String KEY_PREFIX = "chat_limit:";
-    private static final int MAX_REQUESTS = 5;
-    private static final Duration EXPIRATION = Duration.ofHours(24);
+    private static final Duration EXPIRATION = Duration.ofHours(RateLimitConstants.CHAT_EXPIRATION_HOURS);
 
     /**
      * Check if the IP is allowed to make a request.
@@ -25,7 +24,7 @@ public class RateLimitService {
      * @return true if allowed, false if limit exceeded
      */
     public boolean checkAndIncrement(String ip) {
-        String key = KEY_PREFIX + ip;
+        String key = RateLimitConstants.CHAT_LIMIT_PREFIX + ip;
 
         try {
             Long count = redisTemplate.opsForValue().increment(key);
@@ -35,7 +34,7 @@ public class RateLimitService {
                 redisTemplate.expire(key, EXPIRATION);
             }
 
-            if (count != null && count > MAX_REQUESTS) {
+            if (count != null && count > RateLimitConstants.CHAT_MAX_REQUESTS) {
                 log.warn("Rate limit exceeded for IP: {} (Count: {})", ip, count);
                 return false;
             }
@@ -55,16 +54,16 @@ public class RateLimitService {
      * @return remaining requests count
      */
     public int getRemainingRequests(String ip) {
-        String key = KEY_PREFIX + ip;
+        String key = RateLimitConstants.CHAT_LIMIT_PREFIX + ip;
         String val = redisTemplate.opsForValue().get(key);
         if (val == null) {
-            return MAX_REQUESTS;
+            return RateLimitConstants.CHAT_MAX_REQUESTS;
         }
         try {
             int used = Integer.parseInt(val);
-            return Math.max(0, MAX_REQUESTS - used);
+            return Math.max(0, RateLimitConstants.CHAT_MAX_REQUESTS - used);
         } catch (NumberFormatException e) {
-            return MAX_REQUESTS;
+            return RateLimitConstants.CHAT_MAX_REQUESTS;
         }
     }
 

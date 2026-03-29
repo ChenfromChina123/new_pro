@@ -1,5 +1,6 @@
 package com.aispring.service.impl;
 
+import com.aispring.common.CodeExecutionConstants;
 import com.aispring.config.PistonProperties;
 import com.aispring.dto.request.CodeExecutionRequest;
 import com.aispring.dto.response.CodeExecutionResponse;
@@ -26,22 +27,6 @@ public class CodeExecutionServiceImpl implements CodeExecutionService {
     private final RestTemplate restTemplate;
     private final PistonProperties pistonProperties;
 
-    private static final int MAX_OUTPUT_LENGTH = 102400; // 100KB
-
-    /**
-     * 语言 -> 默认文件名 映射
-     */
-    private static final Map<String, String> FILE_NAME_MAP = Map.ofEntries(
-            Map.entry("python", "main.py"),
-            Map.entry("javascript", "main.js"),
-            Map.entry("typescript", "main.ts"),
-            Map.entry("java", "Main.java"),
-            Map.entry("c", "main.c"),
-            Map.entry("c++", "main.cpp"),
-            Map.entry("go", "main.go"),
-            Map.entry("rust", "main.rs")
-    );
-
     @Override
     public CodeExecutionResponse execute(CodeExecutionRequest request) {
         String apiUrl = pistonProperties.getApiUrl() + "/api/v2/execute";
@@ -53,7 +38,7 @@ public class CodeExecutionServiceImpl implements CodeExecutionService {
 
         // 文件列表
         Map<String, String> file = new HashMap<>();
-        file.put("name", FILE_NAME_MAP.getOrDefault(request.getLanguage(), "main"));
+        file.put("name", CodeExecutionConstants.FILE_NAME_MAP.getOrDefault(request.getLanguage(), "main"));
         file.put("content", request.getCode());
         pistonRequest.put("files", List.of(file));
 
@@ -164,8 +149,8 @@ public class CodeExecutionServiceImpl implements CodeExecutionService {
      */
     private String truncateOutput(String output) {
         if (output == null) return null;
-        if (output.length() > MAX_OUTPUT_LENGTH) {
-            return output.substring(0, MAX_OUTPUT_LENGTH) + "\n...[输出已截断，超过100KB限制]";
+        if (output.length() > CodeExecutionConstants.MAX_OUTPUT_LENGTH) {
+            return output.substring(0, CodeExecutionConstants.MAX_OUTPUT_LENGTH) + "\n...[输出已截断，超过100KB限制]";
         }
         return output;
     }

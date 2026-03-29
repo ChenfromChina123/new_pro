@@ -1,5 +1,6 @@
 package com.aispring.service.impl;
 
+import com.aispring.common.prompt.SearchPromptConstants;
 import com.aispring.entity.WordDict;
 import com.aispring.repository.WordDictRepository;
 import com.aispring.service.SemanticSearchService;
@@ -98,23 +99,7 @@ public class SemanticSearchServiceImpl implements SemanticSearchService {
                 return Collections.emptyList();
             }
 
-            String prompt = String.format(
-                "你是一个英语教育专家。用户想学习与\"%s\"相关的英语单词。\n" +
-                "请列出 %d 个最相关、最常用的英语单词（名词、动词、形容词等）。\n" +
-                "要求：\n" +
-                "1. 只返回英语单词，每行一个\n" +
-                "2. 不要包含中文、标点符号或其他解释\n" +
-                "3. 单词应该是基础到中等难度的常用词\n" +
-                "4. 确保单词与主题高度相关\n" +
-                "\n" +
-                "示例格式：\n" +
-                "technology\n" +
-                "computer\n" +
-                "software\n" +
-                "internet\n",
-                chineseKeyword,
-                maxWords
-            );
+            String prompt = String.format(SearchPromptConstants.SEMANTIC_SEARCH_PROMPT_TEMPLATE, chineseKeyword, maxWords);
 
             ChatResponse chatResponse = chatClient.call(new Prompt(prompt));
             String response = chatResponse.getResult().getOutput().getContent();

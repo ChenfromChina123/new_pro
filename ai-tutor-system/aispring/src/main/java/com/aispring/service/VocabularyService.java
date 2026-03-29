@@ -1,5 +1,7 @@
 package com.aispring.service;
 
+import com.aispring.common.CacheConstants;
+import com.aispring.common.DateTimeConstants;
 import com.aispring.entity.*;
 import com.aispring.exception.CustomException;
 import com.aispring.repository.*;
@@ -20,7 +22,6 @@ import java.io.OutputStream;
 import java.lang.reflect.Method;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -60,7 +61,6 @@ public class VocabularyService {
         this.objectMapper = objectMapper;
         this.redisTemplate = redisTemplate;
     }
-    private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final VocabularyListRepository vocabularyListRepository;
     private final VocabularyWordRepository vocabularyWordRepository;
@@ -73,10 +73,7 @@ public class VocabularyService {
     private final ObjectMapper objectMapper;
     private final RedisTemplate<String, Object> redisTemplate;
 
-    // Redis 缓存相关常量
-    private static final String PUBLIC_WORD_CACHE_PREFIX = "public_word:";
-    private static final String PUBLIC_WORDS_SEARCH_CACHE_PREFIX = "public_words_search:";
-    private static final Duration CACHE_DURATION = Duration.ofHours(24);
+    private static final Duration CACHE_DURATION = Duration.ofHours(CacheConstants.CACHE_DURATION_HOURS);
 
     /**
      * 创建单词表
@@ -253,7 +250,7 @@ public class VocabularyService {
         }
 
         // 生成缓存键
-        String cacheKey = PUBLIC_WORD_CACHE_PREFIX + language + ":" + word.toLowerCase();
+        String cacheKey = CacheConstants.PUBLIC_WORD_CACHE_PREFIX + language + ":" + word.toLowerCase();
 
         try {
             // 尝试从缓存获取
@@ -289,7 +286,7 @@ public class VocabularyService {
         String safeLanguage = language == null ? "en" : language.trim();
 
         // 生成缓存键
-        String cacheKey = PUBLIC_WORDS_SEARCH_CACHE_PREFIX + safeLanguage + ":" + safeKeyword;
+        String cacheKey = CacheConstants.PUBLIC_WORDS_SEARCH_CACHE_PREFIX + safeLanguage + ":" + safeKeyword;
 
         try {
             // 尝试从缓存获取
@@ -325,7 +322,7 @@ public class VocabularyService {
         String lang = (language == null || language.isBlank()) ? "en" : language.trim();
 
         // 生成缓存键
-        String cacheKey = PUBLIC_WORDS_SEARCH_CACHE_PREFIX + lang + ":" + kw + ":page:" + safePage + ":size:" + safeSize;
+        String cacheKey = CacheConstants.PUBLIC_WORDS_SEARCH_CACHE_PREFIX + lang + ":" + kw + ":page:" + safePage + ":size:" + safeSize;
 
         try {
             // 尝试从缓存获取
@@ -392,7 +389,7 @@ public class VocabularyService {
                     word.getWord(),
                     word.getTag(),
                     word.getDefinition(),
-                    word.getCreatedAt() == null ? null : word.getCreatedAt().format(DATETIME_FORMATTER),
+                    word.getCreatedAt() == null ? null : word.getCreatedAt().format(DateTimeConstants.DATETIME_FORMATTER),
                     "public"
                 ))
                 .toList();
@@ -406,7 +403,7 @@ public class VocabularyService {
                 word.getWord(),
                 word.getPartOfSpeech(),
                 word.getDefinition(),
-                word.getCreatedAt() == null ? null : word.getCreatedAt().format(DATETIME_FORMATTER),
+                word.getCreatedAt() == null ? null : word.getCreatedAt().format(DateTimeConstants.DATETIME_FORMATTER),
                 "mine"
             ))
             .toList();

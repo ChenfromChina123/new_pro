@@ -1,5 +1,6 @@
 package com.aispring.service.impl;
 
+import com.aispring.common.prompt.TranslationPromptConstants;
 import com.aispring.dto.request.TranslationRequest;
 import com.aispring.service.AiChatService;
 import com.aispring.service.TranslationService;
@@ -39,18 +40,15 @@ public class TranslationServiceImpl implements TranslationService {
                 ? " from " + request.getSourceLanguage() 
                 : "";
         
-        String systemPrompt = "You are a professional translator. Your task is to translate text accurately while maintaining the original meaning and tone.";
         String userPrompt = String.format(
-                "Please translate the following text%s to %s.\n" +
-                "Only provide the translated text, no explanations or additional content.\n\n" +
-                "Text to translate:\n%s",
+                TranslationPromptConstants.TRANSLATION_USER_PROMPT_TEMPLATE,
                 sourceLangInfo, targetLang, request.getText()
         );
         
         // 使用系统提示词进行翻译
         try {
             // 使用 ask(prompt, sessionId, model, userId, systemPrompt) 方法
-            String translatedText = aiChatService.ask(userPrompt, null, null, null, systemPrompt);
+            String translatedText = aiChatService.ask(userPrompt, null, null, null, TranslationPromptConstants.TRANSLATION_SYSTEM_PROMPT);
             return translatedText != null ? translatedText.trim() : "";
         } catch (Exception e) {
             log.error("翻译过程中出现错误: ", e);

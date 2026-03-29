@@ -1,5 +1,6 @@
 package com.aispring.service.impl;
 
+import com.aispring.common.CacheConstants;
 import com.aispring.entity.UrlFilterRule;
 import com.aispring.repository.UrlFilterRuleRepository;
 import com.aispring.service.UrlFilterService;
@@ -27,8 +28,6 @@ public class UrlFilterServiceImpl implements UrlFilterService {
 
     private final UrlFilterRuleRepository ruleRepository;
 
-    private static final String RULES_CACHE = "urlFilterRules";
-
     /**
      * 创建过滤规则
      * @param rule 规则实体
@@ -36,7 +35,7 @@ public class UrlFilterServiceImpl implements UrlFilterService {
      */
     @Override
     @Transactional
-    @CacheEvict(value = RULES_CACHE, allEntries = true)
+    @CacheEvict(value = CacheConstants.RULES_CACHE, allEntries = true)
     public UrlFilterRule createRule(UrlFilterRule rule) {
         validateRule(rule);
         return ruleRepository.save(rule);
@@ -50,7 +49,7 @@ public class UrlFilterServiceImpl implements UrlFilterService {
      */
     @Override
     @Transactional
-    @CacheEvict(value = RULES_CACHE, allEntries = true)
+    @CacheEvict(value = CacheConstants.RULES_CACHE, allEntries = true)
     public UrlFilterRule updateRule(Long id, UrlFilterRule rule) {
         UrlFilterRule existingRule = ruleRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("规则不存在: " + id));
@@ -93,7 +92,7 @@ public class UrlFilterServiceImpl implements UrlFilterService {
      */
     @Override
     @Transactional
-    @CacheEvict(value = RULES_CACHE, allEntries = true)
+    @CacheEvict(value = CacheConstants.RULES_CACHE, allEntries = true)
     public void deleteRule(Long id) {
         if (!ruleRepository.existsById(id)) {
             throw new IllegalArgumentException("规则不存在: " + id);
@@ -126,7 +125,7 @@ public class UrlFilterServiceImpl implements UrlFilterService {
      * @return 启用的规则列表
      */
     @Override
-    @Cacheable(value = RULES_CACHE, key = "'enabled'")
+    @Cacheable(value = CacheConstants.RULES_CACHE, key = "'enabled'")
     public List<UrlFilterRule> getEnabledRules() {
         return ruleRepository.findAllEnabledOrderByPriority();
     }
@@ -149,7 +148,7 @@ public class UrlFilterServiceImpl implements UrlFilterService {
      */
     @Override
     @Transactional
-    @CacheEvict(value = RULES_CACHE, allEntries = true)
+    @CacheEvict(value = CacheConstants.RULES_CACHE, allEntries = true)
     public UrlFilterRule setRuleEnabled(Long id, boolean enabled) {
         UrlFilterRule rule = getRuleById(id);
         rule.setEnabled(enabled);
@@ -317,7 +316,7 @@ public class UrlFilterServiceImpl implements UrlFilterService {
             }
         }
 
-        if (rule.getFilterType() == UrlFilterRule.FilterType.REDIRECT && 
+        if (rule.getFilterType() == UrlFilterRule.FilterType.REDIRECT &&
             (rule.getRedirectUrl() == null || rule.getRedirectUrl().trim().isEmpty())) {
             throw new IllegalArgumentException("重定向类型规则必须指定重定向URL");
         }

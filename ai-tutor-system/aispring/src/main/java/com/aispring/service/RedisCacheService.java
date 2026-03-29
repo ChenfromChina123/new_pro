@@ -1,5 +1,6 @@
 package com.aispring.service;
 
+import com.aispring.common.CacheConstants;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -24,9 +25,7 @@ public class RedisCacheService {
     private final RedisTemplate<String, String> redisTemplate;
     private final ObjectMapper objectMapper;
 
-    private static final Duration CACHE_DURATION = Duration.ofHours(24);
-    private static final String MESSAGES_CACHE_PREFIX = "chat:messages:";
-    private static final String SESSION_CACHE_PREFIX = "chat:session:";
+    private static final Duration CACHE_DURATION = Duration.ofHours(CacheConstants.CACHE_DURATION_HOURS);
     
     private volatile boolean redisAvailable = true;
 
@@ -36,7 +35,7 @@ public class RedisCacheService {
     public void cacheSessionMessages(String sessionId, Map<String, Object> messages) {
         if (!redisAvailable) return;
         try {
-            String key = MESSAGES_CACHE_PREFIX + sessionId;
+            String key = CacheConstants.MESSAGES_CACHE_PREFIX + sessionId;
             String value = objectMapper.writeValueAsString(messages);
             redisTemplate.opsForValue().set(key, value, CACHE_DURATION);
         } catch (JsonProcessingException e) {
@@ -55,7 +54,7 @@ public class RedisCacheService {
     public Map<String, Object> getCachedSessionMessages(String sessionId) {
         if (!redisAvailable) return null;
         try {
-            String key = MESSAGES_CACHE_PREFIX + sessionId;
+            String key = CacheConstants.MESSAGES_CACHE_PREFIX + sessionId;
             String value = redisTemplate.opsForValue().get(key);
             if (value != null) {
                 return objectMapper.readValue(value, Map.class);
@@ -77,7 +76,7 @@ public class RedisCacheService {
     public void deleteSessionMessagesCache(String sessionId) {
         if (!redisAvailable) return;
         try {
-            String key = MESSAGES_CACHE_PREFIX + sessionId;
+            String key = CacheConstants.MESSAGES_CACHE_PREFIX + sessionId;
             redisTemplate.delete(key);
         } catch (RedisConnectionFailureException e) {
             log.warn("Redis 不可用，跳过删除");
@@ -93,7 +92,7 @@ public class RedisCacheService {
     public void cacheSessionInfo(String sessionId, Map<String, Object> sessionInfo) {
         if (!redisAvailable) return;
         try {
-            String key = SESSION_CACHE_PREFIX + sessionId;
+            String key = CacheConstants.SESSION_CACHE_PREFIX + sessionId;
             String value = objectMapper.writeValueAsString(sessionInfo);
             redisTemplate.opsForValue().set(key, value, CACHE_DURATION);
         } catch (JsonProcessingException e) {
@@ -112,7 +111,7 @@ public class RedisCacheService {
     public Map<String, Object> getCachedSessionInfo(String sessionId) {
         if (!redisAvailable) return null;
         try {
-            String key = SESSION_CACHE_PREFIX + sessionId;
+            String key = CacheConstants.SESSION_CACHE_PREFIX + sessionId;
             String value = redisTemplate.opsForValue().get(key);
             if (value != null) {
                 return objectMapper.readValue(value, Map.class);
@@ -134,7 +133,7 @@ public class RedisCacheService {
     public void deleteSessionInfoCache(String sessionId) {
         if (!redisAvailable) return;
         try {
-            String key = SESSION_CACHE_PREFIX + sessionId;
+            String key = CacheConstants.SESSION_CACHE_PREFIX + sessionId;
             redisTemplate.delete(key);
         } catch (RedisConnectionFailureException e) {
             log.warn("Redis 不可用，跳过删除");
@@ -150,7 +149,7 @@ public class RedisCacheService {
     public void cachePagedSessionMessages(String sessionId, int page, int pageSize, Map<String, Object> messages) {
         if (!redisAvailable) return;
         try {
-            String key = MESSAGES_CACHE_PREFIX + sessionId + ":" + page + ":" + pageSize;
+            String key = CacheConstants.MESSAGES_CACHE_PREFIX + sessionId + ":" + page + ":" + pageSize;
             String value = objectMapper.writeValueAsString(messages);
             redisTemplate.opsForValue().set(key, value, CACHE_DURATION);
         } catch (JsonProcessingException e) {
@@ -169,7 +168,7 @@ public class RedisCacheService {
     public Map<String, Object> getCachedPagedSessionMessages(String sessionId, int page, int pageSize) {
         if (!redisAvailable) return null;
         try {
-            String key = MESSAGES_CACHE_PREFIX + sessionId + ":" + page + ":" + pageSize;
+            String key = CacheConstants.MESSAGES_CACHE_PREFIX + sessionId + ":" + page + ":" + pageSize;
             String value = redisTemplate.opsForValue().get(key);
             if (value != null) {
                 return objectMapper.readValue(value, Map.class);
@@ -191,7 +190,7 @@ public class RedisCacheService {
     public void deletePagedSessionMessagesCache(String sessionId) {
         if (!redisAvailable) return;
         try {
-            String pattern = MESSAGES_CACHE_PREFIX + sessionId + ":*";
+            String pattern = CacheConstants.MESSAGES_CACHE_PREFIX + sessionId + ":*";
             redisTemplate.delete(redisTemplate.keys(pattern));
         } catch (RedisConnectionFailureException e) {
             log.warn("Redis 不可用，跳过删除");

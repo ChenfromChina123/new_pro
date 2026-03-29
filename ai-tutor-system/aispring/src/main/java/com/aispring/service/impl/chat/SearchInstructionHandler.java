@@ -1,5 +1,6 @@
 package com.aispring.service.impl.chat;
 
+import com.aispring.common.RegexConstants;
 import com.aispring.service.SearchService;
 import com.aispring.service.SemanticSearchService;
 import com.aispring.service.UrlContentService;
@@ -11,7 +12,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
 /**
@@ -21,13 +21,6 @@ import java.util.regex.Matcher;
 @Component
 @Slf4j
 public class SearchInstructionHandler {
-
-    private static final Pattern SEARCH_PATTERN = Pattern.compile(
-        "<search(?:\\s+site=\"([^\"]+)\")?>(.*?)</search>", Pattern.DOTALL);
-    private static final Pattern URL_PATTERN = Pattern.compile(
-        "<fetch-url>(.*?)</fetch-url>", Pattern.DOTALL);
-    private static final Pattern VOCAB_PATTERN = Pattern.compile(
-        "<query-vocab\\s+topic=\"([^\"]+)\"\\s+limit=\"(\\d+)\"\\s*/>", Pattern.DOTALL);
 
     private final SearchService searchService;
     private final SemanticSearchService semanticSearchService;
@@ -51,7 +44,7 @@ public class SearchInstructionHandler {
      * @return 搜索结果，如果没有搜索指令则返回 null
      */
     public SearchResult detectAndHandleSearch(String content) {
-        Matcher matcher = SEARCH_PATTERN.matcher(content.trim());
+        Matcher matcher = RegexConstants.SEARCH_PATTERN.matcher(content.trim());
         if (matcher.find()) {
             String site = matcher.group(1);
             String keyword = matcher.group(2).trim();
@@ -71,7 +64,7 @@ public class SearchInstructionHandler {
         String trimmedContent = content.trim();
 
         // 只匹配XML标签格式
-        Matcher matcher = URL_PATTERN.matcher(trimmedContent);
+        Matcher matcher = RegexConstants.URL_PATTERN.matcher(trimmedContent);
         if (matcher.find()) {
             String url = matcher.group(1).trim();
             log.info("检测到AI URL获取请求: url={}", url);
@@ -87,7 +80,7 @@ public class SearchInstructionHandler {
      * @return 单词检索结果，如果没有检索指令则返回 null
      */
     public VocabResult detectAndHandleVocab(String content) {
-        Matcher matcher = VOCAB_PATTERN.matcher(content.trim());
+        Matcher matcher = RegexConstants.VOCAB_PATTERN.matcher(content.trim());
         if (matcher.find()) {
             String topic = matcher.group(1);
             int limit = Integer.parseInt(matcher.group(2));

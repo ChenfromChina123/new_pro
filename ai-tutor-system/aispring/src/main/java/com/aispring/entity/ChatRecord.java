@@ -1,5 +1,6 @@
 package com.aispring.entity;
 
+import com.aispring.common.DateTimeConstants;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -29,8 +30,6 @@ import java.util.Map;
 @AllArgsConstructor
 @Builder
 public class ChatRecord {
-    
-    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -95,7 +94,7 @@ public class ChatRecord {
         map.put("search_results", searchResults);
         map.put("ai_model", aiModel);
         map.put("status", status);
-        map.put("send_time", sendTime != null ? sendTime.format(FORMATTER) : null);
+        map.put("send_time", sendTime != null ? sendTime.format(DateTimeConstants.DATETIME_FORMATTER) : null);
         
         // 工具执行结果字段
         map.put("exit_code", exitCode);

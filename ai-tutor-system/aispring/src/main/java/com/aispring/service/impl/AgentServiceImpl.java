@@ -1,5 +1,6 @@
 package com.aispring.service.impl;
 
+import com.aispring.common.ModelConstants;
 import com.aispring.service.AgentService;
 import com.aispring.service.AiChatService;
 import lombok.RequiredArgsConstructor;
@@ -18,9 +19,6 @@ public class AgentServiceImpl implements AgentService {
     private final AiChatService aiChatService;
     private final com.aispring.service.SystemPromptService promptService;
 
-    // 默认使用的模型
-    private static final String DEFAULT_MODEL = "deepseek-v3";
-
     /**
      * 根据用户想法识别领域并生成细化问题
      * @param userIdea 用户初步需求想法
@@ -30,17 +28,17 @@ public class AgentServiceImpl implements AgentService {
     @Override
     public String generateQuestions(String userIdea, Long userId) {
         log.info("Generating questions for userIdea: {} (userId: {})", userIdea, userId);
-        
-        // 从数据库获取“需求分析专家”的提示词模板
+
+        // 从数据库获取"需求分析专家"的提示词模板
         String template = promptService.getByRole("Requirement Analysis Expert")
                 .map(com.aispring.entity.SystemPrompt::getContent)
                 .orElse("请充当需求分析专家，根据想法 \"%s\" 生成细化问题（JSON格式）。");
 
         String prompt = String.format(template, userIdea);
-        
+
         // 调用AI生成题目
-        String response = aiChatService.ask(prompt, null, DEFAULT_MODEL, userId, null);
-        
+        String response = aiChatService.ask(prompt, null, ModelConstants.DEFAULT_MODEL, userId, null);
+
         // 简单清洗响应，确保是纯JSON（有时AI会带Markdown标记）
         if (response != null) {
             response = response.trim();
@@ -52,7 +50,7 @@ public class AgentServiceImpl implements AgentService {
             }
             response = response.trim();
         }
-        
+
         return response;
     }
 
@@ -67,15 +65,15 @@ public class AgentServiceImpl implements AgentService {
     @Override
     public SseEmitter generateDocumentStream(String userIdea, String answers, String searchResult, Long userId) {
         log.info("Generating document stream for userIdea: {} (userId: {})", userIdea, userId);
-        
-        // 从数据库获取“产品经理”的提示词模板
+
+        // 从数据库获取"产品经理"的提示词模板
         String template = promptService.getByRole("Product Manager")
                 .map(com.aispring.entity.SystemPrompt::getContent)
                 .orElse("请充当产品经理，根据想法 \"%s\"、答案 \"%s\" 和参考信息 \"%s\" 生成 PRD 文档。");
 
         String prompt = String.format(template, userIdea, answers, searchResult);
-        
+
         // 调用AI流式生成文档
-        return aiChatService.askStream(prompt, null, DEFAULT_MODEL, userId);
+        return aiChatService.askStream(prompt, null, ModelConstants.DEFAULT_MODEL, userId);
     }
 }

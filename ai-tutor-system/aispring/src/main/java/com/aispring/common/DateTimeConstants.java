@@ -1,4 +1,4 @@
-package com.aispring.constant;
+package com.aispring.common;
 
 import java.time.format.DateTimeFormatter;
 
@@ -19,8 +19,8 @@ public final class DateTimeConstants {
     /**
      * 标准日期时间格式化器（线程安全）
      */
-    public static final DateTimeFormatter DATETIME_FORMATTER = 
-        DateTimeFormatter.ofPattern(DATETIME_FORMAT);
+    public static final DateTimeFormatter DATETIME_FORMATTER =
+            DateTimeFormatter.ofPattern(DATETIME_FORMAT);
 
     /**
      * 日期格式
@@ -30,8 +30,8 @@ public final class DateTimeConstants {
     /**
      * 日期格式化器
      */
-    public static final DateTimeFormatter DATE_FORMATTER = 
-        DateTimeFormatter.ofPattern(DATE_FORMAT);
+    public static final DateTimeFormatter DATE_FORMATTER =
+            DateTimeFormatter.ofPattern(DATE_FORMAT);
 
     /**
      * 时间格式
@@ -41,6 +41,6 @@ public final class DateTimeConstants {
     /**
      * 时间格式化器
      */
-    public static final DateTimeFormatter TIME_FORMATTER = 
-        DateTimeFormatter.ofPattern(TIME_FORMAT);
+    public static final DateTimeFormatter TIME_FORMATTER =
+            DateTimeFormatter.ofPattern(TIME_FORMAT);
 }

@@ -1,5 +1,6 @@
 package com.aispring.service.impl;
 
+import com.aispring.common.UrlConstants;
 import com.aispring.entity.UrlFilterRule;
 import com.aispring.service.UrlContentService;
 import com.aispring.service.UrlFilterService;
@@ -21,11 +22,6 @@ public class UrlContentServiceImpl implements UrlContentService {
 
     private final UrlFilterService urlFilterService;
 
-    private static final int DEFAULT_MAX_CHARS = 5000;
-    private static final int TIMEOUT_MS = 15000;
-    private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-            "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
-
     /**
      * 获取URL的网页内容
      * @param url 目标URL
@@ -33,7 +29,7 @@ public class UrlContentServiceImpl implements UrlContentService {
      */
     @Override
     public String fetchUrlContent(String url) {
-        return fetchUrlContent(url, DEFAULT_MAX_CHARS);
+        return fetchUrlContent(url, UrlConstants.DEFAULT_MAX_CHARS);
     }
 
     /**
@@ -69,8 +65,8 @@ public class UrlContentServiceImpl implements UrlContentService {
             log.info("正在获取URL内容: {}", normalizedUrl);
 
             Document doc = Jsoup.connect(normalizedUrl)
-                    .userAgent(USER_AGENT)
-                    .timeout(TIMEOUT_MS)
+                    .userAgent(UrlConstants.USER_AGENT)
+                    .timeout(UrlConstants.TIMEOUT_MS)
                     .followRedirects(true)
                     .ignoreHttpErrors(true)
                     .ignoreContentType(true)
@@ -78,7 +74,7 @@ public class UrlContentServiceImpl implements UrlContentService {
 
             String title = doc.title();
             String bodyText = Jsoup.clean(doc.body().text(), Safelist.none());
-            
+
             bodyText = bodyText.replaceAll("\\s+", " ").trim();
 
             if (bodyText.length() > maxChars) {
@@ -131,7 +127,7 @@ public class UrlContentServiceImpl implements UrlContentService {
 
         try {
             Jsoup.connect(normalizedUrl)
-                    .userAgent(USER_AGENT)
+                    .userAgent(UrlConstants.USER_AGENT)
                     .timeout(5000)
                     .method(org.jsoup.Connection.Method.HEAD)
                     .followRedirects(true)

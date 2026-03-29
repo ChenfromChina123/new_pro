@@ -1,5 +1,6 @@
 package com.aispring.service;
 
+import com.aispring.common.DateTimeConstants;
 import com.aispring.entity.ChatRecord;
 import com.aispring.entity.ChatSession;
 import com.aispring.entity.User;
@@ -13,7 +14,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -30,8 +30,6 @@ public class ChatRecordService {
     private final UserRepository userRepository;
     private final AnonymousChatRecordRepository anonymousChatRecordRepository;
     private final RedisCacheService redisCacheService;
-    
-    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     /**
      * 创建聊天记录
@@ -188,7 +186,7 @@ public class ChatRecordService {
             if (t1 != null) {
                 LocalDateTime dt1 = (t1 instanceof LocalDateTime) ? (LocalDateTime) t1
                         : (t1 instanceof java.sql.Timestamp) ? ((java.sql.Timestamp) t1).toLocalDateTime() : null;
-                tm1 = dt1 != null ? dt1.format(FORMATTER) : "";
+                tm1 = dt1 != null ? dt1.format(DateTimeConstants.DATETIME_FORMATTER) : "";
             }
             sessionMap.put("last_message_time", tm1);
             sessionMap.put("created_at", tm1); // 兼容前端字段
@@ -415,7 +413,7 @@ public class ChatRecordService {
             if (t2 != null) {
                 LocalDateTime dt2 = (t2 instanceof LocalDateTime) ? (LocalDateTime) t2
                         : (t2 instanceof java.sql.Timestamp) ? ((java.sql.Timestamp) t2).toLocalDateTime() : null;
-                tm2 = dt2 != null ? dt2.format(FORMATTER) : "";
+                tm2 = dt2 != null ? dt2.format(DateTimeConstants.DATETIME_FORMATTER) : "";
             }
             session.put("last_message_time", tm2);
             session.put("message_count", row[3]);

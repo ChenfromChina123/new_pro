@@ -1,5 +1,6 @@
 package com.aispring.controller;
 
+import com.aispring.common.RateLimitConstants;
 import com.aispring.config.PistonProperties;
 import com.aispring.dto.request.CodeExecutionRequest;
 import com.aispring.dto.response.CodeExecutionResponse;
@@ -33,8 +34,6 @@ public class PlaygroundController {
     private final RateLimitService rateLimitService;
     private final PistonProperties pistonProperties;
 
-    private static final String RATE_LIMIT_PREFIX = "playground_limit:";
-
     /**
      * 执行代码
      */
@@ -50,7 +49,7 @@ public class PlaygroundController {
 
         // 速率限制检查
         boolean allowed = rateLimitService.checkAndIncrement(
-                RATE_LIMIT_PREFIX,
+                RateLimitConstants.PLAYGROUND_LIMIT_PREFIX,
                 String.valueOf(userId),
                 maxRequests,
                 Duration.ofHours(windowHours)
@@ -58,7 +57,7 @@ public class PlaygroundController {
 
         if (!allowed) {
             int remaining = rateLimitService.getRemainingRequests(
-                    RATE_LIMIT_PREFIX, String.valueOf(userId), maxRequests);
+                    RateLimitConstants.PLAYGROUND_LIMIT_PREFIX, String.valueOf(userId), maxRequests);
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of(
                     "message", "执行次数已达上限，请稍后再试",
                     "remaining", remaining,
@@ -70,7 +69,7 @@ public class PlaygroundController {
         CodeExecutionResponse result = codeExecutionService.execute(request);
 
         int remaining = rateLimitService.getRemainingRequests(
-                RATE_LIMIT_PREFIX, String.valueOf(userId), maxRequests);
+                RateLimitConstants.PLAYGROUND_LIMIT_PREFIX, String.valueOf(userId), maxRequests);
 
         return ResponseEntity.ok(Map.of(
                 "data", result,

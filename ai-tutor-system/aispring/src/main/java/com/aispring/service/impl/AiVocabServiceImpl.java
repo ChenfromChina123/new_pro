@@ -1,5 +1,7 @@
 package com.aispring.service.impl;
 
+import com.aispring.common.ModelConstants;
+import com.aispring.common.prompt.VocabPromptConstants;
 import com.aispring.service.AiChatService;
 import com.aispring.service.AiVocabService;
 import com.aispring.service.LearningRecordService;
@@ -57,16 +59,10 @@ public class AiVocabServiceImpl implements AiVocabService {
         log.info("Base Levenshtein score: {}", baseScore);
 
         // 3. 构造 LLM 评测 Prompt 进行深度纠错
-        String systemPrompt = "你是一位专业的英语发音教练。请根据用户的【实际发音识别结果】和【目标文本】进行对比分析。\n" +
-                "请严格输出 JSON 格式，不要输出其他 Markdown 标记，包含以下字段：\n" +
-                "score: 发音得分 (0-100，可参考基础分，酌情上下浮动)\n" +
-                "aiFeedback: 对发音的简短评价（用 1 到 2 句话指出主要问题或给予鼓励，必须简明扼要）\n" +
-                "weakWords: 读得不准的单词数组";
-
         String prompt = String.format("目标文本：%s\n实际发音识别结果：%s\n基础相似度得分：%d", targetText, recognizedText, baseScore);
 
         // 4. 调用大模型
-        String aiResponse = aiChatService.ask(prompt, null, "deepseek-v3", userId, systemPrompt, null);
+        String aiResponse = aiChatService.ask(prompt, null, ModelConstants.DEFAULT_MODEL, userId, VocabPromptConstants.SPEECH_EVALUATION_PROMPT, null);
         
         Map<String, Object> result = parseJsonToMap(aiResponse, recognizedText, targetText, "speech");
         
@@ -97,16 +93,10 @@ public class AiVocabServiceImpl implements AiVocabService {
 
     @Override
     public Map<String, Object> evaluateSpelling(String targetWord, String userSpelling, Long userId) {
-        String systemPrompt = "你是一位词汇记忆专家。用户拼写单词出现了错误。\n" +
-                "请分析用户的拼写错误，找出典型错误原因，并提供简短的记忆方法。\n" +
-                "请严格输出 JSON 格式，不要输出其他 Markdown 标记，包含以下字段：\n" +
-                "aiFeedback: 对拼写错误的简明分析和记忆建议（用1到2句话说明即可，必须简短）\n" +
-                "tags: 错误类型标签数组（如 [\"spelling_error\", \"vowel_confusion\"]）";
-
         String prompt = String.format("目标单词：%s\n用户错误拼写：%s", targetWord, userSpelling);
 
         // 调用大模型
-        String aiResponse = aiChatService.ask(prompt, null, "deepseek-v3", userId, systemPrompt, null);
+        String aiResponse = aiChatService.ask(prompt, null, ModelConstants.DEFAULT_MODEL, userId, VocabPromptConstants.SPELLING_EVALUATION_PROMPT, null);
 
         return parseJsonToMap(aiResponse, userSpelling, targetWord, "spelling");
     }

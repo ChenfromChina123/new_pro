@@ -1,5 +1,7 @@
 package com.aispring.service.impl.chat;
 
+import com.aispring.common.ModelConstants;
+import com.aispring.common.prompt.SessionPromptConstants;
 import com.aispring.service.ChatRecordService;
 import com.aispring.entity.ChatSession;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -110,22 +112,22 @@ public class SessionMetadataService {
      */
     private String normalizeModelName(String model) {
         if (model == null || model.isBlank()) {
-            return "deepseek-v3";
+            return ModelConstants.DEFAULT_MODEL;
         }
         String normalized = model.toLowerCase().trim();
         if (normalized.contains("reasoner") || normalized.contains("r1")) {
-            return "deepseek-r1";
+            return ModelConstants.DEEPSEEK_R1;
         }
         if (normalized.contains("v3") || normalized.contains("chat")) {
-            return "deepseek-v3";
+            return ModelConstants.DEEPSEEK_V3;
         }
         if (normalized.contains("coder")) {
-            return "deepseek-coder";
+            return ModelConstants.DEEPSEEK_CODER;
         }
         if (normalized.contains("qwen")) {
             return model;
         }
-        return "deepseek-v3";
+        return ModelConstants.DEFAULT_MODEL;
     }
 
     /**
@@ -144,16 +146,10 @@ public class SessionMetadataService {
      */
     private String buildSystemPrompt(boolean needTitle) {
         StringBuilder sb = new StringBuilder();
-        sb.append("你是一个中文助手，需要基于【当前用户询问】（最重要）以及【历史用户询问】（仅供参考）生成结果。\n")
-          .append("仅输出 JSON，不要输出任何额外文字（包括 Markdown/代码块）。\n")
-          .append("请生成 3 个\"用户视角\"的下一步追问（用户对助手说的话），要求：\n")
-          .append("1) 每个都是完整问题，优先更具体、更可执行；\n")
-          .append("2) 不要以 AI 口吻表达（如\"我可以为你.../我还能...\"），不要自称\"AI/助手\"；\n")
-          .append("3) 不要复述历史问题，不要照抄历史原句；\n")
-          .append("4) 每个问题 8~25 个汉字，末尾使用\"？\"。\n");
+        sb.append(SessionPromptConstants.SESSION_METADATA_BASE_PROMPT);
 
         if (needTitle) {
-            sb.append("由于这是会话的第一条消息，请同时生成一个简短的标题（不超过15个字）。\n");
+            sb.append(SessionPromptConstants.TITLE_GENERATION_SUFFIX);
         }
 
         sb.append("请严格按照以下 JSON 格式返回，不要包含任何其他文字：\n")
@@ -214,9 +210,9 @@ public class SessionMetadataService {
 
         suggestionsList = new ArrayList<>(normalized);
         while (suggestionsList.size() < 3) {
-            if (suggestionsList.size() == 0) suggestionsList.add("我下一步应该先做什么？");
-            else if (suggestionsList.size() == 1) suggestionsList.add("你能给我一个可执行的步骤清单吗？");
-            else suggestionsList.add("有哪些常见坑需要我提前避免？");
+            if (suggestionsList.size() == 0) suggestionsList.add(SessionPromptConstants.DEFAULT_SUGGESTION_1);
+            else if (suggestionsList.size() == 1) suggestionsList.add(SessionPromptConstants.DEFAULT_SUGGESTION_2);
+            else suggestionsList.add(SessionPromptConstants.DEFAULT_SUGGESTION_3);
         }
 
         return suggestionsList;

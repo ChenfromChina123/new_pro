@@ -1,5 +1,6 @@
 package com.aispring.controller;
 
+import com.aispring.common.ChatConstants;
 import com.aispring.entity.ChatRecord;
 import com.aispring.entity.ChatSession;
 import com.aispring.service.ChatRecordService;
@@ -33,11 +34,6 @@ import jakarta.servlet.http.HttpServletRequest;
 @RequiredArgsConstructor
 public class ChatRecordController {
     
-    private static final String IMAGE_META_PREFIX = "IMG_META_JSON:";
-    private static final int MAX_IMAGE_COUNT = 3;
-    private static final int MAX_IMAGE_ITEM_LENGTH = 14000;
-    private static final int MAX_IMAGE_META_LENGTH = 50000;
-
     private final ChatRecordService chatRecordService;
     private final ObjectMapper objectMapper;
     
@@ -110,13 +106,13 @@ public class ChatRecordController {
             try {
                 List<String> safeImages = request.getUserImages().stream()
                     .filter(item -> item != null && !item.isBlank())
-                    .map(item -> item.length() > MAX_IMAGE_ITEM_LENGTH ? item.substring(0, MAX_IMAGE_ITEM_LENGTH) : item)
-                    .limit(MAX_IMAGE_COUNT)
+                    .map(item -> item.length() > ChatConstants.MAX_IMAGE_ITEM_LENGTH ? item.substring(0, ChatConstants.MAX_IMAGE_ITEM_LENGTH) : item)
+                    .limit(ChatConstants.MAX_IMAGE_COUNT)
                     .toList();
                 if (!safeImages.isEmpty()) {
                     String json = objectMapper.writeValueAsString(Map.of("images", safeImages));
-                    String payload = IMAGE_META_PREFIX + json;
-                    if (payload.length() <= MAX_IMAGE_META_LENGTH) {
+                    String payload = ChatConstants.IMAGE_META_PREFIX + json;
+                    if (payload.length() <= ChatConstants.MAX_IMAGE_META_LENGTH) {
                         userImageMeta = payload;
                     }
                 }
