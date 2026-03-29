@@ -8,6 +8,30 @@
 export LANG=C.UTF-8
 export LC_ALL=C.UTF-8
 
+# 设置 Java 环境变量（自动检测）
+if [ -z "$JAVA_HOME" ]; then
+    if [ -d "/usr/lib/jvm/java-17-openjdk" ]; then
+        export JAVA_HOME=/usr/lib/jvm/java-17-openjdk
+    elif [ -d "/usr/lib/jvm/java-11-openjdk" ]; then
+        export JAVA_HOME=/usr/lib/jvm/java-11-openjdk
+    elif [ -d "/usr/lib/jvm/java-1.8.0-openjdk" ]; then
+        export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk
+    else
+        # 尝试自动查找
+        JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java 2>/dev/null) 2>/dev/null) 2>/dev/null) 2>/dev/null)
+        if [ -n "$JAVA_HOME" ] && [ "$JAVA_HOME" != "/" ]; then
+            export JAVA_HOME
+        fi
+    fi
+fi
+
+if [ -n "$JAVA_HOME" ]; then
+    export PATH=$JAVA_HOME/bin:$PATH
+    echo "✅ JAVA_HOME: $JAVA_HOME"
+else
+    echo "⚠️  警告: 未找到 JAVA_HOME，尝试使用系统默认 Java"
+fi
+
 # 设置数据库凭据
 export DB_USERNAME=aispring
 export DB_PASSWORD=xGDswMCdHhsajfxF
