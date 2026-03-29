@@ -40,8 +40,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/register/send-code", "/api/auth/forgot-password", "/api/auth/forgot-password/send-code").permitAll()
                 // Swagger 文档生产环境关闭
                 // .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                // 用户头像需要认证
-                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/users/avatar/**").authenticated()
+                // 用户头像公开访问（用于显示用户头像图片）
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/users/avatar/**").permitAll()
                 // 资源文件需要认证
                 .requestMatchers("/api/resources/public").authenticated()
                 // 公开文件需要认证
