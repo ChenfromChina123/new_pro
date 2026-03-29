@@ -92,6 +92,12 @@ cd aispring
 echo "   正在清理并重新打包..."
 echo "   Java版本: $(java -version 2>&1 | head -n 1)"
 echo "   JAVA_HOME: $JAVA_HOME"
+
+# 确保 mvnw 有执行权限
+if [ -f "./mvnw" ]; then
+    chmod +x ./mvnw
+fi
+
 ./mvnw clean package -DskipTests
 if [ $? -ne 0 ]; then
     echo "❌ 打包失败"
