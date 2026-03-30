@@ -170,12 +170,15 @@ export const useAgentStore = defineStore('agent', () => {
           addMessage('tool', data)
         },
         onOutput: (data) => {
-          addTerminalOutput(data)
+          // 后端/执行层用 \\n 转义换行，前端渲染前还原
+          const normalized = typeof data === 'string' ? data.replace(/\\n/g, '\n') : data
+          addTerminalOutput(normalized)
         },
         onComplete: (data) => {
           if (currentTask.value) {
             currentTask.value.status = 'completed'
-            currentTask.value.output = data
+            const normalized = typeof data === 'string' ? data.replace(/\\n/g, '\n') : data
+            currentTask.value.output = normalized
           }
           addMessage('system', '任务完成')
           isStreaming.value = false

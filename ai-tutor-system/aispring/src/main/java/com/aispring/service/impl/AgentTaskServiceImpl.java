@@ -366,7 +366,7 @@ public class AgentTaskServiceImpl implements AgentTaskService {
             task.setTotalSteps(totalSteps);
             taskRepository.save(task);
         } else if ("complete".equals(eventName)) {
-            // agent-executor 对换行做了转义：\\n -> \n，前端才能正确显示
+            // agent-executor 对换行做了转义：\\n -> \n，用于数据库存储更友好
             String output = rawData.replace("\\n", "\n");
             task.complete(output);
             taskRepository.save(task);
@@ -379,9 +379,8 @@ public class AgentTaskServiceImpl implements AgentTaskService {
 
         // tool_call / output / complete 的 data 需要做反转义，保证前端展示更正常
         String forwardData = rawData;
-        if ("output".equals(eventName) || "complete".equals(eventName)) {
-            forwardData = rawData.replace("\\n", "\n");
-        }
+        // 注意：output/complete 为“纯字符串” SSE data，直接替换真实换行可能破坏 SSE 行格式
+        // 因此只在前端渲染时再把 \\n 转为 \n
         if ("tool_call".equals(eventName)) {
             // tool_call 是 JSON，内部 toolOutput/observation 也做反转义
             JsonNode node = mapper.readTree(rawData);
