@@ -15,6 +15,28 @@
           <span class="session-status">{{ agentStore.currentSession.status }}</span>
         </div>
       </div>
+      <div class="header-center">
+        <!-- 全局任务状态指示器 -->
+        <div
+          v-if="agentStore.runningTasks.length > 0"
+          class="global-task-status"
+        >
+          <div class="status-indicator running">
+            <i class="fas fa-spinner fa-spin" />
+            <span>{{ agentStore.runningTasks.length }} 个任务运行中</span>
+          </div>
+          <div
+            v-if="agentStore.currentTask?.status === 'running'"
+            class="progress-bar-mini"
+          >
+            <div
+              class="progress-fill"
+              :style="{ width: getTaskProgress(agentStore.currentTask) + '%' }"
+            />
+          </div>
+        </div>
+      </div>
+
       <div class="header-right">
         <button
           class="btn btn-secondary"
@@ -88,20 +110,26 @@
 
       <!-- 中间主区域 -->
       <main class="main-content">
-        <!-- 任务列表 -->
+        <!-- 任务列表（可收起） -->
         <div
           v-if="agentStore.currentSession"
           class="tasks-panel"
+          :class="{ collapsed: isTasksCollapsed }"
         >
-          <div class="panel-header">
-            <h3>任务列表</h3>
-            <span class="task-count">{{ agentStore.tasks.length }} 个任务</span>
+          <div class="panel-header" @click="isTasksCollapsed = !isTasksCollapsed">
+            <div class="panel-title">
+              <h3>任务列表</h3>
+              <span class="task-count">{{ agentStore.tasks.length }} 个任务</span>
+            </div>
+            <button class="collapse-btn">
+              <i :class="isTasksCollapsed ? 'fas fa-chevron-down' : 'fas fa-chevron-up'" />
+            </button>
           </div>
-          <div class="tasks-list">
+          <div v-show="!isTasksCollapsed" class="tasks-list-vertical">
             <div
               v-for="task in agentStore.tasks"
               :key="task.id"
-              :class="['task-item', task.status, { active: agentStore.currentTask?.id === task.id }]"
+              :class="['task-item-vertical', task.status, { active: agentStore.currentTask?.id === task.id }]"
               @click="selectTask(task)"
             >
               <div class="task-status">
@@ -109,7 +137,7 @@
               </div>
               <div class="task-info">
                 <span class="task-type">{{ task.taskType }}</span>
-                <span class="task-input">{{ truncate(task.input, 50) }}</span>
+                <span class="task-input">{{ truncate(task.input, 80) }}</span>
               </div>
               <div class="task-meta">
                 <span class="task-time">{{ formatDate(task.createdAt) }}</span>
@@ -132,6 +160,29 @@
           @cancel="cancelTask"
         />
 
+        <!-- 快速输入框（常驻） -->
+        <div
+          v-if="agentStore.currentSession"
+          class="quick-input-panel"
+        >
+          <div class="quick-input-wrapper">
+            <input
+              v-model="quickInput"
+              type="text"
+              :placeholder="agentStore.currentTask ? '输入补充指令...' : '输入任务描述，按 Enter 创建任务...'"
+              class="quick-input"
+              @keyup.enter="handleQuickInput"
+            >
+            <button
+              class="btn btn-primary quick-send-btn"
+              :disabled="!quickInput.trim() || agentStore.isLoading"
+              @click="handleQuickInput"
+            >
+              <i class="fas fa-paper-plane" />
+            </button>
+          </div>
+        </div>
+
         <!-- 空状态 -->
         <div
           v-if="!agentStore.currentSession"
@@ -149,6 +200,34 @@
             <i class="fas fa-plus" />
             创建会话
           </button>
+
+          <!-- 快捷示例 -->
+          <div class="quick-examples">
+            <p class="examples-title">或者尝试以下示例：</p>
+            <div class="examples-list">
+              <button
+                class="example-btn"
+                @click="quickCreateSessionAndTask('分析当前目录下的代码结构')"
+              >
+                <i class="fas fa-search" />
+                分析代码结构
+              </button>
+              <button
+                class="example-btn"
+                @click="quickCreateSessionAndTask('创建一个简单的 Express 后端')"
+              >
+                <i class="fas fa-server" />
+                创建 Express 后端
+              </button>
+              <button
+                class="example-btn"
+                @click="quickCreateSessionAndTask('帮我优化这个项目的性能')"
+              >
+                <i class="fas fa-rocket" />
+                优化项目性能
+              </button>
+            </div>
+          </div>
         </div>
       </main>
 
@@ -330,10 +409,23 @@ const newTask = reactive({
   input: ''
 })
 
+const quickInput = ref('')
+const isTasksCollapsed = ref(false)
+
 onMounted(async () => {
   try {
     await agentStore.fetchSessions()
-    if (agentStore.sessions.length > 0) {
+
+    // 从 localStorage 恢复上次选中的会话
+    const lastSessionId = localStorage.getItem('agent_last_session_id')
+    if (lastSessionId) {
+      const session = agentStore.sessions.find(s => s.id === parseInt(lastSessionId))
+      if (session) {
+        await agentStore.selectSession(session.id)
+      } else if (agentStore.sessions.length > 0) {
+        await agentStore.selectSession(agentStore.sessions[0].id)
+      }
+    } else if (agentStore.sessions.length > 0) {
       await agentStore.selectSession(agentStore.sessions[0].id)
     }
   } catch (error) {
@@ -376,7 +468,7 @@ async function createTask() {
     showTaskModal.value = false
     newTask.input = ''
     newTask.taskType = 'general'
-    
+
     await agentStore.startTaskStream(task.id)
   } catch (error) {
     console.error('创建任务失败:', error)
@@ -385,6 +477,39 @@ async function createTask() {
 
 function selectTask(task) {
   agentStore.currentTask = task
+  // 保存选中的会话到 localStorage
+  if (agentStore.currentSession) {
+    localStorage.setItem('agent_last_session_id', agentStore.currentSession.id.toString())
+  }
+}
+
+async function handleQuickInput() {
+  if (!quickInput.value.trim()) return
+
+  try {
+    const task = await agentStore.createTask(quickInput.value, 'general')
+    quickInput.value = ''
+    await agentStore.startTaskStream(task.id)
+  } catch (error) {
+    console.error('创建任务失败:', error)
+  }
+}
+
+async function quickCreateSessionAndTask(input) {
+  try {
+    // 创建会话
+    const session = await agentStore.createSession('快速会话', null)
+    // 创建任务
+    const task = await agentStore.createTask(input, 'general')
+    await agentStore.startTaskStream(task.id)
+  } catch (error) {
+    console.error('快速创建失败:', error)
+  }
+}
+
+function getTaskProgress(task) {
+  if (!task.totalSteps || task.totalSteps === 0) return 0
+  return (task.currentStep / task.totalSteps) * 100
 }
 
 async function cancelTask() {
@@ -465,6 +590,30 @@ function getTaskStatusIcon(status) {
   color: var(--text-primary);
 }
 
+/* 滚动条美化 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--bg-tertiary);
+}
+
 .sandbox-header {
   display: flex;
   justify-content: space-between;
@@ -505,6 +654,52 @@ function getTaskStatusIcon(status) {
 .session-status {
   color: var(--success-color);
   font-weight: 500;
+}
+
+.header-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.global-task-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.status-indicator.running {
+  background: rgba(245, 158, 11, 0.2);
+  color: var(--warning-color);
+}
+
+.status-indicator i {
+  font-size: 0.75rem;
+}
+
+.progress-bar-mini {
+  width: 120px;
+  height: 3px;
+  background: var(--bg-tertiary);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-bar-mini .progress-fill {
+  height: 100%;
+  background: var(--primary-color);
+  transition: width 0.3s;
 }
 
 .header-right {
@@ -614,6 +809,13 @@ function getTaskStatusIcon(status) {
 .tasks-panel {
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.tasks-panel.collapsed {
+  max-height: 48px;
+  overflow: hidden;
 }
 
 .panel-header {
@@ -621,6 +823,18 @@ function getTaskStatusIcon(status) {
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.panel-header:hover {
+  background: var(--bg-tertiary);
+}
+
+.panel-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .panel-header h3 {
@@ -633,41 +847,88 @@ function getTaskStatusIcon(status) {
   color: var(--text-tertiary);
 }
 
-.tasks-list {
-  display: flex;
-  gap: 8px;
-  padding: 0 16px 12px;
-  overflow-x: auto;
+.collapse-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
 }
 
-.task-item {
-  flex-shrink: 0;
-  width: 200px;
-  padding: 12px;
+.collapse-btn:hover {
+  background: var(--bg-tertiary);
+}
+
+.tasks-list-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 16px 12px;
+}
+
+.task-item-vertical {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px 10px 16px;
   background: var(--bg-tertiary);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
   border: 2px solid transparent;
+  position: relative;
+  overflow: hidden;
 }
 
-.task-item:hover {
+/* 状态色条 */
+.task-item-vertical::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--border-color);
+}
+
+.task-item-vertical.active::before {
+  background: var(--primary-color);
+}
+
+.task-item-vertical.running::before {
+  background: var(--warning-color);
+}
+
+.task-item-vertical.completed::before {
+  background: var(--success-color);
+}
+
+.task-item-vertical.failed::before {
+  background: var(--danger-color);
+}
+
+.task-item-vertical.cancelled::before {
+  background: var(--text-tertiary);
+}
+
+.task-item-vertical:hover {
   background: var(--bg-primary);
 }
 
-.task-item.active {
+.task-item-vertical.active {
   border-color: var(--primary-color);
 }
 
-.task-item.running {
+.task-item-vertical.running {
   border-color: var(--warning-color);
 }
 
-.task-item.completed {
+.task-item-vertical.completed {
   border-color: var(--success-color);
 }
 
-.task-item.failed {
+.task-item-vertical.failed {
   border-color: var(--danger-color);
 }
 
@@ -738,6 +999,79 @@ function getTaskStatusIcon(status) {
 
 .empty-main p {
   color: var(--text-secondary);
+}
+
+.quick-examples {
+  margin-top: 32px;
+  text-align: center;
+}
+
+.examples-title {
+  font-size: 0.875rem;
+  color: var(--text-tertiary);
+  margin-bottom: 16px;
+}
+
+.examples-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+}
+
+.example-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.example-btn:hover {
+  background: var(--bg-secondary);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.example-btn i {
+  color: var(--primary-color);
+}
+
+.quick-input-panel {
+  padding: 12px 16px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+}
+
+.quick-input-wrapper {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.quick-input {
+  flex: 1;
+  padding: 10px 14px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+}
+
+.quick-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.quick-send-btn {
+  padding: 10px 16px;
 }
 
 .tools-sidebar {
