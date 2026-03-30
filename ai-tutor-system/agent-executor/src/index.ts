@@ -8,6 +8,7 @@ import { SandboxManager } from './sandbox/SandboxManager';
 import { ToolRegistry } from './tools/ToolRegistry';
 import { LLMClient } from './llm/LLMClient';
 import { logger } from './utils/logger';
+import { createToolProxyRouter } from './tools/ToolProxy';
 
 const PORT = process.env.PORT || 3001;
 
@@ -44,9 +45,19 @@ async function initialize() {
 async function main() {
   const { reactEngine, sandboxManager } = await initialize();
 
+  // 创建工具代理路由处理器
+  const toolProxyHandler = createToolProxyRouter(sandboxManager);
+
   const server = createServer(async (req, res) => {
     const url = new URL(req.url || '/', `http://localhost:${PORT}`);
 
+    // 先尝试工具代理路由
+    const handled = await toolProxyHandler(req, res);
+    if (handled) {
+      return;
+    }
+
+    // 默认 JSON 响应
     res.setHeader('Content-Type', 'application/json');
 
     if (url.pathname === '/health') {

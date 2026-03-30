@@ -168,13 +168,81 @@ export function getRunningTasks(sessionId) {
   return request.get(`${BASE_URL}/tasks/running/session/${sessionId}`)
 }
 
+// ==================== 沙箱工具代理 ====================
+
+/**
+ * 获取系统隔离能力
+ */
+export function getCapabilities() {
+  return request.get(`${BASE_URL}/sandbox/capabilities`)
+}
+
+/**
+ * 列出沙箱文件
+ */
+export function listSandboxFiles(sessionId, path = '.') {
+  return request.get(`${BASE_URL}/sandbox/${sessionId}/files`, { params: { path } })
+}
+
+/**
+ * 读取沙箱文件内容
+ */
+export function readSandboxFile(sessionId, path) {
+  return request.get(`${BASE_URL}/sandbox/${sessionId}/file`, { params: { path } })
+}
+
+/**
+ * 写入沙箱文件内容
+ */
+export function writeSandboxFile(sessionId, path, content) {
+  return request.post(`${BASE_URL}/sandbox/${sessionId}/file`, { path, content })
+}
+
+/**
+ * 在沙箱中执行终端命令
+ */
+export function executeSandboxTerminal(sessionId, command, timeoutMs) {
+  return request.post(`${BASE_URL}/sandbox/${sessionId}/terminal`, { command, timeoutMs })
+}
+
+/**
+ * 在沙箱中执行 Git 命令
+ */
+export function executeSandboxGit(sessionId, command, message) {
+  return request.post(`${BASE_URL}/sandbox/${sessionId}/git`, { command, message })
+}
+
+/**
+ * 获取沙箱资源使用情况
+ */
+export function getSandboxUsage(sessionId) {
+  return request.get(`${BASE_URL}/sandbox/${sessionId}/usage`)
+}
+
+/**
+ * 删除沙箱
+ */
+export function deleteSandbox(sessionId) {
+  return request.delete(`${BASE_URL}/sandbox/${sessionId}`)
+}
+
+/**
+ * 通用工具执行接口
+ */
+export function executeTool(request) {
+  return request.post(`${BASE_URL}/sandbox/execute`, request)
+}
+
 // ==================== 文件操作 ====================
 
 /**
  * 获取文件树
  */
 export function getFileTree(sessionId) {
-  return request.get(`${BASE_URL}/files`, { params: { sessionId } })
+  // 优先使用新的沙箱 API
+  return listSandboxFiles(sessionId, '.')
+  // 备用旧 API
+  // return request.get(`${BASE_URL}/files`, { params: { sessionId } })
 }
 
 /**
