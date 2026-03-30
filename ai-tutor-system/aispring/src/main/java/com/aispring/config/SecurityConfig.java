@@ -52,6 +52,8 @@ public class SecurityConfig {
                 // URL过滤端点需要认证
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/url-filter/test/**").authenticated()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/url-filter/check").authenticated()
+                // Agent API 端点需要认证
+                .requestMatchers("/api/agent/**").authenticated()
                 // 测试接口生产环境禁用
                 .requestMatchers("/api/auth/test/**").denyAll()
                 .requestMatchers("/error").permitAll()
