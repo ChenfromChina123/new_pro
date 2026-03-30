@@ -66,7 +66,7 @@ public class AgentSessionServiceImpl implements AgentSessionService {
     @Transactional
     public AgentSession updateSession(Long sessionId, Long userId, String name) {
         AgentSession session = sessionRepository.findByIdAndUserId(sessionId, userId)
-                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Session not found"));
+                .orElseThrow(() -> new CustomException("Session not found"));
         
         if (name != null) {
             session.setName(name);
@@ -79,7 +79,7 @@ public class AgentSessionServiceImpl implements AgentSessionService {
     @Transactional
     public void closeSession(Long sessionId, Long userId) {
         AgentSession session = sessionRepository.findByIdAndUserId(sessionId, userId)
-                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Session not found"));
+                .orElseThrow(() -> new CustomException("Session not found"));
         
         session.close();
         sessionRepository.save(session);
@@ -89,7 +89,7 @@ public class AgentSessionServiceImpl implements AgentSessionService {
     @Transactional
     public void deleteSession(Long sessionId, Long userId) {
         AgentSession session = sessionRepository.findByIdAndUserId(sessionId, userId)
-                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Session not found"));
+                .orElseThrow(() -> new CustomException("Session not found"));
         
         sessionRepository.delete(session);
     }
@@ -110,7 +110,7 @@ public class AgentSessionServiceImpl implements AgentSessionService {
     @Transactional
     public void updateGitStatus(Long sessionId, String commitHash, String branch) {
         AgentSession session = sessionRepository.findById(sessionId)
-                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Session not found"));
+                .orElseThrow(() -> new CustomException("Session not found"));
         
         session.setGitInitialized(true);
         session.setLastCommitHash(commitHash);

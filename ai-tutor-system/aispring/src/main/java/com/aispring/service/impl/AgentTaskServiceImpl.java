@@ -42,10 +42,10 @@ public class AgentTaskServiceImpl implements AgentTaskService {
         log.info("Creating task for session: {}, user: {}, type: {}", sessionId, userId, taskType);
         
         AgentSession session = sessionRepository.findByIdAndUserId(sessionId, userId)
-                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Session not found"));
+                .orElseThrow(() -> new CustomException("Session not found"));
         
         if (!session.isActive()) {
-            throw new CustomException(HttpStatus.BAD_REQUEST, "Session is not active");
+            throw new CustomException("Session is not active");
         }
         
         AgentTask task = new AgentTask();
@@ -88,10 +88,10 @@ public class AgentTaskServiceImpl implements AgentTaskService {
         log.info("Starting task: {} for user: {}", taskId, userId);
         
         AgentTask task = taskRepository.findByIdAndUserId(taskId, userId)
-                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Task not found"));
+                .orElseThrow(() -> new CustomException("Task not found"));
         
         if (!"pending".equals(task.getStatus())) {
-            throw new CustomException(HttpStatus.BAD_REQUEST, "Task is not in pending status");
+            throw new CustomException("Task is not in pending status");
         }
         
         task.start();
@@ -118,7 +118,7 @@ public class AgentTaskServiceImpl implements AgentTaskService {
         log.info("Cancelling task: {} for user: {}", taskId, userId);
         
         AgentTask task = taskRepository.findByIdAndUserId(taskId, userId)
-                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Task not found"));
+                .orElseThrow(() -> new CustomException("Task not found"));
         
         if (!task.isCompleted()) {
             task.cancel();
