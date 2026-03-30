@@ -115,6 +115,12 @@ const router = createRouter({
           name: 'Playground',
           component: () => import('@/views/PlaygroundView.vue'),
           meta: { requiresAuth: true }
+        },
+        {
+          path: 'agent-sandbox',
+          name: 'AgentSandbox',
+          component: () => import('@/views/AgentSandboxView.vue'),
+          meta: { requiresAuth: true }
         }
       ]
     },

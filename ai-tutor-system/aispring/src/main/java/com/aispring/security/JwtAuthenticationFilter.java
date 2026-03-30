@@ -57,13 +57,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
         
+        String jwt = null;
+        
+        // 1. 尝试从Authorization Header获取token
         final String authHeader = request.getHeader("Authorization");
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            jwt = authHeader.substring(7);
+        }
+        
+        // 2. 尝试从URL参数获取token（用于WebSocket）
+        if (jwt == null) {
+            String tokenParam = request.getParameter("token");
+            if (tokenParam != null && !tokenParam.isEmpty()) {
+                jwt = tokenParam;
+            }
+        }
+        
+        if (jwt == null) {
             filterChain.doFilter(request, response);
             return;
         }
-
-        final String jwt = authHeader.substring(7);
         try {
             final String userEmail = jwtUtil.extractUsername(jwt);
             if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
