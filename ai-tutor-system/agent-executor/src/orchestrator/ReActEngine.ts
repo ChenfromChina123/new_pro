@@ -45,10 +45,10 @@ export class ReActEngine {
   private toolRegistry: ToolRegistry;
   private sandboxManager: SandboxManager;
   private contextBuilder: ContextBuilder;
-  
+
   private readonly maxSteps = 20;
   private readonly timeoutMs = 60000;
-  
+
   constructor(
     llmClient: LLMClient,
     toolRegistry: ToolRegistry,
@@ -59,7 +59,7 @@ export class ReActEngine {
     this.sandboxManager = sandboxManager;
     this.contextBuilder = new ContextBuilder();
   }
-  
+
   /**
    * 执行任务
    */
@@ -74,45 +74,45 @@ export class ReActEngine {
     let totalTokens = 0;
     let isComplete = false;
     let finalOutput = '';
-    
+
     try {
       const sandbox = await this.sandboxManager.getSandbox(sessionId);
       if (!sandbox) {
         throw new Error(`Sandbox not found for session: ${sessionId}`);
       }
-      
+
       const context = this.contextBuilder.buildInitialContext(input, sandbox.workingDirectory);
-      
+
       for (let step = 0; step < this.maxSteps && !isComplete; step++) {
         if (Date.now() - startTime > this.timeoutMs) {
           throw new Error('Execution timeout');
         }
-        
+
         const thought = await this.think(context, steps);
         callbacks.onThought(thought);
-        
+
         const action = await this.planAction(thought, context);
         if (!action) {
           isComplete = true;
           finalOutput = thought;
           break;
         }
-        
+
         callbacks.onAction(action);
-        
+
         const observation = await this.executeAction(action, sandbox.path);
         callbacks.onObservation(observation);
-        
+
         steps.push({ thought, action, observation });
-        
+
         this.contextBuilder.updateContext(context, thought, action, observation);
-        
+
         if (this.shouldComplete(observation)) {
           isComplete = true;
           finalOutput = observation;
         }
       }
-      
+
       const result: ReActResult = {
         success: true,
         output: finalOutput,
@@ -120,15 +120,15 @@ export class ReActEngine {
         totalTokens,
         executionTimeMs: Date.now() - startTime
       };
-      
+
       callbacks.onComplete(result);
       return result;
-      
+
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       logger.error(`Execution failed for task ${taskId}:`, errorMessage);
       callbacks.onError(errorMessage);
-      
+
       return {
         success: false,
         output: errorMessage,
@@ -138,7 +138,7 @@ export class ReActEngine {
       };
     }
   }
-  
+
   /**
    * 思考阶段
    */
@@ -147,17 +147,17 @@ export class ReActEngine {
     const response = await this.llmClient.generate(prompt);
     return response.text;
   }
-  
+
   /**
    * 规划行动
    */
   private async planAction(thought: string, context: string): Promise<ToolCall | null> {
     const prompt = this.buildActionPrompt(thought, context);
     const response = await this.llmClient.generate(prompt);
-    
+
     return this.parseToolCall(response.text);
   }
-  
+
   /**
    * 执行行动
    */
@@ -166,7 +166,7 @@ export class ReActEngine {
     if (!tool) {
       return `Error: Unknown tool '${action.name}'`;
     }
-    
+
     try {
       const result = await tool.execute(action.params, sandboxPath);
       return result.output;
@@ -175,7 +175,7 @@ export class ReActEngine {
       return `Error: ${errorMessage}`;
     }
   }
-  
+
   /**
    * 判断是否完成
    */
@@ -188,13 +188,13 @@ export class ReActEngine {
       '成功',
       'success'
     ];
-    
+
     const lowerObs = observation.toLowerCase();
-    return completionIndicators.some(indicator => 
+    return completionIndicators.some(indicator =>
       lowerObs.includes(indicator.toLowerCase())
     );
   }
-  
+
   /**
    * 构建思考提示词
    */
@@ -203,7 +203,7 @@ export class ReActEngine {
 ${context}
 
 `;
-    
+
     if (previousSteps.length > 0) {
       prompt += `## 之前的步骤
 `;
@@ -216,18 +216,18 @@ ${context}
 `;
       });
     }
-    
+
     prompt += `请思考下一步应该做什么。如果任务已完成，请说明结果。`;
-    
+
     return prompt;
   }
-  
+
   /**
    * 构建行动提示词
    */
   private buildActionPrompt(thought: string, context: string): string {
     const availableTools = this.toolRegistry.getToolDescriptions();
-    
+
     return `## 思考
 ${thought}
 
@@ -239,27 +239,27 @@ ${availableTools.map(t => `- ${t.name}: ${t.description}`).join('\n')}
 
 如果需要调用工具，请按上述格式输出。如果任务已完成，请输出 "任务完成" 或 "Task completed"。`;
   }
-  
+
   /**
    * 解析工具调用
    */
   private parseToolCall(text: string): ToolCall | null {
     const toolCallRegex = /<(\w+)>\s*(\{[\s\S]*?\})\s*<\/\1>/;
     const match = text.match(toolCallRegex);
-    
+
     if (!match) {
       return null;
     }
-    
+
     const toolName = match[1];
     let params: Record<string, unknown> = {};
-    
+
     try {
       params = JSON.parse(match[2]);
     } catch {
       params = {};
     }
-    
+
     return { name: toolName, params };
   }
 }

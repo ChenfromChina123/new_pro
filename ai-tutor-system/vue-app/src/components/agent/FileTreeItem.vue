@@ -72,7 +72,7 @@ function getFileIcon(file) {
   if (file.isDirectory) {
     return isExpanded.value ? 'fas fa-folder-open' : 'fas fa-folder'
   }
-  
+
   const ext = file.name.split('.').pop()?.toLowerCase()
   const iconMap = {
     js: 'fab fa-js text-yellow-400',
@@ -87,7 +87,7 @@ function getFileIcon(file) {
     txt: 'fas fa-file-alt text-gray-400',
     default: 'fas fa-file text-gray-400'
   }
-  
+
   return iconMap[ext] || iconMap.default
 }
 

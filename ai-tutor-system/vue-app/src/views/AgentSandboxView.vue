@@ -1,467 +1,1018 @@
 <template>
-  <div class="agent-sandbox-simple">
-    <!-- 主聊天区域 -->
-    <main class="chat-main">
-      <div class="chat-header">
-        <div class="chat-header-inner">
-          <div class="header-left">
-            <h2 class="chat-title">
-              <i class="fas fa-robot" />
-              AI Agent 助手
-            </h2>
+  <div class="agent-sandbox-view">
+    <!-- 顶部工具栏 -->
+    <header class="sandbox-header">
+      <div class="header-left">
+        <h1 class="title">
+          <i class="fas fa-robot" />
+          AI Agent 沙箱
+        </h1>
+        <div
+          v-if="agentStore.currentSession"
+          class="session-info"
+        >
+          <span class="session-name">{{ agentStore.currentSession.name }}</span>
+          <span class="session-status">{{ agentStore.currentSession.status }}</span>
+        </div>
+      </div>
+      <div class="header-center">
+        <!-- 全局任务状态指示器 -->
+        <div
+          v-if="agentStore.runningTasks.length > 0"
+          class="global-task-status"
+        >
+          <div class="status-indicator running">
+            <i class="fas fa-spinner fa-spin" />
+            <span>{{ agentStore.runningTasks.length }} 个任务运行中</span>
+          </div>
+          <div
+            v-if="agentStore.currentTask?.status === 'running'"
+            class="progress-bar-mini"
+          >
+            <div
+              class="progress-fill"
+              :style="{ width: getTaskProgress(agentStore.currentTask) + '%' }"
+            />
           </div>
         </div>
       </div>
 
-      <div
-        ref="messagesContainer"
-        class="messages-container"
-      >
-        <!-- 空状态 -->
-        <div
-          v-if="messages.length === 0"
-          class="empty-state"
+      <div class="header-right">
+        <button
+          class="btn btn-secondary"
+          @click="showSessionModal = true"
         >
-          <h3 class="empty-title">
-            AI Agent 助手
-          </h3>
-          <p class="empty-description">
-            选择功能并输入指令，让 AI Agent 帮你完成任务。
-          </p>
-          <div class="quick-examples">
+          <i class="fas fa-folder-plus" />
+          新建会话
+        </button>
+        <button
+          class="btn btn-primary"
+          :disabled="!agentStore.currentSession"
+          @click="showTaskModal = true"
+        >
+          <i class="fas fa-plus" />
+          新建任务
+        </button>
+      </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <div class="sandbox-main">
+      <!-- 左侧边栏 - 会话列表 -->
+      <aside class="sidebar sessions-sidebar">
+        <div class="sidebar-header">
+          <h3>会话列表</h3>
+          <button
+            class="icon-btn"
+            @click="agentStore.fetchSessions"
+          >
+            <i class="fas fa-sync-alt" />
+          </button>
+        </div>
+        <div class="sidebar-content">
+          <div
+            v-for="session in agentStore.sessions"
+            :key="session.id"
+            :class="['session-item', { active: agentStore.currentSession?.id === session.id }]"
+            @click="selectSession(session.id)"
+          >
+            <div class="session-icon">
+              <i :class="session.status === 'active' ? 'fas fa-circle' : 'fas fa-circle'" />
+            </div>
+            <div class="session-details">
+              <span class="session-name">{{ session.name }}</span>
+              <span class="session-meta">{{ formatDate(session.createdAt) }}</span>
+            </div>
+            <div class="session-actions">
+              <button
+                class="icon-btn"
+                title="关闭"
+                @click.stop="closeSession(session.id)"
+              >
+                <i class="fas fa-times" />
+              </button>
+            </div>
+          </div>
+          <div
+            v-if="agentStore.sessions.length === 0"
+            class="empty-state"
+          >
+            <p>暂无会话</p>
             <button
-              class="example-btn"
-              @click="quickStart('分析当前目录下的代码结构')"
+              class="btn btn-sm"
+              @click="showSessionModal = true"
             >
-              <i class="fas fa-search" />
-              分析代码结构
-            </button>
-            <button
-              class="example-btn"
-              @click="quickStart('创建一个简单的 Express 后端')"
-            >
-              <i class="fas fa-server" />
-              创建 Express 后端
-            </button>
-            <button
-              class="example-btn"
-              @click="quickStart('帮我优化这个项目的性能')"
-            >
-              <i class="fas fa-rocket" />
-              优化项目性能
+              创建第一个会话
             </button>
           </div>
         </div>
+      </aside>
 
-        <!-- 消息列表 -->
+      <!-- 中间主区域 -->
+      <main class="main-content">
+        <!-- 任务列表（可收起） -->
         <div
-          v-for="(message, index) in messages"
-          :key="index"
-          class="message"
-          :class="message.role === 'user' ? 'user' : 'assistant'"
+          v-if="agentStore.currentSession"
+          class="tasks-panel"
+          :class="{ collapsed: isTasksCollapsed }"
         >
-          <div class="message-content">
-            <div class="message-bubble">
-              <!-- 用户消息 -->
-              <div v-if="message.role === 'user'" class="message-text">
-                {{ message.content }}
+          <div class="panel-header" @click="isTasksCollapsed = !isTasksCollapsed">
+            <div class="panel-title">
+              <h3>任务列表</h3>
+              <span class="task-count">{{ agentStore.tasks.length }} 个任务</span>
+            </div>
+            <button class="collapse-btn">
+              <i :class="isTasksCollapsed ? 'fas fa-chevron-down' : 'fas fa-chevron-up'" />
+            </button>
+          </div>
+          <div v-show="!isTasksCollapsed" class="tasks-list-vertical">
+            <div
+              v-for="task in agentStore.tasks"
+              :key="task.id"
+              :class="['task-item-vertical', task.status, { active: agentStore.currentTask?.id === task.id }]"
+              @click="selectTask(task)"
+            >
+              <div class="task-status">
+                <i :class="getTaskStatusIcon(task.status)" />
               </div>
-
-              <!-- AI 消息 -->
-              <template v-else>
-                <!-- 工具调用状态 -->
-                <div
-                  v-if="message.toolStatusList && message.toolStatusList.length > 0"
-                  class="tool-status-container"
-                >
-                  <div
-                    v-for="(toolStatus, toolIndex) in message.toolStatusList"
-                    :key="toolIndex"
-                    class="tool-status-block"
-                    :class="{
-                      'streaming': toolStatus.status === 'processing',
-                      'done': toolStatus.status === 'done',
-                      'error': toolStatus.status === 'error'
-                    }"
-                  >
-                    <div class="tool-status-header">
-                      <div class="header-left">
-                        <div class="header-text">
-                          <i
-                            v-if="toolStatus.status === 'processing'"
-                            class="fas fa-circle-notch fa-spin"
-                          />
-                          <i
-                            v-else-if="toolStatus.status === 'done'"
-                            class="fas fa-check-circle"
-                          />
-                          <i
-                            v-else
-                            class="fas fa-exclamation-circle"
-                          />
-                          <span class="tool-name">{{ getToolTypeName(toolStatus.toolType) }}</span>
-                          <span class="tool-message">{{ toolStatus.message }}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- 终端输出 -->
-                <div
-                  v-if="message.terminalOutput && message.terminalOutput.length > 0"
-                  class="terminal-output"
-                >
-                  <div class="terminal-header">
-                    <span class="terminal-title">
-                      <i class="fas fa-terminal" />
-                      终端输出
-                    </span>
-                  </div>
-                  <div class="terminal-body">
-                    <pre>{{ message.terminalOutput }}</pre>
-                  </div>
-                </div>
-
-                <!-- AI 响应内容 -->
-                <div
-                  v-if="message.content"
-                  class="message-text"
-                  v-html="formatMessage(message.content)"
-                />
-
-                <!-- 流式输入状态 -->
-                <div
-                  v-if="message.isStreaming && !message.content"
-                  class="message-text"
-                >
-                  <span class="typing-cursor" />
-                </div>
-              </template>
-            </div>
-            <div class="message-time">
-              {{ formatTime(message.timestamp) }}
+              <div class="task-info">
+                <span class="task-type">{{ task.taskType }}</span>
+                <span class="task-input">{{ truncate(task.input, 80) }}</span>
+              </div>
+              <div class="task-meta">
+                <span class="task-time">{{ formatDate(task.createdAt) }}</span>
+                <span
+                  v-if="task.executionTimeMs"
+                  class="task-duration"
+                >{{ formatDuration(task.executionTimeMs) }}</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- 输入区域 -->
-      <div class="chat-input-area">
-        <div class="input-container">
-          <!-- 功能选择器 -->
-          <div class="function-selector">
-            <select v-model="selectedFunction" class="function-select">
-              <option value="general">通用任务</option>
-              <option value="code_edit">代码编辑</option>
-              <option value="file_search">文件搜索</option>
-              <option value="terminal">终端命令</option>
-            </select>
-          </div>
+        <!-- 对话面板 -->
+        <AgentChatPanel
+          v-if="agentStore.currentTask"
+          :task="agentStore.currentTask"
+          :messages="agentStore.messages"
+          :tool-calls="agentStore.currentTaskToolCalls"
+          :is-streaming="agentStore.isStreaming"
+          @cancel="cancelTask"
+        />
 
-          <textarea
-            v-model="inputMessage"
-            class="chat-input"
-            placeholder="输入指令，让 AI Agent 帮你完成..."
-            :disabled="isLoading"
-            rows="1"
-            @input="adjustTextareaHeight"
-            @keydown.enter.exact.prevent="sendMessage"
-          />
-
-          <div class="input-toolbar">
-            <button
-              v-if="isLoading"
-              class="stop-btn"
-              title="停止生成"
-              @click="stopGeneration"
+        <!-- 快速输入框（常驻） -->
+        <div
+          v-if="agentStore.currentSession"
+          class="quick-input-panel"
+        >
+          <div class="quick-input-wrapper">
+            <input
+              v-model="quickInput"
+              type="text"
+              :placeholder="agentStore.currentTask ? '输入补充指令...' : '输入任务描述，按 Enter 创建任务...'"
+              class="quick-input"
+              @keyup.enter="handleQuickInput"
             >
-              <i class="fas fa-stop" />
-            </button>
             <button
-              v-else
-              class="send-btn"
-              :disabled="!inputMessage.trim()"
-              title="发送"
-              @click="sendMessage"
+              class="btn btn-primary quick-send-btn"
+              :disabled="!quickInput.trim() || agentStore.isLoading"
+              @click="handleQuickInput"
             >
               <i class="fas fa-paper-plane" />
             </button>
           </div>
         </div>
+
+        <!-- 空状态 -->
+        <div
+          v-if="!agentStore.currentSession"
+          class="empty-main"
+        >
+          <div class="empty-icon">
+            <i class="fas fa-robot" />
+          </div>
+          <h2>欢迎使用 AI Agent 沙箱</h2>
+          <p>创建一个会话开始使用</p>
+          <button
+            class="btn btn-primary btn-lg"
+            @click="showSessionModal = true"
+          >
+            <i class="fas fa-plus" />
+            创建会话
+          </button>
+
+          <!-- 快捷示例 -->
+          <div class="quick-examples">
+            <p class="examples-title">或者尝试以下示例：</p>
+            <div class="examples-list">
+              <button
+                class="example-btn"
+                @click="quickCreateSessionAndTask('分析当前目录下的代码结构')"
+              >
+                <i class="fas fa-search" />
+                分析代码结构
+              </button>
+              <button
+                class="example-btn"
+                @click="quickCreateSessionAndTask('创建一个简单的 Express 后端')"
+              >
+                <i class="fas fa-server" />
+                创建 Express 后端
+              </button>
+              <button
+                class="example-btn"
+                @click="quickCreateSessionAndTask('帮我优化这个项目的性能')"
+              >
+                <i class="fas fa-rocket" />
+                优化项目性能
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- 右侧边栏 - 文件树和终端 -->
+      <aside class="sidebar tools-sidebar">
+        <!-- 文件树 -->
+        <div class="sidebar-section">
+          <div class="sidebar-header">
+            <h3>文件树</h3>
+            <button
+              class="icon-btn"
+              @click="refreshFileTree"
+            >
+              <i class="fas fa-sync-alt" />
+            </button>
+          </div>
+          <AgentFileTree
+            v-if="agentStore.currentSession"
+            :files="agentStore.fileTree"
+            @select="handleFileSelect"
+          />
+        </div>
+
+        <!-- 终端输出 -->
+        <div class="sidebar-section terminal-section">
+          <div class="sidebar-header">
+            <h3>终端输出</h3>
+            <button
+              class="icon-btn"
+              @click="agentStore.clearTerminalOutput"
+            >
+              <i class="fas fa-trash" />
+            </button>
+          </div>
+          <AgentTerminal
+            :output="agentStore.terminalOutput"
+            :is-streaming="agentStore.isStreaming"
+          />
+        </div>
+      </aside>
+    </div>
+
+    <!-- 新建会话弹窗 -->
+    <div
+      v-if="showSessionModal"
+      class="modal-overlay"
+      @click.self="showSessionModal = false"
+    >
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>新建会话</h2>
+          <button
+            class="close-btn"
+            @click="showSessionModal = false"
+          >
+            <i class="fas fa-times" />
+          </button>
+        </div>
+        <form @submit.prevent="createSession">
+          <div class="form-group">
+            <label>会话名称</label>
+            <input
+              v-model="newSession.name"
+              type="text"
+              placeholder="输入会话名称"
+            >
+          </div>
+          <div class="form-group">
+            <label>工作目录</label>
+            <input
+              v-model="newSession.workingDirectory"
+              type="text"
+              placeholder="输入工作目录路径（可选）"
+            >
+          </div>
+          <div class="modal-actions">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              @click="showSessionModal = false"
+            >
+              取消
+            </button>
+            <button
+              type="submit"
+              class="btn btn-primary"
+              :disabled="agentStore.isLoading"
+            >
+              创建
+            </button>
+          </div>
+        </form>
       </div>
-    </main>
+    </div>
+
+    <!-- 新建任务弹窗 -->
+    <div
+      v-if="showTaskModal"
+      class="modal-overlay"
+      @click.self="showTaskModal = false"
+    >
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>新建任务</h2>
+          <button
+            class="close-btn"
+            @click="showTaskModal = false"
+          >
+            <i class="fas fa-times" />
+          </button>
+        </div>
+        <form @submit.prevent="createTask">
+          <div class="form-group">
+            <label>任务类型</label>
+            <select v-model="newTask.taskType">
+              <option value="general">
+                通用任务
+              </option>
+              <option value="code_edit">
+                代码编辑
+              </option>
+              <option value="file_search">
+                文件搜索
+              </option>
+              <option value="terminal">
+                终端命令
+              </option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>任务描述</label>
+            <textarea
+              v-model="newTask.input"
+              placeholder="描述你想要 Agent 执行的任务..."
+              rows="4"
+            />
+          </div>
+          <div class="modal-actions">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              @click="showTaskModal = false"
+            >
+              取消
+            </button>
+            <button
+              type="submit"
+              class="btn btn-primary"
+              :disabled="agentStore.isLoading || !newTask.input"
+            >
+              创建并执行
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted } from 'vue'
+import { ref, onMounted, reactive } from 'vue'
 import { useAgentStore } from '@/stores/agent'
-import { marked } from 'marked'
-import hljs from 'highlight.js'
-import 'highlight.js/styles/github-dark.css'
+import AgentChatPanel from '@/components/agent/AgentChatPanel.vue'
+import AgentFileTree from '@/components/agent/AgentFileTree.vue'
+import AgentTerminal from '@/components/agent/AgentTerminal.vue'
 
 const agentStore = useAgentStore()
 
-// 状态
-const messages = ref([])
-const inputMessage = ref('')
-const selectedFunction = ref('general')
-const isLoading = ref(false)
-const messagesContainer = ref(null)
+const showSessionModal = ref(false)
+const showTaskModal = ref(false)
 
-// 配置 marked
-marked.setOptions({
-  highlight: function(code, lang) {
-    const language = hljs.getLanguage(lang) ? lang : 'plaintext'
-    return hljs.highlight(code, { language }).value
-  },
-  breaks: true,
-  gfm: true
+const newSession = reactive({
+  name: '',
+  workingDirectory: ''
 })
 
-/**
- * 格式化消息内容
- */
-const formatMessage = (content) => {
-  if (!content) return ''
-  return marked.parse(content)
-}
+const newTask = reactive({
+  taskType: 'general',
+  input: ''
+})
 
-/**
- * 获取工具类型名称
- */
-const getToolTypeName = (toolType) => {
-  const names = {
-    'terminal': '终端执行',
-    'file_read': '文件读取',
-    'file_edit': '文件编辑',
-    'file_search': '文件搜索',
-    'ls': '目录列表',
-    'git': 'Git 操作'
+const quickInput = ref('')
+const isTasksCollapsed = ref(false)
+
+onMounted(async () => {
+  try {
+    await agentStore.fetchSessions()
+
+    // 从 localStorage 恢复上次选中的会话
+    const lastSessionId = localStorage.getItem('agent_last_session_id')
+    if (lastSessionId) {
+      const session = agentStore.sessions.find(s => s.id === parseInt(lastSessionId))
+      if (session) {
+        await agentStore.selectSession(session.id)
+      } else if (agentStore.sessions.length > 0) {
+        await agentStore.selectSession(agentStore.sessions[0].id)
+      }
+    } else if (agentStore.sessions.length > 0) {
+      await agentStore.selectSession(agentStore.sessions[0].id)
+    }
+  } catch (error) {
+    console.error('初始化失败:', error)
   }
-  return names[toolType] || toolType
+})
+
+async function createSession() {
+  try {
+    await agentStore.createSession(newSession.name || null, newSession.workingDirectory || null)
+    showSessionModal.value = false
+    newSession.name = ''
+    newSession.workingDirectory = ''
+  } catch (error) {
+    console.error('创建会话失败:', error)
+  }
 }
 
-/**
- * 格式化时间
- */
-const formatTime = (timestamp) => {
-  if (!timestamp) return ''
-  const date = new Date(timestamp)
-  return date.toLocaleTimeString('zh-CN', {
+async function selectSession(sessionId) {
+  try {
+    await agentStore.selectSession(sessionId)
+  } catch (error) {
+    console.error('选择会话失败:', error)
+  }
+}
+
+async function closeSession(sessionId) {
+  if (confirm('确定要关闭此会话吗？')) {
+    try {
+      await agentStore.closeSession(sessionId)
+    } catch (error) {
+      console.error('关闭会话失败:', error)
+    }
+  }
+}
+
+async function createTask() {
+  try {
+    const task = await agentStore.createTask(newTask.input, newTask.taskType)
+    showTaskModal.value = false
+    newTask.input = ''
+    newTask.taskType = 'general'
+
+    await agentStore.startTaskStream(task.id)
+  } catch (error) {
+    console.error('创建任务失败:', error)
+  }
+}
+
+function selectTask(task) {
+  agentStore.currentTask = task
+  // 保存选中的会话到 localStorage
+  if (agentStore.currentSession) {
+    localStorage.setItem('agent_last_session_id', agentStore.currentSession.id.toString())
+  }
+}
+
+async function handleQuickInput() {
+  if (!quickInput.value.trim()) return
+
+  try {
+    const task = await agentStore.createTask(quickInput.value, 'general')
+    quickInput.value = ''
+    await agentStore.startTaskStream(task.id)
+  } catch (error) {
+    console.error('创建任务失败:', error)
+  }
+}
+
+async function quickCreateSessionAndTask(input) {
+  try {
+    // 创建会话
+    const session = await agentStore.createSession('快速会话', null)
+    // 创建任务
+    const task = await agentStore.createTask(input, 'general')
+    await agentStore.startTaskStream(task.id)
+  } catch (error) {
+    console.error('快速创建失败:', error)
+  }
+}
+
+function getTaskProgress(task) {
+  if (!task.totalSteps || task.totalSteps === 0) return 0
+  return (task.currentStep / task.totalSteps) * 100
+}
+
+async function cancelTask() {
+  if (agentStore.currentTask) {
+    try {
+      await agentStore.cancelTask(agentStore.currentTask.id)
+    } catch (error) {
+      console.error('取消任务失败:', error)
+    }
+  }
+}
+
+async function refreshFileTree() {
+  if (agentStore.currentSession) {
+    try {
+      await agentStore.fetchFileTree(agentStore.currentSession.id)
+    } catch (error) {
+      console.error('刷新文件树失败:', error)
+    }
+  }
+}
+
+async function handleFileSelect(file) {
+  try {
+    const content = await agentStore.readFile(
+      agentStore.currentSession.id,
+      file.path,
+      1,
+      100
+    )
+    console.log('文件内容:', content)
+  } catch (error) {
+    console.error('读取文件失败:', error)
+  }
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  return date.toLocaleDateString('zh-CN', {
+    month: 'short',
+    day: 'numeric',
     hour: '2-digit',
     minute: '2-digit'
   })
 }
 
-/**
- * 调整文本域高度
- */
-const adjustTextareaHeight = () => {
-  const textarea = document.querySelector('.chat-input')
-  if (textarea) {
-    textarea.style.height = 'auto'
-    textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px'
-  }
+function formatDuration(ms) {
+  if (!ms) return ''
+  if (ms < 1000) return `${ms}ms`
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`
+  return `${(ms / 60000).toFixed(1)}m`
 }
 
-/**
- * 滚动到底部
- */
-const scrollToBottom = () => {
-  nextTick(() => {
-    if (messagesContainer.value) {
-      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
-    }
-  })
+function truncate(str, length) {
+  if (!str) return ''
+  return str.length > length ? str.substring(0, length) + '...' : str
 }
 
-/**
- * 快速开始
- */
-const quickStart = (content) => {
-  inputMessage.value = content
-  sendMessage()
+function getTaskStatusIcon(status) {
+  const icons = {
+    pending: 'fas fa-clock',
+    running: 'fas fa-spinner fa-spin',
+    completed: 'fas fa-check-circle',
+    failed: 'fas fa-times-circle',
+    cancelled: 'fas fa-ban'
+  }
+  return icons[status] || 'fas fa-question-circle'
 }
-
-/**
- * 发送消息
- */
-const sendMessage = async () => {
-  if (!inputMessage.value.trim() || isLoading.value) return
-
-  const userMessage = {
-    role: 'user',
-    content: inputMessage.value.trim(),
-    timestamp: new Date().toISOString()
-  }
-
-  messages.value.push(userMessage)
-  const userContent = inputMessage.value.trim()
-  inputMessage.value = ''
-
-  // 重置文本域高度
-  const textarea = document.querySelector('.chat-input')
-  if (textarea) {
-    textarea.style.height = 'auto'
-  }
-
-  isLoading.value = true
-  scrollToBottom()
-
-  // 添加 AI 消息占位
-  const aiMessage = {
-    role: 'assistant',
-    content: '',
-    timestamp: new Date().toISOString(),
-    isStreaming: true,
-    toolStatusList: [],
-    terminalOutput: ''
-  }
-  messages.value.push(aiMessage)
-  scrollToBottom()
-
-  try {
-    // 这里模拟 AI 响应，实际应该调用 agentStore 的方法
-    // 先添加工具状态
-    aiMessage.toolStatusList = [
-      {
-        toolType: selectedFunction.value,
-        status: 'processing',
-        message: '正在处理...'
-      }
-    ]
-    scrollToBottom()
-
-    // 模拟延迟
-    await new Promise(resolve => setTimeout(resolve, 1000))
-
-    // 更新工具状态
-    aiMessage.toolStatusList[0].status = 'done'
-    aiMessage.toolStatusList[0].message = '处理完成'
-
-    // 添加终端输出（模拟）
-    if (selectedFunction.value === 'terminal') {
-      aiMessage.terminalOutput = '$ ls -la\n' +
-        'total 40\n' +
-        'drwxr-xr-x  5 user user 4096 Jan 13 10:00 .\n' +
-        'drwxr-xr-x 10 user user 4096 Jan 13 09:00 ..\n' +
-        '-rw-r--r--  1 user user  123 Jan 13 10:00 package.json'
-    }
-
-    // 添加 AI 响应
-    aiMessage.content = `好的，我已经完成了您的"${getToolTypeName(selectedFunction.value)}"任务。\n\n` +
-      `**任务摘要：**\n` +
-      `- 输入：${userContent}\n` +
-      `- 功能：${getToolTypeName(selectedFunction.value)}\n` +
-      `- 状态：已完成\n\n` +
-      `如需进一步操作，请继续告诉我！`
-
-    aiMessage.isStreaming = false
-    scrollToBottom()
-
-  } catch (error) {
-    console.error('发送消息失败:', error)
-    aiMessage.content = '抱歉，处理失败，请稍后重试。'
-    aiMessage.isStreaming = false
-    if (aiMessage.toolStatusList.length > 0) {
-      aiMessage.toolStatusList[0].status = 'error'
-      aiMessage.toolStatusList[0].message = '处理失败'
-    }
-  } finally {
-    isLoading.value = false
-  }
-}
-
-/**
- * 停止生成
- */
-const stopGeneration = () => {
-  isLoading.value = false
-  // 找到最后一条 AI 消息并停止流式
-  const lastMessage = messages.value[messages.value.length - 1]
-  if (lastMessage && lastMessage.role === 'assistant') {
-    lastMessage.isStreaming = false
-  }
-}
-
-onMounted(() => {
-  // 初始化
-})
 </script>
 
 <style scoped>
-.agent-sandbox-simple {
+.agent-sandbox-view {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: var(--bg-primary);
+  background: var(--bg-primary);
   color: var(--text-primary);
 }
 
-.chat-main {
+/* 滚动条美化 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--bg-tertiary);
+}
+
+.sandbox-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.title i {
+  color: var(--primary-color);
+}
+
+.session-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  background: var(--bg-tertiary);
+  border-radius: 16px;
+  font-size: 0.875rem;
+}
+
+.session-status {
+  color: var(--success-color);
+  font-weight: 500;
+}
+
+.header-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.global-task-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.status-indicator.running {
+  background: rgba(245, 158, 11, 0.2);
+  color: var(--warning-color);
+}
+
+.status-indicator i {
+  font-size: 0.75rem;
+}
+
+.progress-bar-mini {
+  width: 120px;
+  height: 3px;
+  background: var(--bg-tertiary);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-bar-mini .progress-fill {
+  height: 100%;
+  background: var(--primary-color);
+  transition: width 0.3s;
+}
+
+.header-right {
+  display: flex;
+  gap: 8px;
+}
+
+.sandbox-main {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 280px;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sidebar-header h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.session-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.session-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.session-item.active {
+  background: var(--primary-color-transparent);
+}
+
+.session-icon {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.session-item.active .session-icon i {
+  color: var(--success-color);
+}
+
+.session-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.session-name {
+  display: block;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.session-meta {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+.session-actions {
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.session-item:hover .session-actions {
+  opacity: 1;
+}
+
+.main-content {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-.chat-header {
-  padding: 16px 24px;
-  background-color: var(--bg-secondary);
+.tasks-panel {
+  background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
-}
-
-.chat-header-inner {
-  max-width: 900px;
-  margin: 0 auto;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-}
-
-.chat-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 0;
-}
-
-.chat-title i {
-  color: var(--primary-color);
-}
-
-.messages-container {
-  flex: 1;
+  max-height: 300px;
   overflow-y: auto;
-  padding: 24px;
 }
 
-.empty-state {
-  max-width: 700px;
-  margin: 80px auto 0;
-  text-align: center;
+.tasks-panel.collapsed {
+  max-height: 48px;
+  overflow: hidden;
 }
 
-.empty-title {
-  font-size: 1.75rem;
-  font-weight: 700;
-  margin-bottom: 12px;
-  color: var(--text-primary);
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  cursor: pointer;
+  user-select: none;
 }
 
-.empty-description {
+.panel-header:hover {
+  background: var(--bg-tertiary);
+}
+
+.panel-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.panel-header h3 {
   font-size: 1rem;
+  font-weight: 600;
+}
+
+.task-count {
+  font-size: 0.875rem;
+  color: var(--text-tertiary);
+}
+
+.collapse-btn {
+  background: none;
+  border: none;
   color: var(--text-secondary);
-  margin-bottom: 32px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.collapse-btn:hover {
+  background: var(--bg-tertiary);
+}
+
+.tasks-list-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 16px 12px;
+}
+
+.task-item-vertical {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px 10px 16px;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 2px solid transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 状态色条 */
+.task-item-vertical::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--border-color);
+}
+
+.task-item-vertical.active::before {
+  background: var(--primary-color);
+}
+
+.task-item-vertical.running::before {
+  background: var(--warning-color);
+}
+
+.task-item-vertical.completed::before {
+  background: var(--success-color);
+}
+
+.task-item-vertical.failed::before {
+  background: var(--danger-color);
+}
+
+.task-item-vertical.cancelled::before {
+  background: var(--text-tertiary);
+}
+
+.task-item-vertical:hover {
+  background: var(--bg-primary);
+}
+
+.task-item-vertical.active {
+  border-color: var(--primary-color);
+}
+
+.task-item-vertical.running {
+  border-color: var(--warning-color);
+}
+
+.task-item-vertical.completed {
+  border-color: var(--success-color);
+}
+
+.task-item-vertical.failed {
+  border-color: var(--danger-color);
+}
+
+.task-status {
+  margin-bottom: 8px;
+}
+
+.task-status i {
+  font-size: 1rem;
+}
+
+.task-item.running .task-status i {
+  color: var(--warning-color);
+}
+
+.task-item.completed .task-status i {
+  color: var(--success-color);
+}
+
+.task-item.failed .task-status i {
+  color: var(--danger-color);
+}
+
+.task-info {
+  margin-bottom: 8px;
+}
+
+.task-type {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+}
+
+.task-input {
+  display: block;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.task-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+.empty-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.empty-icon {
+  font-size: 4rem;
+  color: var(--primary-color);
+  opacity: 0.5;
+}
+
+.empty-main h2 {
+  font-size: 1.5rem;
+}
+
+.empty-main p {
+  color: var(--text-secondary);
 }
 
 .quick-examples {
+  margin-top: 32px;
+  text-align: center;
+}
+
+.examples-title {
+  font-size: 0.875rem;
+  color: var(--text-tertiary);
+  margin-bottom: 16px;
+}
+
+.examples-list {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
@@ -472,346 +1023,238 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 20px;
-  background-color: var(--bg-secondary);
+  padding: 10px 16px;
+  background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: 8px;
   color: var(--text-primary);
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .example-btn:hover {
-  background-color: var(--bg-tertiary);
+  background: var(--bg-secondary);
   border-color: var(--primary-color);
   color: var(--primary-color);
-  transform: translateY(-2px);
 }
 
 .example-btn i {
   color: var(--primary-color);
 }
 
-.message {
-  max-width: 900px;
-  margin: 0 auto 24px;
-  display: flex;
-  justify-content: flex-start;
-}
-
-.message.user {
-  justify-content: flex-end;
-}
-
-.message-content {
-  max-width: 80%;
-  display: flex;
-  flex-direction: column;
-}
-
-.message.user .message-content {
-  align-items: flex-end;
-}
-
-.message-bubble {
-  padding: 16px 20px;
-  border-radius: 16px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-}
-
-.message.user .message-bubble {
-  background-color: var(--primary-color);
-  color: white;
-  border-color: var(--primary-color);
-}
-
-.message-text {
-  line-height: 1.6;
-  word-wrap: break-word;
-}
-
-.message.user .message-text {
-  color: white;
-}
-
-.message-time {
-  font-size: 0.75rem;
-  color: var(--text-tertiary);
-  margin-top: 6px;
-  padding: 0 4px;
-}
-
-.message.user .message-time {
-  text-align: right;
-}
-
-/* 工具状态样式 */
-.tool-status-container {
-  margin-bottom: 16px;
-}
-
-.tool-status-block {
+.quick-input-panel {
   padding: 12px 16px;
-  background-color: var(--bg-tertiary);
-  border-radius: 8px;
-  margin-bottom: 8px;
-  border-left: 3px solid var(--border-color);
-}
-
-.tool-status-block.streaming {
-  border-left-color: var(--warning-color);
-}
-
-.tool-status-block.done {
-  border-left-color: var(--success-color);
-}
-
-.tool-status-block.error {
-  border-left-color: var(--danger-color);
-}
-
-.tool-status-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.header-text {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.tool-name {
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.tool-message {
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-}
-
-/* 终端输出样式 */
-.terminal-output {
-  margin-bottom: 16px;
-  background-color: #1e1e1e;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.terminal-header {
-  padding: 8px 12px;
-  background-color: #333;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.terminal-title {
-  color: #999;
-  font-size: 0.85rem;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.terminal-body {
-  padding: 12px;
-}
-
-.terminal-body pre {
-  margin: 0;
-  color: #d4d4d4;
-  font-family: 'Fira Code', 'Consolas', monospace;
-  font-size: 0.85rem;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-}
-
-/* 输入区域 */
-.chat-input-area {
-  padding: 16px 24px;
-  background-color: var(--bg-secondary);
+  background: var(--bg-secondary);
   border-top: 1px solid var(--border-color);
 }
 
-.input-container {
-  max-width: 900px;
-  margin: 0 auto;
+.quick-input-wrapper {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.function-selector {
-  display: flex;
+  gap: 8px;
   align-items: center;
 }
 
-.function-select {
-  padding: 8px 12px;
-  background-color: var(--bg-tertiary);
+.quick-input {
+  flex: 1;
+  padding: 10px 14px;
+  background: var(--bg-primary);
   border: 1px solid var(--border-color);
   border-radius: 8px;
   color: var(--text-primary);
-  font-size: 0.9rem;
-  cursor: pointer;
-  outline: none;
+  font-size: 0.875rem;
 }
 
-.function-select:focus {
+.quick-input:focus {
+  outline: none;
   border-color: var(--primary-color);
 }
 
-.chat-input {
-  width: 100%;
-  padding: 12px 16px;
-  background-color: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  color: var(--text-primary);
-  font-size: 1rem;
-  resize: none;
-  outline: none;
-  min-height: 48px;
-  max-height: 200px;
-  line-height: 1.5;
+.quick-send-btn {
+  padding: 10px 16px;
 }
 
-.chat-input:focus {
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.chat-input:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.input-toolbar {
+.tools-sidebar {
   display: flex;
-  justify-content: flex-end;
-  gap: 8px;
+  flex-direction: column;
 }
 
-.stop-btn,
-.send-btn {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: none;
+.sidebar-section {
+  flex: 1;
   display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sidebar-section:last-child {
+  border-bottom: none;
+}
+
+.terminal-section {
+  flex: 0 0 250px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  padding: 32px;
+  text-align: center;
+  color: var(--text-tertiary);
+}
+
+.icon-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
   cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
   transition: all 0.2s;
 }
 
-.stop-btn {
-  background-color: var(--danger-color);
+.icon-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--primary-color);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.btn-primary {
+  background: var(--primary-color);
   color: white;
 }
 
-.stop-btn:hover {
-  background-color: #dc2626;
-  transform: scale(1.05);
+.btn-primary:hover:not(:disabled) {
+  background: var(--primary-color-dark);
 }
 
-.send-btn {
-  background-color: var(--primary-color);
-  color: white;
+.btn-secondary {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
 }
 
-.send-btn:hover:not(:disabled) {
-  background-color: var(--primary-color-dark);
-  transform: scale(1.05);
+.btn-secondary:hover {
+  background: var(--bg-primary);
 }
 
-.send-btn:disabled {
+.btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-/* Markdown 内容样式 */
-.message-text :deep(p) {
-  margin: 0 0 12px 0;
+.btn-sm {
+  padding: 4px 12px;
+  font-size: 0.875rem;
 }
 
-.message-text :deep(p:last-child) {
-  margin-bottom: 0;
+.btn-lg {
+  padding: 12px 24px;
+  font-size: 1rem;
 }
 
-.message-text :deep(code) {
-  background-color: var(--bg-tertiary);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: 'Fira Code', 'Consolas', monospace;
-  font-size: 0.9em;
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
 }
 
-.message-text :deep(pre) {
-  background-color: #1e1e1e;
-  padding: 16px;
-  border-radius: 8px;
-  overflow-x: auto;
-  margin: 12px 0;
+.modal-content {
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
 }
 
-.message-text :deep(pre code) {
-  background-color: transparent;
-  padding: 0;
-  color: #d4d4d4;
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color);
 }
 
-.message-text :deep(strong) {
+.modal-header h2 {
+  font-size: 1.125rem;
   font-weight: 600;
 }
 
-.message-text :deep(ul),
-.message-text :deep(ol) {
-  margin: 12px 0;
-  padding-left: 24px;
+.close-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
 }
 
-.message-text :deep(li) {
-  margin: 4px 0;
+.close-btn:hover {
+  color: var(--text-primary);
 }
 
-/* 打字光标 */
-.typing-cursor {
-  display: inline-block;
-  width: 8px;
-  height: 20px;
-  background-color: var(--text-primary);
-  animation: blink 1s infinite;
-  vertical-align: middle;
-  margin-left: 4px;
+form {
+  padding: 20px;
 }
 
-@keyframes blink {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0; }
+.form-group {
+  margin-bottom: 16px;
 }
 
-/* 滚动条样式 */
-.messages-container::-webkit-scrollbar {
-  width: 6px;
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
 }
 
-.messages-container::-webkit-scrollbar-track {
-  background: transparent;
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 0.875rem;
 }
 
-.messages-container::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 3px;
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--primary-color);
 }
 
-.messages-container::-webkit-scrollbar-thumb:hover {
-  background: var(--text-tertiary);
+.form-group textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 24px;
 }
 </style>

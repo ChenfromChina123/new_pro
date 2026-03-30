@@ -9,22 +9,6 @@
 9. 单词记忆（word-game）模块：完成与 aispring 登录系统的 JWT 集成（前端 `/word-game` 路由需登录，后端 `/api` 必须携带有效 JWT）；在课程包功能上支持内置/自定义课程包、搜索与点击量排名，以及通过 JSON/CSV 上传与分节管理用户自定义课程。
 10. earthworm 与前端子模块导航：在本地与服务器上成功部署 earthworm 项目，并将单词记忆等子模块通过 iframe 或独立域名方式与主站集成；当前前端侧边栏与首页/Agent 页已暂时隐藏「语言学习」「需求分析」入口，仅保留 word-game 与核心模块，相关路由与代码依旧存在以便后续恢复。
 11. 文档维护与压缩说明：2026-02-26 起，将原有详尽的 100 条细粒度经验迁移到备份文件 `.experience.20260226.bak` 中，本文件仅保留按主题归纳后的高层摘要；如需回溯具体改动细节，可直接查阅该备份文档或对应的提交记录。
-12. Windows 批处理脚本 (BAT) 启动优化：
-    - 编码问题：在 Windows CMD 下运行包含中文的 UTF-8 脚本时，需使用 `chcp 65001 >nul` 并确保文件以 UTF-8 格式保存（推荐不带 BOM 或带 BOM 均可，但内容需保持整洁），避免因乱码导致 `if` 等关键字失效。
-    - 路径健壮性：在执行多级 `cd` 跳转时，建议在脚本开头保存 `ROOT_DIR=%~dp0`，并在每次执行目录依赖检查或 `cd` 操作前重新 `cd /d "%ROOT_DIR%"`，防止某次跳转失败导致后续操作进入错误路径（如根目录之上的父目录）。
-    - 依赖检测：使用 `java -version`、`node -v` 等具体命令的执行状态 (`%errorlevel%`) 代替 `where` 命令，在某些受限或沙箱环境下更为可靠。
-    - 项目结构对齐：启动脚本必须与实际项目目录（如 `ai-tutor-system/apps/client` 而非过时的 `vue-app`）保持一致，避免因路径硬编码导致启动失败。
-13. 前后端服务启动方法：
-    - 后端：在 `ai-tutor-system/aispring` 目录下执行 `mvn spring-boot:run`（或通过 IDE 运行），默认端口 5000。
-    - 前端：在 `ai-tutor-system/vue-app` 目录下执行 `npm run dev`（Vite 启动），默认端口 3000。
-    - 验证：可通过 `curl.exe -I http://localhost:5000` (后端) 和 `http://localhost:3000` (前端) 确认服务是否存活。
-    - 注意：若端口被占用，请使用 `netstat -ano | findstr :<port>` 查找 PID 并结束进程，或修改相应配置文件（`application.yml` 或 `vite.config.js`）。
-14. 生产环境 Server Terminal 500 修复经验：`application-prod.yml` 使用 `ddl-auto: none` 时，若仅依赖历史自动建表会导致 `server_connections`/`server_command_executions` 缺失，从而使 `/api/server-terminal/servers` 的 GET/POST 直接报 500；应通过 Flyway 新增显式建表迁移，并将添加接口中的 `serverName` 设为可选且默认回退 `host`，同时禁止打印明文密码到日志。
-15. AI 对话建议与标题稳定性经验：会话建议按钮依赖后端 `session_update` 事件中的 `suggestions`，首轮标题依赖 `title`；若标题/建议生成链路使用了与主对话不同的模型配置（如 `deepseek-chat` 与主链路 `deepseek-v3.2` 不一致），会出现“按钮消失、标题不更新”，应统一模型并让前端会话列表优先使用后端 `session.title`。
-16. 博客系统启动与地址经验：当前实际项目目录为 `blog/tailwind-nextjs-starter-blog-main`（非 `blog/个人博客/...`）；在 Windows 下可进入该目录执行 `chcp 65001` 后 `npm run start` 启动，默认访问地址为 `http://localhost:3200`，局域网访问地址可参考 Next.js 启动日志中的 `Network` 地址（如 `http://198.18.0.1:3200`）。
-17. Decap CMS 中文适配经验：为保证博客后台可直接面向中文使用，应在 `public/admin/config.yml` 中设置 `locale: zh_Hans`，并为集合字段添加 `hint` 中文说明；本地模式下同时启动 `next dev` 与 `npx --yes decap-server`，且将 `local_backend.url` 显式指向 `http://localhost:8081/api/v1`，可避免后台列表出现空内容。
-18. Decap 发布前 MDX 校验经验：可通过 `prePublish` 事件在 `public/admin/cms-guards.js` 中调用服务端校验接口（如 `/api/admin/validate-mdx`），使用 `@mdx-js/mdx` 解析正文；若解析失败应抛出错误中断发布，并向编辑者返回中文原因，避免“后台已发布但前台未更新”的假成功状态。
-19. 博客内容格式兼容经验：若要在网页后台同时支持 Markdown 与 MDX，应将 Contentlayer 的 `filePathPattern` 扩展为 `blog/**/*.{md,mdx}`；Decap 可拆分为“MD 推荐集合”和“MDX 集合”，并复用同一发布前校验逻辑。图片可通过后台编辑器直接上传到 `public/static/images`，正文自动引用路径。
-20. AI 联网搜索功能扩展经验：利用大模型的指令跟随能力，在 System Prompt 中统一注入“输出 `<search>关键词</search>`”指令；在后端流式或非流式处理完毕后，通过正则表达式拦截该 XML 标签，使用开源的 DuckDuckGo HTML 版爬取搜索结果（Jsoup 解析），然后将结果拼接到 Prompt 中进行二次静默调用，最后合并返回，这种方式完全符合开闭原则，不修改核心的 AI 交互流逻辑即可完成能力的无缝扩展。
-21. 单词记忆模块与AI结合设计经验：设计通过大模型在对话中生成带音标的单词/句子（通过特定XML或Markdown结构）。前端在解析 SSE 流时引入**骨架屏与增量渲染机制**，让用户直观感知卡片生成过程。前端提供练习与发音（**优先接入有道词典 API** 提供真人发音，异常时降级为浏览器 Web Speech API），同时复用 word-game 的打字逻辑实现拼写测验。用户发音录音通过前端 `MediaRecorder` 采集，后端接入 ASR (如 Whisper 或云服务) 将语音转文本，再交由 AI 进行对比纠错；拼写错误同样交由 AI 总结规律。整体形成体验闭环。
-22. 图片识别聊天隐私展示经验：OCR 文本可用于模型推理但不应直接暴露在用户可见气泡与联网搜索面板中；图片消息应在发送后立即清空输入区预览，并在历史恢复时继续以缩略图展示。可通过对图片列表做轻量元数据编码并随聊天记录持久化，在前端解码后还原 `images` 字段，避免把识别结果存入可见 `content`。
+`
+12. Agent 端到端联通：agent-executor 统一输出 `start/progress/tool_call/output/complete/error` SSE；aispring 任务服务拉取并转发前端事件，同时落库更新任务进度/完成/失败状态。
+13. 工具调用可追踪：在 `tool_call` 事件中补充 `id` 字段，便于前端渲染与定位每一步调用。

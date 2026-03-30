@@ -28,41 +28,41 @@ export interface Sandbox {
 export class SandboxManager {
   private sandboxes: Map<string, Sandbox> = new Map();
   private readonly baseSandboxPath = '/tmp/agent-sandbox';
-  
+
   /**
    * 创建沙箱
    */
   async createSandbox(sessionId: string): Promise<Sandbox> {
     const sandboxPath = `${this.baseSandboxPath}/${sessionId}`;
-    
+
     try {
       await $`mkdir -p ${sandboxPath}`;
-      
+
       const sandbox: Sandbox = {
         id: sessionId,
         path: sandboxPath,
         workingDirectory: sandboxPath,
         createdAt: new Date()
       };
-      
+
       this.sandboxes.set(sessionId, sandbox);
-      
+
       logger.info(`Sandbox created: ${sandboxPath}`);
-      
+
       return sandbox;
     } catch (error) {
       logger.error(`Failed to create sandbox: ${error}`);
       throw error;
     }
   }
-  
+
   /**
    * 获取沙箱
    */
   getSandbox(sessionId: string): Sandbox | undefined {
     return this.sandboxes.get(sessionId);
   }
-  
+
   /**
    * 删除沙箱
    */
@@ -71,7 +71,7 @@ export class SandboxManager {
     if (!sandbox) {
       return;
     }
-    
+
     try {
       await $`rm -rf ${sandbox.path}`;
       this.sandboxes.delete(sessionId);
@@ -81,7 +81,7 @@ export class SandboxManager {
       throw error;
     }
   }
-  
+
   /**
    * 清理所有沙箱
    */
@@ -90,7 +90,7 @@ export class SandboxManager {
       await this.deleteSandbox(sessionId);
     }
   }
-  
+
   /**
    * 初始化 Git 仓库
    */
@@ -99,24 +99,24 @@ export class SandboxManager {
       await $`git init`.cwd(sandboxPath);
       await $`git config user.email "agent@local"`.cwd(sandboxPath);
       await $`git config user.name "Agent"`.cwd(sandboxPath);
-      
+
       const gitignore = `node_modules/
 dist/
 *.log
 .DS_Store
 `;
       await Bun.write(`${sandboxPath}/.gitignore`, gitignore);
-      
+
       await $`git add .`.cwd(sandboxPath);
       await $`git commit -m "Initial snapshot"`.cwd(sandboxPath);
-      
+
       logger.info(`Git repository initialized in ${sandboxPath}`);
     } catch (error) {
       logger.error(`Failed to init git repo: ${error}`);
       throw error;
     }
   }
-  
+
   /**
    * 创建 Git 快照
    */
@@ -124,10 +124,10 @@ dist/
     try {
       await $`git add .`.cwd(sandboxPath);
       await $`git commit -m ${message} --allow-empty`.cwd(sandboxPath);
-      
+
       const result = await $`git rev-parse HEAD`.cwd(sandboxPath);
       const commitHash = result.text().trim();
-      
+
       logger.info(`Git snapshot created: ${commitHash}`);
       return commitHash;
     } catch (error) {
@@ -135,7 +135,7 @@ dist/
       throw error;
     }
   }
-  
+
   /**
    * 回滚到上一个快照
    */

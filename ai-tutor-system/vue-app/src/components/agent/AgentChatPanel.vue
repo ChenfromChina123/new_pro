@@ -32,7 +32,7 @@
           </template>
         </div>
       </div>
-      
+
       <!-- 工具调用列表 -->
       <div
         v-if="toolCalls.length > 0"

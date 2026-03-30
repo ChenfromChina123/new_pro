@@ -9,13 +9,13 @@ import lombok.Data;
  */
 @Data
 public class AgentTaskCreateRequest {
-    
+
     private Long sessionId;
-    
+
     @NotBlank(message = "任务类型不能为空")
     @Size(max = 50, message = "任务类型长度不能超过50个字符")
     private String taskType;
-    
+
     @NotBlank(message = "输入内容不能为空")
     private String input;
 }

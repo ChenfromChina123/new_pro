@@ -28,57 +28,57 @@ export class FileEditTool implements Tool {
       required: true
     }
   };
-  
+
   async execute(params: Record<string, unknown>, sandboxPath: string): Promise<ToolResult> {
     const path = params.path as string;
     const anchor = params.anchor as string;
     const range = params.range as [number, number];
     const content = params.content as string;
-    
+
     if (!path || !anchor || !range || content === undefined) {
       return { success: false, output: 'Error: Missing required parameters' };
     }
-    
+
     if (path.includes('..') || path.startsWith('/etc') || path.startsWith('/root')) {
       return { success: false, output: 'Error: Access denied - invalid path' };
     }
-    
+
     try {
       const fullPath = `${sandboxPath}/${path}`;
       const file = Bun.file(fullPath);
-      
+
       if (!(await file.exists())) {
         return { success: false, output: `Error: File not found: ${path}` };
       }
-      
+
       const fileContent = await file.text();
       const lines = fileContent.split('\n');
-      
+
       const [startLine, endLine] = range;
       const targetLine = lines[startLine - 1];
-      
+
       if (!targetLine) {
         return { success: false, output: `Error: Line ${startLine} not found` };
       }
-      
+
       if (!targetLine.startsWith(anchor)) {
         const fuzzyResult = this.fuzzyMatch(lines, anchor, startLine);
         if (fuzzyResult) {
           return fuzzyResult;
         }
-        return { 
-          success: false, 
-          output: `Error: Anchor mismatch. Expected "${anchor}" at line ${startLine}, found "${targetLine.substring(0, 10)}"` 
+        return {
+          success: false,
+          output: `Error: Anchor mismatch. Expected "${anchor}" at line ${startLine}, found "${targetLine.substring(0, 10)}"`
         };
       }
-      
+
       const newLines = [...lines];
       const linesToDelete = endLine - startLine + 1;
       newLines.splice(startLine - 1, linesToDelete, content);
-      
+
       const newContent = newLines.join('\n');
       await Bun.write(fullPath, newContent);
-      
+
       return {
         success: true,
         output: `Successfully edited ${path}: replaced lines ${startLine}-${endLine}`
@@ -88,7 +88,7 @@ export class FileEditTool implements Tool {
       return { success: false, output: `Error: ${errorMessage}` };
     }
   }
-  
+
   /**
    * 模糊匹配锚点
    */
@@ -96,7 +96,7 @@ export class FileEditTool implements Tool {
     const searchRange = 10;
     const start = Math.max(0, targetLine - searchRange - 1);
     const end = Math.min(lines.length, targetLine + searchRange);
-    
+
     for (let i = start; i < end; i++) {
       if (lines[i].startsWith(anchor)) {
         return {
@@ -105,7 +105,7 @@ export class FileEditTool implements Tool {
         };
       }
     }
-    
+
     return null;
   }
 }

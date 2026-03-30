@@ -20,19 +20,19 @@ export const useAgentStore = defineStore('agent', () => {
   const terminalOutput = ref([])
 
   // 计算属性
-  const activeSessions = computed(() => 
+  const activeSessions = computed(() =>
     sessions.value.filter(s => s.status === 'active')
   )
 
-  const runningTasks = computed(() => 
+  const runningTasks = computed(() =>
     tasks.value.filter(t => t.status === 'running')
   )
 
-  const completedTasks = computed(() => 
+  const completedTasks = computed(() =>
     tasks.value.filter(t => t.status === 'completed')
   )
 
-  const currentTaskToolCalls = computed(() => 
+  const currentTaskToolCalls = computed(() =>
     toolCalls.value.filter(tc => tc.taskId === currentTask.value?.id)
   )
 
@@ -71,10 +71,10 @@ export const useAgentStore = defineStore('agent', () => {
       isLoading.value = true
       const response = await agentService.getSession(sessionId)
       currentSession.value = response.data
-      
+
       // 加载该会话的任务
       await fetchTasks(sessionId)
-      
+
       // 加载文件树
       await fetchFileTree(sessionId)
     } catch (e) {
@@ -152,7 +152,7 @@ export const useAgentStore = defineStore('agent', () => {
   async function startTaskStream(taskId) {
     isStreaming.value = true
     currentTask.value = tasks.value.find(t => t.id === taskId)
-    
+
     try {
       await agentService.streamTask(taskId, {
         onStart: (data) => {

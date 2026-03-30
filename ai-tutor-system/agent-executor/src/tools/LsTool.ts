@@ -14,18 +14,18 @@ export class LsTool implements Tool {
       required: false
     }
   };
-  
+
   async execute(params: Record<string, unknown>, sandboxPath: string): Promise<ToolResult> {
     const path = params.path as string || '.';
-    
+
     if (path.includes('..') || path.startsWith('/etc') || path.startsWith('/root')) {
       return { success: false, output: 'Error: Access denied - invalid path' };
     }
-    
+
     try {
       const result = await $`ls -la ${path}`.cwd(sandboxPath);
       const output = result.stdout.toString();
-      
+
       return { success: true, output };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);

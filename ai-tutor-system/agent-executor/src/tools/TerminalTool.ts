@@ -20,33 +20,33 @@ export class TerminalTool implements Tool {
       required: false
     }
   };
-  
+
   private readonly timeoutMs = 60000;
   private readonly maxOutputLength = 10000;
-  
+
   async execute(params: Record<string, unknown>, sandboxPath: string): Promise<ToolResult> {
     const command = params.command as string;
     const isLongRunning = params.is_long_running as boolean || false;
-    
+
     if (!command) {
       return { success: false, output: 'Error: command is required' };
     }
-    
+
     const dangerousCommands = ['rm -rf /', 'mkfs', 'dd if=', ':(){:|:&};:'];
     for (const dangerous of dangerousCommands) {
       if (command.includes(dangerous)) {
         return { success: false, output: `Error: Dangerous command blocked: ${dangerous}` };
       }
     }
-    
+
     try {
       const timeout = isLongRunning ? this.timeoutMs * 2 : this.timeoutMs;
-      
+
       const result = await $`${command}`.cwd(sandboxPath).timeout(timeout);
-      
+
       let output = result.stdout.toString() + result.stderr.toString();
       output = stripAnsi(output);
-      
+
       if (output.length > this.maxOutputLength) {
         const lines = output.split('\n');
         if (lines.length > 150) {
@@ -57,10 +57,10 @@ export class TerminalTool implements Tool {
           output = output.substring(0, this.maxOutputLength) + '\n... (output truncated)';
         }
       }
-      
+
       const exitCode = result.exitCode;
       const status = exitCode === 0 ? 'Success' : `Exit Code: ${exitCode}`;
-      
+
       return {
         success: exitCode === 0,
         output: `${status}\n${output}`

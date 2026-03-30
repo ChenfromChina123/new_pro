@@ -15,13 +15,13 @@ export class LLMClient {
   private apiKey: string;
   private baseUrl: string;
   private model: string;
-  
+
   constructor() {
     this.apiKey = process.env.LLM_API_KEY || '';
     this.baseUrl = process.env.LLM_BASE_URL || 'https://api.openai.com/v1';
     this.model = process.env.LLM_MODEL || 'gpt-4';
   }
-  
+
   /**
    * 生成响应
    */
@@ -49,13 +49,13 @@ export class LLMClient {
           max_tokens: 2000
         })
       });
-      
+
       if (!response.ok) {
         throw new Error(`LLM API error: ${response.status}`);
       }
-      
+
       const data = await response.json();
-      
+
       return {
         text: data.choices[0].message.content,
         tokens: data.usage?.total_tokens || 0
@@ -65,7 +65,7 @@ export class LLMClient {
       throw new Error(`LLM generation failed: ${errorMessage}`);
     }
   }
-  
+
   /**
    * 获取系统提示词
    */
@@ -82,7 +82,9 @@ export class LLMClient {
 6. **NO_WASTE**: 保持回复极其简练。任务完成后仅需简短确认。如果没有任务，仅使用自然语言交流。
 
 ## 🧩 TOOL PROTOCOL (XML + JSON 混合格式)
-所有工具调用必须严格遵循 \`<tool_name>{ "json_args": "value" }</tool_name>\`。
+所有工具调用必须严格遵循 \`<tool_name>{ ... }</tool_name>\`。
+
+其中 \`{ ... }\` 是“参数 JSON 对象”，字段名必须与工具参数 schema 一致。
 
 ### 可用工具：
 - terminal_run: 执行终端命令

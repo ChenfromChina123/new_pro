@@ -23,14 +23,14 @@ import java.util.UUID;
 @Slf4j
 @RequiredArgsConstructor
 public class AgentSessionServiceImpl implements AgentSessionService {
-    
+
     private final AgentSessionRepository sessionRepository;
-    
+
     @Override
     @Transactional
     public AgentSession createSession(Long userId, String name, String workingDirectory) {
         log.info("Creating agent session for user: {}, name: {}", userId, name);
-        
+
         AgentSession session = new AgentSession();
         session.setUserId(userId);
         session.setName(name != null ? name : "Session " + System.currentTimeMillis());
@@ -38,86 +38,86 @@ public class AgentSessionServiceImpl implements AgentSessionService {
         session.setSandboxPath(generateSandboxPath());
         session.setStatus("active");
         session.setGitInitialized(false);
-        
+
         return sessionRepository.save(session);
     }
-    
+
     @Override
     public List<AgentSession> getSessionsByUserId(Long userId) {
         return sessionRepository.findByUserIdOrderByCreatedAtDesc(userId);
     }
-    
+
     @Override
     public Page<AgentSession> getSessionsByUserId(Long userId, Pageable pageable) {
         return sessionRepository.findByUserId(userId, pageable);
     }
-    
+
     @Override
     public List<AgentSession> getActiveSessions(Long userId) {
         return sessionRepository.findActiveSessionsByUserId(userId);
     }
-    
+
     @Override
     public Optional<AgentSession> getSessionById(Long sessionId, Long userId) {
         return sessionRepository.findByIdAndUserId(sessionId, userId);
     }
-    
+
     @Override
     @Transactional
     public AgentSession updateSession(Long sessionId, Long userId, String name) {
         AgentSession session = sessionRepository.findByIdAndUserId(sessionId, userId)
                 .orElseThrow(() -> new CustomException("Session not found"));
-        
+
         if (name != null) {
             session.setName(name);
         }
-        
+
         return sessionRepository.save(session);
     }
-    
+
     @Override
     @Transactional
     public void closeSession(Long sessionId, Long userId) {
         AgentSession session = sessionRepository.findByIdAndUserId(sessionId, userId)
                 .orElseThrow(() -> new CustomException("Session not found"));
-        
+
         session.close();
         sessionRepository.save(session);
     }
-    
+
     @Override
     @Transactional
     public void deleteSession(Long sessionId, Long userId) {
         AgentSession session = sessionRepository.findByIdAndUserId(sessionId, userId)
                 .orElseThrow(() -> new CustomException("Session not found"));
-        
+
         sessionRepository.delete(session);
     }
-    
+
     @Override
     @Transactional
     public AgentSession getOrCreateActiveSession(Long userId) {
         List<AgentSession> activeSessions = sessionRepository.findActiveSessionsByUserId(userId);
-        
+
         if (!activeSessions.isEmpty()) {
             return activeSessions.get(0);
         }
-        
+
         return createSession(userId, "Auto Session", null);
     }
-    
+
     @Override
     @Transactional
     public void updateGitStatus(Long sessionId, String commitHash, String branch) {
         AgentSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new CustomException("Session not found"));
-        
+
         session.setGitInitialized(true);
         session.setLastCommitHash(commitHash);
         session.setCurrentBranch(branch);
         sessionRepository.save(session);
     }
-    
+
     /**
      * 生成沙箱路径
      */

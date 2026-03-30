@@ -27,10 +27,10 @@ import java.util.List;
 @Slf4j
 @RequiredArgsConstructor
 public class AgentTaskController {
-    
+
     private final AgentTaskService taskService;
     private final AgentSessionService sessionService;
-    
+
     /**
      * 创建任务
      */
@@ -39,12 +39,12 @@ public class AgentTaskController {
             @CurrentUser Long userId,
             @Valid @RequestBody AgentTaskCreateRequest request) {
         log.info("Creating task for user: {}", userId);
-        
+
         Long sessionId = request.getSessionId();
         if (sessionId == null) {
             sessionId = sessionService.getOrCreateActiveSession(userId).getId();
         }
-        
+
         AgentTask task = taskService.createTask(
                 sessionId,
                 userId,
@@ -53,7 +53,7 @@ public class AgentTaskController {
         );
         return ResponseEntity.ok(ApiResponse.success(task));
     }
-    
+
     /**
      * 获取任务详情
      */
@@ -65,7 +65,7 @@ public class AgentTaskController {
                 .map(task -> ResponseEntity.ok(ApiResponse.success(task)))
                 .orElse(ResponseEntity.notFound().build());
     }
-    
+
     /**
      * 获取会话的任务列表
      */
@@ -75,7 +75,7 @@ public class AgentTaskController {
         List<AgentTask> tasks = taskService.getTasksBySessionId(sessionId);
         return ResponseEntity.ok(ApiResponse.success(tasks));
     }
-    
+
     /**
      * 分页获取会话的任务列表
      */
@@ -88,7 +88,7 @@ public class AgentTaskController {
         Page<AgentTask> tasks = taskService.getTasksBySessionId(sessionId, pageRequest);
         return ResponseEntity.ok(ApiResponse.success(tasks));
     }
-    
+
     /**
      * 分页获取用户的任务列表
      */
@@ -101,7 +101,7 @@ public class AgentTaskController {
         Page<AgentTask> tasks = taskService.getTasksByUserId(userId, pageRequest);
         return ResponseEntity.ok(ApiResponse.success(tasks));
     }
-    
+
     /**
      * 启动任务（流式响应）
      */
@@ -112,7 +112,7 @@ public class AgentTaskController {
         log.info("Starting task stream for user: {}, task: {}", userId, taskId);
         return taskService.startTask(taskId, userId);
     }
-    
+
     /**
      * 取消任务
      */
@@ -123,7 +123,7 @@ public class AgentTaskController {
         taskService.cancelTask(taskId, userId);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
-    
+
     /**
      * 获取正在运行的任务
      */

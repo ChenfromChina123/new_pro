@@ -8,7 +8,7 @@ import lombok.Data;
  */
 @Data
 public class AgentSessionUpdateRequest {
-    
+
     @Size(max = 255, message = "会话名称长度不能超过255个字符")
     private String name;
 }

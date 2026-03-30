@@ -25,9 +25,9 @@ import java.util.List;
 @Slf4j
 @RequiredArgsConstructor
 public class AgentSessionController {
-    
+
     private final AgentSessionService sessionService;
-    
+
     /**
      * 创建新会话
      */
@@ -37,13 +37,13 @@ public class AgentSessionController {
             @Valid @RequestBody AgentSessionCreateRequest request) {
         log.info("Creating session for user: {}", userId);
         AgentSession session = sessionService.createSession(
-                userId, 
-                request.getName(), 
+                userId,
+                request.getName(),
                 request.getWorkingDirectory()
         );
         return ResponseEntity.ok(ApiResponse.success(session));
     }
-    
+
     /**
      * 获取会话列表
      */
@@ -53,7 +53,7 @@ public class AgentSessionController {
         List<AgentSession> sessions = sessionService.getSessionsByUserId(userId);
         return ResponseEntity.ok(ApiResponse.success(sessions));
     }
-    
+
     /**
      * 分页获取会话列表
      */
@@ -66,7 +66,7 @@ public class AgentSessionController {
         Page<AgentSession> sessions = sessionService.getSessionsByUserId(userId, pageRequest);
         return ResponseEntity.ok(ApiResponse.success(sessions));
     }
-    
+
     /**
      * 获取活跃会话
      */
@@ -76,7 +76,7 @@ public class AgentSessionController {
         List<AgentSession> sessions = sessionService.getActiveSessions(userId);
         return ResponseEntity.ok(ApiResponse.success(sessions));
     }
-    
+
     /**
      * 获取或创建活跃会话
      */
@@ -86,7 +86,7 @@ public class AgentSessionController {
         AgentSession session = sessionService.getOrCreateActiveSession(userId);
         return ResponseEntity.ok(ApiResponse.success(session));
     }
-    
+
     /**
      * 获取会话详情
      */
@@ -98,7 +98,7 @@ public class AgentSessionController {
                 .map(session -> ResponseEntity.ok(ApiResponse.success(session)))
                 .orElse(ResponseEntity.notFound().build());
     }
-    
+
     /**
      * 更新会话
      */
@@ -110,7 +110,7 @@ public class AgentSessionController {
         AgentSession session = sessionService.updateSession(sessionId, userId, request.getName());
         return ResponseEntity.ok(ApiResponse.success(session));
     }
-    
+
     /**
      * 关闭会话
      */
@@ -121,7 +121,7 @@ public class AgentSessionController {
         sessionService.closeSession(sessionId, userId);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
-    
+
     /**
      * 删除会话
      */

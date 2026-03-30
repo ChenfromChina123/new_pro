@@ -4,11 +4,11 @@
  */
 export class ContextBuilder {
   private context: string;
-  
+
   constructor() {
     this.context = '';
   }
-  
+
   /**
    * 构建初始上下文
    */
@@ -33,7 +33,7 @@ ${workingDirectory}
 `;
     return this.context;
   }
-  
+
   /**
    * 更新上下文
    */
@@ -50,18 +50,18 @@ ${workingDirectory}
 行动: ${action ? `${action.name}(${JSON.stringify(action.params)})` : '无'}
 观察: ${observation}
 `;
-    
+
     this.context = context + update;
     return this.context;
   }
-  
+
   /**
    * 获取当前上下文
    */
   getContext(): string {
     return this.context;
   }
-  
+
   /**
    * 压缩上下文（用于节省 Token）
    */
@@ -70,7 +70,7 @@ ${workingDirectory}
     const compressedLines: string[] = [];
     let inSection = false;
     let sectionLines = 0;
-    
+
     for (const line of lines) {
       if (line.startsWith('##')) {
         inSection = true;
@@ -85,7 +85,7 @@ ${workingDirectory}
         }
       }
     }
-    
+
     this.context = compressedLines.join('\n');
     return this.context;
   }

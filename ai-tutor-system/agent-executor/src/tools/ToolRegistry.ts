@@ -11,11 +11,11 @@ import { GitTool } from './GitTool';
  */
 export class ToolRegistry {
   private tools: Map<string, Tool> = new Map();
-  
+
   constructor() {
     this.registerDefaultTools();
   }
-  
+
   /**
    * 注册默认工具
    */
@@ -27,27 +27,27 @@ export class ToolRegistry {
     this.register(new LsTool());
     this.register(new GitTool());
   }
-  
+
   /**
    * 注册工具
    */
   register(tool: Tool): void {
     this.tools.set(tool.name, tool);
   }
-  
+
   /**
    * 获取工具
    */
   getTool(name: string): Tool | undefined {
     return this.tools.get(name);
   }
-  
+
   /**
    * 获取所有工具描述
    */
   getToolDescriptions(): ToolDescription[] {
     const descriptions: ToolDescription[] = [];
-    
+
     this.tools.forEach((tool) => {
       descriptions.push({
         name: tool.name,
@@ -55,17 +55,17 @@ export class ToolRegistry {
         parameters: tool.parameters
       });
     });
-    
+
     return descriptions;
   }
-  
+
   /**
    * 检查工具是否存在
    */
   hasTool(name: string): boolean {
     return this.tools.has(name);
   }
-  
+
   /**
    * 获取所有工具名称
    */
