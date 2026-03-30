@@ -119,6 +119,17 @@
           <span>代码运行</span>
         </router-link>
 
+        <!-- Agent 沙箱入口 -->
+        <router-link
+          v-if="authStore.isAuthenticated"
+          to="/agent-sandbox"
+          class="nav-item"
+          active-class="active"
+        >
+          <i class="fas fa-robot" />
+          <span>AI Agent</span>
+        </router-link>
+
         <!-- 运维工具入口 -->
         <div
           class="nav-item"
